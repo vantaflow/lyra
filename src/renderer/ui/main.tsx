@@ -1,9 +1,27 @@
 import { render } from 'preact'
-import { t } from '../../shared/i18n'
 import './theme.css'
+import { Capsule } from './Capsule'
+import { Sky } from './Sky'
+import { initialiserEtat } from './state'
 
 function App() {
-  return <div class="marque">{t('app.nom')}</div>
+  const winStyle = window.lyra.plateforme === 'win32' ? ' win' : ''
+  return (
+    <div class={`fenetre${winStyle}`}>
+      <Sky />
+      <section class="page-zone" aria-label="Page active">
+        <div class="carte">
+          <Capsule />
+          {/* La vraie page est une WebContentsView posée au-dessus de cette zone. */}
+          <main class="page-vide"></main>
+        </div>
+      </section>
+    </div>
+  )
 }
 
-render(<App />, document.getElementById('app')!)
+// La vue overlay (#overlay) a sa propre interface (tâche 7) : elle ne dessine pas le ciel.
+if (location.hash !== '#overlay') {
+  void initialiserEtat()
+  render(<App />, document.getElementById('app')!)
+}

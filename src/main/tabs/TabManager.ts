@@ -90,6 +90,10 @@ export class TabManager {
     this.vues.get(id)?.webContents.reload()
   }
 
+  arreter(id: string): void {
+    this.vues.get(id)?.webContents.stop()
+  }
+
   deplacer(id: string, o: { parentId?: string; index: number }): void {
     this.tree.deplacer(id, o)
     this.notifier()

@@ -35,6 +35,8 @@ export type Requetes = {
   'tabs:back': [{ id: string }, void]
   'tabs:forward': [{ id: string }, void]
   'tabs:reload': [{ id: string }, void]
+  'tabs:stop': [{ id: string }, void]
+  'palette:open': [void, void]
   'tabs:move': [{ id: string; parentId?: string; index: number }, void]
   'tabs:pin': [{ id: string; pinned: boolean }, void]
   'tabs:reopen': [void, void]

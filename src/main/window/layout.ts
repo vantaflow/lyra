@@ -21,6 +21,8 @@ export interface Layout {
 
 const BANDE = 56
 const RAIL = 14
+/** Hauteur de la capsule de navigation (dessinée par la vue chrome au-dessus de la page). */
+export const CAPSULE = 46
 
 export function computeLayout(
   taille: { width: number; height: number },
@@ -39,7 +41,12 @@ export function computeLayout(
 
   let chrome: Rect
   let page: Rect
-  if (horizontal) {
+  if (ciel.position === 'gauche' && !ciel.masque) {
+    // Le chrome couvre toute la fenêtre : ciel à gauche, capsule au-dessus de la page, qui se pose par-dessus.
+    const haut = Math.min(height, CAPSULE)
+    chrome = fenetre
+    page = { x: epaisseur, y: haut, width: reste, height: height - haut }
+  } else if (horizontal) {
     chrome = { x: 0, y: debut ? 0 : reste, width, height: epaisseur }
     page = { x: 0, y: debut ? epaisseur : 0, width, height: reste }
   } else {

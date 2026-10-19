@@ -33,11 +33,372 @@ body {
   font-family: 'Manrope', system-ui, sans-serif;
 }
 
-.marque {
-  display: grid;
-  place-items: center;
+/* ---- Fenêtre principale : le ciel et la capsule (fidèle à docs/design/project/Main.dc.html) ---- */
+.fenetre {
+  width: 100%;
   height: 100%;
+  display: flex;
+  background: #e9e9f3;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #1c1c2e;
+}
+.fenetre button {
+  font-family: inherit;
+}
+.fenetre kbd {
+  font: 600 10.5px/1 'Manrope', sans-serif;
+  background: #2e2e5a;
+  color: #b3b3da;
+  padding: 4px 6px;
+  border-radius: 5px;
+  letter-spacing: 0.02em;
+}
+.souple {
+  flex: 1;
+}
+
+.ciel {
+  width: 272px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--ciel);
+  color: #d9d9f0;
+  padding: 10px 12px 12px;
+  box-sizing: border-box;
+}
+.ciel-entete {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 30px;
+  padding: 0 2px;
+  -webkit-app-region: drag;
+}
+.ciel-entete button {
+  -webkit-app-region: no-drag;
+}
+/* Les vraies pastilles macOS sont dessinées par le système (trafficLightPosition 14/14). */
+.pastilles {
+  width: 76px;
+  flex: none;
+}
+.marque-lyra {
   font-family: 'Instrument Serif', serif;
-  font-size: 64px;
-  color: var(--etoile-active);
+  font-style: italic;
+  font-size: 21px;
+  color: #f3f3ff;
+  letter-spacing: 0.01em;
+}
+
+.palette {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 38px;
+  padding: 0 10px 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: #222247;
+  color: #9d9dc8;
+  font: 13px 'Manrope', sans-serif;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+}
+.palette-texte {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.epingles {
+  display: flex;
+  gap: 8px;
+  padding: 2px 6px 0;
+  flex-wrap: wrap;
+}
+.pin {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 11px 'Manrope', sans-serif;
+  color: #fff;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.etoiles {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.star {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #c9c9ea;
+  font: 13px/1 'Manrope', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+  position: relative;
+  flex: none;
+}
+.star:hover {
+  background: #1f1f42;
+  color: #fff;
+}
+.star.active {
+  background: #262650;
+  color: #fff;
+}
+.star .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--etoiles);
+  flex: none;
+}
+.star.active .dot {
+  background: var(--etoile-active);
+  box-shadow:
+    0 0 0 3px rgba(244, 197, 106, 0.22),
+    0 0 14px rgba(244, 197, 106, 0.7);
+}
+.star.dim {
+  color: #8686b4;
+}
+.star.dim .dot {
+  background: var(--etoiles-endormies);
+}
+.star .t {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* La croix se montre au survol et sur l'étoile active. */
+.star .x {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  color: #9a9ac6;
+  flex: none;
+}
+.star:hover .x,
+.star.active .x {
+  display: inline-flex;
+}
+.star .x:hover {
+  background: #3a3a6a;
+  color: #fff;
+}
+.star.drop-avant {
+  box-shadow: inset 0 2px 0 var(--etoile-active);
+}
+.star.drop-apres {
+  box-shadow: inset 0 -2px 0 var(--etoile-active);
+}
+.branch {
+  margin-left: 12px;
+  padding-left: 12px;
+  border-left: 1px solid var(--lignes);
+  display: flex;
+  flex-direction: column;
+}
+.branch .star::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  width: 10px;
+  height: 1px;
+  background: var(--lignes);
+}
+.grp {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #7f7fb0;
+  padding: 12px 8px 4px;
+  font-weight: 600;
+}
+.grp-n {
+  letter-spacing: 0;
+  color: #5e5e92;
+}
+.nouvelle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  padding: 0 8px;
+  margin-top: 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #8a8ab8;
+  font: 13px 'Manrope', sans-serif;
+  cursor: pointer;
+  text-align: left;
+  flex: none;
+}
+
+.pied {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-top: 8px;
+  border-top: 1px solid #26264a;
+}
+.boucliers {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 10px 0 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--bouclier);
+  font: 600 12.5px 'Manrope', sans-serif;
+  cursor: pointer;
+}
+.sb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #b3b3da;
+  cursor: pointer;
+  padding: 0;
+}
+.sb:hover {
+  background: #23234a;
+  color: #fff;
+}
+.sb.replier {
+  width: 28px;
+  height: 28px;
+}
+
+/* La page, en carte */
+.page-zone {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  background: var(--ciel);
+}
+.carte {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 12px 0 0 12px;
+  overflow: hidden;
+}
+.page-vide {
+  flex: 1;
+}
+
+.capsule {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 46px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border-bottom: 1px solid #eeeef4;
+  flex-wrap: wrap;
+  overflow: hidden;
+  flex: none;
+  -webkit-app-region: drag;
+}
+.capsule button {
+  -webkit-app-region: no-drag;
+}
+/* Windows : les boutons de fenêtre (titleBarOverlay) recouvrent le coin haut droit. */
+.win .capsule {
+  padding-right: 150px;
+}
+.cb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #4a4a66;
+  cursor: pointer;
+  padding: 0;
+}
+.cb:hover {
+  background: #eeeef6;
+  color: #1c1c2e;
+}
+.cb[disabled] {
+  color: #b8b8cc;
+  cursor: default;
+}
+.cb[disabled]:hover {
+  background: transparent;
+}
+.pilule {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 14px 0 12px;
+  border: 0;
+  border-radius: 16px;
+  background: #f3f3f9;
+  color: #1c1c2e;
+  font: 500 13.5px 'Manrope', sans-serif;
+  cursor: pointer;
+  max-width: 100%;
+  white-space: nowrap;
+}
+.pilule.discrete {
+  color: #8e8ebe;
+}
+.pilule .chemin {
+  color: #8a8aa6;
+  font-weight: 400;
+}
+.pilule .alerte {
+  color: #8e2e22;
 }

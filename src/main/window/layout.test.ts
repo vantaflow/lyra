@@ -12,8 +12,8 @@ const ciel = (position: 'gauche' | 'droite' | 'haut' | 'bas', masque = false, la
 describe('computeLayout', () => {
   it('gauche', () => {
     const l = computeLayout(taille, ciel('gauche'), false)
-    expect(l.chrome).toEqual({ x: 0, y: 0, width: 272, height: 800 })
-    expect(l.page).toEqual({ x: 272, y: 0, width: 1008, height: 800 })
+    expect(l.chrome).toEqual(fenetre)
+    expect(l.page).toEqual({ x: 272, y: 46, width: 1008, height: 754 })
     expect(l.overlay).toEqual(fenetre)
   })
   it('droite', () => {
@@ -50,5 +50,6 @@ describe('computeLayout', () => {
     const l = computeLayout({ width: 100, height: 50 }, ciel('gauche'), false)
     expect(l.page.width).toBe(0)
     expect(l.chrome.width).toBe(100)
+    expect(l.page.height).toBe(4)
   })
 })
