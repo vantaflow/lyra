@@ -102,7 +102,50 @@ Nouvel onglet T, fermer W, rouvrir Shift+T, nouvelle fenêtre N, privée Shift+N
 
 ## 5. Architecture technique
 
-_À compléter avec les résultats de la recherche et des spikes (extensions, bloqueur, packaging)._
+Sources : recherche du 2026-10-19 (`docs/superpowers/research/2026-10-19-architecture-electron.md`), code de Min et d'electron-browser-shell, spikes.
+
+### Processus et vues
+
+```
+BaseWindow (une par fenêtre Lyra, titleBarStyle hidden)
+ └─ contentView
+     ├─ chromeView   WebContentsView — renderer « ui » : le ciel + la capsule (une seule page HTML, mise en page selon la position du ciel)
+     ├─ tabView[n]   WebContentsView — un par onglet ; seul l'onglet actif est attaché et visible
+     └─ overlayView  WebContentsView transparent (#00000000) — renderer « ui » route overlay : palette ⌘ L, popups d'extension, boîtes de permission ; toujours ajouté en dernier (sommet), masqué hors usage
+```
+
+- Pas d'auto-resize : `WindowManager` recalcule les bounds à chaque `resize`, changement de position du ciel (gauche/droite/haut/bas/masqué, largeur) et plein écran HTML (`enter/leave-html-full-screen` → onglet plein cadre, chrome et overlay masqués). Ne pas déranger : chrome masqué, onglet plein cadre, overlay réservé au rappel.
+- Ordre z : `addChildView` sur l'overlay pour le remonter ; l'overlay en plein cadre capte les clics quand il est visible → fermeture au clic extérieur, retour du focus à l'onglet.
+- Dormance d'une étoile : `webContents.close()` après le délai réglé, état sérialisé (`navigationHistory.getAllEntries()` + index, titre, favicon, défilement) ; réveil = nouveau `WebContentsView` + `navigationHistory.restore()` avant tout `loadURL`. Même mécanisme pour la restauration de session. Perte assumée de l'état non sérialisé (vidéo en cours, formulaire non envoyé) : une étoile avec audio ou formulaire modifié n'est pas endormie.
+- Popups : `setWindowOpenHandler` — sans `features` : `deny` + nouvelle étoile **reliée** à son parent ; avec `features` (OAuth) : `allow` + `createWindow` → petite fenêtre `BrowserWindow` reliée à l'opener (`window.opener` fonctionnel).
+
+### Modules du processus principal (TypeScript, un dossier par module, testés par vitest)
+
+| Module | Rôle |
+|---|---|
+| `WindowManager` | fenêtres, vues chrome/overlay, bounds, position du ciel, plein écran, Ne pas déranger, fenêtre privée (partition non persistante + thème Aurore) |
+| `TabManager` | arbre d'étoiles (parent, enfants, constellation, ordre, épinglées), création/activation/fermeture, dormance et réveil, popups reliées, relais des événements (`did-start/stop-loading`, `did-navigate`, `did-navigate-in-page`, `page-title-updated`, `page-favicon-updated`, `did-fail-load`, `did-change-theme-color`, `render-process-gone`) vers l'UI, raccourcis `before-input-event` |
+| `Shields` | moteur Ghostery piloté par Lyra (§6) : webRequest + CSP par session, scriptlets tôt par preload, compteurs par onglet, règles par site, mise à jour des listes (cache, rotation 4-8 h) |
+| `Extensions` | Chrome natif + electron-chrome-extensions, import Firefox (§7), journal de compatibilité |
+| `Settings` | réglages (JSON dans `userData/settings.json`, écriture atomique), thèmes et couleurs, export/import ; `SiteRules` (par origine : boucliers, cookies, scripts, extensions autorisées, zoom, notifications, lecture auto, UA, style/script perso, exception DND) |
+| `History`, `Bookmarks` | SQLite (`better-sqlite3` si binaire précompilé disponible pour Electron 44, sinon JSON append + index en mémoire — Ruling au scaffold), favicons en cache |
+| `Downloads` | `will-download` sur chaque session, file, progression, panneau |
+| `Dnd` | mode Ne pas déranger : minuterie, permission `notifications` refusée temporairement + surcharge de `window.Notification` par le preload page (file rejouée à la sortie), popups retenus, compteur, exceptions par site |
+| `Permissions` | `setPermissionRequestHandler` + `setPermissionCheckHandler` sur chaque session, décision par origine mémorisée dans `SiteRules`, boîte dans l'overlay |
+| `Protocol` | `lyra://` (`registerSchemesAsPrivileged` avant `ready` ; `protocol.handle` par session, garde anti-traversée) servant `out/renderer` |
+| `Importer` | lecteurs Chrome/Edge/Brave/Vivaldi (profils Chromium : Bookmarks JSON, History SQLite, Preferences), Firefox (places.sqlite, extensions.json), Safari (Bookmarks.plist, History.db — accès disque à autoriser), Orion (même format Safari/WebKit, dossiers `~/Library/Application Support/Orion`), fichiers HTML/CSV/JSON/.lyra ; `Exporter` (favoris HTML Netscape, CSV, JSON, paquet `.lyra` = zip chiffré par phrase de passe via `age`-like ou AES-GCM Web Crypto) |
+| `Session` | sauvegarde périodique de l'état du ciel (fenêtres, constellations, étoiles, dormantes) et restauration |
+| `Updater` | listes de filtres, extensions ; pas d'auto-update de l'app en v1 |
+
+Preloads sandbox (CJS, `isolatedEntries`) : `ui` (API typée pour le ciel, la capsule, l'overlay), `internal` (pages `lyra://`), `page` (sites web : scriptlets Shields tôt, surcharge Notification, lecture auto, style/script perso), `ext` (popups d'extension). Chaque handler `ipcMain.handle` vérifie `event.senderFrame.url` (vue UI ou `lyra://`). Canaux typés dans `src/shared/ipc.ts`.
+
+### Renderer
+
+Preact 11 + `@preact/preset-vite`, trois entrées : `ui.html` (ciel, capsule, overlay), `newtab.html`, `settings.html` (réglages, extensions, historique, favoris, téléchargements, boucliers = routes internes). Thèmes = variables CSS (`--ciel`, `--etoile-active`, …) poussées par IPC, dérivées du thème actif (clair/sombre). Fonts Manrope et Instrument Serif **embarquées** (pas de requête réseau). Icônes SVG inline.
+
+### Sessions
+
+`persist:lyra` (défaut), `persist:profil-<id>` (v2), privée = `fromPartition('privee-<id>')` sans persist ; chaque session reçoit : Shields, Permissions, Downloads, `lyra://`, preload page, UA Chrome sans « Electron » (`ses.setUserAgent`), extensions (session persistante seulement — limite d'electron-chrome-extensions).
 
 ## 6. Blocage des publicités et YouTube
 
