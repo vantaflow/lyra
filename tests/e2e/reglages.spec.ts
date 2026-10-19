@@ -71,8 +71,10 @@ test('pages internes à fond clair : #app lisible sur réglages, historique et t
     for (const url of ['lyra://settings', 'lyra://history', 'lyra://downloads']) {
       await fenetre.evaluate((u) => window.lyra.invoke('test:navigate', u), url)
       await expect.poll(() => page(app, url)).toBeDefined()
-      const fond = await page(app, url)!.evaluate(() => getComputedStyle(document.getElementById('app')!).backgroundColor)
-      expect(fond, url).toBe('rgb(247, 247, 251)')
+      // Attendre le chargement des feuilles de style (sur macOS en CI, la première lecture peut précéder le CSS).
+      await expect
+        .poll(() => page(app, url)!.evaluate(() => { const a = document.getElementById('app'); return a ? getComputedStyle(a).backgroundColor : '' }), { message: url })
+        .toBe('rgb(247, 247, 251)')
     }
   } finally {
     await app.close()
