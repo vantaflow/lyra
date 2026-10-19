@@ -12,6 +12,8 @@
 
 ## Global Constraints
 
+- **Le navigateur respecte le design validé par l'utilisateur** (`docs/design/project/*.dc.html`, lus comme du HTML statique) : chaque écran, panneau et composant de l'interface reproduit l'écran correspondant — structure, dimensions (ciel 272 px, capsule 46 px, étoiles 32 px, pilule 32 px…), couleurs, polices, libellés, états — sans réinterprétation. Correspondance : tâche 6 → `Main.dc.html` et `Composants.dc.html` ; tâche 7 → `Panneaux.dc.html` (palette) ; tâche 9 → `Panneaux.dc.html` (boucliers) ; tâche 11 → `Panneaux.dc.html` (téléchargements) ; tâche 13 → `NouvelOnglet.dc.html`, `Parametres.dc.html` (sommaire et section Général) ; tâche 14 → `Panneaux.dc.html` (menu ⋯). Le relecteur de chaque tâche d'interface compare au `.dc.html`.
+
 - Node 24, npm ; `package.json` **sans** `"type": "module"` (preloads CJS sandbox) ; `"name": "lyra"`, `"productName": "Lyra"`, `"main": "./out/main/index.js"`, `"license": "GPL-3.0"`.
 - Aucune requête réseau hors : navigation de l'utilisateur, listes de filtres, extensions (jalon B). Pas de Google Fonts : Manrope et Instrument Serif embarquées dans `src/renderer/fonts/` (woff2, licences OFL copiées).
 - Interface en français (source) avec fichiers i18n `src/shared/i18n/fr.json` et `en.json` ; langue = celle du système, repli fr.
