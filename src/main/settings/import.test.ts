@@ -17,4 +17,11 @@ describe('patchImporte', () => {
   it('sans dossier, ne touche à rien', () => {
     expect(patchImporte({ theme: 'clair' }, non)).toEqual({ theme: 'clair' })
   })
+  it('garde reseau.sites mais ignore reseau.personnelle', () => {
+    const sites = [{ hote: 'reddit.com', origine: 'manuel', date: 1 }]
+    const personnelle = { type: 'socks5', hote: '127.0.0.1', port: 40000 }
+    expect(patchImporte({ reseau: { passerelles: false, sites, personnelle } }, non)).toEqual({ reseau: { passerelles: false, sites } })
+    expect(patchImporte({ reseau: { personnelle } }, non)).toEqual({})
+    expect(patchImporte({ reseau: { personnelle }, theme: 'clair' }, non)).toEqual({ theme: 'clair' })
+  })
 })

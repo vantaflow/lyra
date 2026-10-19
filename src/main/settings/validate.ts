@@ -1,5 +1,6 @@
 import type { Settings } from '../../shared/types'
 import { fusion } from './store'
+import { hoteValide, octets } from '../passerelles/liste'
 
 export type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K] }
 
@@ -54,6 +55,40 @@ function sites(v: unknown): Obj | undefined {
   return Object.keys(sortie).length > 0 ? sortie : undefined
 }
 
+const MAX_SITES_CONTOURNES = 500
+const port = entier(1, 65535)
+
+/** reseau.sites : tableau d'objets { hote (domaine), origine, date } ; entrées invalides et doublons ignorés. */
+function sitesContournes(v: unknown): unknown[] | undefined {
+  if (!Array.isArray(v)) return undefined
+  const sortie: Obj[] = []
+  const vus = new Set<string>()
+  for (const e of v) {
+    if (sortie.length >= MAX_SITES_CONTOURNES) break
+    if (!estObjet(e)) continue
+    const hote = propre(e, 'hote')
+    const origine = enumeration('auto', 'manuel')(propre(e, 'origine'))
+    const date = propre(e, 'date')
+    if (!hoteValide(hote) || !origine || typeof date !== 'number' || !Number.isFinite(date) || date < 0) continue
+    const h = hote.toLowerCase()
+    if (vus.has(h)) continue
+    vus.add(h)
+    sortie.push({ hote: h, origine, date })
+  }
+  return sortie
+}
+
+/** reseau.personnelle : { type, hote (domaine ou IPv4), port } ; tout ou rien. */
+function personnelle(v: unknown): Obj | undefined {
+  if (!estObjet(v)) return undefined
+  const type = enumeration('socks5', 'http')(propre(v, 'type'))
+  const hote = propre(v, 'hote')
+  const p = propre(v, 'port')
+  if (!type || !Number.isInteger(p) || port(p) === undefined || typeof hote !== 'string') return undefined
+  if (!hoteValide(hote) && !octets(hote)) return undefined
+  return { type, hote: hote.toLowerCase(), port: p }
+}
+
 type Schema = { [k: string]: ((v: unknown) => unknown) | Schema }
 
 const SCHEMA: Schema = {
@@ -77,7 +112,13 @@ const SCHEMA: Schema = {
     dossier: texte(4096),
     demander: booleen
   },
-  sites
+  sites,
+  reseau: {
+    passerelles: booleen,
+    auto: booleen,
+    sites: sitesContournes,
+    personnelle
+  }
 }
 
 function filtrer(brut: unknown, schema: Schema): Obj {

@@ -12,6 +12,7 @@ export function reglagesParDefaut(dossierTelechargements: string): Settings {
     ciel: { position: 'gauche', largeur: 272, masque: false, ternirApresMin: 30, endormirApresMin: 120 },
     boucliers: { niveau: 'standard', genes: false, majHeures: 6 },
     telechargements: { dossier: dossierTelechargements, demander: false },
-    sites: {}
+    sites: {},
+    reseau: { passerelles: true, auto: true, sites: [] }
   }
 }

@@ -49,6 +49,30 @@ export interface Settings {
   }
   /** Règles par site, indexées par origine (« https://exemple.fr », « file:// »). */
   sites: Record<string, RegleSite>
+  reseau: {
+    /** Passerelles pour les sites bloqués. */
+    passerelles: boolean
+    /** Détection automatique des sites bloqués. */
+    auto: boolean
+    /** Sites contournés (max 500). */
+    sites: SiteContourne[]
+    /** Passerelle personnelle ; si présente, utilisée à la place des publiques. */
+    personnelle?: PasserellePerso
+  }
+}
+
+export interface SiteContourne {
+  /** Nom de domaine sans schéma ; couvre aussi ses sous-domaines. */
+  hote: string
+  origine: 'auto' | 'manuel'
+  /** Horodatage d'ajout (ms). */
+  date: number
+}
+
+export interface PasserellePerso {
+  type: 'socks5' | 'http'
+  hote: string
+  port: number
 }
 
 export type TypePermission = 'camera' | 'micro' | 'notifications' | 'geolocalisation' | 'presse-papiers'

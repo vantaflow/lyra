@@ -22,5 +22,10 @@ export function patchImporte(brut: unknown, estRepertoire: (chemin: string) => b
     delete patch.telechargements!.dossier
     if (Object.keys(patch.telechargements!).length === 0) delete patch.telechargements
   }
+  // Comme le dossier de téléchargement : un fichier partagé ne désigne pas la passerelle d'autrui.
+  if (patch.reseau?.personnelle !== undefined) {
+    delete patch.reseau.personnelle
+    if (Object.keys(patch.reseau).length === 0) delete patch.reseau
+  }
   return patch as Partial<Settings>
 }
