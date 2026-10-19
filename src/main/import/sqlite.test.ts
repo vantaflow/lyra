@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { appliquerWal, chargerSqlJs, ouvrirBase, ouvrirBaseCopiee } from './sqlite'
 import { ErreurImport } from './types'
+import { lireProfilChromium } from './chromium'
 
 const require = createRequire(import.meta.url)
 
@@ -164,5 +165,77 @@ describe.skipIf(!natif)('journal WAL', () => {
   it('appliquerWal rend la base d’origine si le WAL est vide', () => {
     const base = new Uint8Array(200)
     expect(appliquerWal(base, new Uint8Array(10))).toBe(base)
+  })
+})
+
+// ---------------------------------------------------------------------------------------------------------------------
+// WAL fabriqué : sommes de contrôle valides (calculées ici, indépendamment du lecteur) mais taille annoncée aberrante.
+
+function sommeIndependante(octets: Uint8Array, debut: number, fin: number, s: [number, number], grandBoutiste: boolean): [number, number] {
+  const vue = new DataView(octets.buffer, octets.byteOffset, octets.byteLength)
+  let [s0, s1] = s
+  for (let i = debut; i < fin; i += 8) {
+    s0 = (s0 + vue.getUint32(i, !grandBoutiste) + s1) >>> 0
+    s1 = (s1 + vue.getUint32(i + 4, !grandBoutiste) + s0) >>> 0
+  }
+  return [s0, s1]
+}
+
+/** WAL d'une trame (la page 1 de `base`) qui annonce `taillePagesApresValidation` pages après validation. */
+function walFabrique(base: Uint8Array, taillePagesApresValidation: number): Uint8Array {
+  const taillePage = new DataView(base.buffer, base.byteOffset).getUint16(16) || 65536
+  const wal = new Uint8Array(32 + 24 + taillePage)
+  const vue = new DataView(wal.buffer)
+  vue.setUint32(0, 0x377f0682) // petit-boutiste
+  vue.setUint32(4, 3007000)
+  vue.setUint32(8, taillePage)
+  vue.setUint32(16, 0x11223344) // sels
+  vue.setUint32(20, 0x55667788)
+  let somme = sommeIndependante(wal, 0, 24, [0, 0], false)
+  vue.setUint32(24, somme[0])
+  vue.setUint32(28, somme[1])
+  vue.setUint32(32, 1) // page 1
+  vue.setUint32(36, taillePagesApresValidation)
+  vue.setUint32(40, 0x11223344)
+  vue.setUint32(44, 0x55667788)
+  wal.set(base.subarray(0, taillePage), 56)
+  somme = sommeIndependante(wal, 32, 40, somme, false)
+  somme = sommeIndependante(wal, 56, 56 + taillePage, somme, false)
+  vue.setUint32(48, somme[0])
+  vue.setUint32(52, somme[1])
+  return wal
+}
+
+describe('WAL de taille aberrante', () => {
+  it('le WAL fabriqué avec une taille cohérente est bien accepté (le test ne triche pas)', async () => {
+    const base = await baseAvecLignes(3)
+    const pages = base.length / 4096
+    const image = appliquerWal(base, walFabrique(base, pages))
+    expect(image.length).toBe(base.length)
+  })
+
+  it.each([5_000_000, 2_000_000, 100_000])('%i pages annoncées pour une trame : ErreurImport « incohérent », jamais de RangeError', async (annoncees) => {
+    const base = await baseAvecLignes(3)
+    const wal = walFabrique(base, annoncees)
+    expect(() => appliquerWal(base, wal)).toThrow(ErreurImport)
+    expect(() => appliquerWal(base, wal)).toThrow(/incohérent/)
+    expect(() => appliquerWal(base, wal)).not.toThrow(RangeError)
+  })
+
+  it('la limite d’octets de l’image est respectée même si la taille est « plausible »', async () => {
+    const base = await baseAvecLignes(3)
+    const pagesBase = base.length / 4096
+    expect(() => appliquerWal(base, walFabrique(base, pagesBase + 1), 4096 * pagesBase)).toThrow(ErreurImport)
+  })
+
+  it('ouvrirBaseCopiee et lireProfilChromium : base Indisponible (code absent), pas d’exception', async () => {
+    const base = await baseAvecLignes(3)
+    const dossier = join(tmp, 'profil')
+    require('node:fs').mkdirSync(dossier)
+    writeFileSync(join(dossier, 'History'), base)
+    writeFileSync(join(dossier, 'History-wal'), walFabrique(base, 4_000_000))
+    await expect(ouvrirBaseCopiee({ fichier: join(dossier, 'History'), wal: join(dossier, 'History-wal') })).rejects.toBeInstanceOf(ErreurImport)
+    const r = await lireProfilChromium({ navigateur: 'chrome', nom: 'Test', chemin: dossier, racine: tmp, parDefaut: true }, { elements: ['historique'] })
+    expect(r.donnees.historique).toMatchObject({ indisponible: true, raison: expect.stringMatching(/journal de la base/) })
   })
 })

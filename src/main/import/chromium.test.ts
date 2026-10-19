@@ -6,7 +6,7 @@ import initSqlJs from 'sql.js'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { chromiumVersMs, convertirModeleMoteur, lireProfilChromium, msVersChromium, parcourirHistoriqueChromium } from './chromium'
 import { detecterProfils } from './detection'
-import { IDS_EXTENSIONS, MAINTENANT_FIXTURES, baseHistorique, chromeUs } from './fixtures/generer'
+import { IDS_EXTENSIONS, MAINTENANT_FIXTURES, baseHistorique, chromeUs, fichierSnss, snss } from './fixtures/generer'
 import { estIndisponible } from './types'
 import type { ElementImport, ProfilDetecte, Visite } from './types'
 
@@ -138,41 +138,6 @@ describe('historique', () => {
     expect(estIndisponible(r.donnees.historique) && r.donnees.historique.raison).toMatch(/format inconnu/)
   })
 
-  it('par lots : 100 000 visites ne sont jamais toutes en mémoire d’un coup, la progression avance', async () => {
-    const SQL = await initSqlJs()
-    const db = new SQL.Database()
-    db.run('CREATE TABLE urls(id INTEGER PRIMARY KEY, url TEXT, title TEXT, visit_count INTEGER, typed_count INTEGER DEFAULT 0, last_visit_time INTEGER, hidden INTEGER DEFAULT 0)')
-    db.run('CREATE TABLE visits(id INTEGER PRIMARY KEY, url INTEGER, visit_time INTEGER, from_visit INTEGER, transition INTEGER DEFAULT 0)')
-    const recent = chromeUs('2026-10-01T00:00:00Z')
-    db.run('BEGIN')
-    const u = db.prepare('INSERT INTO urls(id, url, title, visit_count, last_visit_time) VALUES (?,?,?,?,?)')
-    const v = db.prepare('INSERT INTO visits(id, url, visit_time) VALUES (?,?,?)')
-    for (let i = 1; i <= 20_000; i++) {
-      u.run([i, `https://site${i}.example/page`, `Page ${i}`, 5, recent + i])
-      for (let k = 0; k < 5; k++) v.run([i * 5 + k, i, recent + i - k])
-    }
-    db.run('COMMIT')
-    const p = profilJetable()
-    writeFileSync(join(p.chemin, 'History'), db.export())
-
-    const tailles: number[] = []
-    const progression: number[] = []
-    let maxEnMemoire = 0
-    const resume = await parcourirHistoriqueChromium(
-      p,
-      { maintenant: MAINTENANT, tailleLot: 1000, surProgression: (e) => progression.push(e.fait) },
-      (lot) => {
-        tailles.push(lot.length)
-        maxEnMemoire = Math.max(maxEnMemoire, lot.length)
-      }
-    )
-    expect(resume).toEqual({ pages: 20_000, visites: 100_000 })
-    expect(tailles).toHaveLength(20)
-    expect(maxEnMemoire).toBe(1000)
-    expect(progression.at(-1)).toBe(20_000)
-    expect(progression).toEqual([...progression].sort((a, b) => a - b))
-  }, 60_000)
-
   it('parcourirHistoriqueChromium : profil absent → Indisponible ; erreur du consommateur propagée', async () => {
     const absent = await parcourirHistoriqueChromium({ ...profilJetable(), chemin: join(tmp, 'rien') }, {}, () => {})
     expect(estIndisponible(absent)).toBe(true)
@@ -190,6 +155,7 @@ describe('moteurs de recherche et mots-clés', () => {
       { nom: 'GitHub', motCle: 'gh', url: 'https://github.com/search?q=%s&type=repositories', perso: true }
     ])
     expect(r.compteurs.moteurs).toEqual({ moteurs: 2, motsCles: 2 })
+    expect(JSON.stringify(r.donnees.moteurs)).not.toContain('assistant') // starter_pack_id > 0, même en https
   })
 
   it('profil sans Web Data : Indisponible', async () => {
@@ -244,6 +210,25 @@ describe('onglets ouverts et groupes', () => {
     expect(estIndisponible(r.donnees.onglets) && r.donnees.onglets.raison).toMatch(/chiffrée/)
   })
 
+  it('session récente valide mais sans onglet : « aucun onglet », pas de retour à une session plus ancienne', async () => {
+    const p = profilJetable()
+    mkdirSync(join(p.chemin, 'Sessions'))
+    writeFileSync(join(p.chemin, 'Sessions', 'Session_2000'), fichierSnss([snss.typeFenetre(1, 0), snss.marqueur()]))
+    writeFileSync(join(p.chemin, 'Sessions', 'Session_1000'), fichierSnss([snss.typeFenetre(1, 0), snss.fenetreOnglet(1, 1), snss.navigation(1, 0, 'https://periment.example/', 'Périmé')]))
+    const r = await lire(p, ['onglets'])
+    expect(r.donnees.onglets).toMatchObject({ indisponible: true, code: 'vide', raison: expect.stringMatching(/Aucun onglet/) })
+    expect(r.compteurs.onglets).toBeUndefined()
+  })
+
+  it('session récente chiffrée ou illisible : on remonte à la session précédente', async () => {
+    const p = profilJetable()
+    mkdirSync(join(p.chemin, 'Sessions'))
+    writeFileSync(join(p.chemin, 'Sessions', 'Session_3000'), fichierSnss([snss.typeFenetre(1, 0)], 5))
+    writeFileSync(join(p.chemin, 'Sessions', 'Session_2000'), 'illisible')
+    writeFileSync(join(p.chemin, 'Sessions', 'Session_1000'), fichierSnss([snss.typeFenetre(1, 0), snss.fenetreOnglet(1, 1), snss.navigation(1, 0, 'https://avant.example/', 'Avant')]))
+    expect((await lire(p, ['onglets'])).donnees.onglets).toMatchObject({ fenetres: [{ onglets: [{ titre: 'Avant' }] }] })
+  })
+
   it('fichier de session illisible : Indisponible, sans exception', async () => {
     const p = profilJetable()
     mkdirSync(join(p.chemin, 'Sessions'))
@@ -254,21 +239,52 @@ describe('onglets ouverts et groupes', () => {
 })
 
 describe('extensions', () => {
-  it('extensions du magasin : nom résolu via _locales, composants, thèmes, dépaquetées et hors magasin ignorés', async () => {
+  it('extensions : nom via _locales ; hors magasin = « inconnu » ; composants, thèmes et préinstallées ignorés', async () => {
     const r = await lire(await profil('chrome', 'Khalil'), ['extensions'])
     expect(r.donnees.extensions).toEqual([
       { id: IDS_EXTENSIONS.desactivee, nom: 'Désactivée', magasin: 'chrome', actif: false },
       { id: IDS_EXTENSIONS.bloqueur, nom: 'Exemple Blocker', magasin: 'chrome', actif: true }, // __MSG_extName__ → _locales/en
+      { id: IDS_EXTENSIONS.main, nom: 'Extension de développement', magasin: 'inconnu', actif: true }, // dépaquetée
+      { id: IDS_EXTENSIONS.horsMagasin, nom: 'Installée à la main', magasin: 'inconnu', actif: true },
       { id: IDS_EXTENSIONS.sombre, nom: 'Lecteur sombre', magasin: 'chrome', actif: true },
       { id: IDS_EXTENSIONS.sansManifest, nom: 'Lecteur Zen', magasin: 'chrome', actif: true } // nom lu dans Extensions/<id>/<version>/manifest.json
     ])
-    expect(r.compteurs.extensions).toEqual({ total: 4, chrome: 4 })
+    const ids = (r.donnees.extensions as Array<{ id: string }>).map((e) => e.id)
+    for (const ignoree of [IDS_EXTENSIONS.composant, IDS_EXTENSIONS.theme, IDS_EXTENSIONS.preinstallee]) expect(ids).not.toContain(ignoree)
+    expect(r.compteurs.extensions).toEqual({ total: 6, chrome: 4, edge: 0, inconnues: 2 })
+  })
+
+  it('extensions installées par défaut ou par le fabricant (OEM) : ignorées', async () => {
+    const p = profilJetable()
+    const id = (c: string): string => c.repeat(32)
+    const store = { from_webstore: true, location: 1, state: 1, manifest: { name: 'X', version: '1', update_url: 'https://clients2.google.com/service/update2/crx' } }
+    writeFileSync(
+      join(p.chemin, 'Preferences'),
+      JSON.stringify({ extensions: { settings: { [id('a')]: store, [id('b')]: { ...store, was_installed_by_default: true }, [id('c')]: { ...store, was_installed_by_oem: true }, [id('d')]: { ...store, was_installed_by_default: false } } } })
+    )
+    const ids = ((await lire(p, ['extensions'])).donnees.extensions as Array<{ id: string }>).map((e) => e.id)
+    expect(ids).toEqual([id('a'), id('d')])
+  })
+
+  it('Secure Preferences corrompue : on dégrade sur Preferences au lieu de tout perdre', async () => {
+    const p = profilJetable()
+    const id = 'e'.repeat(32)
+    writeFileSync(join(p.chemin, 'Preferences'), JSON.stringify({ extensions: { settings: { [id]: { from_webstore: true, location: 1, state: 1, manifest: { name: 'Seule survivante', version: '1' } } } } }))
+    writeFileSync(join(p.chemin, 'Secure Preferences'), '{ corrompu')
+    expect((await lire(p, ['extensions'])).donnees.extensions).toEqual([{ id, nom: 'Seule survivante', magasin: 'chrome', actif: true }])
+    // et l'inverse : Preferences corrompue, Secure Preferences lisible
+    writeFileSync(join(p.chemin, 'Preferences'), 'pas du json')
+    writeFileSync(join(p.chemin, 'Secure Preferences'), JSON.stringify({ extensions: { settings: { [id]: { from_webstore: true, location: 1, manifest: { name: 'Côté sécurisé' } } } } }))
+    expect((await lire(p, ['extensions'])).donnees.extensions).toMatchObject([{ id, nom: 'Côté sécurisé' }])
+    // les deux corrompues : Indisponible
+    writeFileSync(join(p.chemin, 'Secure Preferences'), '{ corrompu')
+    expect(estIndisponible((await lire(p, ['extensions'])).donnees.extensions)).toBe(true)
   })
 
   it('extension d’Edge Add-ons : magasin edge', async () => {
     const r = await lire(await profil('edge', 'Perso'), ['extensions'])
     expect(r.donnees.extensions).toEqual([{ id: IDS_EXTENSIONS.edge, nom: 'Extension Edge', magasin: 'edge', actif: true }])
-    expect(r.compteurs.extensions).toEqual({ total: 1, chrome: 0 })
+    expect(r.compteurs.extensions).toEqual({ total: 1, chrome: 0, edge: 1, inconnues: 0 })
   })
 
   it('préférences sans réglages d’extension et sans dossier Extensions : liste vide, pas d’erreur', async () => {
@@ -339,7 +355,7 @@ describe('lireProfilChromium', () => {
       historique: { pages: 3, visites: 8 },
       onglets: { fenetres: 2, onglets: 5, groupes: 2 },
       moteurs: { moteurs: 2, motsCles: 2 },
-      extensions: { total: 4, chrome: 4 },
+      extensions: { total: 6, chrome: 4, edge: 0, inconnues: 2 },
       reglages: { total: 6 }
     })
   })

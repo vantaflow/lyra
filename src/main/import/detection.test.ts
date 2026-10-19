@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { detecterProfils, racineImportDeTest, racinesParDefaut } from './detection'
+import { detecterProfils, nomDeProfilSur, racineImportDeTest, racinesParDefaut } from './detection'
 
 const FIXTURES = fileURLToPath(new URL('./fixtures/chromium', import.meta.url))
 
@@ -122,6 +122,25 @@ describe('detecterProfils', () => {
     mkdirSync(join(tmp, 'Profile 1'))
     const profils = await detecterProfils({ racines: { chrome: tmp }, navigateurs: ['chrome'] })
     expect(profils.map((p) => p.parDefaut)).toEqual([true, false])
+  })
+
+  it('noms de dossier dangereux dans Local State : jamais joints au chemin', async () => {
+    const racine = join(tmp, 'User Data')
+    mkdirSync(join(racine, 'Default'), { recursive: true })
+    mkdirSync(join(tmp, 'ailleurs'), { recursive: true }) // existe vraiment : « ../ailleurs » aurait été lu
+    mkdirSync(join(racine, 'sous', 'dossier'), { recursive: true })
+    const dangereux = ['..', '.', '../ailleurs', '..\\ailleurs', 'sous/dossier', 'sous\\dossier', join(tmp, 'ailleurs'), '/etc', 'C:\\Windows', 'C:ailleurs', '']
+    const cache = Object.fromEntries([...dangereux, 'Default'].map((d) => [d, { name: d === 'Default' ? 'Légitime' : 'Piège' }]))
+    fichier(join(racine, 'Local State'), JSON.stringify({ profile: { info_cache: cache } }))
+    const profils = await detecterProfils({ racines: { chrome: racine }, navigateurs: ['chrome'] })
+    expect(profils.map((p) => p.nom)).toEqual(['Légitime'])
+    expect(profils.every((p) => p.chemin.startsWith(racine))).toBe(true)
+  })
+
+  it('nomDeProfilSur : seuls les enfants directs de la racine', () => {
+    const racine = join(tmp, 'User Data')
+    for (const bon of ['Default', 'Profile 1', 'Mon profil 日本', 'a.b', '...']) expect(nomDeProfilSur(bon, racine), bon).toBe(true)
+    for (const mauvais of ['..', '.', '', 'a/b', 'a\\b', '../x', 'C:', 'C:\\x', 'x\0y']) expect(nomDeProfilSur(mauvais, racine), mauvais).toBe(false)
   })
 
   it('navigateur absent ou dossier inexistant : liste vide, sans exception', async () => {

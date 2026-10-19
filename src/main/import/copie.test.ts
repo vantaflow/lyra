@@ -113,6 +113,38 @@ describe('copie avant lecture', () => {
   })
 })
 
+describe('taille maximale', () => {
+  it('fichier ordinaire au-delà de la limite : refusé avant la copie, message lisible, code « volumineux »', async () => {
+    const source = join(tmp, 'Bookmarks')
+    writeFileSync(source, Buffer.alloc(3 * 1024 * 1024))
+    await expect(avecCopieur((c) => c.lire(source), { dossierTemp: tmp, tailleMaxFichier: 2 * 1024 * 1024, navigateur: 'Chrome' })).rejects.toMatchObject({
+      code: 'volumineux',
+      raison: 'Le fichier Bookmarks est trop volumineux (3 Mo, maximum 2 Mo) : réduisez-le dans Chrome puis réessayez.'
+    })
+    expect(readdirSync(tmp)).toEqual(['Bookmarks']) // le dossier temporaire a disparu, aucune copie n'a été faite
+  })
+
+  it('base : limite propre aux bases, sujet personnalisé ; le -wal est contrôlé aussi', async () => {
+    const source = join(tmp, 'History')
+    writeFileSync(source, Buffer.alloc(1024))
+    writeFileSync(source + '-wal', Buffer.alloc(3 * 1024 * 1024))
+    await expect(avecCopieur((c) => c.copier(source, { base: true, sujet: "L'historique" }), { dossierTemp: tmp, tailleMaxBase: 1024 * 1024, navigateur: 'Edge' })).rejects.toMatchObject({
+      code: 'volumineux',
+      raison: expect.stringMatching(/^Le journal History-wal est trop volumineux \(3 Mo, maximum 1 Mo\) : réduisez-le dans Edge/)
+    })
+    writeFileSync(source, Buffer.alloc(3 * 1024 * 1024))
+    await expect(avecCopieur((c) => c.copier(source, { base: true, sujet: "L'historique" }), { dossierTemp: tmp, tailleMaxBase: 1024 * 1024 })).rejects.toMatchObject({
+      raison: expect.stringMatching(/^L'historique est trop volumineux \(3 Mo, maximum 1 Mo\)/)
+    })
+  })
+
+  it('la limite des bases n’empêche pas un fichier ordinaire plus petit que sa propre limite', async () => {
+    const source = join(tmp, 'Preferences')
+    writeFileSync(source, '{}')
+    await avecCopieur(async (c) => expect((await c.lire(source)).toString()).toBe('{}'), { dossierTemp: tmp, tailleMaxBase: 1 })
+  })
+})
+
 describe('raisonErreurFichier', () => {
   const err = (code: string): NodeJS.ErrnoException => Object.assign(new Error(code), { code })
 
