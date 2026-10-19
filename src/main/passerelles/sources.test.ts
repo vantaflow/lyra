@@ -28,7 +28,7 @@ afterEach(() => {
 describe('chargerCandidats', () => {
   it('récupère, fusionne et met en cache', async () => {
     const fetch = fausse((u) => (u === A.url ? rep('8.8.8.8:1080\n') : rep('socks5://1.1.1.1:9\n9.9.9.9:3128')))
-    const r = await chargerCandidats({ fetch, cacheFichier: cache, maintenant: T0, sources: [A, B] })
+    const r = await chargerCandidats({ fetch, cacheFichier: cache, maintenant: T0, sources: [A, B], aleatoire: () => 0.999999 })
     expect(r.source).toBe('reseau')
     expect(r.date).toBe(T0.toISOString())
     expect(r.candidats).toEqual([

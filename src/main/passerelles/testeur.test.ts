@@ -130,3 +130,48 @@ describe('PoolSessions / creerTesteur', () => {
     expect((await t(cands(1)[0])).ok).toBe(false)
   })
 })
+
+describe('emplacement rendu après la fin réelle de l’essai', () => {
+  const attendreMs = attendre
+
+  it('setProxy tardif : le test suivant n’obtient pas l’emplacement avant la fin de l’ancien essai', async () => {
+    const j: string[] = []
+    let appels = 0
+    const session: SessionTest = {
+      setProxy: async (c) => {
+        const n = ++appels
+        if (n === 1) await attendreMs(80)
+        j.push(`setProxy-fin-${n}:${c.proxyRules}`)
+      },
+      fetch: async () => (j.push('fetch'), new Response(null, { status: 204 })),
+      closeAllConnections: () => undefined,
+      clearCache: async () => undefined
+    }
+    const pool = new PoolSessions(1, () => session)
+    const t = creerTesteur(pool)
+    const r1 = await t(cands(1)[0], { timeoutMs: 20 })
+    expect(r1.ok).toBe(false)
+    expect(j).toEqual([])
+    const r2 = await t(cands(2)[1])
+    expect(r2.ok).toBe(true)
+    expect(j[0]).toBe('setProxy-fin-1:http://8.8.8.1:80')
+    expect(j[1]).toBe('setProxy-fin-2:http://8.8.8.2:80')
+    // pas de fetch pour le test 1 : signal annulé après setProxy
+    expect(j.filter((x) => x === 'fetch')).toHaveLength(1)
+  })
+
+  it('essai bloqué au-delà de la garde : emplacement remplacé (nouveau nom), pool non bloqué', async () => {
+    const noms: string[] = []
+    const pool = new PoolSessions(1, (nom) => {
+      noms.push(nom)
+      return noms.length === 1
+        ? { ...fausseSession(204, []), setProxy: () => new Promise<void>(() => undefined) }
+        : fausseSession(204, [], nom)
+    })
+    const t = creerTesteur(pool, 40)
+    expect((await t(cands(1)[0], { timeoutMs: 10 })).ok).toBe(false)
+    const r2 = await t(cands(1)[0])
+    expect(r2.ok).toBe(true)
+    expect(noms).toEqual(['passerelle-test-slot-0', 'passerelle-test-slot-0-1'])
+  })
+})

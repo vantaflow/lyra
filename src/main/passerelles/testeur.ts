@@ -39,6 +39,7 @@ function cibleEffective(opts: OptionsTest): { cible: string; parDefaut: boolean 
  */
 export class PoolSessions {
   private readonly sessions: (SessionTest | undefined)[]
+  private readonly generations: number[]
   private readonly libres: number[]
   private readonly attente: ((i: number) => void)[] = []
 
@@ -47,14 +48,15 @@ export class PoolSessions {
     private readonly fabrique: (nom: string) => Promise<SessionTest> | SessionTest
   ) {
     this.sessions = new Array<SessionTest | undefined>(taille).fill(undefined)
+    this.generations = new Array<number>(taille).fill(0)
     this.libres = Array.from({ length: taille }, (_, i) => i)
   }
 
-  async emprunter(): Promise<{ ses: SessionTest; rendre: () => void }> {
+  async emprunter(): Promise<{ ses: SessionTest; rendre: () => void; remplacer: () => void }> {
     const i = this.libres.length > 0 ? (this.libres.shift() as number) : await new Promise<number>((r) => this.attente.push(r))
     let ses = this.sessions[i]
     try {
-      if (!ses) ses = this.sessions[i] = await this.fabrique(`passerelle-test-slot-${i}`)
+      if (!ses) ses = this.sessions[i] = await this.fabrique(this.nom(i))
     } catch (e) {
       this.restituer(i)
       throw e
@@ -66,8 +68,21 @@ export class PoolSessions {
         if (rendu) return
         rendu = true
         this.restituer(i)
+      },
+      // Essai bloqué : on abandonne la session de l'emplacement (nouveau nom) pour ne jamais bloquer le pool.
+      remplacer: () => {
+        if (rendu) return
+        rendu = true
+        this.sessions[i] = undefined
+        this.generations[i]++
+        this.restituer(i)
       }
     }
+  }
+
+  private nom(i: number): string {
+    const g = this.generations[i]
+    return g === 0 ? `passerelle-test-slot-${i}` : `passerelle-test-slot-${i}-${g}`
   }
 
   private restituer(i: number): void {
@@ -82,7 +97,7 @@ export class PoolSessions {
  * (200 accepté seulement pour une cible fournie), aucune redirection suivie ; le délai
  * `timeoutMs` couvre l'ensemble (emprunt exclu) : setProxy + fetch + lecture. Ne lève jamais.
  */
-export function creerTesteur(pool: PoolSessions): (c: Candidat, opts?: OptionsTest) => Promise<ResultatTestPasserelle> {
+export function creerTesteur(pool: PoolSessions, gardeMs = 30_000): (c: Candidat, opts?: OptionsTest) => Promise<ResultatTestPasserelle> {
   return async (c, opts = {}) => {
     const timeoutMs = opts.timeoutMs ?? 6000
     const { cible, parDefaut } = cibleEffective(opts)
@@ -92,7 +107,7 @@ export function creerTesteur(pool: PoolSessions): (c: Candidat, opts?: OptionsTe
     } catch {
       return { ok: false, ms: 0 }
     }
-    const { ses, rendre } = emprunt
+    const { ses, rendre, remplacer } = emprunt
     const debut = Date.now()
     const ctrl = new AbortController()
     let minuteur: ReturnType<typeof setTimeout> | undefined
@@ -102,30 +117,49 @@ export function creerTesteur(pool: PoolSessions): (c: Candidat, opts?: OptionsTe
         resolve({ ok: false, ms: Date.now() - debut })
       }, timeoutMs)
     })
+    let fini = false
     const essai = (async (): Promise<ResultatTestPasserelle> => {
       try {
         await ses.closeAllConnections()
         await ses.setProxy({ proxyRules: proxyRules(c) })
+        if (ctrl.signal.aborted) return { ok: false, ms: Date.now() - debut }
         const r = await ses.fetch(cible, { signal: ctrl.signal, redirect: 'error' })
         const ok = r.status === 204 || (!parDefaut && r.status === 200)
         await r.body?.cancel().catch(() => undefined)
         return { ok, ms: Date.now() - debut }
       } catch {
         return { ok: false, ms: Date.now() - debut }
+      } finally {
+        fini = true
       }
     })()
+    // L'emplacement n'est rendu qu'une fois l'essai réellement terminé (sinon un setProxy tardif
+    // écraserait le proxy du test suivant). Garde : un essai bloqué > gardeMs fait remplacer l'emplacement.
+    let garde: ReturnType<typeof setTimeout> | undefined
+    const liberer = essai
+      .then(async () => {
+        try {
+          await ses.closeAllConnections()
+          await ses.clearCache()
+        } catch {
+          /* session indisponible */
+        }
+      })
+      .finally(() => {
+        clearTimeout(garde)
+        rendre()
+      })
     try {
       return await Promise.race([essai, delai])
     } finally {
       clearTimeout(minuteur)
       ctrl.abort()
-      try {
-        await ses.closeAllConnections()
-        await ses.clearCache()
-      } catch {
-        /* session indisponible */
+      if (fini) await liberer
+      else {
+        garde = setTimeout(remplacer, gardeMs)
+        garde.unref?.()
+        void liberer
       }
-      rendre()
     }
   }
 }
