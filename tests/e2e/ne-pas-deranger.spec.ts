@@ -224,6 +224,8 @@ test("noopener n'est pas une popup (étoile normale) ; about:blank avec features
     await expect.poll(async () => (await ciel(fenetre)).sky.stars.length).toBe(avant.sky.stars.length + 1)
     expect((await etat(fenetre)).popups).toBe(0)
     const etoiles = (await ciel(fenetre)).sky.stars.length
+    // L'étoile existe côté main avant que Playwright n'ait rattaché sa page : attendre, sinon le compte de fenêtres de référence est faux de 1.
+    await expect.poll(() => page(app, DND.replace('dnd.html', 'liens.html?noopener'))).toBeDefined()
 
     // Popup vide (motif des pop-under) : retenue et comptée, aucune fenêtre.
     const fenetres = app.windows().length
