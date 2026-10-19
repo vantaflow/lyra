@@ -42,11 +42,13 @@ describe('genererPac', () => {
     expect(f('https://autre.fr/')).toBe('DIRECT')
   })
 
-  it('http: et ws: jamais via passerelle publique (Review Focus 1)', () => {
+  it('http: et ws: jamais via passerelle publique ni en direct : repli fermé (Review Focus 1)', () => {
     const f = evaluer(genererPac(['reddit.com'], chaine))
-    expect(f('http://reddit.com/')).toBe('DIRECT')
-    expect(f('http://old.reddit.com/')).toBe('DIRECT')
-    expect(f('ws://reddit.com/')).toBe('DIRECT')
+    expect(f('http://reddit.com/')).toBe('PROXY 127.0.0.1:9')
+    expect(f('http://old.reddit.com/')).toBe('PROXY 127.0.0.1:9')
+    expect(f('ws://reddit.com/')).toBe('PROXY 127.0.0.1:9')
+    expect(f('ws://live.old.reddit.com/socket')).toBe('PROXY 127.0.0.1:9')
+    expect(f('http://notreddit.com/')).toBe('DIRECT')
     expect(f('ftp://reddit.com/')).toBe('DIRECT')
   })
 
@@ -107,8 +109,9 @@ describe('genererPac', () => {
     expect(f('https://reddit.com/')).toBe(attendu)
     expect(f('https://exemple.fr/')).toBe('PROXY corp:8080')
     expect(f('http://exemple.fr/')).toBe('PROXY corp:3128')
-    // http d'un site contourné sans personnelle : jamais la passerelle publique, le chemin habituel.
-    expect(f('http://reddit.com/')).toBe('PROXY corp:3128')
+    // http/ws d'un site contourné sans personnelle : ni passerelle publique ni chemin habituel (repli fermé).
+    expect(f('http://reddit.com/')).toBe('PROXY 127.0.0.1:9')
+    expect(f('ws://chat.reddit.com/')).toBe('PROXY 127.0.0.1:9')
     // localhost, IP privées et schémas non web restent DIRECT.
     expect(f('https://localhost/')).toBe('DIRECT')
     expect(f('https://192.168.1.2/')).toBe('DIRECT')

@@ -16,7 +16,9 @@ const regleSure = (r: unknown): string =>
 /**
  * Script PAC autonome (n'utilise aucune fonction PAC de Chromium). Un hôte de `sites` (ou sous-domaine)
  * reçoit la chaîne de passerelles (3 au plus, jamais DIRECT) en https/wss (http/ws seulement si
- * `autoriserHttp`, passerelle personnelle). Schémas non web, localhost et adresses privées : DIRECT.
+ * `autoriserHttp`, passerelle personnelle) ; sans elle, http/ws d'un hôte contourné reçoit le repli fermé
+ * (`PROXY 127.0.0.1:9` : ni passerelle publique ni chemin habituel, sous-ressources comprises).
+ * Schémas non web, localhost et adresses privées : DIRECT.
  * Le reste suit `repli` (proxy système approximé, DIRECT par défaut).
  */
 export function genererPac(sites: readonly string[], chaine: readonly Candidat[], autoriserHttp = false, repli: RepliPac = 'DIRECT'): string {
@@ -30,6 +32,7 @@ export function genererPac(sites: readonly string[], chaine: readonly Candidat[]
   var REPLI_HTTPS = ${JSON.stringify(repliHttps)};
   var REPLI_HTTP = ${JSON.stringify(repliHttp)};
   var HTTP = ${autoriserHttp ? 'true' : 'false'};
+  var FERME = ${JSON.stringify(BLOQUE)};
   var i = url.indexOf(':');
   if (i < 1) return 'DIRECT';
   var s = url.substring(0, i).toLowerCase();
@@ -51,10 +54,10 @@ export function genererPac(sites: readonly string[], chaine: readonly Candidat[]
     if (a === 172 && b >= 16 && b <= 31) return 'DIRECT';
     if (a === 192 && b === 168) return 'DIRECT';
   }
-  if (chiffre || HTTP) {
-    for (var k = 0; k < SITES.length; k++) {
-      var d = SITES[k];
-      if (h === d || (h.length > d.length && h.substring(h.length - d.length - 1) === '.' + d)) return CHAINE;
+  for (var k = 0; k < SITES.length; k++) {
+    var d = SITES[k];
+    if (h === d || (h.length > d.length && h.substring(h.length - d.length - 1) === '.' + d)) {
+      return chiffre || HTTP ? CHAINE : FERME;
     }
   }
   return chiffre ? REPLI_HTTPS : REPLI_HTTP;

@@ -172,7 +172,7 @@ describe('Passerelles — routage', () => {
       expect(evaluer(s, 'https://www.a.fr/')).toBe('SOCKS5 1.1.1.1:1080; PROXY 2.2.2.2:8080; SOCKS5 3.3.3.3:1080')
       expect(evaluer(s, 'https://b.fr/')).toBe('DIRECT')
       // Passerelles publiques : jamais de http.
-      expect(evaluer(s, 'http://a.fr/')).toBe('DIRECT')
+      expect(evaluer(s, 'http://a.fr/')).toBe('PROXY 127.0.0.1:9')
     }
     expect(p.etat()).toMatchObject({ pret: 3, dateListe: '2026-10-19T12:30:00.000Z' })
     expect(p.viaPasserelle('https://a.fr/x')).toBe(true)
@@ -376,7 +376,7 @@ describe('Passerelles — passerelle personnelle', () => {
     await p.attendre()
     expect(env.appels.charger).toBe(1)
     expect(evaluer(env.sessions[0], 'https://a.fr/')).toBe('SOCKS5 1.1.1.1:1080; PROXY 2.2.2.2:8080; SOCKS5 3.3.3.3:1080')
-    expect(evaluer(env.sessions[0], 'http://a.fr/')).toBe('DIRECT')
+    expect(evaluer(env.sessions[0], 'http://a.fr/')).toBe('PROXY 127.0.0.1:9')
   })
 
   it('WARP : remplit 127.0.0.1:40000 en SOCKS5 puis teste', async () => {
