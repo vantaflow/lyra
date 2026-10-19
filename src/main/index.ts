@@ -1,4 +1,4 @@
-import { app, BaseWindow, ipcMain, Notification as NotificationSysteme, webContents, type WebContents, type WebFrameMain, protocol, session } from 'electron'
+import { app, BaseWindow, dialog, ipcMain, Notification as NotificationSysteme, webContents, type WebContents, type WebFrameMain, protocol, session } from 'electron'
 import { WindowManager } from './window/WindowManager'
 import type { Settings } from '../shared/types'
 import { join } from 'node:path'
@@ -34,6 +34,9 @@ import { creerExtensions, type Extensions } from './extensions/Extensions'
 import { creerChargeur } from './extensions/chargeur'
 import { creerRegistre } from './extensions/registre'
 import { installerExtensionsIpc } from './extensions/ipc'
+import { creerInstallateurChrome } from './extensions/chrome'
+import { creerMiseAJour } from './extensions/miseAJour'
+import { updateExtensions } from 'electron-chrome-web-store'
 import { installerFixtures } from './extensions/fixturesTest'
 
 definirFournisseurLangue(() => app.getLocale())
@@ -491,8 +494,39 @@ void app.whenReady().then(async () => {
     installerFixtures(process.env.LYRA_EXTENSIONS_FIXTURES, baseExtensions, registreExtensions)
   }
   const chargeurExtensions = creerChargeur({ extensions: sessionLyra.extensions, registre: registreExtensions, base: baseExtensions })
-  installerExtensionsIpc(chargeurExtensions)
+  const installateurChrome = creerInstallateurChrome({ base: baseExtensions, registre: registreExtensions, chargeur: chargeurExtensions })
+  const miseAJourExtensions = creerMiseAJour({
+    registre: registreExtensions,
+    reglages,
+    updateExtensions: () => updateExtensions(sessionLyra),
+    extensionsChargees: () => sessionLyra.extensions.getAllExtensions().map((x) => ({ id: x.id, version: x.version, path: x.path })),
+    base: baseExtensions,
+    derniereVersionUbo: installateurChrome.derniereVersionUbo,
+    installerUbo: installateurChrome.installerUbo,
+    delaiDemarrageMs: 15_000
+  })
+  installerExtensionsIpc({
+    chargeur: chargeurExtensions,
+    installateur: installateurChrome,
+    miseAJour: miseAJourExtensions,
+    modeTest: process.env.LYRA_TEST === '1',
+    estPrivee: (wc) => {
+      const f = manager.deWebContents(wc)
+      return f !== undefined && privees.has(f.id)
+    },
+    choisir: async (wc, quoi) => {
+      const f = manager.deWebContents(wc)
+      const options: Electron.OpenDialogOptions =
+        quoi === 'dossier'
+          ? { title: "Choisir le dossier de l'extension", properties: ['openDirectory'] }
+          : { title: "Choisir une extension (.crx ou .zip)", properties: ['openFile'], filters: [{ name: 'Extensions', extensions: ['crx', 'zip'] }] }
+      const r = f ? await dialog.showOpenDialog(f.win, options) : await dialog.showOpenDialog(options)
+      return r.canceled ? undefined : r.filePaths[0]
+    }
+  })
   await chargeurExtensions.chargerAuDemarrage()
+  // Mises à jour : jamais sous test (pas de réseau inattendu), et seulement si le réglage est actif.
+  if (process.env.LYRA_TEST !== '1') miseAJourExtensions.demarrer()
   if (process.env.LYRA_TEST === '1') {
     handle('test:navigate', async (url) => {
       const m = ongletsCourants()

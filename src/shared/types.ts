@@ -87,6 +87,13 @@ export interface ExtensionInstallee {
   convertie?: boolean
 }
 
+/** Issue d'une installation d'extension (jamais d'exception : l'erreur est une valeur). */
+export type ResultatInstallation =
+  | { etat: 'installee'; id: string; nom: string; version: string }
+  /** À installer à la main (autre magasin, source inconnue) : `raison` l'explique. */
+  | { etat: 'manuel'; raison: string }
+  | { etat: 'erreur'; raison: string }
+
 export interface SettingsExtensions {
   /** Dans l'ordre d'installation (c'est l'ordre de chargement au démarrage). */
   installees: ExtensionInstallee[]

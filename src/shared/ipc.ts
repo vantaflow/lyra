@@ -1,4 +1,4 @@
-import type { DecisionPermission, DownloadInfo, ExtensionInstallee, HistoryEntry, PasserellePerso, Settings, SiteContourne, SkyState, Suggestion, TypePermission } from './types'
+import type { DecisionPermission, DownloadInfo, ExtensionInstallee, HistoryEntry, PasserellePerso, ResultatInstallation, Settings, SiteContourne, SkyState, Suggestion, TypePermission } from './types'
 
 export interface RectIpc {
   x: number
@@ -131,6 +131,13 @@ export type Requetes = {
   'extensions:activer': [{ id: string; active: boolean }, boolean]
   /** Retire l'extension, son dossier et son entrée du registre. */
   'extensions:desinstaller': [{ id: string }, boolean]
+  /**
+   * Installe une extension Chrome : `source` = identifiant, URL du Chrome Web Store ou « ubo » ; `choisir` ouvre un sélecteur
+   * natif (fichier .crx/.zip ou dossier). Un chemin passé en `source` n'est accepté que sous `LYRA_TEST`.
+   */
+  'extensions:installer': [{ source?: string; choisir?: 'fichier' | 'dossier' }, ResultatInstallation]
+  /** Cherche et installe les mises à jour maintenant (ignore le réglage automatique). */
+  'extensions:majTout': [void, { misesAJour: Array<{ id: string; nom: string; de: string; vers: string }>; erreurs: string[]; derniereVerification?: string }]
   'settings:set': [Partial<Settings>, Settings]
   'layout:get': [
     void,

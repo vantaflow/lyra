@@ -3,15 +3,11 @@
  * fixture du dossier (sous-dossiers avec un `manifest.json` à clé), copiées sous `userData/extensions/<id>/<version>`.
  */
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs'
-import { createHash } from 'node:crypto'
 import { join } from 'node:path'
+import { idDepuisCle } from './archives'
 import type { Registre } from './registre'
 
-/** Id Chrome d'une extension à clé : sha256 de la clé publique (DER), 32 premiers hexa → a-p. */
-export function idDepuisCle(cleBase64: string): string {
-  const hex = createHash('sha256').update(Buffer.from(cleBase64, 'base64')).digest('hex').slice(0, 32)
-  return [...hex].map((c) => String.fromCharCode(97 + parseInt(c, 16))).join('')
-}
+export { idDepuisCle }
 
 export function installerFixtures(dossierFixtures: string, base: string, registre: Registre, journal: (m: string) => void = console.warn): string[] {
   const ids: string[] = []
