@@ -109,6 +109,14 @@ describe('historique', () => {
     expect(compteurs.historique).toEqual({ pages: 4, visites: 7 })
   })
 
+  it("tailleMaxBase s'applique à History.db (pas tailleMaxFichier) : volumineux avec l'une, lisible avec l'autre", async () => {
+    const { donnees: serre } = await lire(profilFixtures, ['historique'], { tailleMaxBase: 1000 })
+    expect(estIndisponible(serre.historique)).toBe(true)
+    expect(estIndisponible(serre.historique) ? serre.historique.code : '').toBe('volumineux')
+    const { donnees: large } = await lire(profilFixtures, ['historique'], { tailleMaxFichier: 1000 })
+    expect(estIndisponible(large.historique)).toBe(false)
+  })
+
   it('seulement http(s) : ni file:, ni about:, ni topsites:', async () => {
     const h = (await lire(profilFixtures, ['historique'], { depuisJours: null })).donnees.historique as Visite[]
     expect(h.every((v) => /^https?:\/\//.test(v.url))).toBe(true)

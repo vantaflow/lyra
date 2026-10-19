@@ -203,7 +203,7 @@ async function lireFavoris(c: Contexte): Promise<FavorisImportes> {
 async function lireHistorique(c: Contexte): Promise<Visite[]> {
   const source = trouverFichier(c, c.cfg.historique)
   if (!source) throw new ErreurImport('Aucun historique dans ce profil.', { code: 'absent' })
-  const copies = await c.copieur.copier(source)
+  const copies = await c.copieur.copier(source, { base: true, sujet: "L'historique" })
   let base: BaseLue
   try {
     base = await ouvrirBaseCopiee(copies)
@@ -253,7 +253,13 @@ async function lireHistorique(c: Contexte): Promise<Visite[]> {
 export async function lireProfilApple(profil: ProfilDetecte, opts: OptionsLectureApple, cfg: ConfigApple): Promise<ResultatLecture> {
   const elements: readonly ElementImport[] = opts.elements ?? ELEMENTS_IMPORT
   const donnees: DonneesImportees = {}
-  const copie: OptionsCopie = { navigateur: cfg.nom, dossierTemp: opts.dossierTemp, plateforme: opts.plateforme }
+  const copie: OptionsCopie = {
+    navigateur: cfg.nom,
+    dossierTemp: opts.dossierTemp,
+    plateforme: opts.plateforme,
+    tailleMaxFichier: opts.tailleMaxFichier,
+    tailleMaxBase: opts.tailleMaxBase
+  }
   const marquer = (valeur: Indisponible): void => {
     for (const element of elements) if (donnees[element] === undefined) Object.assign(donnees, { [element]: valeur })
   }
