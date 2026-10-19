@@ -52,6 +52,38 @@ function cielValide(c: unknown): c is SkyState {
   )
 }
 
+/**
+ * Rend un ciel lu sur disque cohérent : ids uniques (première occurrence gardée), parents connus et
+ * sans cycle, champs normalisés, index séquentiels, constellations connues, étoile active valide. Pur.
+ */
+export function assainirCiel(ciel: SkyState): SkyState {
+  const vus = new Set<string>()
+  const stars = ciel.stars
+    .filter((s) => !vus.has(s.id) && vus.add(s.id))
+    .map((s) => ({ ...s, title: typeof s.title === 'string' ? s.title : '', pinned: s.pinned === true, dormant: s.dormant === true }))
+  const constellations = ciel.constellations.filter((c) => estObjet(c) && typeof c.id === 'string')
+  const connues = new Set(constellations.map((c) => c.id))
+  const parParId = new Map(stars.map((s) => [s.id, s]))
+  for (const s of stars) {
+    if (s.constellationId !== undefined && !connues.has(s.constellationId)) delete s.constellationId
+    if (s.parentId !== undefined && !parParId.has(s.parentId)) delete s.parentId
+  }
+  for (const s of stars) {
+    // Cycle : en remontant les parents on retombe sur l'étoile ; on la rend racine.
+    const chaine = new Set([s.id])
+    for (let p = s.parentId; p !== undefined; p = parParId.get(p)?.parentId) {
+      if (chaine.has(p)) {
+        delete s.parentId
+        break
+      }
+      chaine.add(p)
+    }
+  }
+  stars.forEach((s, i) => (s.index = i))
+  const activeId = ciel.activeId !== null && parParId.has(ciel.activeId) ? ciel.activeId : (stars[0]?.id ?? null)
+  return { stars, constellations, activeId, pinned: stars.filter((s) => s.pinned).map((s) => s.id) }
+}
+
 /** Valide un contenu brut ; null si inexploitable. Les historiques invalides sont écartés un à un. */
 function valider(brut: unknown): EtatSession | null {
   if (!estObjet(brut) || brut.version !== 1 || !Array.isArray(brut.fenetres)) return null
@@ -62,7 +94,7 @@ function valider(brut: unknown): EtatSession | null {
     if (estObjet(f.entrees)) {
       for (const [id, h] of Object.entries(f.entrees)) if (historiqueValide(h)) entrees[id] = h
     }
-    fenetres.push({ ciel: f.ciel, entrees })
+    fenetres.push({ ciel: assainirCiel(f.ciel), entrees })
   }
   return fenetres.length > 0 ? { version: 1, fenetres } : null
 }

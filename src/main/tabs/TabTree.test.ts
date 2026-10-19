@@ -75,6 +75,15 @@ describe('TabTree', () => {
     expect(t.toJSON().stars.length).toBe(1 + 25)
   })
 
+  it('une étoile fermée endormie est rouverte non dormante', () => {
+    const t = new TabTree()
+    t.creer({ url: A, position: 'fin' })
+    const s = t.creer({ url: A, position: 'fin' })
+    t.star(s.id)!.dormant = true
+    t.fermer(s.id)
+    expect(t.rouvrirDerniere()!.dormant).toBe(false)
+  })
+
   it('déplace une étoile (avec ses enfants) et empêche les cycles', () => {
     const t = new TabTree()
     const a = t.creer({ url: A, position: 'fin' })

@@ -111,6 +111,7 @@ export class TabTree {
     if (!star) return null
     if (star.parentId && this.indexDe(star.parentId) < 0) delete star.parentId
     if (this.indexDe(star.id) >= 0) star.id = randomUUID()
+    star.dormant = false
     this.stars.splice(Math.min(star.index, this.stars.length), 0, star)
     this.reindexer()
     return star

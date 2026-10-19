@@ -77,3 +77,25 @@ test('un session.json corrompu donne une seule étoile lyra://newtab', async () 
   }
   expect(JSON.parse(readFileSync(join(userData, 'session.json'), 'utf8')).version).toBe(1)
 })
+
+test('une étoile rouverte après fermeture est vivante, pas endormie', async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    await fenetre.evaluate((u) => window.lyra.invoke('test:navigate', u), LIENS)
+    await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), PUB)
+    const id = (await fenetre.evaluate(() => window.lyra.invoke('sky:get'))).sky.stars[0].id
+    // Fermée alors qu'elle dort.
+    await fenetre.evaluate((i) => window.lyra.invoke('test:endormir', i), id)
+    await fenetre.evaluate((i) => window.lyra.invoke('tabs:close', { id: i }), id)
+    await expect(fenetre.locator('.star')).toHaveCount(1)
+    await fenetre.evaluate(() => window.lyra.invoke('tabs:reopen'))
+    await expect(fenetre.locator('.star')).toHaveCount(2)
+    const rouverte = fenetre.locator('.star').first()
+    await expect(rouverte).not.toHaveClass(/dim/)
+    const { sky, etats } = await fenetre.evaluate(() => window.lyra.invoke('sky:get'))
+    expect(sky.stars.every((s) => !s.dormant)).toBe(true)
+    expect(etats[sky.activeId!].url).toBeTruthy()
+  } finally {
+    await app.close()
+  }
+})
