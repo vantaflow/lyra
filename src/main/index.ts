@@ -1,7 +1,9 @@
-import { app, BaseWindow, WebContentsView } from 'electron'
+import { app, BaseWindow, WebContentsView, webContents } from 'electron'
 import { join } from 'node:path'
 import * as paths from './paths'
 import { definirFournisseurLangue } from '../shared/i18n'
+import { handle, envoyer } from './ipc'
+import { creerReglages } from './settings/settings'
 
 definirFournisseurLangue(() => app.getLocale())
 app.setPath('userData', paths.userData())
@@ -35,6 +37,12 @@ function creerFenetre(): void {
 }
 
 void app.whenReady().then(() => {
+  const reglages = creerReglages(join(paths.userData(), 'settings.json'), app.getPath('downloads'))
+  handle('settings:get', () => reglages.getSettings())
+  handle('settings:set', (patch) => reglages.setSettings(patch))
+  reglages.onChanged((s) => {
+    for (const wc of webContents.getAllWebContents()) envoyer(wc, 'settings:changed', s)
+  })
   creerFenetre()
   app.on('activate', () => {
     if (BaseWindow.getAllWindows().length === 0) creerFenetre()
