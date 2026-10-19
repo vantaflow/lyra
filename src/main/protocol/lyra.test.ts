@@ -15,6 +15,10 @@ describe('resolveLyraPath', () => {
       expect(resolveLyraPath(`lyra://${h}`, racine)).toBe(join(racine, 'settings.html'))
     }
   })
+  it('lyra://erreur sert erreur.html, query comprise', () => {
+    expect(resolveLyraPath('lyra://erreur?type=reseau&url=https%3A%2F%2Fa.fr', racine)).toBe(join(racine, 'erreur.html'))
+    expect(urlDev('lyra://erreur?type=reseau', 'http://localhost:5173')).toBe('http://localhost:5173/erreur.html')
+  })
   it('les assets sont résolus sous la racine', () => {
     expect(resolveLyraPath('lyra://newtab/assets/x.js', racine)).toBe(join(racine, 'assets', 'x.js'))
   })

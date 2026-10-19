@@ -2,7 +2,12 @@ import { app, Menu, type MenuItemConstructorOptions } from 'electron'
 import type { TabManager } from './TabManager'
 
 /** Menu d'application : les accélérateurs pilotent le TabManager de la fenêtre courante. */
-export function installerMenu(courant: () => TabManager | undefined): void {
+export interface ActionsMenu {
+  nouvelleFenetre(): void
+  basculerFavori(m: TabManager): void
+}
+
+export function installerMenu(courant: () => TabManager | undefined, actions: ActionsMenu): void {
   const agir = (f: (m: TabManager, actif: string | null) => void) => (): void => {
     const m = courant()
     if (m) f(m, m.idActif())
@@ -21,6 +26,7 @@ export function installerMenu(courant: () => TabManager | undefined): void {
         { id: 'nouvelle-etoile', label: 'Nouvelle étoile', accelerator: 'CmdOrCtrl+T', click: agir((m) => void m.ouvrir('lyra://newtab')) },
         { id: 'fermer-etoile', label: "Fermer l'étoile", accelerator: 'CmdOrCtrl+W', click: agir((m, id) => id && m.fermer(id)) },
         { id: 'rouvrir-etoile', label: 'Rouvrir la dernière étoile', accelerator: 'CmdOrCtrl+Shift+T', click: agir((m) => m.rouvrirDerniere()) },
+        { id: 'nouvelle-fenetre', label: 'Nouvelle fenêtre', accelerator: 'CmdOrCtrl+N', click: actions.nouvelleFenetre },
         { type: 'separator' },
         { id: 'palette', label: 'Aller à…', accelerator: 'CmdOrCtrl+L', click: agir((m) => m.ouvrirPalette()) },
         ...(process.platform === 'darwin'
@@ -33,6 +39,14 @@ export function installerMenu(courant: () => TabManager | undefined): void {
       label: 'Affichage',
       submenu: [
         { id: 'recharger', label: 'Recharger', accelerator: 'CmdOrCtrl+R', click: agir((m, id) => id && m.recharger(id)) },
+        { type: 'separator' },
+        { id: 'trouver', label: 'Rechercher dans la page', accelerator: 'CmdOrCtrl+F', click: agir((m) => m.ouvrirRecherche()) },
+        { id: 'zoom-plus', label: 'Zoom avant', accelerator: 'CmdOrCtrl+Plus', click: agir((m, id) => id && m.zoomer(id, { delta: 1 })) },
+        { label: 'Zoom avant', accelerator: 'CmdOrCtrl+=', visible: false, click: agir((m, id) => id && m.zoomer(id, { delta: 1 })) },
+        { id: 'zoom-moins', label: 'Zoom arrière', accelerator: 'CmdOrCtrl+-', click: agir((m, id) => id && m.zoomer(id, { delta: -1 })) },
+        { id: 'zoom-zero', label: 'Taille réelle', accelerator: 'CmdOrCtrl+0', click: agir((m, id) => id && m.zoomer(id, { reset: true })) },
+        { type: 'separator' },
+        { id: 'imprimer', label: 'Imprimer…', accelerator: 'CmdOrCtrl+P', click: agir((m) => m.imprimer()) },
         { role: 'toggleDevTools' }
       ]
     },
@@ -41,6 +55,9 @@ export function installerMenu(courant: () => TabManager | undefined): void {
       submenu: [
         { id: 'etoile-suivante', label: 'Étoile suivante', accelerator: 'Ctrl+Tab', click: agir((m) => m.voisine(1)) },
         { id: 'etoile-precedente', label: 'Étoile précédente', accelerator: 'Ctrl+Shift+Tab', click: agir((m) => m.voisine(-1)) },
+        { id: 'favori', label: 'Ajouter aux favoris', accelerator: 'CmdOrCtrl+D', click: agir((m) => actions.basculerFavori(m)) },
+        { id: 'historique', label: 'Historique', accelerator: 'CmdOrCtrl+Y', click: agir((m) => void m.ouvrir('lyra://history')) },
+        { id: 'reglages', label: 'Réglages', accelerator: 'CmdOrCtrl+,', click: agir((m) => void m.ouvrir('lyra://settings')) },
         { type: 'separator' },
         ...numeros
       ]

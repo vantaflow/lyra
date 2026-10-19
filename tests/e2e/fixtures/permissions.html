@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><title>Permissions</title></head>
+<body>
+  <button id="notif" onclick="Notification.requestPermission().then((p) => (document.title = 'notif:' + p))">Notifications</button>
+  <button id="interdit" onclick="window.open('lyra://settings')">Page Lyra</button>
+  <button id="interdit-popup" onclick="window.open('lyra://settings', 'x', 'width=400,height=400')">Page Lyra en popup</button>
+  <button id="autorise" onclick="window.open('liens.html?ok')">Autorisé</button>
+  <p>Un texte à chercher : étoile boréale.</p>
+</body>
+</html>

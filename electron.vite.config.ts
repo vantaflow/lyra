@@ -31,7 +31,8 @@ export default defineConfig({
         input: {
           ui: resolve('src/renderer/ui.html'),
           newtab: resolve('src/renderer/newtab.html'),
-          settings: resolve('src/renderer/settings.html')
+          settings: resolve('src/renderer/settings.html'),
+          erreur: resolve('src/renderer/erreur.html')
         }
       }
     }

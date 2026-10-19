@@ -19,7 +19,20 @@ const texte = (max: number, motif?: RegExp) => (v: unknown): string | undefined 
 const ORIGINE = /^(https?:\/\/([a-z0-9.-]+|\[[0-9a-f:]+\])(:\d{1,5})?|file:\/\/)$/i
 const MAX_SITES = 10_000
 
-/** sites : { origine: { boucliers?: boolean } } ; entrées invalides ignorées. */
+const TYPES = ['camera', 'micro', 'notifications', 'geolocalisation', 'presse-papiers']
+
+/** permissions : { type connu: 'autoriser' | 'refuser' } ; le reste est ignoré. */
+function permissions(v: unknown): Obj | undefined {
+  if (!estObjet(v)) return undefined
+  const sortie: Obj = {}
+  for (const t of TYPES) {
+    const d = enumeration('autoriser', 'refuser')(propre(v, t))
+    if (d) sortie[t] = d
+  }
+  return Object.keys(sortie).length > 0 ? sortie : undefined
+}
+
+/** sites : { origine: { boucliers?, permissions?, zoom? } } ; champs et entrées invalides ignorés. */
 function sites(v: unknown): Obj | undefined {
   if (!estObjet(v)) return undefined
   const sortie: Obj = {}
@@ -27,9 +40,15 @@ function sites(v: unknown): Obj | undefined {
   for (const [origine, regle] of Object.entries(v)) {
     if (n >= MAX_SITES) break
     if (origine.length > 300 || !ORIGINE.test(origine) || !estObjet(regle)) continue
+    const champs: Obj = {}
     const boucliers = booleen(propre(regle, 'boucliers'))
-    if (boucliers === undefined) continue
-    sortie[origine] = { boucliers }
+    if (boucliers !== undefined) champs.boucliers = boucliers
+    const perms = permissions(propre(regle, 'permissions'))
+    if (perms) champs.permissions = perms
+    const zoom = entier(0.25, 5)(propre(regle, 'zoom'))
+    if (zoom !== undefined) champs.zoom = zoom
+    if (Object.keys(champs).length === 0) continue
+    sortie[origine] = champs
     n++
   }
   return Object.keys(sortie).length > 0 ? sortie : undefined

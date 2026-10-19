@@ -51,9 +51,17 @@ export interface Settings {
   sites: Record<string, RegleSite>
 }
 
+export type TypePermission = 'camera' | 'micro' | 'notifications' | 'geolocalisation' | 'presse-papiers'
+export type DecisionPermission = 'autoriser' | 'refuser'
+export const TYPES_PERMISSION: readonly TypePermission[] = ['camera', 'micro', 'notifications', 'geolocalisation', 'presse-papiers']
+
 export interface RegleSite {
   /** false : Boucliers désactivés sur ce site. Absent : actifs. */
   boucliers?: boolean
+  /** Décisions mémorisées pour ce site ; absent : on demande. */
+  permissions?: Partial<Record<TypePermission, DecisionPermission>>
+  /** Facteur de zoom mémorisé (0.25 à 5) ; absent : 100 %. */
+  zoom?: number
 }
 
 export interface HistoryEntry {

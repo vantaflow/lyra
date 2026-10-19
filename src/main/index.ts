@@ -16,6 +16,13 @@ import { Bookmarks } from './bookmarks/Bookmarks'
 import { Downloads } from './downloads/Downloads'
 import { installerReglagesIpc } from './settings/ipc'
 import { SessionStore, type FenetreSession } from './session/SessionStore'
+import { Permissions, type ReponsePermission } from './permissions/Permissions'
+import { nettoyerUserAgent } from './ua'
+import { estUrlErreur, exceptionsCertificat, hoteDe, urlOriginale } from './tabs/erreurs'
+import { moteurParId, urlDeRecherche } from './palette/engines'
+import type { ActionMenu, AncreMenu } from '../shared/ipc'
+import type { Reglages } from './settings/settings'
+import type { TypePermission } from '../shared/types'
 
 definirFournisseurLangue(() => app.getLocale())
 app.setPath('userData', paths.userData())
@@ -27,6 +34,7 @@ protocol.registerSchemesAsPrivileged([
 let reglagesCourants: () => Settings = () => {
   throw new Error('réglages non initialisés')
 }
+let reglagesStore: Reglages | undefined
 const manager = new WindowManager(() => reglagesCourants().ciel)
 const onglets = new Map<number, TabManager>()
 let historique: History | undefined
@@ -74,7 +82,10 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
         },
     {
       endormirApresMin: () => reglagesCourants().ciel.endormirApresMin,
-      surChangement: sauverSession
+      surChangement: sauverSession,
+      zoomDe: (origine) => reglagesCourants().sites[origine]?.zoom,
+      memoriserZoom: (origine, zoom) => void reglagesStore?.setSettings({ sites: { [origine]: { zoom } } }),
+      rechercheUrl: (texte) => urlDeRecherche(moteurParId(reglagesCourants().moteurParDefaut), texte)
     }
   )
   onglets.set(fenetre.id, tabs)
@@ -90,10 +101,70 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
 
 app.on('session-created', installerProtocoleLyra)
 
+app.on('certificate-error', (e, _wc, url, _erreur, _certificat, callback) => {
+  // Exception accordée pour la session depuis la page d'erreur (« Continuer quand même »).
+  if (exceptionsCertificat.has(hoteDe(url))) {
+    e.preventDefault()
+    callback(true)
+  }
+})
+
+const attentesPermission = new Map<number, (r: ReponsePermission) => void>()
+let prochainePermission = 1
+
+/** Montre la demande dans l'overlay de la fenêtre qui possède la page ; refus si elle n'en a pas. */
+function demanderPermission(wc: WebContents, origine: string, types: TypePermission[]): Promise<ReponsePermission> {
+  const refus: ReponsePermission = { decision: 'refuser', memoriser: false }
+  const m = ongletsPossedant(wc)
+  if (!m) return Promise.resolve(refus)
+  return new Promise((ok) => {
+    const id = prochainePermission++
+    const abandon = (): void => fin(refus)
+    const fin = (r: ReponsePermission): void => {
+      attentesPermission.delete(id)
+      wc.removeListener('destroyed', abandon)
+      ok(r)
+    }
+    attentesPermission.set(id, fin)
+    wc.once('destroyed', abandon)
+    m.demanderPermission({ id, origine, types })
+  })
+}
+
+function ongletsPossedant(wc: WebContents): TabManager | undefined {
+  return [...onglets.values()].find((m) => m.possede(wc))
+}
+
+/** Hôte lisible de l'adresse d'une page (pour « Règles pour … ») ; '' hors http(s). */
+function hoteLisible(url: string): string {
+  try {
+    const u = new URL(urlOriginale(url))
+    return /^https?:$/.test(u.protocol) ? u.hostname.replace(/^www\./, '') : ''
+  } catch {
+    return ''
+  }
+}
+
 void app.whenReady().then(async () => {
+  const ua = nettoyerUserAgent(app.userAgentFallback)
+  app.userAgentFallback = ua
+  session.defaultSession.setUserAgent(ua)
+  session.fromPartition('persist:lyra').setUserAgent(ua)
   installerProtocoleLyra(session.defaultSession)
   const reglages = creerReglages(join(paths.userData(), 'settings.json'), app.getPath('downloads'))
   reglagesCourants = () => reglages.getSettings()
+  reglagesStore = reglages
+  const permissions = new Permissions({
+    lire: (origine, type) => reglages.getSettings().sites[origine]?.permissions?.[type],
+    memoriser: (origine, type, decision) => void reglages.setSettings({ sites: { [origine]: { permissions: { [type]: decision } } } }),
+    demander: demanderPermission
+  })
+  permissions.attacher(session.defaultSession)
+  permissions.attacher(session.fromPartition('persist:lyra'))
+  handle('permission:answer', (d, e) => {
+    attentesPermission.get(d.id)?.({ decision: d.decision === 'autoriser' ? 'autoriser' : 'refuser', memoriser: d.memoriser === true })
+    ongletsDe(e.sender).fermerOverlay()
+  })
   // file:// n'est enregistré que sous LYRA_TEST=1 : les e2e naviguent sur une fixture locale.
   historique = new History(join(paths.userData(), 'historique.jsonl'), { enregistrerFichiers: process.env.LYRA_TEST === '1' })
   const hist = historique
@@ -158,8 +229,64 @@ void app.whenReady().then(async () => {
   handle('tabs:pin', (d, e) => ongletsDe(e.sender).epingler(d.id, d.pinned))
   handle('tabs:reopen', (_d, e) => ongletsDe(e.sender).rouvrirDerniere())
   handle('sky:get', (_d, e) => ongletsDe(e.sender).snapshot())
+  handle('tabs:zoom', (d, e) => ongletsDe(e.sender).zoomer(d.id, { delta: d.delta === 1 || d.delta === -1 ? d.delta : undefined, reset: d.reset === true }))
+  handle('find:start', (d, e) => ongletsDe(e.sender).rechercher(d.id, String(d.texte ?? '').slice(0, 500), { suivant: d.suivant === true, precedent: d.precedent === true }))
+  handle('find:stop', (d, e) => ongletsDe(e.sender).arreterRecherche(d.id))
+  // Page d'erreur Lyra : l'adresse vient de la page elle-même (son URL), jamais des données reçues.
+  const pageErreur = (wc: WebContents): { m: TabManager; id: string; url: string } | undefined => {
+    const m = ongletsPossedant(wc)
+    const id = m?.idDe(wc)
+    const url = urlOriginale(wc.getURL())
+    return m && id && estUrlErreur(wc.getURL()) && /^(https?|file):/i.test(url) ? { m, id, url } : undefined
+  }
+  handle('erreur:reessayer', (_d, e) => {
+    const p = pageErreur(e.sender)
+    if (p) p.m.naviguer(p.id, p.url)
+  })
+  handle('erreur:continuer', (_d, e) => {
+    const p = pageErreur(e.sender)
+    if (!p || !/^https:/i.test(p.url)) return
+    exceptionsCertificat.add(hoteDe(p.url))
+    p.m.naviguer(p.id, p.url)
+  })
+  handle('menu:open', (d, e) => {
+    const f = manager.deWebContents(e.sender) ?? manager.premiere()
+    if (!f || !Number.isFinite(d.droite) || !Number.isFinite(d.bas)) return
+    const m = ongletsDe(e.sender)
+    const wc = m.wcActif()
+    const url = wc?.getURL() ?? ''
+    const c = f.bounds().chrome
+    m.ouvrirOverlay('menu')
+    const ancre: AncreMenu = {
+      droite: c.x + d.droite,
+      bas: c.y + d.bas,
+      hote: hoteLisible(url),
+      favori: favoris.existe(urlOriginale(url)),
+      zoom: wc?.getZoomFactor() ?? 1
+    }
+    m.ancrerMenu(ancre)
+  })
+  const ACTIONS: ActionMenu[] = ['nouvelle-etoile', 'nouvelle-fenetre', 'favori', 'recherche', 'imprimer', 'devtools', 'historique', 'reglages']
+  handle('menu:action', ({ action }, e) => {
+    if (!ACTIONS.includes(action)) return
+    const m = ongletsDe(e.sender)
+    m.fermerOverlay()
+    if (action === 'nouvelle-etoile') m.ouvrir('lyra://newtab')
+    else if (action === 'nouvelle-fenetre') creerFenetre()
+    else if (action === 'favori') basculerFavori(m)
+    else if (action === 'recherche') m.ouvrirRecherche()
+    else if (action === 'imprimer') m.imprimer()
+    else if (action === 'devtools') m.outilsDeveloppement()
+    else if (action === 'historique') m.ouvrir('lyra://history')
+    else m.ouvrir('lyra://settings')
+  })
   installerPalette({ ongletsDe, historique: hist, favoris, reglages: () => reglages.getSettings(), creerFenetre })
-  installerMenu(ongletsCourants)
+  const basculerFavori = (m: TabManager): void => {
+    const wc = m.wcActif()
+    const url = wc ? urlOriginale(wc.getURL()) : ''
+    if (/^(https?|file):/i.test(url) && wc) favoris.toggle({ url, title: wc.getTitle() || url })
+  }
+  installerMenu(ongletsCourants, { nouvelleFenetre: () => creerFenetre(), basculerFavori })
   // Les Boucliers sont prêts avant la première fenêtre : aucune page ne se charge sans eux.
   await demarrerBoucliers({
     reglages,

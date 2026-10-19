@@ -3,7 +3,10 @@ import { join, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 const HOTES_REGLAGES = ['settings', 'extensions', 'history', 'bookmarks', 'downloads', 'shields']
-const HOTES = ['newtab', ...HOTES_REGLAGES]
+const HOTES = ['newtab', 'erreur', ...HOTES_REGLAGES]
+
+/** Page HTML qui sert un hôte lyra:// (tous les hôtes de réglages partagent settings.html). */
+const pageDe = (hote: string): string => (hote === 'newtab' || hote === 'erreur' ? `${hote}.html` : 'settings.html')
 
 /** Traduit une URL lyra:// en fichier sous `racine`, ou null (hôte inconnu, traversée). */
 export function resolveLyraPath(url: string, racine: string): string | null {
@@ -25,7 +28,7 @@ export function resolveLyraPath(url: string, racine: string): string | null {
     const fichier = resolve(racine, ...utiles)
     return fichier.startsWith(resolve(racine) + sep) ? fichier : null
   }
-  return join(racine, hote === 'newtab' ? 'newtab.html' : 'settings.html')
+  return join(racine, pageDe(hote))
 }
 
 /** Racine fictive en dev : seul le chemin relatif compte, il est refait sur le serveur Vite. */
@@ -55,7 +58,7 @@ export function urlDev(url: string, baseDev: string): string | null {
   const dernier = decode.split('/').filter(Boolean).pop() ?? ''
   const proxifie = PREFIXES_VITE.some((p) => pathname.startsWith(p)) || dernier.includes('.')
   if (proxifie) return `${base}${pathname}${search}`
-  return `${base}/${hote === 'newtab' ? 'newtab' : 'settings'}.html`
+  return `${base}/${pageDe(hote)}`
 }
 
 const CSP_PROD = "default-src 'self'; style-src 'self' 'unsafe-inline'"

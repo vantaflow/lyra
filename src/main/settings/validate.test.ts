@@ -61,6 +61,23 @@ describe('validerPatch', () => {
     expect(validerPatch({ sites: [] })).toEqual({})
   })
 
+  it('valide permissions et zoom par site', () => {
+    expect(
+      validerPatch({
+        sites: {
+          'https://a.fr': { permissions: { camera: 'autoriser', micro: 'peut-etre', inconnue: 'autoriser' }, zoom: 1.25 },
+          'https://b.fr': { zoom: 9 },
+          'https://c.fr': { permissions: { notifications: 'refuser' } }
+        }
+      })
+    ).toEqual({
+      sites: {
+        'https://a.fr': { permissions: { camera: 'autoriser' }, zoom: 1.25 },
+        'https://c.fr': { permissions: { notifications: 'refuser' } }
+      }
+    })
+  })
+
   it('entrée non objet : patch vide', () => {
     expect(validerPatch(null)).toEqual({})
     expect(validerPatch('x')).toEqual({})

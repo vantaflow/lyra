@@ -1,4 +1,4 @@
-import type { DownloadInfo, HistoryEntry, Settings, SkyState, Suggestion } from './types'
+import type { DecisionPermission, DownloadInfo, HistoryEntry, Settings, SkyState, Suggestion, TypePermission } from './types'
 
 export interface RectIpc {
   x: number
@@ -18,6 +18,8 @@ export interface EtatEtoile {
   couleur?: string
   /** Timestamp (ms) depuis lequel l'étoile est inactive ; absent pour l'étoile active. */
   inactifDepuis?: number
+  /** Facteur de zoom de la page ; absent à 100 %. */
+  zoom?: number
 }
 
 /** État des Boucliers pour l'étoile active d'une fenêtre. */
@@ -45,7 +47,33 @@ export interface StatsBoucliers {
   source: string
 }
 
-export type RouteOverlay = 'palette' | 'shields' | 'downloads'
+export type RouteOverlay = 'palette' | 'shields' | 'downloads' | 'menu' | 'permission'
+
+/** Entrées actives du menu ⋯ de la capsule. */
+export type ActionMenu =
+  | 'nouvelle-etoile'
+  | 'nouvelle-fenetre'
+  | 'favori'
+  | 'recherche'
+  | 'imprimer'
+  | 'devtools'
+  | 'historique'
+  | 'reglages'
+
+/** Contexte du menu ⋯ : ancre (coordonnées de la fenêtre) et état de la page active. */
+export interface AncreMenu {
+  droite: number
+  bas: number
+  hote: string
+  favori: boolean
+  zoom: number
+}
+
+export interface DemandePermission {
+  id: number
+  origine: string
+  types: TypePermission[]
+}
 
 export interface SkyChange {
   sky: SkyState
@@ -107,6 +135,19 @@ export type Requetes = {
   'downloads:clear': [void, void]
   /** Chrome → main : ouvre le panneau des téléchargements dans l'overlay. */
   'downloads:panel': [void, void]
+  /** Chrome → main : ouvre le menu ⋯ ancré sous le bouton (coordonnées du chrome). */
+  'menu:open': [{ droite: number; bas: number }, void]
+  'menu:action': [{ action: ActionMenu }, void]
+  /** Overlay → main : réponse à une demande de permission (refus si abandonnée). */
+  'permission:answer': [{ id: number; decision: DecisionPermission; memoriser: boolean }, void]
+  'find:start': [{ id: string; texte: string; suivant?: boolean; precedent?: boolean }, void]
+  'find:stop': [{ id: string }, void]
+  /** Zoom de l'étoile (active si `id` est absent) ; renvoie le facteur obtenu. */
+  'tabs:zoom': [{ id?: string; delta?: 1 | -1; reset?: boolean }, number]
+  /** Page d'erreur Lyra : recharge l'adresse d'origine. */
+  'erreur:reessayer': [{ url: string }, void]
+  /** Page d'erreur Lyra : accepte le certificat de l'hôte pour la session puis recharge. */
+  'erreur:continuer': [{ url: string }, void]
   /** Test uniquement (LYRA_TEST=1) : charge une URL dans la vue de page. */
   'test:navigate': [string, void]
   'test:endormir': [string, boolean]
@@ -128,6 +169,14 @@ export type Evenements = {
   'shields:changed': EtatBoucliers
   /** Main → chrome, overlay et pages internes : la liste des téléchargements a changé (à relire). */
   'downloads:changed': void
+  /** Main → overlay : contexte du menu ⋯ qui vient de s'ouvrir. */
+  'menu:ancre': AncreMenu
+  /** Main → overlay : une page demande une permission. */
+  'permission:ask': DemandePermission
+  /** Main → chrome : ouvre la barre de recherche dans la page (⌘ F). */
+  'find:open': void
+  /** Main → chrome : résultat de la recherche (actif : occurrence courante, 1-based). */
+  'find:result': { id: string; actif: number; total: number }
 }
 
 export type CanalRequete = keyof Requetes

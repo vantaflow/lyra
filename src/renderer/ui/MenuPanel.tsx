@@ -1,0 +1,69 @@
+import { useEffect, useState } from 'preact/hooks'
+import type { ActionMenu, AncreMenu } from '../../shared/ipc'
+import { raccourci } from './raccourcis'
+
+/** Menu ⋯ de la capsule (fidèle à docs/design/project/Panneaux.dc.html, section « Menu ⋯ de la capsule »). */
+export function MenuPanel({ ancre }: { ancre: AncreMenu | null }) {
+  const [zoom, setZoom] = useState(ancre?.zoom ?? 1)
+  useEffect(() => setZoom(ancre?.zoom ?? 1), [ancre])
+  useEffect(() => {
+    const touche = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        fermer()
+      }
+    }
+    document.addEventListener('keydown', touche)
+    return () => document.removeEventListener('keydown', touche)
+  }, [])
+
+  const fermer = (): void => void window.lyra.invoke('overlay:close')
+  const agir = (action: ActionMenu) => (): void => void window.lyra.invoke('menu:action', { action })
+  const changerZoom = (o: { delta?: 1 | -1; reset?: boolean }) => (): void =>
+    void window.lyra.invoke('tabs:zoom', o).then(setZoom)
+
+  if (!ancre) return <div class="pn-fond" onMouseDown={fermer}></div>
+  const style = { top: `${ancre.bas + 6}px`, right: `${Math.max(8, window.innerWidth - ancre.droite)}px` }
+  const Ligne = ({ label, aide, action }: { label: string; aide?: string; action?: ActionMenu }) => (
+    <button class="mi" type="button" role="menuitem" aria-disabled={action ? undefined : true} onClick={action ? agir(action) : undefined}>
+      {label}
+      {aide && <span class="h">{aide}</span>}
+    </button>
+  )
+
+  return (
+    <div class="pn-fond" onMouseDown={(e) => e.target === e.currentTarget && fermer()}>
+      <nav class="menu-capsule" role="menu" aria-label="Menu de la page" style={style}>
+        <Ligne label="Nouvelle étoile" aide={raccourci('⌘ T')} action="nouvelle-etoile" />
+        <Ligne label="Nouvelle fenêtre" aide={raccourci('⌘ N')} action="nouvelle-fenetre" />
+        <Ligne label="Fenêtre privée" aide={raccourci('⌘ ⇧ N')} />
+        <div class="sep"></div>
+        <Ligne label="Ajouter aux favoris" aide={raccourci('⌘ D')} action="favori" />
+        <Ligne label="Rechercher dans la page" aide={raccourci('⌘ F')} action="recherche" />
+        <div class="mi" role="group" aria-label="Zoom">
+          Zoom
+          <span class="h zoom-ligne">
+            <button class="zb zb-pct" type="button" aria-label="Revenir à 100 %" onClick={changerZoom({ reset: true })}>
+              {Math.round(zoom * 100)} %
+            </button>
+            <button class="zb" type="button" aria-label="Zoom arrière" onClick={changerZoom({ delta: -1 })}>
+              −
+            </button>
+            <button class="zb" type="button" aria-label="Zoom avant" onClick={changerZoom({ delta: 1 })}>
+              +
+            </button>
+          </span>
+        </div>
+        <Ligne label="Imprimer…" aide={raccourci('⌘ P')} action="imprimer" />
+        <Ligne label="Mode lecture" aide="v2" />
+        <div class="sep"></div>
+        <Ligne label={`Règles pour ${ancre.hote || 'ce site'}`} />
+        <Ligne label="Style perso pour ce site" />
+        <Ligne label="Outils de développement" aide={raccourci('⌥ ⌘ I')} action="devtools" />
+        <div class="sep"></div>
+        <Ligne label="Historique" aide={raccourci('⌘ Y')} action="historique" />
+        <Ligne label="Réglages" aide={raccourci('⌘ ,')} action="reglages" />
+      </nav>
+    </div>
+  )
+}

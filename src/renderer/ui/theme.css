@@ -816,3 +816,194 @@ html.overlay #app {
   font-size: 13px;
   color: #6b6b80;
 }
+
+/* ---- Menu ⋯ de la capsule (fidèle à docs/design/project/Panneaux.dc.html, section « Menu ⋯ de la capsule ») ---- */
+.menu-capsule {
+  position: absolute;
+  width: 292px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  background: #fff;
+  color: var(--texte);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(20, 20, 46, 0.18);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+}
+.mi {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 34px;
+  flex: none;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #1c1c2e;
+  font: 13.5px 'Manrope', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.mi:hover {
+  background: #f1f1f8;
+}
+.mi[aria-disabled='true'] {
+  cursor: default;
+}
+.mi .h {
+  margin-left: auto;
+  color: #8a8aa6;
+  font-size: 12px;
+}
+.sep {
+  height: 1px;
+  flex: none;
+  background: #eeeef4;
+  margin: 6px 8px;
+}
+.zoom-ligne {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.zb {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #3a3a50;
+  font: 600 13px 'Manrope', sans-serif;
+  cursor: pointer;
+}
+.zb:hover {
+  background: #e6e6f7;
+}
+.zb-pct {
+  color: #8a8aa6;
+  font-weight: 500;
+  font-size: 12px;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid #d6d6e2;
+  border-radius: 9px;
+  background: #fff;
+  color: #1c1c2e;
+  font: 500 13px 'Manrope', sans-serif;
+  cursor: pointer;
+}
+.btn.pri {
+  background: #5452c8;
+  border-color: #5452c8;
+  color: #fff;
+}
+
+/* ---- Demande de permission : carte sous la pilule ---- */
+.perm-zone {
+  position: absolute;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  pointer-events: none;
+}
+.perm-carte {
+  pointer-events: auto;
+  width: min(360px, calc(100% - 24px));
+  box-sizing: border-box;
+  background: #fff;
+  color: var(--texte);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(20, 20, 46, 0.18);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: 'Manrope', -apple-system, 'Segoe UI', system-ui, sans-serif;
+}
+.perm-texte {
+  font-size: 13.5px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.perm-souvenir {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: #6b6b80;
+}
+.perm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ---- Recherche dans la page : barre flottante sur la capsule, à droite de la zone page ---- */
+.carte {
+  position: relative;
+}
+.findbar {
+  position: absolute;
+  top: 6px;
+  right: 12px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 34px;
+  padding: 0 4px 0 12px;
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid #eeeef4;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(20, 20, 46, 0.12);
+  -webkit-app-region: no-drag;
+}
+.win .findbar {
+  right: 150px;
+}
+.findbar input {
+  width: 190px;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #1c1c2e;
+  font: 13.5px 'Manrope', sans-serif;
+}
+.findbar input::placeholder {
+  color: #8a8aa6;
+}
+.findbar-n {
+  min-width: 36px;
+  text-align: right;
+  color: #8a8aa6;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.findbar .cb {
+  width: 26px;
+  height: 26px;
+}
+
+/* Indicateur de zoom dans la pilule */
+.pilule .zoom-ind {
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: #e6e6f7;
+  color: #2f2d8a;
+  font-size: 11.5px;
+  font-weight: 600;
+}

@@ -6,11 +6,20 @@ import { TabTree } from './TabTree'
 import { peutEndormir } from './dormance'
 import type { FenetreSession, HistoriqueEtoile } from '../session/SessionStore'
 import { categorieDe, type Categorie } from './categorie'
+import { origineDe } from '../shields/Shields'
+import { estZoomNormal, palierSuivant } from './zoom'
+import { estUrlErreur, urlOriginale } from './erreurs'
+import { arreter as arreterRechercheWc, rechercher as rechercherWc } from './find'
+import { attacherComportements } from './comportements'
 import type { SkyState } from '../../shared/types'
-import type { CanalEvenement, EtatEtoile, Evenements, RouteOverlay, SkyChange } from '../../shared/ipc'
+import type { AncreMenu, CanalEvenement, DemandePermission, EtatEtoile, Evenements, RouteOverlay, SkyChange } from '../../shared/ipc'
 
 const URL_NEWTAB = 'lyra://newtab'
 const SCHEMAS_OUVRABLES = /^(https?|lyra|file):/i
+const EN_TEST = process.env.LYRA_TEST === '1'
+
+/** Un site ne peut faire ouvrir ni page Lyra ni fichier local (file:// n'existe que pour les e2e). */
+const interditAuxSites = (url: string): boolean => /^lyra:/i.test(url) || (!EN_TEST && /^file:/i.test(url))
 
 interface Extras {
   favicon?: string
@@ -37,6 +46,11 @@ export interface OptionsTabs {
   /** Minutes d'inactivité avant l'endormissement (0 ou moins : jamais). */
   endormirApresMin?: () => number
   surChangement?: () => void
+  /** Zoom mémorisé pour une origine (facteur) et son enregistrement. */
+  zoomDe?: (origine: string) => number | undefined
+  memoriserZoom?: (origine: string, facteur: number) => void
+  /** Adresse de recherche (moteur par défaut) pour un texte sélectionné. */
+  rechercheUrl?: (texte: string) => string
 }
 
 export class TabManager {
@@ -151,7 +165,57 @@ export class TabManager {
   }
 
   recharger(id: string): void {
-    this.vues.get(id)?.webContents.reload()
+    const wc = this.vues.get(id)?.webContents
+    if (!wc) return
+    // Sur une page d'erreur, recharger = réessayer l'adresse d'origine.
+    if (estUrlErreur(wc.getURL())) this.naviguer(id, urlOriginale(wc.getURL()))
+    else wc.reload()
+  }
+
+  /** Étoile dont la vue est `wc`. */
+  idDe(wc: WebContents): string | undefined {
+    for (const [id, v] of this.vues) if (v.webContents === wc) return id
+    return undefined
+  }
+
+  /** Zoom d'une étoile (l'active par défaut) : palier suivant, précédent ou 100 % ; mémorisé par site. */
+  zoomer(id: string | undefined, o: { delta?: 1 | -1; reset?: boolean }): number {
+    const cible = id ?? this.idActif()
+    const wc = cible ? this.vues.get(cible)?.webContents : undefined
+    if (!wc || wc.isDestroyed()) return 1
+    const facteur = o.reset ? 1 : o.delta ? palierSuivant(wc.getZoomFactor(), o.delta) : wc.getZoomFactor()
+    wc.setZoomFactor(facteur)
+    const origine = origineDe(wc.getURL())
+    if (origine) this.options.memoriserZoom?.(origine, facteur)
+    this.notifier()
+    return facteur
+  }
+
+  rechercher(id: string, texte: string, o: { suivant?: boolean; precedent?: boolean } = {}): void {
+    const wc = this.vues.get(id)?.webContents
+    if (wc) rechercherWc(wc, texte, o)
+  }
+
+  /** Efface la recherche ; le focus revient à la page si c'est l'étoile affichée. */
+  arreterRecherche(id: string): void {
+    const wc = this.vues.get(id)?.webContents
+    if (!wc) return
+    arreterRechercheWc(wc)
+    if (!wc.isDestroyed() && this.tree.toJSON().activeId === id) wc.focus()
+  }
+
+  /** ⌘ F : la capsule affiche la barre de recherche et lui donne le focus. */
+  ouvrirRecherche(): void {
+    this.envoyerAuChrome('find:open', undefined)
+    this.fenetre.chrome.webContents.focus()
+  }
+
+  imprimer(): void {
+    this.wcActif()?.print()
+  }
+
+  outilsDeveloppement(): void {
+    this.wcActif()?.openDevTools({ mode: 'detach' })
   }
 
   arreter(id: string): void {
@@ -294,6 +358,17 @@ export class TabManager {
     this.fenetre.montrerOverlay(route)
   }
 
+  /** Montre la demande de permission d'une page dans l'overlay. */
+  demanderPermission(demande: DemandePermission): void {
+    this.fenetre.montrerOverlay('permission')
+    envoyer(this.fenetre.overlay.webContents, 'permission:ask', demande)
+  }
+
+  /** Envoie au menu ⋯ (overlay) son ancre et l'état de la page, en coordonnées de la fenêtre. */
+  ancrerMenu(a: AncreMenu): void {
+    envoyer(this.fenetre.overlay.webContents, 'menu:ancre', a)
+  }
+
   /** WebContents de l'étoile active. */
   wcActif(): WebContents | undefined {
     const id = this.idActif()
@@ -339,9 +414,10 @@ export class TabManager {
       etats[id] = {
         chargement: wc.isLoading(),
         titre: wc.getTitle() || star?.title || '',
-        url: wc.getURL() || star?.url || '',
+        url: urlOriginale(wc.getURL()) || star?.url || '',
         canGoBack: wc.navigationHistory.canGoBack(),
         canGoForward: wc.navigationHistory.canGoForward(),
+        ...(estZoomNormal(wc.getZoomFactor()) ? {} : { zoom: wc.getZoomFactor() }),
         ...(this.inactifDepuis.has(id) ? { inactifDepuis: this.inactifDepuis.get(id) } : {}),
         ...(ex.favicon ? { favicon: ex.favicon } : {}),
         ...(ex.couleur ? { couleur: ex.couleur } : {})
@@ -393,7 +469,7 @@ export class TabManager {
     const maj = (): void => {
       const star = this.tree.star(id)
       if (star) {
-        star.url = wc.getURL() || star.url
+        star.url = urlOriginale(wc.getURL()) || star.url
         star.title = wc.getTitle() || star.title
       }
       this.notifier()
@@ -434,6 +510,21 @@ export class TabManager {
       } else if (k === 't' && !input.shift) {
         _e.preventDefault()
         this.ouvrir(URL_NEWTAB)
+      } else if (k === 'f' && !input.shift) {
+        _e.preventDefault()
+        this.ouvrirRecherche()
+      }
+    })
+    attacherComportements(wc, {
+      id,
+      fenetre: this.fenetre,
+      zoomDe: this.options.zoomDe,
+      rechercheUrl: this.options.rechercheUrl,
+      envoyerAuChrome: (canal, data) => this.envoyerAuChrome(canal, data),
+      estActive: () => this.tree.toJSON().activeId === id,
+      erreur: (url) => this.vues.get(id) === vue && this.naviguer(id, url),
+      ouvrirLien: (u) => {
+        if (categorie === 'web' ? /^https?:/i.test(u) || (EN_TEST && /^file:/i.test(u)) : SCHEMAS_OUVRABLES.test(u)) this.ouvrir(u, { parentId: id })
       }
     })
     wc.on('did-create-window', (popup) => {
@@ -442,6 +533,7 @@ export class TabManager {
       pwc.once('destroyed', () => this.popups.delete(pwc))
     })
     wc.setWindowOpenHandler((details) => {
+      if (categorie === 'web' && interditAuxSites(details.url)) return { action: 'deny' }
       if (details.features) {
         return {
           action: 'allow',

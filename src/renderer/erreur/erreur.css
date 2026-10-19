@@ -1,0 +1,88 @@
+html,
+body,
+#app {
+  background: #f7f7fb;
+  color: #1c1c2e;
+  height: 100%;
+}
+.erreur {
+  min-height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  font-family: 'Manrope', -apple-system, 'Segoe UI', system-ui, sans-serif;
+}
+.erreur-carte {
+  width: min(480px, 100%);
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid #e6e6ee;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(20, 20, 46, 0.1);
+  padding: 32px 32px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.erreur-icone {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e6e6f7;
+  color: #5452c8;
+}
+.erreur-icone.danger {
+  background: #fbe9e6;
+  color: #8e2e22;
+}
+.erreur h1 {
+  margin: 8px 0 0;
+  font-size: 26px;
+  letter-spacing: -0.4px;
+}
+.erreur-texte {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #6b6b80;
+}
+.erreur-url {
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border-radius: 9px;
+  background: #f3f3f9;
+  color: #3a3a50;
+  font-size: 12.5px;
+  word-break: break-all;
+}
+.erreur-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid #d6d6e2;
+  border-radius: 9px;
+  background: #fff;
+  color: #1c1c2e;
+  font: 500 13px 'Manrope', sans-serif;
+  cursor: pointer;
+}
+.btn.pri {
+  background: #5452c8;
+  border-color: #5452c8;
+  color: #fff;
+}

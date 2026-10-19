@@ -4,6 +4,7 @@ import { Capsule } from './Capsule'
 import { Sky } from './Sky'
 import { initialiserEtat } from './state'
 import { Overlay } from './Overlay'
+import { FindBar } from './FindBar'
 
 function App() {
   const winStyle = window.lyra.plateforme === 'win32' ? ' win' : ''
@@ -13,6 +14,7 @@ function App() {
       <section class="page-zone" aria-label="Page active">
         <div class="carte">
           <Capsule />
+          <FindBar />
           {/* La vraie page est une WebContentsView posée au-dessus de cette zone. */}
           <main class="page-vide"></main>
         </div>
