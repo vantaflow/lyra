@@ -22,6 +22,8 @@ export interface EtatEtoile {
   zoom?: number
   /** La page passe par une passerelle prête (site contourné, https). */
   viaPasserelle: boolean
+  /** Lyra cherche une passerelle pour cette étoile (détection ou rotation en cours) ; absent sinon. */
+  recherchePasserelle?: boolean
 }
 
 /** État des passerelles (`passerelles:etat`, `passerelles:changed`). */
@@ -84,6 +86,10 @@ export interface AncreMenu {
   droite: number
   bas: number
   hote: string
+  /** Page https dont l'hôte peut être basculé (entrée « Passer par une passerelle »). */
+  basculable?: boolean
+  /** L'hôte est déjà dans la liste des sites contournés. */
+  contourne?: boolean
   favori: boolean
   zoom: number
 }

@@ -319,6 +319,8 @@ void app.whenReady().then(async () => {
       droite: c.x + d.droite,
       bas: c.y + d.bas,
       hote: hoteLisible(url),
+      basculable: /^https:/i.test(urlOriginale(url)) && hoteValide(hoteLisible(url)),
+      contourne: pass.contourne(urlOriginale(url)),
       favori: favoris.existe(urlOriginale(url)),
       zoom: wc?.getZoomFactor() ?? 1
     }

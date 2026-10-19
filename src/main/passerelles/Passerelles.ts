@@ -40,6 +40,8 @@ export interface CrochetsPasserelles {
   surSucces(cle: number, url: string, codeHttp?: number): void
   oublier(cle: number): void
   viaPasserelle(url: string): boolean
+  /** Une recherche de passerelle est en cours pour cette navigation (état « Recherche d'une passerelle… »). */
+  enRecherche(cle: number): boolean
 }
 
 export interface DepsPasserelles {
@@ -115,6 +117,8 @@ export class Passerelles implements CrochetsPasserelles {
   /** Hôtes en cours d'essai par la détection automatique (pas encore enregistrés). */
   private essais = new Map<string, number>()
   private navs = new Map<number, Navigation>()
+  /** Navigations (clé = webContents) qui attendent la détection ou la rotation : affichées dans la pilule. */
+  private cherche = new Set<number>()
   private persoConnue: PasserellePerso | undefined
   private taches = new Set<Promise<unknown>>()
 
@@ -210,7 +214,24 @@ export class Passerelles implements CrochetsPasserelles {
       surEchec: (c, u, code) => this.surEchec(c, u, code, o),
       surSucces: (c, u, code) => this.surSucces(c, u, code),
       oublier: (c) => this.oublier(c),
-      viaPasserelle: (u) => this.viaPasserelle(u)
+      viaPasserelle: (u) => this.viaPasserelle(u),
+      enRecherche: (c) => this.enRecherche(c)
+    }
+  }
+
+  enRecherche(cle: number): boolean {
+    return this.cherche.has(cle)
+  }
+
+  /** Exécute `fn` en signalant à la pilule qu'une passerelle est cherchée pour cette navigation. */
+  private async cherchant<T>(cle: number, fn: () => Promise<T>): Promise<T> {
+    this.cherche.add(cle)
+    this.notifier()
+    try {
+      return await fn()
+    } finally {
+      this.cherche.delete(cle)
+      this.notifier()
     }
   }
 
@@ -265,7 +286,7 @@ export class Passerelles implements CrochetsPasserelles {
         return { action: 'erreur', url: this.urlAucune(url) }
       }
       if (this.pool.length > 0) this.signalerEchec(this.pool[0])
-      await this.assurerPool()
+      await this.cherchant(cle, () => this.assurerPool())
       if (this.pool.length === 0) {
         this.terminer(cle)
         return { action: 'erreur', url: this.urlAucune(url) }
@@ -275,8 +296,12 @@ export class Passerelles implements CrochetsPasserelles {
       return { action: 'recharger' }
     }
     if (o.detection && r.passerelles && r.auto && !nav && d.schema === 'https' && estCodeBlocage(code) && hoteValide(d.hote) && !this.contourne(url)) {
-      if (!(await this.deps.testerDirect().catch(() => false))) return normale()
-      await this.assurerPool()
+      const pret = await this.cherchant(cle, async () => {
+        if (!(await this.deps.testerDirect().catch(() => false))) return false
+        await this.assurerPool()
+        return true
+      })
+      if (!pret) return normale()
       if (this.pool.length === 0 || this.navs.has(cle)) return normale()
       const hote = sansWww(d.hote)
       this.essais.set(hote, (this.essais.get(hote) ?? 0) + 1)
@@ -315,6 +340,7 @@ export class Passerelles implements CrochetsPasserelles {
 
   /** La vue a disparu : oublie sa navigation (et retire l'hôte d'essai). */
   oublier(cle: number): void {
+    this.cherche.delete(cle)
     if (this.navs.has(cle)) {
       this.terminer(cle)
       this.suivre(this.appliquer())

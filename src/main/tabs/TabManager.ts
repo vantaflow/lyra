@@ -434,6 +434,7 @@ export class TabManager {
         canGoBack: wc.navigationHistory.canGoBack(),
         canGoForward: wc.navigationHistory.canGoForward(),
         viaPasserelle: this.options.passerelles?.viaPasserelle(wc.getURL()) ?? false,
+        ...(this.options.passerelles?.enRecherche(wc.id) ? { recherchePasserelle: true } : {}),
         ...(estZoomNormal(wc.getZoomFactor()) ? {} : { zoom: wc.getZoomFactor() }),
         ...(this.inactifDepuis.has(id) ? { inactifDepuis: this.inactifDepuis.get(id) } : {}),
         ...(ex.favicon ? { favicon: ex.favicon } : {}),

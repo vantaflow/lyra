@@ -24,6 +24,10 @@ export function MenuPanel({ ancre }: { ancre: AncreMenu | null }) {
 
   if (!ancre) return <div class="pn-fond" onMouseDown={fermer}></div>
   const style = { top: `${ancre.bas + 6}px`, right: `${Math.max(8, window.innerWidth - ancre.droite)}px` }
+  const basculer = (): void => {
+    void window.lyra.invoke('passerelles:basculerSite', { hote: ancre.hote })
+    fermer()
+  }
   const Ligne = ({ label, aide, action }: { label: string; aide?: string; action?: ActionMenu }) => (
     <button class="mi" type="button" role="menuitem" aria-disabled={action ? undefined : true} onClick={action ? agir(action) : undefined}>
       {label}
@@ -58,6 +62,15 @@ export function MenuPanel({ ancre }: { ancre: AncreMenu | null }) {
         <Ligne label="Mode lecture" aide="v2" />
         <div class="sep"></div>
         <Ligne label={`Règles pour ${ancre.hote || 'ce site'}`} />
+        {ancre.basculable && (
+          <button class="mi" type="button" role="menuitem" onClick={basculer}>
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#5452C8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4 8h13l-3-3" />
+              <path d="M20 16H7l3 3" />
+            </svg>
+            <span class="mi-texte">{ancre.contourne ? 'Ne plus passer par une passerelle' : `Passer par une passerelle pour ${ancre.hote}`}</span>
+          </button>
+        )}
         <Ligne label="Style perso pour ce site" />
         <Ligne label="Outils de développement" aide={raccourci('⌥ ⌘ I')} action="devtools" />
         <div class="sep"></div>

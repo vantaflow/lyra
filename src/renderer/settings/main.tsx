@@ -7,6 +7,7 @@ import { Favoris } from './Favoris'
 import { Telechargements } from './Telechargements'
 import { General } from './General'
 import { ActionsReglages } from './ActionsReglages'
+import { Reseau } from './Reseau'
 
 interface Section {
   id: string
@@ -72,6 +73,7 @@ function App() {
         {route === 'historique' && <Historique />}
         {route === 'favoris' && <Favoris />}
         {route === 'telechargements' && <Telechargements />}
+        {route === 'reseau' && <Reseau />}
       </main>
     </div>
   )

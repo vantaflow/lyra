@@ -46,6 +46,7 @@ export function Capsule() {
   const url = etat?.url || star?.url || ''
   const p = affichagePilule(url)
   const charge = etat?.chargement ?? false
+  const via = etat?.viaPasserelle ?? false
   useEffect(() => rafraichirFavori(url), [url])
   const peutFavori = !!url && !url.startsWith('lyra://')
   const basculerFavori = (): void => {
@@ -88,7 +89,13 @@ export function Capsule() {
         </button>
       )}
       <span class="souple"></span>
-      <button class={`pilule${p.discret ? ' discrete' : ''}`} type="button" aria-label={p.etiquette} onClick={palette}>
+      <button class={`pilule${p.discret ? ' discrete' : ''}`} type="button" aria-label={p.etiquette} title={via ? 'Via une passerelle' : undefined} onClick={palette}>
+        {via && (
+          <svg class="relais" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#5452C8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Via une passerelle">
+            <path d="M4 8h13l-3-3" />
+            <path d="M20 16H7l3 3" />
+          </svg>
+        )}
         {p.icone === 'cadenas' && (
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#1E7F6C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <rect x="5" y="11" width="14" height="10" rx="2" />
@@ -111,6 +118,7 @@ export function Capsule() {
         {p.avant && <span class="alerte">{p.avant}</span>}
         <span>{p.domaine}</span>
         {p.chemin && <span class="chemin">{p.chemin}</span>}
+        {etat?.recherchePasserelle && <span class="chemin">Recherche d’une passerelle…</span>}
         {etat?.zoom !== undefined && <span class="zoom-ind">{Math.round(etat.zoom * 100)} %</span>}
       </button>
       <span class="souple"></span>

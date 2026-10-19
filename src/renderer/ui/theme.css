@@ -849,6 +849,12 @@ html.overlay #app {
   text-decoration: none;
   cursor: pointer;
 }
+.mi .mi-texte {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .mi:hover {
   background: #f1f1f8;
 }

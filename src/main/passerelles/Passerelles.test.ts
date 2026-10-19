@@ -303,6 +303,27 @@ describe('Passerelles — détection automatique', () => {
     expect(evaluer(env.sessions[0], 'https://bloque.fr/')).toContain('SOCKS5 1.1.1.1:1080')
   })
 
+  it('état « recherche » signalé pendant la détection puis retombé (clé = navigation)', async () => {
+    const { p, env } = monter()
+    p.demarrer()
+    let pendant: boolean | undefined
+    const vus: boolean[] = []
+    const dep = (p as unknown as { deps: DepsPasserelles }).deps
+    const direct = dep.testerDirect
+    dep.testerDirect = async () => {
+      pendant = p.enRecherche(5)
+      vus.push(p.enRecherche(6))
+      return direct()
+    }
+    const avant = env.etats
+    expect(await p.surEchec(5, 'https://www.bloque.fr/page', -101)).toEqual({ action: 'recharger' })
+    expect(pendant).toBe(true)
+    expect(vus).toEqual([false])
+    expect(p.enRecherche(5)).toBe(false)
+    // Au moins deux notifications : début et fin de la recherche (la pilule se met à jour).
+    expect(env.etats - avant).toBeGreaterThanOrEqual(2)
+  })
+
   it('l’essai échoue : rien n’est ajouté, page normale, une seule tentative', async () => {
     const { p, env, reseau } = monter()
     p.demarrer()

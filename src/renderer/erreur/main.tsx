@@ -32,8 +32,22 @@ const brut = params.get('type')
 const type: Type = brut === 'certificat' || brut === 'introuvable' || brut === 'passerelles' || brut === 'http' ? brut : 'reseau'
 /** Site contourné : jamais « Continuer quand même » (le processus principal refuse aussi). */
 const contourne = params.get('contourne') === '1'
+/** Site https non contourné : « Passer par une passerelle » (le processus principal revérifie). */
+const passerelle = params.get('passerelle') === '1'
 const url = params.get('url') ?? ''
-const { titre, texte } = TEXTES[type]
+const base = TEXTES[type]
+/** Libellé du design (Passerelles.dc.html) quand « Passer par une passerelle » est proposé. */
+const hoteBloque = ((): string => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return ''
+  }
+})()
+/** Blocage probable (réseau ou nom introuvable) : titre et texte du design, avec « Passer par une passerelle ». */
+const bloque = passerelle && (type === 'reseau' || type === 'introuvable') && hoteBloque !== ''
+const titre = bloque ? TEXTES.reseau.titre : base.titre
+const texte = bloque ? `${hoteBloque} ne répond pas sur ce réseau. Il est peut-être bloqué.` : base.texte
 document.title = titre
 
 const Icone = ({ danger }: { danger: boolean }) => (
@@ -72,7 +86,16 @@ function Erreur() {
         {url && <div class="erreur-url">{url}</div>}
         <p class="erreur-texte">{texte}</p>
         <div class="erreur-actions">
-          <button class="btn pri" type="button" onClick={() => void window.lyra.invoke('erreur:reessayer', { url })}>
+          {passerelle && (
+            <button class="btn pri" type="button" onClick={() => void window.lyra.invoke('erreur:passerelle', { url })}>
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 8h13l-3-3" />
+                <path d="M20 16H7l3 3" />
+              </svg>
+              Passer par une passerelle
+            </button>
+          )}
+          <button class={passerelle ? 'btn' : 'btn pri'} type="button" onClick={() => void window.lyra.invoke('erreur:reessayer', { url })}>
             Réessayer
           </button>
           {type === 'certificat' && !contourne && (

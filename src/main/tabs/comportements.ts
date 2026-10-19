@@ -60,7 +60,7 @@ export function attacherComportements(wc: WebContents, d: DepsComportements): vo
   // http vers un site contourné : arrêt immédiat et page d'explication (jamais le chemin habituel).
   const refuser = (url: string | null): void => {
     if (!url) return
-    wc.stop()
+    // Pas de wc.stop() ici : appelé dans did-start-navigation, il fait quitter Electron ; la vue est remplacée.
     setImmediate(() => d.erreur(url))
   }
   wc.on('did-start-navigation', (e) => {
