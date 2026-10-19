@@ -11,6 +11,7 @@ import type { Reglages } from '../settings/settings'
 import type { TabManager } from '../tabs/TabManager'
 import { construireMoteur, mettreAJour, type OptionsMoteur, type ResultatMoteur } from './engine'
 import { chargerListesEmbarquees, dossierListesEmbarquees } from './listes'
+import { creerMajGardee } from './majGardee'
 import { creerShields, origineDe, type Shields } from './Shields'
 
 export interface DepsBoucliers {
@@ -140,10 +141,8 @@ export async function demarrerBoucliers(deps: DepsBoucliers): Promise<Shields> {
       shields.remplacerMoteur(nouveau.moteur)
     }
   }
-  handle('shields:update', async () => {
-    await maj()
-    return stats()
-  })
+  const majGardee = creerMajGardee(async () => (await maj(), stats()), { delaiMs: 60_000 })
+  handle('shields:update', () => majGardee())
   if (process.env.LYRA_TEST !== '1') {
     setTimeout(() => void maj(), DELAI_PREMIERE_MAJ).unref()
     setInterval(() => void maj(), majHeures * 3600_000).unref()

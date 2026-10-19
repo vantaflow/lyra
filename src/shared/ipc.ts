@@ -78,7 +78,7 @@ export type Requetes = {
   'shields:toggleSite': [{ origine: string; actif: boolean }, void]
   'shields:stats': [void, StatsBoucliers]
   /** Relit les listes de blocage maintenant ; renvoie les statistiques à jour. */
-  'shields:update': [void, StatsBoucliers]
+  'shields:update': [void, StatsBoucliers | { ignore: true; date: string }]
   /** Boîte de dialogue : dossier de téléchargement choisi, ou null si annulé. */
   'settings:choisirDossier': [void, string | null]
   /** Boîte de dialogue : enregistre les réglages en JSON ; vrai si le fichier est écrit. */

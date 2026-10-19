@@ -1,5 +1,6 @@
 html,
-body {
+body,
+#app {
   background: #f7f7fb;
   color: #1c1c2e;
 }

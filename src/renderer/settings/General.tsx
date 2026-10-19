@@ -31,7 +31,8 @@ export function General() {
   const mettreAJour = async (): Promise<void> => {
     setMaj(true)
     try {
-      setStats(await window.lyra.invoke('shields:update'))
+      const r = await window.lyra.invoke('shields:update')
+      if (!('ignore' in r)) setStats(r)
     } finally {
       setMaj(false)
     }

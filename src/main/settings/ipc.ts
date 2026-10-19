@@ -4,7 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import type { Settings } from '../../shared/types'
 import { handle } from '../ipc'
 import type { Reglages } from './settings'
-import { validerPatch } from './validate'
+import { patchImporte } from './import'
 
 const TAILLE_MAX_IMPORT = 1_000_000
 
@@ -43,7 +43,7 @@ export function installerReglagesIpc(reglages: Reglages): void {
     try {
       const brut = await readFile(r.filePaths[0], 'utf8')
       if (brut.length > TAILLE_MAX_IMPORT) return null
-      return reglages.setSettings(validerPatch(JSON.parse(brut)) as Partial<Settings>)
+      return reglages.setSettings(patchImporte(JSON.parse(brut)))
     } catch {
       return null
     }
