@@ -8,6 +8,7 @@ import { copyFile, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
 import { ErreurImport } from './types'
+import type { CodeErreurImport } from './types'
 
 export interface OptionsCopie {
   /** Nom affiché du navigateur source, pour les messages (« Fermez Chrome puis réessayez »). */
@@ -36,6 +37,14 @@ export function raisonErreurFichier(err: unknown, nomFichier: string, navigateur
   return `Lecture impossible (${nomFichier}) : ${code ?? (err instanceof Error ? err.message : String(err))}.`
 }
 
+/** Nature de l'erreur (fichier verrouillé par le navigateur ouvert, ou absent), `undefined` pour les autres. */
+export function codeErreurFichier(err: unknown): CodeErreurImport | undefined {
+  const code = (err as NodeJS.ErrnoException | null)?.code
+  if (code === 'ENOENT' || code === 'ENOTDIR') return 'absent'
+  if (code === 'EBUSY' || code === 'EPERM' || code === 'EACCES') return 'verrouille'
+  return undefined
+}
+
 /** Dossier temporaire de l'import : les copies y vivent, le tout est supprimé par `avecCopieur`. */
 export class Copieur {
   private n = 0
@@ -56,7 +65,7 @@ export class Copieur {
     try {
       await copyFile(source, fichier)
     } catch (e) {
-      throw new ErreurImport(raisonErreurFichier(e, nom, this.opts.navigateur, this.opts.plateforme), { cause: e })
+      throw new ErreurImport(raisonErreurFichier(e, nom, this.opts.navigateur, this.opts.plateforme), { cause: e, code: codeErreurFichier(e) })
     }
     const copies: FichiersCopies = { fichier }
     for (const [cle, suffixe] of [['wal', '-wal'], ['journal', '-journal']] as const) {
@@ -76,7 +85,7 @@ export class Copieur {
     try {
       return await readFile(fichier)
     } catch (e) {
-      throw new ErreurImport(raisonErreurFichier(e, basename(source), this.opts.navigateur, this.opts.plateforme), { cause: e })
+      throw new ErreurImport(raisonErreurFichier(e, basename(source), this.opts.navigateur, this.opts.plateforme), { cause: e, code: codeErreurFichier(e) })
     }
   }
 

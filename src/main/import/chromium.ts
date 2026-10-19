@@ -319,7 +319,20 @@ async function lireOnglets(c: Contexte): Promise<OngletsImportes> {
   }
   let derniere = 'Fichier de session illisible.'
   for (const f of candidats.slice(0, 3)) {
-    const resultat = lireSessionSnss(await c.copieur.lire(join(dossier, f)))
+    let octets: Buffer
+    try {
+      octets = await c.copieur.lire(join(dossier, f))
+    } catch (e) {
+      // Chromium garde le fichier de la session en cours ouvert en exclusivité (constaté sous Windows : Edge, Vivaldi) :
+      // contrairement à l'historique, les onglets ouverts ne sont lisibles qu'une fois le navigateur fermé. On ne se
+      // rabat pas sur une session plus ancienne, qui donnerait des onglets périmés.
+      if (e instanceof ErreurImport && e.code === 'verrouille') {
+        const nom = navigateur(c)
+        throw new ErreurImport(`Les onglets ouverts de ${nom} ne sont lisibles que navigateur fermé : fermez ${nom} puis réessayez.`, { cause: e, code: 'verrouille' })
+      }
+      throw e
+    }
+    const resultat = lireSessionSnss(octets)
     if (!estIndisponible(resultat)) return resultat
     derniere = resultat.raison
   }
@@ -392,7 +405,7 @@ async function lireExtensions(c: Contexte): Promise<ExtensionImportee[]> {
   for (const [id, brut] of Object.entries(reglages)) {
     const entree = objet(brut)
     if (!ID_EXTENSION.test(id) || !entree) continue
-    if (EMPLACEMENTS_IGNORES.has(Number(entree.location))) continue
+    if (typeof entree.location !== 'number' || EMPLACEMENTS_IGNORES.has(entree.location)) continue // sans emplacement : simple reste de réglages, pas une extension installée
     const manifest = objet(entree.manifest)
     if (manifest?.theme || manifest?.app) continue // thèmes et anciennes applications Chrome
     const miseAJour = String(manifest?.update_url ?? '')

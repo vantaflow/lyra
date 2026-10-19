@@ -59,14 +59,20 @@ export const indisponible = (raison: string): Indisponible => ({ indisponible: t
 export const estIndisponible = (v: unknown): v is Indisponible =>
   typeof v === 'object' && v !== null && (v as Indisponible).indisponible === true && typeof (v as Indisponible).raison === 'string'
 
+/** Nature d'une erreur de lecture quand l'appelant peut vouloir reformuler le message. */
+export type CodeErreurImport = 'verrouille' | 'absent'
+
 /** Erreur de lecture dont le message est destiné à l'utilisateur (`raison`), jamais un crash. */
 export class ErreurImport extends Error {
+  readonly code?: CodeErreurImport
+
   constructor(
     readonly raison: string,
-    options?: { cause?: unknown }
+    options?: { cause?: unknown; code?: CodeErreurImport }
   ) {
-    super(raison, options)
+    super(raison, options?.cause === undefined ? undefined : { cause: options.cause })
     this.name = 'ErreurImport'
+    this.code = options?.code
   }
 }
 
