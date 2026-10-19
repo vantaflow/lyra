@@ -118,7 +118,7 @@ export class Passerelles implements CrochetsPasserelles {
   private essais = new Map<string, number>()
   private navs = new Map<number, Navigation>()
   /** Navigations (clé = webContents) qui attendent la détection ou la rotation : affichées dans la pilule. */
-  private cherche = new Set<number>()
+  private cherche = new Map<number, number>()
   private persoConnue: PasserellePerso | undefined
   private taches = new Set<Promise<unknown>>()
 
@@ -220,17 +220,19 @@ export class Passerelles implements CrochetsPasserelles {
   }
 
   enRecherche(cle: number): boolean {
-    return this.cherche.has(cle)
+    return (this.cherche.get(cle) ?? 0) > 0
   }
 
   /** Exécute `fn` en signalant à la pilule qu'une passerelle est cherchée pour cette navigation. */
   private async cherchant<T>(cle: number, fn: () => Promise<T>): Promise<T> {
-    this.cherche.add(cle)
+    this.cherche.set(cle, (this.cherche.get(cle) ?? 0) + 1)
     this.notifier()
     try {
       return await fn()
     } finally {
-      this.cherche.delete(cle)
+      const n = (this.cherche.get(cle) ?? 1) - 1
+      if (n > 0) this.cherche.set(cle, n)
+      else this.cherche.delete(cle)
       this.notifier()
     }
   }
@@ -367,6 +369,18 @@ export class Passerelles implements CrochetsPasserelles {
       this.deps.ecrireSites([...r.sites, { hote, origine, date: this.deps.maintenant() }])
     }
     return this.etat()
+  }
+
+  /** « Passer par une passerelle » (page d'erreur) : ajoute l'hôte https ; message lisible si l'ajout est refusé. */
+  ajouterDepuisErreur(url: string): { ok: boolean; erreur?: string } {
+    const d = decouper(url)
+    if (!d || d.schema !== 'https' || !this.deps.reseau().passerelles || !hoteValide(d.hote)) return { ok: false }
+    try {
+      this.ajouter(d.hote)
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, erreur: e instanceof Error ? e.message : String(e) }
+    }
   }
 
   retirer(saisie: string): EtatPasserelles {

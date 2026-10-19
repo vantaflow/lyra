@@ -1,4 +1,6 @@
 import { render } from 'preact'
+import { useState } from 'preact/hooks'
+import { messageErreur } from '../ui/messageErreur'
 import '../ui/theme.css'
 import './erreur.css'
 
@@ -78,6 +80,12 @@ const Icone = ({ danger }: { danger: boolean }) => (
 )
 
 function Erreur() {
+  const [refus, setRefus] = useState('')
+  const passer = (): void =>
+    void window.lyra.invoke('erreur:passerelle', { url }).then(
+      (r) => setRefus(r?.erreur ?? ''),
+      (e) => setRefus(messageErreur(e))
+    )
   return (
     <main class="erreur">
       <section class="erreur-carte">
@@ -85,9 +93,14 @@ function Erreur() {
         <h1>{titre}</h1>
         {url && <div class="erreur-url">{url}</div>}
         <p class="erreur-texte">{texte}</p>
+        {refus && (
+          <p class="erreur-refus" role="alert">
+            {refus}
+          </p>
+        )}
         <div class="erreur-actions">
           {passerelle && (
-            <button class="btn pri" type="button" onClick={() => void window.lyra.invoke('erreur:passerelle', { url })}>
+            <button class="btn pri" type="button" onClick={passer}>
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M4 8h13l-3-3" />
                 <path d="M20 16H7l3 3" />

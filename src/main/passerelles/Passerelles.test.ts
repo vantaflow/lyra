@@ -414,6 +414,20 @@ describe('Passerelles — passerelle personnelle', () => {
   })
 })
 
+describe('Passerelles — ajout depuis la page d’erreur', () => {
+  it('ajoute un hôte https ; refuse le reste ; message lisible si la liste est pleine', () => {
+    const { p, reseau, modifier } = monter()
+    expect(p.ajouterDepuisErreur('https://www.bloque.fr/x')).toEqual({ ok: true })
+    expect(reseau().sites.map((s) => s.hote)).toEqual(['bloque.fr'])
+    expect(p.ajouterDepuisErreur('http://clair.fr/')).toEqual({ ok: false })
+    expect(p.ajouterDepuisErreur('https://127.0.0.1/')).toEqual({ ok: false })
+    modifier({ sites: Array.from({ length: 500 }, (_, i) => site(`s${i}.fr`)) })
+    expect(p.ajouterDepuisErreur('https://nouveau.fr/')).toEqual({ ok: false, erreur: 'Liste pleine (500 sites)' })
+    modifier({ passerelles: false })
+    expect(p.ajouterDepuisErreur('https://autre.fr/')).toEqual({ ok: false })
+  })
+})
+
 describe('Passerelles — certificats', () => {
   it('site contourné : page de certificat sans « Continuer », jamais d’exception', async () => {
     const { p } = monter({ sites: [site('a.fr')] })

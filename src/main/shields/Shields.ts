@@ -28,6 +28,11 @@ export interface OptionsShields {
   reglages: () => Settings
   /** Appelé quand le compteur d'un onglet change (blocage ou remise à zéro). */
   onCompteur?: (wcId: number) => void
+  /**
+   * Garde appelée en tête de l'écouteur `onBeforeRequest` (il n'y en a qu'un par session) : vrai = requête
+   * annulée, avant le moteur et même si les Boucliers sont désactivés pour le site.
+   */
+  garde?: (d: { url: string; resourceType?: string }) => boolean
 }
 
 export interface DemandeStyles {
@@ -95,6 +100,7 @@ export function creerShields(opts: OptionsShields): Shields {
     fromElectronDetails({ ...d, referrer: d.referrer || (WEB.test(haut) ? haut : '') } as OnBeforeRequestListenerDetails)
 
   const avant = (d: OnBeforeRequestListenerDetails, cb: (r: ReponseAvant) => void): void => {
+    if (opts.garde?.(d)) return cb({ cancel: true })
     if (estExtension(d) || !FILTRABLE.test(d.url)) return cb({})
     if (d.resourceType === 'mainFrame') {
       // La navigation elle-même n'est jamais bloquée ; elle remet le compteur de l'onglet à zéro.

@@ -20,6 +20,8 @@ export interface DepsBoucliers {
   cacheDir: string
   onglets(): Iterable<TabManager>
   ongletsDe(wc: WebContents): TabManager
+  /** Annule une requête avant le moteur de blocage (ex. http vers un site contourné). */
+  garde?: (d: { url: string; resourceType?: string }) => boolean
 }
 
 const DELAI_PREMIERE_MAJ = 30_000
@@ -48,6 +50,7 @@ export async function demarrerBoucliers(deps: DepsBoucliers): Promise<Shields> {
   const shields = creerShields({
     moteurInitial: actuel.moteur,
     reglages: () => deps.reglages.getSettings(),
+    garde: deps.garde,
     onCompteur: (wcId) => {
       if (minuteurs.has(wcId)) return
       minuteurs.set(

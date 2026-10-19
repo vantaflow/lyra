@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'preact/hooks'
 import type { ActionMenu, AncreMenu } from '../../shared/ipc'
+import { messageErreur } from './messageErreur'
 import { raccourci } from './raccourcis'
 
 /** Menu ⋯ de la capsule (fidèle à docs/design/project/Panneaux.dc.html, section « Menu ⋯ de la capsule »). */
 export function MenuPanel({ ancre }: { ancre: AncreMenu | null }) {
   const [zoom, setZoom] = useState(ancre?.zoom ?? 1)
+  const [refus, setRefus] = useState('')
   useEffect(() => setZoom(ancre?.zoom ?? 1), [ancre])
   useEffect(() => {
     const touche = (e: KeyboardEvent): void => {
@@ -24,10 +26,8 @@ export function MenuPanel({ ancre }: { ancre: AncreMenu | null }) {
 
   if (!ancre) return <div class="pn-fond" onMouseDown={fermer}></div>
   const style = { top: `${ancre.bas + 6}px`, right: `${Math.max(8, window.innerWidth - ancre.droite)}px` }
-  const basculer = (): void => {
-    void window.lyra.invoke('passerelles:basculerSite', { hote: ancre.hote })
-    fermer()
-  }
+  const basculer = (): void =>
+    void window.lyra.invoke('passerelles:basculerSite', { hote: ancre.hote }).then(fermer, (e) => setRefus(messageErreur(e)))
   const Ligne = ({ label, aide, action }: { label: string; aide?: string; action?: ActionMenu }) => (
     <button class="mi" type="button" role="menuitem" aria-disabled={action ? undefined : true} onClick={action ? agir(action) : undefined}>
       {label}
@@ -70,6 +70,13 @@ export function MenuPanel({ ancre }: { ancre: AncreMenu | null }) {
             </svg>
             <span class="mi-texte">{ancre.contourne ? 'Ne plus passer par une passerelle' : `Passer par une passerelle pour ${ancre.hote}`}</span>
           </button>
+        )}
+        {refus && (
+          <div class="mi mi-refus" role="alert">
+            <span class="mi-texte" title={refus}>
+              {refus}
+            </span>
+          </div>
         )}
         <Ligne label="Style perso pour ce site" />
         <Ligne label="Outils de développement" aide={raccourci('⌥ ⌘ I')} action="devtools" />

@@ -5,6 +5,7 @@ import { computeLayout, type Layout } from './layout'
 import type { Settings } from '../../shared/types'
 import type { RouteOverlay } from '../../shared/ipc'
 import { envoyer } from '../ipc'
+import { optionsFenetreCachee, prefsPageCachee } from '../modeTest'
 
 export interface LyraWindow {
   id: number
@@ -30,7 +31,7 @@ function charger(vue: WebContentsView, hash = ''): void {
 
 function creerVueUI(): WebContentsView {
   return new WebContentsView({
-    webPreferences: { preload: PRELOAD_UI, sandbox: true, contextIsolation: true }
+    webPreferences: { preload: PRELOAD_UI, sandbox: true, contextIsolation: true, ...prefsPageCachee() }
   })
 }
 
@@ -45,6 +46,7 @@ export class WindowManager {
       width: 1280,
       height: 800,
       title: 'Lyra',
+      ...optionsFenetreCachee(),
       ...(process.platform === 'darwin'
         ? { titleBarStyle: 'hidden' as const, trafficLightPosition: { x: 14, y: 14 } }
         : {}),

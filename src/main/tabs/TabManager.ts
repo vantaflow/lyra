@@ -8,6 +8,7 @@ import type { FenetreSession, HistoriqueEtoile } from '../session/SessionStore'
 import { categorieDe, type Categorie } from './categorie'
 import { origineDe } from '../shields/Shields'
 import { estZoomNormal, palierSuivant } from './zoom'
+import { optionsFenetreCachee, prefsPageCachee, testCache } from '../modeTest'
 import { estUrlErreur, urlOriginale } from './erreurs'
 import { arreter as arreterRechercheWc, rechercher as rechercherWc } from './find'
 import { attacherComportements } from './comportements'
@@ -473,7 +474,8 @@ export class TabManager {
         // iframes (toujours en sandbox, sans Node) : les scriptlets couvrent ainsi les lecteurs intégrés.
         preload: interne ? PRELOAD_INTERNAL : PRELOAD_PAGE,
         nodeIntegrationInSubFrames: !interne,
-        additionalArguments: interne ? [] : ARGS_TEST
+        additionalArguments: interne ? [] : ARGS_TEST,
+        ...prefsPageCachee()
       }
     })
     const wc = vue.webContents
@@ -565,7 +567,9 @@ export class TabManager {
           overrideBrowserWindowOptions: {
             width: 500,
             height: 640,
-            webPreferences: { sandbox: true, contextIsolation: true, preload: PRELOAD_PAGE, nodeIntegrationInSubFrames: true, additionalArguments: ARGS_TEST }
+            ...optionsFenetreCachee(),
+            ...(testCache() ? { paintWhenInitiallyHidden: true } : {}),
+            webPreferences: { sandbox: true, contextIsolation: true, preload: PRELOAD_PAGE, nodeIntegrationInSubFrames: true, additionalArguments: ARGS_TEST, ...prefsPageCachee() }
           }
         }
       }

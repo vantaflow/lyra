@@ -174,8 +174,6 @@ test('réglages : interrupteurs, ajout et retrait d’un site, refus lisible, pa
   const pass = await lancerPasserelle()
   const { app, fenetre } = await lancerLyra(env())
   try {
-    // Le nouvel onglet de départ doit avoir fini de charger (sinon il remplace la navigation).
-    await expect.poll(() => trouver(app, 'lyra://newtab')).toBeDefined()
     await fenetre.evaluate(() => window.lyra.invoke('test:navigate', 'lyra://settings#/reseau'))
     await expect.poll(() => trouver(app, 'lyra://settings')).toBeDefined()
     const r = trouver(app, 'lyra://settings')!

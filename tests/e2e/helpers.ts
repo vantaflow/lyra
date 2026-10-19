@@ -26,6 +26,8 @@ export async function lancerLyra(
   for (let i = 0; i < 100 && !app.windows().some(estUI); i++) await new Promise((r) => setTimeout(r, 100))
   const fenetre = app.windows().find(estUI)!
   await fenetre.waitForLoadState('domcontentloaded')
+  // Le nouvel onglet de départ doit avoir fini de charger (sinon il remplace une navigation lancée aussitôt).
+  if (!options.premierLancement) for (let i = 0; i < 100 && !app.windows().some((p) => p.url().startsWith('lyra://newtab')); i++) await new Promise((r) => setTimeout(r, 100))
   // Hors test dédié, le choix du moteur (premier lancement) est déjà fait : il n'interfère pas.
   if (!options.premierLancement) await fenetre.evaluate(() => window.lyra.invoke('settings:set', { moteurChoisi: true }))
   return { app, fenetre }

@@ -86,3 +86,9 @@ body,
   border-color: #5452c8;
   color: #fff;
 }
+.erreur-refus {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #8e2e22;
+}

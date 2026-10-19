@@ -60,7 +60,9 @@ export function attacherComportements(wc: WebContents, d: DepsComportements): vo
   // http vers un site contourné : arrêt immédiat et page d'explication (jamais le chemin habituel).
   const refuser = (url: string | null): void => {
     if (!url) return
-    // Pas de wc.stop() ici : appelé dans did-start-navigation, il fait quitter Electron ; la vue est remplacée.
+    // Pas de wc.stop() : appelé dans did-start-navigation, il faisait quitter Electron (cause non élucidée ;
+    // piste : arrêt réentrant d'une navigation en cours de démarrage, suivi de la fermeture de la vue).
+    // Le blocage est assuré par `garde` (onBeforeRequest, Boucliers) et par le PAC.
     setImmediate(() => d.erreur(url))
   }
   wc.on('did-start-navigation', (e) => {
@@ -74,6 +76,9 @@ export function attacherComportements(wc: WebContents, d: DepsComportements): vo
   })
   wc.on('did-fail-load', (_e, code, _desc, urlEchec, principal) => {
     if (!principal || code === -3 || !/^(https?|file):/i.test(urlEchec)) return
+    // Requête annulée par la garde http : page d'explication, jamais la page générique.
+    const refus = p?.refusHttp(urlEchec)
+    if (refus) return refuser(refus)
     if (!p || !d.recharger) {
       setImmediate(() => d.erreur(urlErreur(typeErreur(code), urlEchec)))
       return

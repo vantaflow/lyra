@@ -53,6 +53,27 @@ beforeEach(() => {
   shields.attacher(ses)
 })
 
+describe('Shields garde', () => {
+  it('annule avant le moteur, sous-ressources et cadre principal, même Boucliers désactivés', () => {
+    const vus: string[] = []
+    const s = creerShields({
+      moteurInitial: moteurFixture(),
+      reglages: () => ({ ...reglages, sites: { 'https://site.test': { boucliers: false } } }),
+      garde: (d) => {
+        vus.push(d.url)
+        return d.url.startsWith('http://clair.test')
+      }
+    })
+    const f = fausseSession()
+    s.attacher(f)
+    expect(envoyer(f, requete('http://clair.test/x.js'))).toEqual({ cancel: true })
+    expect(envoyer(f, requete('http://clair.test/', { resourceType: 'mainFrame' }))).toEqual({ cancel: true })
+    expect(envoyer(f, requete('https://site.test/app.js'))).toEqual({})
+    expect(vus).toHaveLength(3)
+    expect(s.bloques(7)).toBe(0)
+  })
+})
+
 describe('Shields.attacher', () => {
   it('annule une requête de pub', () => {
     expect(envoyer(ses, requete('https://ads.exemple.test/pub.js'))).toEqual({ cancel: true })

@@ -855,6 +855,15 @@ html.overlay #app {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.mi.mi-refus {
+  height: auto;
+  min-height: 34px;
+  color: #8e2e22;
+  font-size: 12.5px;
+}
+.mi.mi-refus .mi-texte {
+  white-space: normal;
+}
 .mi:hover {
   background: #f1f1f8;
 }

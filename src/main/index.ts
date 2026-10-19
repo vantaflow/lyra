@@ -301,11 +301,11 @@ void app.whenReady().then(async () => {
   handle('erreur:passerelle', (_d, e) => {
     // Même garde que « continuer » : l'adresse vient de la page d'erreur expéditrice, jamais des données.
     const p = pageErreur(e.sender)
-    if (!p || !/^https:/i.test(p.url) || !reglages.getSettings().reseau.passerelles) return
-    const hote = new URL(p.url).hostname
-    if (!hoteValide(hote)) return
-    pass.ajouter(hote)
-    p.m.naviguer(p.id, p.url)
+    if (!p) return {}
+    const r = pass.ajouterDepuisErreur(p.url)
+    if (r.erreur) return { erreur: r.erreur }
+    if (r.ok) p.m.naviguer(p.id, p.url)
+    return {}
   })
   handle('menu:open', (d, e) => {
     const f = manager.deWebContents(e.sender) ?? manager.premiere()
@@ -353,7 +353,9 @@ void app.whenReady().then(async () => {
     sessions: [session.defaultSession, session.fromPartition('persist:lyra')],
     cacheDir: join(paths.userData(), 'shields'),
     onglets: () => onglets.values(),
-    ongletsDe
+    ongletsDe,
+    // http/ws vers un site contourné : annulé avant tout envoi, quel que soit l'état (asynchrone) du PAC.
+    garde: (d) => /^(http|ws):/i.test(d.url) && pass.refusHttp(d.url) !== null
   })
   // Laisse les écritures de l'historique se terminer avant de quitter (une seule fois).
   let ecrituresAttendues = false

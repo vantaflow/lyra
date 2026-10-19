@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks'
 import type { EtatPasserelles } from '../../shared/ipc'
 import type { PasserellePerso, Settings } from '../../shared/types'
 import { Interrupteur, Ligne, Segments, Titre } from './controles'
+import { messageErreur } from '../ui/messageErreur'
 import './reseau.css'
 
 /** Réglages « Réseau et identité » (fidèle à docs/design/project/Passerelles.dc.html). */
@@ -16,12 +17,6 @@ const Relais = ({ taille = 14 }: { taille?: number }) => (
 const deux = (n: number): string => String(n).padStart(2, '0')
 const jour = (d: Date): string => `${deux(d.getDate())}/${deux(d.getMonth() + 1)}`
 const heure = (d: Date): string => `${deux(d.getHours())}:${deux(d.getMinutes())}`
-
-/** Message d'une erreur IPC sans l'enrobage « Error invoking remote method … ». */
-export function messageErreur(e: unknown): string {
-  const m = e instanceof Error ? e.message : String(e)
-  return m.replace(/^Error invoking remote method '[^']*':\s*/, '').replace(/^Error:\s*/, '')
-}
 
 interface Etiquette {
   texte: string

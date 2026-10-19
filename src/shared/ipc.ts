@@ -174,7 +174,8 @@ export type Requetes = {
   /** Page d'erreur Lyra : accepte le certificat de l'hôte pour la session puis recharge. */
   'erreur:continuer': [{ url: string }, void]
   /** Page d'erreur Lyra : ajoute l'hôte de la page (son URL, jamais les données) aux sites contournés puis recharge. */
-  'erreur:passerelle': [{ url: string }, void]
+  /** Réponse `{ erreur }` : l'ajout a été refusé (liste pleine…), message à afficher sur la page. */
+  'erreur:passerelle': [{ url: string }, { erreur?: string }]
   'passerelles:etat': [void, EtatPasserelles]
   /** Ajoute un site (hôte ou adresse https) ; lève une erreur expliquée si la saisie est refusée. */
   'passerelles:ajouter': [{ hote: string }, EtatPasserelles]
