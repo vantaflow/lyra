@@ -119,13 +119,11 @@ export function creerShields(opts: OptionsShields): Shields {
     if (!estActif(origineDe(haut))) return cb({})
     const csp = moteur.getCSPDirectives(requeteGhostery(d, haut))
     if (csp === undefined) return cb({})
-    const politiques = csp.split(';').map((p) => p.trim())
-    const responseHeaders: Record<string, string[]> = {}
-    for (const [nom, valeurs] of Object.entries(d.responseHeaders ?? {})) {
-      if (nom.toLowerCase() === 'content-security-policy') politiques.push(...valeurs)
-      else responseHeaders[nom] = valeurs
-    }
-    responseHeaders['Content-Security-Policy'] = [politiques.join(';')]
+    // Valeur d'en-tête supplémentaire : chaque politique s'applique indépendamment (concaténer avec « ; »
+    // ferait ignorer les directives en double, donc affaiblirait la CSP du site).
+    const responseHeaders: Record<string, string[]> = { ...(d.responseHeaders ?? {}) }
+    const cle = Object.keys(responseHeaders).find((k) => k.toLowerCase() === 'content-security-policy') ?? 'Content-Security-Policy'
+    responseHeaders[cle] = [...(responseHeaders[cle] ?? []), csp]
     cb({ responseHeaders })
   }
 

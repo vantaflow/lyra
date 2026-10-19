@@ -118,6 +118,34 @@ describe('Shields.attacher', () => {
   })
 })
 
+describe('Shields CSP', () => {
+  const reponse = (moteur: ElectronBlocker, entetes: Record<string, string[]>) => {
+    const sh = creerShields({ moteurInitial: moteur, reglages: () => reglages })
+    const s = fausseSession()
+    sh.attacher(s)
+    let r: Parameters<Rappel>[0] | undefined
+    s.entetes!(requete('https://site.test/', { resourceType: 'mainFrame', responseHeaders: entetes }), (x) => (r = x))
+    return r!
+  }
+  const csp = () => ElectronBlocker.parse('||site.test^$csp=script-src-elem none', CONFIG_MOTEUR)
+
+  it('ajoute la politique du moteur comme valeur séparée, sans toucher celles du site', () => {
+    const r = reponse(csp(), { 'Content-Security-Policy': ["default-src 'self'"], 'X-Autre': ['1'] })
+    expect(r.responseHeaders).toEqual({
+      'Content-Security-Policy': ["default-src 'self'", 'script-src-elem none'],
+      'X-Autre': ['1']
+    })
+  })
+
+  it('crée l’en-tête si le site n’en a pas', () => {
+    expect(reponse(csp(), {}).responseHeaders).toEqual({ 'Content-Security-Policy': ['script-src-elem none'] })
+  })
+
+  it('ne touche à rien sans directive du moteur', () => {
+    expect(reponse(moteurFixture(), { 'content-security-policy': ["default-src 'self'"] })).toEqual({})
+  })
+})
+
 describe('Shields cosmétique', () => {
   it('styles du site, vides si le bouclier est désactivé', () => {
     expect(shields.styles({ url: 'https://exemple.test/', urlPremierNiveau: 'https://exemple.test/' })).toContain('.bandeau-pub')

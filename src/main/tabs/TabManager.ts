@@ -3,6 +3,7 @@ import type { LyraWindow } from '../window/WindowManager'
 import { PRELOAD_INTERNAL, PRELOAD_PAGE } from '../preloads'
 import { envoyer } from '../ipc'
 import { TabTree } from './TabTree'
+import { categorieDe, type Categorie } from './categorie'
 import type { CanalEvenement, EtatEtoile, Evenements, RouteOverlay, SkyChange } from '../../shared/ipc'
 
 const URL_NEWTAB = 'lyra://newtab'
@@ -13,15 +14,20 @@ interface Extras {
   couleur?: string
 }
 
+/** Drapeau transmis aux preloads web : la sonde window.__lyraShields n'existe qu'en test. */
+const ARGS_TEST = process.env.LYRA_TEST === '1' ? ['--lyra-test'] : []
+
 /**
- * Une WebContentsView par étoile. Limite connue : le preload est fixé à la création de la vue,
- * donc une étoile créée sur une page web n'a jamais l'API window.lyra, même si on la navigue
- * ensuite vers lyra://, et inversement (une étoile lyra:// garde le preload interne).
+ * Une WebContentsView par étoile. Le preload est fixé à la création de la vue : une vue `interne`
+ * (lyra://, preload avec window.lyra) ne montre jamais de site, une vue `web` (preload des Boucliers)
+ * jamais de page lyra://. Quand une navigation change de catégorie, la vue est recréée (l'historique
+ * Précédent/Suivant repart alors de zéro) ; une page web ne peut pas naviguer d'elle-même vers lyra://.
  */
 export class TabManager {
   readonly tree = new TabTree()
   private vues = new Map<string, WebContentsView>()
   private extras = new Map<string, Extras>()
+  private categories = new Map<string, Categorie>()
   /** Popups ouvertes depuis nos pages (OAuth…) : ce sont aussi des pages web. */
   private popups = new Set<WebContents>()
   private minuteur: NodeJS.Timeout | undefined
@@ -51,6 +57,7 @@ export class TabManager {
     const { suivantActif } = this.tree.fermer(id)
     this.vues.delete(id)
     this.extras.delete(id)
+    this.categories.delete(id)
     this.fenetre.win.contentView.removeChildView(vue)
     if (!vue.webContents.isDestroyed()) vue.webContents.close()
     if (this.vues.size === 0) {
@@ -72,12 +79,28 @@ export class TabManager {
   }
 
   naviguer(id: string, url: string): void {
-    void this.vues.get(id)?.webContents.loadURL(url).catch(() => undefined)
+    void this.vueAdaptee(id, url)?.webContents.loadURL(url).catch(() => undefined)
   }
 
   /** Navigue et attend la fin du chargement (test:navigate). */
   async naviguerEtAttendre(id: string, url: string): Promise<void> {
-    await this.vues.get(id)?.webContents.loadURL(url).catch(() => undefined)
+    await this.vueAdaptee(id, url)?.webContents.loadURL(url).catch(() => undefined)
+  }
+
+  /** Vue de l'étoile, recréée avec le bon preload si `url` change de catégorie (interne / web). */
+  private vueAdaptee(id: string, url: string): WebContentsView | undefined {
+    const ancienne = this.vues.get(id)
+    if (!ancienne || this.categories.get(id) === categorieDe(url)) return ancienne
+    const vue = this.creerVue(id, url)
+    this.vues.set(id, vue)
+    this.extras.delete(id)
+    if (this.tree.toJSON().activeId === id) {
+      this.fenetre.setPageView(vue)
+      vue.webContents.focus()
+    }
+    if (!ancienne.webContents.isDestroyed()) ancienne.webContents.close()
+    this.notifier()
+    return vue
   }
 
   precedent(id: string): void {
@@ -208,7 +231,9 @@ export class TabManager {
   }
 
   private creerVue(id: string, url: string): WebContentsView {
-    const interne = url.startsWith('lyra://')
+    const categorie = categorieDe(url)
+    const interne = categorie === 'interne'
+    this.categories.set(id, categorie)
     const vue = new WebContentsView({
       webPreferences: {
         session: session.fromPartition('persist:lyra'),
@@ -218,10 +243,23 @@ export class TabManager {
         // qui l'exécuterait une seconde fois). nodeIntegrationInSubFrames le fait aussi tourner dans les
         // iframes (toujours en sandbox, sans Node) : les scriptlets couvrent ainsi les lecteurs intégrés.
         preload: interne ? PRELOAD_INTERNAL : PRELOAD_PAGE,
-        nodeIntegrationInSubFrames: !interne
+        nodeIntegrationInSubFrames: !interne,
+        additionalArguments: interne ? [] : ARGS_TEST
       }
     })
     const wc = vue.webContents
+    // Navigation lancée par la page : jamais d'un site vers lyra:// ; une page interne qui ouvre un site
+    // passe par naviguer(), qui recrée la vue avec le preload web (window.lyra n'est jamais exposé à un site).
+    const garde = (e: { url: string; preventDefault(): void }, relancer: boolean): void => {
+      if (categorieDe(e.url) === categorie) return
+      e.preventDefault()
+      if (relancer && interne) setImmediate(() => this.vues.get(id) === vue && this.naviguer(id, e.url))
+    }
+    wc.on('will-navigate', (e) => garde(e, true))
+    wc.on('will-redirect', (e) => garde(e, false))
+    wc.on('will-frame-navigate', (e) => {
+      if (!e.isMainFrame && !interne && categorieDe(e.url) === 'interne') e.preventDefault()
+    })
     const maj = (): void => {
       const star = this.tree.star(id)
       if (star) {
@@ -271,7 +309,7 @@ export class TabManager {
           overrideBrowserWindowOptions: {
             width: 500,
             height: 640,
-            webPreferences: { sandbox: true, contextIsolation: true, preload: PRELOAD_PAGE, nodeIntegrationInSubFrames: true }
+            webPreferences: { sandbox: true, contextIsolation: true, preload: PRELOAD_PAGE, nodeIntegrationInSubFrames: true, additionalArguments: ARGS_TEST }
           }
         }
       }

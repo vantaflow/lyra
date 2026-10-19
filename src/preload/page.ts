@@ -16,7 +16,8 @@ if (WEB) {
       ipcRenderer.send('shields:scriptlet-error', noms.at(-1) ?? 'inconnu')
     })
   }
-  if (window === window.top) {
+  // Sonde de test seulement (LYRA_TEST=1 → --lyra-test) : jamais visible des sites en usage normal.
+  if (window === window.top && process.argv.includes('--lyra-test')) {
     void webFrame
       .executeJavaScript(`window.__lyraShields = Object.freeze({ scriptletsAt: ${JSON.stringify(quand)}, n: ${scripts.length} })`)
       .catch(() => undefined)
