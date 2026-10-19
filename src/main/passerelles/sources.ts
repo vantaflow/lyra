@@ -23,6 +23,8 @@ export interface OptionsCandidats {
   sources?: Source[]
   /** Délai par requête (défaut 15 s). */
   timeoutMs?: number
+  /** Source d'aléa dans [0,1) (défaut Math.random) ; injectable pour des tests déterministes. */
+  aleatoire?: () => number
 }
 
 export const DUREE_CACHE_MS = 30 * 60 * 1000
@@ -50,10 +52,10 @@ export function sourcesParDefaut(): Source[] {
   ]
 }
 
-/** `LYRA_PASSERELLES_SOURCES` (URL séparées par des virgules) remplace les sources ; protocole déduit de l'URL (« socks5 » dedans, sinon http). */
+/** `LYRA_PASSERELLES_SOURCES` (lue seulement sous LYRA_TEST=1 ; URL séparées par des virgules) remplace les sources ; protocole déduit de l'URL (« socks5 » dedans, sinon http). */
 function sourcesEffectives(fournies?: Source[]): Source[] {
   const env = process.env.LYRA_PASSERELLES_SOURCES
-  if (env && env.trim()) {
+  if (process.env.LYRA_TEST === '1' && env && env.trim()) {
     return env
       .split(',')
       .map((u) => u.trim())
@@ -63,7 +65,25 @@ function sourcesEffectives(fournies?: Source[]): Source[] {
   return fournies ?? sourcesParDefaut()
 }
 
-async function lireSource(s: Source, f: typeof fetch, timeoutMs: number): Promise<Candidat[]> {
+/** Mélange de Fisher-Yates (copie). */
+export function melanger<T>(liste: readonly T[], aleatoire: () => number = Math.random): T[] {
+  const a = [...liste]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.min(i, Math.floor(aleatoire() * (i + 1)))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
+/** Entrelacement round-robin : un élément de chaque liste à tour de rôle. */
+export function entrelacer<T>(listes: readonly (readonly T[])[]): T[] {
+  const sortie: T[] = []
+  const n = Math.max(0, ...listes.map((l) => l.length))
+  for (let i = 0; i < n; i++) for (const l of listes) if (i < l.length) sortie.push(l[i])
+  return sortie
+}
+
+async function lireSource(s: Source, f: typeof fetch, timeoutMs: number, aleatoire: () => number): Promise<Candidat[]> {
   try {
     let texte: string
     if (s.url.startsWith('file:')) texte = await readFile(fileURLToPath(s.url), 'utf8')
@@ -72,7 +92,7 @@ async function lireSource(s: Source, f: typeof fetch, timeoutMs: number): Promis
       if (!r.ok) return []
       texte = await r.text()
     }
-    return lireListe(texte, s.protocole).slice(0, MAX_PAR_SOURCE)
+    return melanger(lireListe(texte, s.protocole), aleatoire).slice(0, MAX_PAR_SOURCE)
   } catch {
     return []
   }
@@ -134,8 +154,9 @@ export async function chargerCandidats(opts: OptionsCandidats): Promise<Resultat
     if (age >= 0 && age < DUREE_CACHE_MS) return { candidats: cache.candidats, date: cache.date, source: 'cache' }
   }
   const timeoutMs = opts.timeoutMs ?? DELAI_DEFAUT_MS
-  const listes = await Promise.all(sourcesEffectives(opts.sources).map((s) => lireSource(s, opts.fetch, timeoutMs)))
-  const candidats = fusionner(...listes)
+  const aleatoire = opts.aleatoire ?? Math.random
+  const listes = await Promise.all(sourcesEffectives(opts.sources).map((s) => lireSource(s, opts.fetch, timeoutMs, aleatoire)))
+  const candidats = fusionner(entrelacer(listes))
   const date = opts.maintenant.toISOString()
   if (candidats.length > 0) {
     await ecrireCache(opts.cacheFichier, { date, candidats })

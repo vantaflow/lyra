@@ -13,38 +13,132 @@ export interface ResultatTestPasserelle {
   ms: number
 }
 
-let compteur = 0
+/** Ce dont le testeur a besoin d'une session Electron (injectable pour les tests). */
+export interface SessionTest {
+  setProxy(config: { proxyRules: string }): Promise<void>
+  fetch(url: string, init?: RequestInit): Promise<Response>
+  closeAllConnections(): Promise<void> | void
+  clearCache(): Promise<void> | void
+}
+
+/** Taille du pool = parallélisme maximal de `trouverPasserelles`. */
+export const TAILLE_POOL = 15
 
 /** Règle de proxy Chromium pour un candidat. */
 export const proxyRules = (c: Candidat): string => `${c.type === 'socks5' ? 'socks5' : 'http'}://${c.hote}:${c.port}`
 
+/** Cible de test : la variable d'environnement n'est lue que sous LYRA_TEST=1. */
+function cibleEffective(opts: OptionsTest): { cible: string; parDefaut: boolean } {
+  const fournie = opts.cible ?? (process.env.LYRA_TEST === '1' ? process.env.LYRA_PASSERELLES_CIBLE : undefined)
+  return fournie ? { cible: fournie, parDefaut: false } : { cible: CIBLE_PAR_DEFAUT, parDefaut: true }
+}
+
 /**
- * Teste une passerelle : session mémoire isolée (jamais `persist:`), proxy fixé, GET de la cible ;
- * succès = 204 ou 200. La session est nettoyée ensuite. Ne lève jamais. Electron chargé à l'appel
- * (le module reste importable sous vitest).
+ * Pool fixe d'emplacements de session (`passerelle-test-slot-<i>`) réutilisés : pas de partition
+ * créée par test. Un emprunteur attend si tous les emplacements sont pris.
  */
-export async function testerPasserelle(c: Candidat, opts: OptionsTest = {}): Promise<ResultatTestPasserelle> {
-  const timeoutMs = opts.timeoutMs ?? 6000
-  const cible = opts.cible ?? process.env.LYRA_PASSERELLES_CIBLE ?? CIBLE_PAR_DEFAUT
-  const debut = Date.now()
-  let ses: Electron.Session | undefined
-  try {
-    const { session } = await import('electron')
-    ses = session.fromPartition(`passerelle-test-${++compteur}`)
-    await ses.setProxy({ proxyRules: proxyRules(c) })
-    const r = await ses.fetch(cible, { signal: AbortSignal.timeout(timeoutMs) })
-    await r.body?.cancel().catch(() => undefined)
-    return { ok: r.status === 204 || r.status === 200, ms: Date.now() - debut }
-  } catch {
-    return { ok: false, ms: Date.now() - debut }
-  } finally {
+export class PoolSessions {
+  private readonly sessions: (SessionTest | undefined)[]
+  private readonly libres: number[]
+  private readonly attente: ((i: number) => void)[] = []
+
+  constructor(
+    private readonly taille: number,
+    private readonly fabrique: (nom: string) => Promise<SessionTest> | SessionTest
+  ) {
+    this.sessions = new Array<SessionTest | undefined>(taille).fill(undefined)
+    this.libres = Array.from({ length: taille }, (_, i) => i)
+  }
+
+  async emprunter(): Promise<{ ses: SessionTest; rendre: () => void }> {
+    const i = this.libres.length > 0 ? (this.libres.shift() as number) : await new Promise<number>((r) => this.attente.push(r))
+    let ses = this.sessions[i]
     try {
-      ses?.closeAllConnections()
-      await ses?.clearCache()
-    } catch {
-      /* session déjà détruite */
+      if (!ses) ses = this.sessions[i] = await this.fabrique(`passerelle-test-slot-${i}`)
+    } catch (e) {
+      this.restituer(i)
+      throw e
+    }
+    let rendu = false
+    return {
+      ses,
+      rendre: () => {
+        if (rendu) return
+        rendu = true
+        this.restituer(i)
+      }
     }
   }
+
+  private restituer(i: number): void {
+    const suivant = this.attente.shift()
+    if (suivant) suivant(i)
+    else this.libres.push(i)
+  }
+}
+
+/**
+ * Fabrique un testeur sur un pool d'emplacements. Succès = 204 pour la cible par défaut
+ * (200 accepté seulement pour une cible fournie), aucune redirection suivie ; le délai
+ * `timeoutMs` couvre l'ensemble (emprunt exclu) : setProxy + fetch + lecture. Ne lève jamais.
+ */
+export function creerTesteur(pool: PoolSessions): (c: Candidat, opts?: OptionsTest) => Promise<ResultatTestPasserelle> {
+  return async (c, opts = {}) => {
+    const timeoutMs = opts.timeoutMs ?? 6000
+    const { cible, parDefaut } = cibleEffective(opts)
+    let emprunt: Awaited<ReturnType<PoolSessions['emprunter']>>
+    try {
+      emprunt = await pool.emprunter()
+    } catch {
+      return { ok: false, ms: 0 }
+    }
+    const { ses, rendre } = emprunt
+    const debut = Date.now()
+    const ctrl = new AbortController()
+    let minuteur: ReturnType<typeof setTimeout> | undefined
+    const delai = new Promise<ResultatTestPasserelle>((resolve) => {
+      minuteur = setTimeout(() => {
+        ctrl.abort()
+        resolve({ ok: false, ms: Date.now() - debut })
+      }, timeoutMs)
+    })
+    const essai = (async (): Promise<ResultatTestPasserelle> => {
+      try {
+        await ses.closeAllConnections()
+        await ses.setProxy({ proxyRules: proxyRules(c) })
+        const r = await ses.fetch(cible, { signal: ctrl.signal, redirect: 'error' })
+        const ok = r.status === 204 || (!parDefaut && r.status === 200)
+        await r.body?.cancel().catch(() => undefined)
+        return { ok, ms: Date.now() - debut }
+      } catch {
+        return { ok: false, ms: Date.now() - debut }
+      }
+    })()
+    try {
+      return await Promise.race([essai, delai])
+    } finally {
+      clearTimeout(minuteur)
+      ctrl.abort()
+      try {
+        await ses.closeAllConnections()
+        await ses.clearCache()
+      } catch {
+        /* session indisponible */
+      }
+      rendre()
+    }
+  }
+}
+
+let poolElectron: PoolSessions | undefined
+
+/** Teste une passerelle sur le pool Electron (partitions mémoire, sans `persist:`). Electron chargé à l'appel. */
+export function testerPasserelle(c: Candidat, opts: OptionsTest = {}): Promise<ResultatTestPasserelle> {
+  poolElectron ??= new PoolSessions(TAILLE_POOL, async (nom) => {
+    const { session } = await import('electron')
+    return session.fromPartition(nom) as unknown as SessionTest
+  })
+  return creerTesteur(poolElectron)(c, opts)
 }
 
 export interface OptionsRecherche {
@@ -60,7 +154,7 @@ export interface OptionsRecherche {
  * Un testeur qui lève compte comme un échec.
  */
 export async function trouverPasserelles(candidats: readonly Candidat[], opts: OptionsRecherche = {}): Promise<Candidat[]> {
-  const { parallele = 15, max = 60, garder = 5, tester = (c: Candidat) => testerPasserelle(c) } = opts
+  const { parallele = TAILLE_POOL, max = 60, garder = 5, tester = (c: Candidat) => testerPasserelle(c) } = opts
   const aTester = candidats.slice(0, Math.max(0, max))
   const resultats: { candidat: Candidat; ok: boolean; ms: number }[] = []
   let suivant = 0
@@ -75,6 +169,6 @@ export async function trouverPasserelles(candidats: readonly Candidat[], opts: O
       }
     }
   }
-  await Promise.all(Array.from({ length: Math.max(1, Math.min(parallele, aTester.length)) }, ouvrier))
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(parallele, TAILLE_POOL, aTester.length)) }, ouvrier))
   return meilleures(resultats, garder)
 }

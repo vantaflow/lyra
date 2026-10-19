@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { trouverPasserelles } from './testeur'
+import { describe, it, expect, afterEach } from 'vitest'
+import { trouverPasserelles, PoolSessions, creerTesteur, TAILLE_POOL, type SessionTest } from './testeur'
 import type { Candidat } from './liste'
 
 const cands = (n: number): Candidat[] => Array.from({ length: n }, (_, i) => ({ type: 'http' as const, hote: `8.8.8.${i + 1}`, port: 80 }))
@@ -47,5 +47,86 @@ describe('trouverPasserelles', () => {
     }
     const r = await trouverPasserelles(cands(2), { tester })
     expect(r.map((c) => c.hote)).toEqual(['8.8.8.2'])
+  })
+})
+
+function fausseSession(statut: number | 'pend' | 'erreur', journal: string[], nom = ''): SessionTest {
+  return {
+    setProxy: async (c) => void journal.push(`proxy:${nom}:${c.proxyRules}`),
+    fetch: async (_u, init) => {
+      journal.push(`redirect:${init?.redirect}`)
+      if (statut === 'erreur') throw new Error('x')
+      if (statut === 'pend') return new Promise<Response>((_r, rej) => init?.signal?.addEventListener('abort', () => rej(new Error('abort'))))
+      return new Response(null, { status: statut })
+    },
+    closeAllConnections: () => void journal.push(`close:${nom}`),
+    clearCache: async () => void journal.push(`clear:${nom}`)
+  }
+}
+
+describe('PoolSessions / creerTesteur', () => {
+  afterEach(() => {
+    delete process.env.LYRA_TEST
+    delete process.env.LYRA_PASSERELLES_CIBLE
+  })
+
+  it('jamais plus de N emplacements distincts, même après 100 tests', async () => {
+    const noms = new Set<string>()
+    const pool = new PoolSessions(TAILLE_POOL, (nom) => (noms.add(nom), fausseSession(204, [], nom)))
+    const tester = creerTesteur(pool)
+    const r = await trouverPasserelles(cands(100), { parallele: 15, max: 100, garder: 100, tester: (x) => tester(x) })
+    expect(r).toHaveLength(100)
+    expect(noms.size).toBeLessThanOrEqual(15)
+    expect([...noms].every((n) => /^passerelle-test-slot-\d+$/.test(n))).toBe(true)
+    await tester(cands(1)[0])
+    expect(noms.size).toBeLessThanOrEqual(15)
+  })
+
+  it('un emprunteur attend un emplacement libre', async () => {
+    const pool = new PoolSessions(1, () => fausseSession(204, []))
+    const a = await pool.emprunter()
+    let obtenu = false
+    const p = pool.emprunter().then((e) => ((obtenu = true), e))
+    await attendre(5)
+    expect(obtenu).toBe(false)
+    a.rendre()
+    ;(await p).rendre()
+    expect(obtenu).toBe(true)
+  })
+
+  it('204 exigé pour la cible par défaut (200 refusé), aucune redirection suivie', async () => {
+    const j: string[] = []
+    const t200 = creerTesteur(new PoolSessions(1, () => fausseSession(200, j)))
+    expect((await t200(cands(1)[0])).ok).toBe(false)
+    const t204 = creerTesteur(new PoolSessions(1, () => fausseSession(204, j)))
+    expect((await t204(cands(1)[0])).ok).toBe(true)
+    expect(j).toContain('redirect:error')
+  })
+
+  it('200 accepté quand une cible de test est fournie', async () => {
+    const t = creerTesteur(new PoolSessions(1, () => fausseSession(200, [])))
+    expect((await t(cands(1)[0], { cible: 'http://127.0.0.1:9/ok' })).ok).toBe(true)
+  })
+
+  it('LYRA_PASSERELLES_CIBLE ignorée sans LYRA_TEST=1, lue avec', async () => {
+    process.env.LYRA_PASSERELLES_CIBLE = 'http://127.0.0.1:9/ok'
+    const t = creerTesteur(new PoolSessions(1, () => fausseSession(200, [])))
+    expect((await t(cands(1)[0])).ok).toBe(false)
+    process.env.LYRA_TEST = '1'
+    expect((await t(cands(1)[0])).ok).toBe(true)
+  })
+
+  it('délai global : une requête qui pend échoue vite, emplacement rendu et nettoyé', async () => {
+    const j: string[] = []
+    const pool = new PoolSessions(1, () => fausseSession('pend', j, 's'))
+    const r = await creerTesteur(pool)(cands(1)[0], { timeoutMs: 30 })
+    expect(r.ok).toBe(false)
+    expect(j).toContain('clear:s')
+    ;(await pool.emprunter()).rendre()
+  })
+
+  it('erreur réseau : ok=false sans lever', async () => {
+    const t = creerTesteur(new PoolSessions(1, () => fausseSession('erreur', [])))
+    expect((await t(cands(1)[0])).ok).toBe(false)
   })
 })
