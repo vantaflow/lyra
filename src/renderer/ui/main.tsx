@@ -3,6 +3,7 @@ import './theme.css'
 import { Capsule } from './Capsule'
 import { Sky } from './Sky'
 import { initialiserEtat } from './state'
+import { Palette } from './Palette'
 
 function App() {
   const winStyle = window.lyra.plateforme === 'win32' ? ' win' : ''
@@ -20,8 +21,11 @@ function App() {
   )
 }
 
-// La vue overlay (#overlay) a sa propre interface (tâche 7) : elle ne dessine pas le ciel.
-if (location.hash !== '#overlay') {
+// La vue overlay (#overlay) dessine la palette, sur fond transparent ; elle ne dessine pas le ciel.
+if (location.hash === '#overlay') {
+  document.documentElement.classList.add('overlay')
+  render(<Palette />, document.getElementById('app')!)
+} else {
   void initialiserEtat()
   render(<App />, document.getElementById('app')!)
 }

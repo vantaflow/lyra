@@ -48,3 +48,26 @@ export interface Settings {
     demander: boolean
   }
 }
+
+export interface HistoryEntry {
+  url: string
+  title: string
+  /** Horodatage de la dernière visite (ms). */
+  visitedAt?: number
+  favori?: boolean
+}
+
+/** Une ligne de la palette ⌘ L. */
+export interface Suggestion {
+  type: 'etoile' | 'historique' | 'favori' | 'recherche' | 'commande'
+  titre: string
+  sousTitre?: string
+  /** Adresse à ouvrir (déjà calculée pour une recherche). */
+  url?: string
+  /** Identifiant de l'étoile ou de la commande. */
+  id?: string
+  /** Identifiant du moteur (recherche). */
+  moteur?: string
+  /** Lettre ou glyphe de l'icône. */
+  icone?: string
+}

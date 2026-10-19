@@ -404,3 +404,132 @@ body,
 .pilule .alerte {
   color: #8e2e22;
 }
+
+/* ---- Palette ⌘ L (fidèle à docs/design/project/Panneaux.dc.html) ---- */
+html.overlay,
+html.overlay body,
+html.overlay #app {
+  background: transparent;
+}
+.pal-fond {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 12vh;
+  font-family: 'Manrope', -apple-system, 'Segoe UI', system-ui, sans-serif;
+}
+.pal-panneau {
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100vh - 12vh - 24px);
+  box-sizing: border-box;
+  background: #15152e;
+  border-radius: 16px;
+  padding: 10px;
+  box-shadow: 0 30px 80px rgba(10, 10, 40, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pal-champ {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 54px;
+  flex: none;
+  padding: 0 8px 0 16px;
+  border-bottom: 1px solid #26264a;
+  margin-bottom: 4px;
+}
+.pal-champ input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: #f6f6ff;
+  font: 17px 'Manrope', sans-serif;
+}
+.pal-champ input::placeholder {
+  color: #7f7fb0;
+}
+.pal-liste {
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pal-fond .sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.pal-fond kbd {
+  font: 600 10.5px/1 'Manrope', sans-serif;
+  background: #2e2e5a;
+  color: #b3b3da;
+  padding: 4px 6px;
+  border-radius: 5px;
+}
+.pal {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 44px;
+  flex: none;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border-radius: 9px;
+  color: #d9d9f0;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.pal.on {
+  background: #262650;
+  color: #fff;
+}
+.pal .k {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+}
+.pal .t {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.pal .h {
+  color: #7f7fb0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.ph {
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #7f7fb0;
+  font-weight: 600;
+  padding: 10px 12px 4px;
+}
+.pal-pied {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  flex: none;
+  padding: 10px 12px 4px;
+  color: #7f7fb0;
+  font-size: 12px;
+}

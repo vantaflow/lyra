@@ -48,16 +48,14 @@ test('le ciel et la page prennent toute la hauteur, pied ancré en bas', async (
   }
 })
 
-test('la capsule : précédent désactivé, palette émise', async () => {
+test('la capsule : précédent désactivé, la pilule ouvre la palette', async () => {
   const { app, fenetre } = await lancerLyra()
   try {
     await expect(fenetre.locator('.cb[aria-label="Page précédente"]')).toBeDisabled()
-    await fenetre.evaluate(() => {
-      ;(window as unknown as { __palette: number }).__palette = 0
-      window.lyra.on('palette:open', () => ((window as unknown as { __palette: number }).__palette += 1))
-    })
     await fenetre.locator('.pilule').click()
-    await expect.poll(() => fenetre.evaluate(() => (window as unknown as { __palette: number }).__palette)).toBe(1)
+    await expect.poll(() => app.windows().some((w) => w.url().includes('#overlay'))).toBe(true)
+    const overlay = app.windows().find((w) => w.url().includes('#overlay'))!
+    await expect(overlay.locator('#palette')).toBeFocused()
   } finally {
     await app.close()
   }

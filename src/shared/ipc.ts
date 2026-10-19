@@ -1,4 +1,4 @@
-import type { Settings, SkyState } from './types'
+import type { Settings, SkyState, Suggestion } from './types'
 
 export interface RectIpc {
   x: number
@@ -36,20 +36,27 @@ export type Requetes = {
   'tabs:forward': [{ id: string }, void]
   'tabs:reload': [{ id: string }, void]
   'tabs:stop': [{ id: string }, void]
+  /** Chrome → main : ouvre la palette (overlay). */
   'palette:open': [void, void]
+  'palette:suggest': [{ texte: string }, Suggestion[]]
+  'palette:go': [{ suggestion?: Suggestion; texte: string; nouvelleEtoile: boolean }, void]
+  'palette:close': [void, void]
   'tabs:move': [{ id: string; parentId?: string; index: number }, void]
   'tabs:pin': [{ id: string; pinned: boolean }, void]
   'tabs:reopen': [void, void]
   'sky:get': [void, SkyChange]
   /** Test uniquement (LYRA_TEST=1) : charge une URL dans la vue de page. */
   'test:navigate': [string, void]
+  /** Test uniquement (LYRA_TEST=1) : dernière URL demandée par la palette. */
+  'test:lastNavigation': [void, string | null]
 }
 
 /** Évènements main → renderer : canal → données. */
 export type Evenements = {
   'settings:changed': Settings
   'sky:changed': SkyChange
-  'palette:open': undefined
+  /** Main → overlay : la palette s'affiche. */
+  'palette:open': { texteInitial?: string }
 }
 
 export type CanalRequete = keyof Requetes

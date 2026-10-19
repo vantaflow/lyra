@@ -9,6 +9,7 @@ import { creerReglages } from './settings/settings'
 import { installerProtocoleLyra } from './protocol/lyra'
 import { TabManager } from './tabs/TabManager'
 import { installerMenu } from './tabs/appMenu'
+import { installerPalette } from './palette/actions'
 
 definirFournisseurLangue(() => app.getLocale())
 app.setPath('userData', paths.userData())
@@ -36,8 +37,8 @@ function ongletsDe(wc: WebContents): TabManager {
   return m
 }
 
-function creerFenetre(): void {
-  const fenetre = manager.creerFenetre({})
+function creerFenetre(opts: { privee?: boolean } = {}): void {
+  const fenetre = manager.creerFenetre(opts)
   const tabs = new TabManager(fenetre)
   onglets.set(fenetre.id, tabs)
   fenetre.win.on('closed', () => onglets.delete(fenetre.id))
@@ -72,11 +73,11 @@ void app.whenReady().then(() => {
   handle('tabs:forward', (d, e) => ongletsDe(e.sender).suivant(d.id))
   handle('tabs:reload', (d, e) => ongletsDe(e.sender).recharger(d.id))
   handle('tabs:stop', (d, e) => ongletsDe(e.sender).arreter(d.id))
-  handle('palette:open', (_d, e) => ongletsDe(e.sender).ouvrirPalette())
   handle('tabs:move', (d, e) => ongletsDe(e.sender).deplacer(d.id, { parentId: d.parentId, index: d.index }))
   handle('tabs:pin', (d, e) => ongletsDe(e.sender).epingler(d.id, d.pinned))
   handle('tabs:reopen', (_d, e) => ongletsDe(e.sender).rouvrirDerniere())
   handle('sky:get', (_d, e) => ongletsDe(e.sender).snapshot())
+  installerPalette({ ongletsDe, reglages: () => reglages.getSettings(), creerFenetre })
   installerMenu(ongletsCourants)
   reglages.onChanged((s) => {
     manager.relayoutAll()

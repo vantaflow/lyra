@@ -95,6 +95,7 @@ export class WindowManager {
       montrerOverlay(_route) {
         win.contentView.addChildView(overlay)
         overlay.setVisible(true)
+        overlay.webContents.focus()
       },
       cacherOverlay() {
         overlay.setVisible(false)

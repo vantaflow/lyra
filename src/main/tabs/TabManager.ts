@@ -132,8 +132,26 @@ export class TabManager {
     return this.tree.toJSON().activeId
   }
 
-  ouvrirPalette(): void {
-    envoyer(this.fenetre.chrome.webContents, 'palette:open', undefined)
+  ouvrirPalette(texteInitial?: string): void {
+    this.fenetre.montrerOverlay('palette')
+    envoyer(this.fenetre.overlay.webContents, 'palette:open', { texteInitial })
+  }
+
+  /** Referme l'overlay et rend le focus à la page active. */
+  fermerPalette(): void {
+    this.fenetre.cacherOverlay()
+    const id = this.idActif()
+    if (id) this.vues.get(id)?.webContents.focus()
+  }
+
+  /** Active une étoile (ou en ouvre une) et y charge l'URL : navigation depuis la palette. */
+  allerA(url: string, nouvelleEtoile: boolean): void {
+    const id = this.idActif()
+    if (nouvelleEtoile || !id) this.ouvrir(url)
+    else {
+      this.naviguer(id, url)
+      this.activer(id)
+    }
   }
 
   snapshot(): SkyChange {
