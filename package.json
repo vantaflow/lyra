@@ -1,0 +1,32 @@
+{
+  "name": "lyra",
+  "productName": "Lyra",
+  "version": "0.1.0",
+  "description": "Navigateur web de bureau sobre, sans télémétrie, avec bloqueur de publicités intégré",
+  "main": "./out/main/index.js",
+  "license": "GPL-3.0",
+  "author": "Vantaflow",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
+    "test": "vitest run",
+    "e2e": "npm run build && playwright test",
+    "dist:mac": "npm run build && electron-builder --mac --arm64",
+    "dist:win": "npm run build && electron-builder --win --x64",
+    "postinstall": "node node_modules/electron/install.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@preact/preset-vite": "^2.10.6",
+    "@types/node": "24.19.2",
+    "electron": "44.9.0",
+    "electron-builder": "26.15.3",
+    "electron-vite": "^6.0.0",
+    "preact": "^11.0.1",
+    "typescript": "~5.9",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
+  }
+}

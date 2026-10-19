@@ -1,0 +1,14 @@
+appId: com.vantaflow.lyra
+productName: Lyra
+directories: { output: release, buildResources: build }
+files: [out/**, package.json]
+asar: true
+asarUnpack: [resources/**]          # listes de filtres et polyfill embarqués
+extraResources: resources/
+mac:
+  target: [{ target: dmg, arch: arm64 }, { target: zip, arch: arm64 }]
+  identity: "-"                      # signature ad hoc explicite
+  hardenedRuntime: false             # obligatoire avec ad hoc
+win:
+  target: [{ target: nsis, arch: x64 }]
+nsis: { oneClick: false, allowToChangeInstallationDirectory: true }

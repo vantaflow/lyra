@@ -1,0 +1,43 @@
+@font-face {
+  font-family: 'Manrope';
+  src: url('../fonts/Manrope-latin.woff2') format('woff2');
+  font-weight: 200 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Instrument Serif';
+  src: url('../fonts/InstrumentSerif-latin.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+
+:root {
+  --ciel: #15152e;
+  --etoile-active: #f4c56a;
+  --etoiles: #a8a8d8;
+  --etoiles-endormies: #4e4e7a;
+  --lignes: #3b3b70;
+  --accent: #5452c8;
+  --bouclier: #5fd3b3;
+  --page: #f7f7fb;
+  --texte: #1c1c2e;
+  --texte-secondaire: #6b6b80;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--ciel);
+  color: var(--etoiles);
+  font-family: 'Manrope', system-ui, sans-serif;
+}
+
+.marque {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font-family: 'Instrument Serif', serif;
+  font-size: 64px;
+  color: var(--etoile-active);
+}

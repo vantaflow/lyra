@@ -1,2 +1,9 @@
 .autopilot/
 .DS_Store
+node_modules
+out
+release
+.playwright
+test-results
+playwright-report
+.superpowers/
