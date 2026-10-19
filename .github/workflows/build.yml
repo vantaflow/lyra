@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     tags: ['v*']
+  workflow_dispatch:
 
 jobs:
   build:
@@ -28,6 +29,10 @@ jobs:
       - name: Paquet Windows
         if: runner.os == 'Windows'
         run: npx electron-builder --win --x64 --publish never
+      - name: Test de l'app empaquetée (@paquet)
+        run: npx playwright test --grep @paquet
+        env:
+          LYRA_E2E_PAQUET: '1'
       - uses: actions/upload-artifact@v4
         with:
           name: lyra-${{ runner.os }}

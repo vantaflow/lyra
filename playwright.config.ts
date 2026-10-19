@@ -7,5 +7,10 @@ export default defineConfig({
   outputDir: 'test-results',
   reporter: [['list']],
   // Les tests réseau (@reseau) ne tournent qu'avec LYRA_E2E_RESEAU=1.
-  grepInvert: process.env.LYRA_E2E_RESEAU === '1' ? undefined : /@reseau/
+  // Les tests du paquet (@paquet) ne tournent qu'avec LYRA_E2E_PAQUET=1, après `npm run dist:*`.
+  grepInvert: new RegExp(
+    [process.env.LYRA_E2E_RESEAU === '1' ? '' : '@reseau', process.env.LYRA_E2E_PAQUET === '1' ? '' : '@paquet']
+      .filter(Boolean)
+      .join('|') || '(?!)'
+  )
 })

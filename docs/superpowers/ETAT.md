@@ -1,29 +1,39 @@
 # Lyra — état d'avancement
 
-Dernière mise à jour : 2026-10-19, tard (run autopilot **en pause** à la demande de l'utilisateur, phase conception).
+Dernière mise à jour : 2026-10-19. **Jalon A terminé** (15 tâches).
 
 ## Le projet
 
-Navigateur web type Orion (Kagi) pour Windows et macOS, en Electron/TypeScript. Exigences : extensions Chrome **et** Firefox ; blocage intégré des publicités YouTube comme Brave. Spec : `docs/superpowers/specs/2026-10-19-lyra-design.md`.
+Navigateur web type Orion (Kagi) pour Windows et macOS, en Electron/TypeScript. Exigences : extensions Chrome **et** Firefox ; blocage intégré des publicités YouTube. Spec : `docs/superpowers/specs/2026-10-19-lyra-design.md` ; design : `docs/design/`.
 
-## Fait
+## Jalon A — fait
 
-- Amorçage du dépôt (branche `main`), état autopilot dans `.autopilot/` (local, non versionné).
-- Spec brouillon : sections 1-4 (intention, objectifs, contraintes, produit), 6 (bloqueur et YouTube), 8 (build, tests, packaging).
-- Spike packaging (vérifié) : Electron 44.9.0, electron-vite 6, electron-builder 26.15.3 ; `.dmg` arm64 et `.exe` NSIS x64 construits depuis le Mac **sans Wine** ; Playwright `_electron` et vitest OK.
-- Spike bloqueur (vérifié sur youtube.com) : moteur Ghostery 2.20.1 retenu, adblock-rs écarté ; l'injection standard laisse passer les pubs vidéo (5/5), le correctif « scriptlets tôt » en preload donne 0/5. Code de référence : `docs/superpowers/spikes/adblock/`.
-- Recherche technique : 2 sujets sur 8 terminés (`electron-chrome-extensions`, `adblock-engines`) dans `docs/superpowers/research/`.
+1. Amorçage : Electron 44, electron-vite, vitest, Playwright, packaging.
+2. Types et réglages partagés (`Star`, `SkyState`, `Settings`) et IPC.
+3. Vues web et protocole `lyra://`.
+4. Calcul de la mise en page (`computeLayout`).
+5. Ciel et capsule ; vues, sessions, IPC.
+6. Palette de couleurs et thèmes.
+7. Palette de commandes, moteurs de recherche, mots-clés.
+8. Boucliers : moteur Ghostery, listes embarquées, cache, scriptlets tôt, blocage YouTube.
+9. Panneau des Boucliers et réglage par site.
+10. Historique et favoris.
+11. Téléchargements.
+12. Restauration de session et dormance.
+13. Nouvel onglet, premier lancement, réglages généraux.
+14. Permissions, menu contextuel, recherche, zoom, plein écran, pages d'erreur.
+15. Icône (`build/icon.svg` → `icon.png`), paquets, test `@paquet`, CI, README.
 
-- **Design (Claude Design)** : canevas https://claude.ai/artifact/US6xYeYjRNejcSueqTdanQ, source dans `docs/design/` (12 écrans : ciel des onglets en constellations, 4 positions + masqué, Ne pas déranger, nouvel onglet, réglages complets, règles par site, couleurs et thèmes, import/export depuis 7 navigateurs, extensions). Voir `docs/design/README.md`.
+Vérifié : typecheck OK, vitest 211 tests (30 fichiers), Playwright 44 tests ; `Lyra-0.1.0-arm64.dmg` (+ zip) et `Lyra Setup 0.1.0.exe` produits ; l'app du dmg démarre ; test `@paquet` (listes embarquées, moteur construit au premier lancement, pub bloquée) OK. Reste à confirmer à la main : YouTube sur l'app installée, et le verdict de la CI sur les deux systèmes après le push.
 
-## Reste à faire (conception)
+## Reste à faire
 
-1. Spike extensions : Chrome (uBlock Origin) + Firefox converties (xpi → manifest + polyfill `browser.*`) — interrompu avant résultat.
-2. Recherche : 6 sujets restants (Electron extensions natif, YouTube 2026, extensions Firefox, build, architecture UI, Orion) + synthèse.
-3. Spec : sections 5 (architecture), 7 (extensions), 9 (laissé au constructeur), 10 (risques) ; relecture par un constructeur (builder-check).
-4. Design : écrans Panneaux (palette ⌘ L, boucliers, téléchargements, menu) et Composants ; reporter la nouvelle direction (ciel, capsule, palette, Ne pas déranger, réglages, import/export, couleurs) dans la spec §4.
-5. Plan en tâches (`writing-plans`), puis exécution tâche par tâche avec tests.
+- **Jalon C** (en premier : **« Replier le ciel »**) : positions du ciel (haut, droite, bas), ciel masqué, Ne pas déranger, fenêtre privée avec son interface.
+- **Jalon B** : extensions Chrome et Firefox (uBlock Origin en cible), spike interrompu.
+- **Jalon D** : réglages complets, règles par site, couleurs.
+- **Jalon E** : import/export depuis 7 navigateurs.
+- Signature (certificat payant) et release automatique sur tag.
 
 ## Reprendre
 
-Dans Claude Code, depuis ce dossier : « reprends Lyra ». La skill `autopilot` lit `.autopilot/RESUME.md` et le ledger (`.autopilot/LEDGER.md`, dernière ligne `PAUSE`). Sur une autre machine (sans `.autopilot/`), repartir de ce fichier et de la spec.
+Dans Claude Code, depuis ce dossier : « reprends Lyra ». Sans `.autopilot/`, repartir de ce fichier et de la spec.
