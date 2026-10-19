@@ -55,7 +55,7 @@ describe('suggerer', () => {
   })
   it('saisie vide : étoiles puis commandes', () => {
     const r = suggerer('', ctx)
-    expect(r.map((s) => s.type)).toEqual(['etoile', 'etoile', ...Array(7).fill('commande')])
+    expect(r.map((s) => s.type)).toEqual(['etoile', 'etoile', ...Array(10).fill('commande')])
   })
   it('le ciel : commande de la position courante masquée, aide « réglage »', () => {
     const r = suggerer('>déplacer le ciel', { ...ctx, positionCiel: 'droite' })
@@ -63,7 +63,17 @@ describe('suggerer', () => {
     expect(r.every((s) => s.sousTitre === 'réglage')).toBe(true)
     // Ciel masqué (positionCiel absent) : toutes les positions restent proposées.
     expect(suggerer('>déplacer le ciel', ctx)).toHaveLength(4)
-    expect(suggerer('', { ...ctx, positionCiel: 'gauche' }).filter((s) => s.type === 'commande')).toHaveLength(6)
+    expect(suggerer('', { ...ctx, positionCiel: 'gauche' }).filter((s) => s.type === 'commande')).toHaveLength(9)
+  })
+  it('Ne pas déranger : trois durées (libellés du design), « Quitter » seulement quand le mode est actif', () => {
+    const r = suggerer('>ne pas deranger', ctx)
+    expect(r.map((s) => s.titre)).toEqual(['Ne pas déranger pendant 1 h', 'Ne pas déranger pendant 30 min', "Ne pas déranger jusqu'à l'arrêt"])
+    expect(r[0]).toMatchObject({ id: 'dnd-60', sousTitre: '⌘ ⇧ D' })
+    expect(r.map((s) => s.id)).toEqual(['dnd-60', 'dnd-30', 'dnd-arret'])
+    const actif = suggerer('>ne pas deranger', { ...ctx, dnd: true })
+    expect(actif.map((s) => s.id)).toEqual(['dnd-sortir'])
+    expect(actif[0].titre).toBe('Quitter le mode Ne pas déranger')
+    expect(suggerer('>quitter', ctx)).toEqual([])
   })
   it('> déplacer : les quatre positions du ciel', () => {
     const r = suggerer('>déplacer le ciel', ctx)

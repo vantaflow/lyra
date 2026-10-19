@@ -1,5 +1,5 @@
 import { computed, signal } from '@preact/signals'
-import type { EtatBoucliers, EtatEtoile } from '../../shared/ipc'
+import type { EtatBoucliers, EtatDnd, EtatEtoile } from '../../shared/ipc'
 import type { Settings, SkyState, Star } from '../../shared/types'
 
 const CIEL_VIDE: SkyState = { stars: [], constellations: [], activeId: null, pinned: [] }
@@ -83,6 +83,9 @@ export function reveler(actif: boolean): void {
   void window.lyra.invoke('ciel:reveler', { actif })
 }
 
+/** Mode Ne pas déranger de cette fenêtre : la vue chrome ne dessine alors que le rappel / croissant. */
+export const dnd = signal<EtatDnd>({ actif: false, duree: null, fin: null, notifications: 0, popups: 0, rappel: false })
+
 /** Étoile en cours de glisser-déposer. */
 export const glisse = signal<string | null>(null)
 
@@ -106,6 +109,8 @@ export async function initialiserEtat(): Promise<void> {
   }
   window.lyra.on('settings:changed', appliquer)
   window.lyra.on('ciel:revele', (b) => (cielRevele.value = b))
+  window.lyra.on('dnd:changed', (e) => (dnd.value = e))
+  void window.lyra.invoke('dnd:get').then((e) => (dnd.value = e))
   void window.lyra.invoke('settings:get').then(appliquer)
   void window.lyra.invoke('layout:get').then((l) => (cielRevele.value = l.revele))
   const c = await window.lyra.invoke('sky:get')

@@ -18,6 +18,13 @@ export interface DepsPermissions {
   memoriser(origine: string, type: TypePermission, decision: DecisionPermission): void
   /** Affiche la demande à l'utilisateur ; résout en refus si elle est abandonnée. */
   demander(wc: WebContents, origine: string, types: TypePermission[]): Promise<ReponsePermission>
+  /**
+   * Ne pas déranger : la demande de notifications d'une page est retenue (promesse résolue à la sortie du mode,
+   * l'invite s'affiche alors) ; undefined si le mode ne s'applique pas à cette page.
+   */
+  retenir?(wc: WebContents, origine: string): Promise<void> | undefined
+  /** Ne pas déranger : les notifications de ce site (wc null : service worker) sont suspendues, la vérification répond « refusé ». */
+  suspendues?(wc: WebContents | null, origine: string): boolean
 }
 
 /** Détails utiles (demande et vérification) ; un sous-ensemble de ceux d'Electron. */
@@ -68,11 +75,13 @@ export class Permissions {
     ses.setPermissionRequestHandler((wc, permission, callback, details) => {
       void this.decider(wc, permission, origineDe(details.requestingUrl ?? ''), details.mediaTypes).then(callback, () => callback(false))
     })
-    ses.setPermissionCheckHandler((_wc, permission, requestingOrigin, details) => {
+    ses.setPermissionCheckHandler((wc, permission, requestingOrigin, details) => {
       const medias = permission === 'media' && details.mediaType && details.mediaType !== 'unknown' ? [details.mediaType] : undefined
       const demande = classer(permission, medias)
       if (demande === 'toujours') return true
       if (demande === 'refus') return false
+      // Ne pas déranger : les notifications qui échappent à la surcharge de la page (service workers) sont refusées.
+      if (demande.types.includes('notifications') && this.deps.suspendues?.(wc, origineDe(requestingOrigin))) return false
       return this.regles(origineDe(requestingOrigin), demande.types) === 'autoriser'
     })
   }
@@ -93,6 +102,9 @@ export class Permissions {
     if (connue) return connue === 'autoriser'
     // Sans page à qui montrer le prompt : on s'en tient aux règles.
     if (!wc) return false
+    // Ne pas déranger : la demande de notifications attend la sortie du mode (elle n'est pas refusée).
+    const retenue = demande.types.includes('notifications') ? this.deps.retenir?.(wc, origine) : undefined
+    if (retenue) await retenue
     const inconnus = demande.types.filter((t) => !this.deps.lire(origine, t))
     const reponse = await this.enFile(() => this.deps.demander(wc, origine, inconnus))
     if (reponse.memoriser) for (const t of inconnus) this.deps.memoriser(origine, t, reponse.decision)

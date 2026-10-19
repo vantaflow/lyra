@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { BANDE, CAPSULE, FENETRE_MIN, LARGEUR_MAX, RAIL, computeLayout, positionFeux } from './layout'
+import { BANDE, CAPSULE, DND_CROISSANT, DND_RAPPEL, FENETRE_MIN, LARGEUR_MAX, RAIL, computeLayout, positionFeux } from './layout'
 
 const taille = { width: 1280, height: 800 }
 const fenetre = { x: 0, y: 0, width: 1280, height: 800 }
@@ -87,5 +87,37 @@ describe('constantes et feux tricolores', () => {
     expect(positionFeux({ position: 'haut', masque: false })).toEqual({ x: 14, y: 22 })
     expect(positionFeux({ position: 'haut', masque: true })).toEqual({ x: 14, y: 14 })
     for (const p of ['gauche', 'droite', 'bas'] as const) expect(positionFeux({ position: p, masque: false })).toEqual({ x: 14, y: 14 })
+  })
+})
+
+describe('computeLayout : Ne pas déranger', () => {
+  const positions = ['gauche', 'droite', 'haut', 'bas'] as const
+  for (const position of positions) {
+    for (const masque of [false, true]) {
+      it(`page plein cadre, chrome réduit au rappel (${position}${masque ? ', masqué' : ''})`, () => {
+        const l = computeLayout(taille, ciel(position, masque), false, false, { rappel: true })
+        expect(l.page).toEqual(fenetre)
+        expect(l.overlay).toEqual(fenetre)
+        expect(l.chrome).toEqual({ x: 1280 - DND_RAPPEL.width, y: 0, width: DND_RAPPEL.width, height: DND_RAPPEL.height })
+      })
+    }
+  }
+  it('rappel effacé : seul le croissant occupe le coin haut droit', () => {
+    const l = computeLayout(taille, ciel('gauche'), false, false, { rappel: false })
+    expect(l.page).toEqual(fenetre)
+    expect(l.chrome).toEqual({ x: 1280 - DND_CROISSANT.width, y: 0, width: DND_CROISSANT.width, height: DND_CROISSANT.height })
+  })
+  it('le ciel révélé est ignoré', () => {
+    const l = computeLayout(taille, ciel('gauche', true), false, true, { rappel: false })
+    expect(l.page).toEqual(fenetre)
+  })
+  it('petite fenêtre : la zone reste dans la fenêtre', () => {
+    const l = computeLayout({ width: 300, height: 60 }, ciel('gauche'), false, false, { rappel: true })
+    expect(l.chrome).toEqual({ x: 0, y: 0, width: 300, height: 60 })
+  })
+  it("plein écran HTML l'emporte : le chrome disparaît", () => {
+    const l = computeLayout(taille, ciel('gauche'), true, false, { rappel: true })
+    expect(l.chrome).toEqual({ x: 0, y: 0, width: 0, height: 0 })
+    expect(l.page).toEqual(fenetre)
   })
 })

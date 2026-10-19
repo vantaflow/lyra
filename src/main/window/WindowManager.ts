@@ -1,7 +1,7 @@
 import { BaseWindow, WebContentsView, type WebContents } from 'electron'
 import { join } from 'node:path'
 import { PRELOAD_UI } from '../preloads'
-import { FENETRE_MIN, bornerLargeur, computeLayout, positionFeux, type Layout } from './layout'
+import { FENETRE_MIN, bornerLargeur, computeLayout, positionFeux, type DndLayout, type Layout } from './layout'
 import type { Settings } from '../../shared/types'
 import type { RouteOverlay } from '../../shared/ipc'
 import { envoyer } from '../ipc'
@@ -15,6 +15,12 @@ export interface LyraWindow {
   setPageView(v: WebContentsView | null): void
   relayout(): void
   setPleinEcran(b: boolean): void
+  /** Plein écran HTML en cours (la page prend toute la fenêtre). */
+  estPleinEcran(): boolean
+  /** Mode Ne pas déranger : page plein cadre, chrome réduit au rappel (ou au croissant) ; null pour en sortir. */
+  setDnd(dnd: DndLayout | null): void
+  /** Mode Ne pas déranger actif dans cette fenêtre. */
+  estDnd(): boolean
   montrerOverlay(route: RouteOverlay): void
   /** Appelé à chaque changement de l'overlay : la route affichée, ou null quand il se ferme. */
   surOverlay(cb: (route: RouteOverlay | null) => void): void
@@ -98,19 +104,21 @@ export class WindowManager {
     let pleinEcran = false
     let revele = false
     let glisse = false
+    let dnd: DndLayout | null = null
     /** Position des feux tricolores (macOS) appliquée la dernière fois. */
     let feux = positionFeux(this.lireCiel())
     /** Ordre appliqué la dernière fois (révélé : le chrome passe au-dessus de la page). */
     let ordreRevele = false
 
-    const estRevele = (): boolean => revele && this.lireCiel().masque && !pleinEcran
+    const estRevele = (): boolean => revele && this.lireCiel().masque && !pleinEcran && !dnd
     const bounds = (): Layout => {
       const { width, height } = win.getContentBounds()
-      return computeLayout({ width, height }, this.lireCiel(), pleinEcran, estRevele())
+      return computeLayout({ width, height }, this.lireCiel(), pleinEcran, estRevele(), dnd)
     }
     /** Chrome sous la page ; au-dessus pendant la révélation. L'overlay reste toujours tout en haut. */
     const ordonner = (): void => {
-      const rev = estRevele()
+      // Ne pas déranger : la page est plein cadre, la vue chrome (rappel, croissant) passe par-dessus.
+      const rev = estRevele() || dnd !== null
       const vues = rev ? [pageView, chrome, overlay] : [chrome, pageView, overlay]
       for (const v of vues) if (v) win.contentView.addChildView(v)
       ordreRevele = rev
@@ -118,7 +126,8 @@ export class WindowManager {
     const relayout = (): void => {
       if (win.isDestroyed()) return
       if (!this.lireCiel().masque) revele = false
-      if (estRevele() !== ordreRevele) {
+      const dessus = estRevele() || dnd !== null
+      if (dessus !== ordreRevele) {
         ordonner()
         envoyer(chrome.webContents, 'ciel:revele', estRevele())
       }
@@ -179,6 +188,19 @@ export class WindowManager {
       },
       setPleinEcran(b) {
         pleinEcran = b
+        relayout()
+      },
+      estPleinEcran: () => pleinEcran,
+      estDnd: () => dnd !== null,
+      setDnd(d) {
+        dnd = d
+        if (d) {
+          // Plus de ciel révélé ni de glisser en cours.
+          revele = false
+          glisse = false
+          envoyer(chrome.webContents, 'ciel:revele', false)
+        }
+        ordonner()
         relayout()
       },
       surOverlay(cb) {
