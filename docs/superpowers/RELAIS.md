@@ -8,7 +8,8 @@ Mis à jour : 2026-10-19 17:40. Plusieurs sessions Claude Code avancent en même
 |---|---|---|---|
 | C — ciel déplaçable, Ne pas déranger, fenêtre privée | `main` | session principale | tâches 1-2 faites, 3 en cours |
 | E — import/export | `jalon-e` (worktree `lyra.worktrees/jalon-e`) | session principale | tâche 1 en corrections |
-| **B — extensions Chrome + Firefox** | **`jalon-b`** | **session d'appoint** | à commencer |
+| E tâche 2 — lecteurs Firefox, Safari, Orion | `jalon-e-t2` (worktree `lyra.worktrees/jalon-e-t2`) | session downloads-60 | en cours, fusion dans `jalon-e` par la session principale |
+| **B — extensions Chrome + Firefox** | **`jalon-b`** | **libre (session d'appoint)** | à commencer |
 | D — réglages complets, règles par site, couleurs | `jalon-d` | libre (après C) | à faire |
 
 ## Consignes pour la session d'appoint (jalon B)
