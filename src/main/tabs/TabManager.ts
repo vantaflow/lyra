@@ -287,7 +287,11 @@ export class TabManager {
       wc.on(evt as 'did-stop-loading', maj)
     }
     // L'historique se nourrit des navigations de page principale ; le titre arrive après, on le complète.
-    wc.on('did-navigate', (_e, urlNavigue) => this.historique?.visite(urlNavigue, '', Date.now()))
+    // Pas d'entrée pour une page d'erreur HTTP (>= 400) ; did-fail-load n'ajoute rien. Le filtrage des
+    // schémas (about:blank, data:, chrome-error://…) est fait par History.
+    wc.on('did-navigate', (_e, urlNavigue, codeHttp) => {
+      if (codeHttp === undefined || codeHttp < 400) this.historique?.visite(urlNavigue, '', Date.now())
+    })
     wc.on('page-title-updated', (_e, titre) => this.historique?.titre(wc.getURL(), titre))
     wc.on('page-favicon-updated', (_e, favicons) => {
       this.extras.set(id, { ...this.extras.get(id), favicon: favicons[0] })

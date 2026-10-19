@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { History } from './History'
+import { History, urlRetenue } from './History'
 
 const JOUR = 86_400_000
 const NOW = Date.UTC(2026, 9, 19, 12)
@@ -125,3 +125,28 @@ describe('History', () => {
   })
 })
 
+
+describe('urlRetenue', () => {
+  it.each(['about:blank', 'data:text/html,<p>x</p>', 'chrome-error://chromewebdata/', 'devtools://devtools/x', 'lyra://history'])(
+    'refuse %s', (u) => {
+      expect(urlRetenue(u)).toBe(false)
+      expect(urlRetenue(u, true)).toBe(false)
+    })
+  it('accepte http(s)', () => {
+    expect(urlRetenue('https://x')).toBe(true)
+    expect(urlRetenue('http://x')).toBe(true)
+  })
+  it('file:// seulement avec enregistrerFichiers', () => {
+    expect(urlRetenue('file:///x')).toBe(false)
+    expect(urlRetenue('file:///x', true)).toBe(true)
+  })
+})
+
+describe('attendre', () => {
+  it('résout quand toute la file est écrite', async () => {
+    const h = new History(chemin)
+    for (let i = 0; i < 20; i++) h.ajouter({ url: `https://a.fr/${i}`, title: 'A', date: NOW + i })
+    await h.attendre()
+    expect(readFileSync(chemin, 'utf8').trim().split('\n')).toHaveLength(20)
+  })
+})

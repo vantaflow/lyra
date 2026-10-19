@@ -6,7 +6,15 @@ import type { HistoryEntry } from '../../shared/types'
 import { normaliser } from '../palette/suggest'
 
 const JOUR = 86_400_000
-const SCHEMAS_EXCLUS = /^(lyra|file):/i
+const HTTP = /^https?:\/\//i
+
+/**
+ * Seules les pages http(s) sont retenues (jamais about:, data:, devtools:, chrome-error:, lyra://) ;
+ * file:// uniquement quand `fichiers` est vrai (LYRA_TEST=1).
+ */
+export function urlRetenue(url: string, fichiers = false): boolean {
+  return HTTP.test(url) || (fichiers && /^file:\/\//i.test(url))
+}
 
 interface Visite {
   url: string
@@ -72,8 +80,7 @@ export class History {
   }
 
   private retenu(url: string): boolean {
-    if (/^file:/i.test(url)) return this.opts.enregistrerFichiers === true
-    return !SCHEMAS_EXCLUS.test(url)
+    return urlRetenue(url, this.opts.enregistrerFichiers === true)
   }
 
   private appliquer(l: Visite, visite: boolean): void {
@@ -127,7 +134,7 @@ export class History {
     const depuis = maintenant - 30 * JOUR
     const res: HistoryEntry[] = []
     for (const [url, f] of this.index) {
-      if (SCHEMAS_EXCLUS.test(url)) continue
+      if (!HTTP.test(url)) continue
       const recentes = f.dates.filter((d) => d >= depuis && d <= maintenant)
       if (recentes.length) res.push({ url, title: f.title, visitedAt: Math.max(...recentes), visites: recentes.length })
     }

@@ -116,7 +116,14 @@ void app.whenReady().then(async () => {
     onglets: () => onglets.values(),
     ongletsDe
   })
-  app.on('before-quit', () => void hist.attendre())
+  // Laisse les écritures de l'historique se terminer avant de quitter (une seule fois).
+  let ecrituresAttendues = false
+  app.on('before-quit', (e) => {
+    if (ecrituresAttendues) return
+    ecrituresAttendues = true
+    e.preventDefault()
+    void hist.attendre().finally(() => app.quit())
+  })
   reglages.onChanged((s) => {
     manager.relayoutAll()
     for (const wc of webContents.getAllWebContents()) envoyer(wc, 'settings:changed', s)
