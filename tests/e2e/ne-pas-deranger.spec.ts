@@ -112,10 +112,13 @@ test('croissant du pied du ciel : entre ; bouton du rappel : sort ; Échap sort 
     }, DND)
     await expect.poll(async () => (await etat(fenetre)).actif).toBe(false)
 
-    // Échap dans la vue chrome (rappel ou croissant).
+    // Échap dans la vue chrome (rappel ou croissant). Le clavier synthétique de Playwright n'atteint pas toujours une
+    // vue cachée sans focus (vu en CI macOS) : on émet le keydown sur window, que le rappel écoute.
     await menu(app, 'ne-pas-deranger')
     await expect.poll(async () => (await etat(fenetre)).actif).toBe(true)
-    await fenetre.keyboard.press('Escape')
+    // Le rappel (et son écouteur d'Échap) n'est monté qu'une fois l'état reçu par la vue chrome.
+    await expect(fenetre.getByRole('button', { name: 'Quitter le mode Ne pas déranger' })).toBeVisible()
+    await fenetre.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
     await expect.poll(async () => (await etat(fenetre)).actif).toBe(false)
   } finally {
     await app.close()
