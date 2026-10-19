@@ -22,7 +22,7 @@ export function installerPalette(deps: DepsPalette): void {
   }
 
   handle('palette:open', (_d, e) => deps.ongletsDe(e.sender).ouvrirPalette())
-  handle('palette:close', (_d, e) => deps.ongletsDe(e.sender).fermerPalette())
+  handle('palette:close', (_d, e) => deps.ongletsDe(e.sender).fermerOverlay())
   handle('palette:suggest', ({ texte }, e) => {
     const tabs = deps.ongletsDe(e.sender)
     const { sky } = tabs.snapshot()
@@ -36,7 +36,7 @@ export function installerPalette(deps: DepsPalette): void {
   })
   handle('palette:go', ({ suggestion, texte, nouvelleEtoile }, e) => {
     const tabs = deps.ongletsDe(e.sender)
-    tabs.fermerPalette()
+    tabs.fermerOverlay()
     const aller = (url: string): void => {
       derniereNavigation = url
       tabs.allerA(url, nouvelleEtoile)

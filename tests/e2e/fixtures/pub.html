@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><title>Pub</title></head>
+<body>
+  <p id="resultat"></p>
+  <script>
+    fetch('https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js')
+      .then((r) => 'OK ' + r.status)
+      .catch((e) => 'ERR ' + e.message)
+      .then((t) => (document.getElementById('resultat').textContent = t))
+  </script>
+</body>
+</html>

@@ -101,7 +101,7 @@ export async function mettreAJour(opts: OptionsMoteur, actuel: ResultatMoteur): 
   }
 }
 
-/** Cache valide, sinon réseau, sinon listes embarquées. */
+/** Cache valide, sinon réseau (si `fetch`), sinon cache périmé s'il est plus récent que les listes embarquées, sinon listes embarquées. */
 export async function construireMoteur(opts: OptionsMoteur): Promise<ResultatMoteur> {
   const maintenant = opts.maintenant ?? new Date()
   const cache = await lireCache(opts, maintenant)
@@ -112,10 +112,11 @@ export async function construireMoteur(opts: OptionsMoteur): Promise<ResultatMot
     } catch (e) {
       console.warn('[boucliers] réseau indisponible ou incomplet :', e)
     }
-    const perime = await lireCache(opts, maintenant, true)
-    if (perime) return perime
   }
   const emb = opts.listesEmbarquees
+  // Sans réseau (ou au démarrage, sans fetch) : un cache périmé vaut mieux que des listes embarquées plus anciennes.
+  const perime = await lireCache(opts, maintenant, true)
+  if (perime && (!emb || perime.date >= emb.date)) return perime
   if (!emb) throw new Error('[boucliers] ni cache, ni réseau, ni listes embarquées')
   const moteur = construire(emb.textes, emb.resources)
   await ecrireCache(opts.cacheDir, moteur, emb.date)

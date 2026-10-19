@@ -10,6 +10,7 @@ import { installerProtocoleLyra } from './protocol/lyra'
 import { TabManager } from './tabs/TabManager'
 import { installerMenu } from './tabs/appMenu'
 import { installerPalette } from './palette/actions'
+import { demarrerBoucliers } from './shields/installer'
 
 definirFournisseurLangue(() => app.getLocale())
 app.setPath('userData', paths.userData())
@@ -47,7 +48,7 @@ function creerFenetre(opts: { privee?: boolean } = {}): void {
 
 app.on('session-created', installerProtocoleLyra)
 
-void app.whenReady().then(() => {
+void app.whenReady().then(async () => {
   installerProtocoleLyra(session.defaultSession)
   const reglages = creerReglages(join(paths.userData(), 'settings.json'), app.getPath('downloads'))
   reglagesCourants = () => reglages.getSettings()
@@ -79,6 +80,14 @@ void app.whenReady().then(() => {
   handle('sky:get', (_d, e) => ongletsDe(e.sender).snapshot())
   installerPalette({ ongletsDe, reglages: () => reglages.getSettings(), creerFenetre })
   installerMenu(ongletsCourants)
+  // Les Boucliers sont prêts avant la première fenêtre : aucune page ne se charge sans eux.
+  await demarrerBoucliers({
+    reglages,
+    sessions: [session.defaultSession, session.fromPartition('persist:lyra')],
+    cacheDir: join(paths.userData(), 'shields'),
+    onglets: () => onglets.values(),
+    ongletsDe
+  })
   reglages.onChanged((s) => {
     manager.relayoutAll()
     for (const wc of webContents.getAllWebContents()) envoyer(wc, 'settings:changed', s)

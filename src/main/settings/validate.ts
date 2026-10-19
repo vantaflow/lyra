@@ -15,6 +15,26 @@ const entier = (min: number, max: number) => (v: unknown): number | undefined =>
 const texte = (max: number, motif?: RegExp) => (v: unknown): string | undefined =>
   typeof v === 'string' && v.length > 0 && v.length <= max && (!motif || motif.test(v)) ? v : undefined
 
+/** Origine acceptée comme clé de règle de site : http(s)://hôte[:port] ou file://. */
+const ORIGINE = /^(https?:\/\/([a-z0-9.-]+|\[[0-9a-f:]+\])(:\d{1,5})?|file:\/\/)$/i
+const MAX_SITES = 10_000
+
+/** sites : { origine: { boucliers?: boolean } } ; entrées invalides ignorées. */
+function sites(v: unknown): Obj | undefined {
+  if (!estObjet(v)) return undefined
+  const sortie: Obj = {}
+  let n = 0
+  for (const [origine, regle] of Object.entries(v)) {
+    if (n >= MAX_SITES) break
+    if (origine.length > 300 || !ORIGINE.test(origine) || !estObjet(regle)) continue
+    const boucliers = booleen(propre(regle, 'boucliers'))
+    if (boucliers === undefined) continue
+    sortie[origine] = { boucliers }
+    n++
+  }
+  return Object.keys(sortie).length > 0 ? sortie : undefined
+}
+
 type Schema = { [k: string]: ((v: unknown) => unknown) | Schema }
 
 const SCHEMA: Schema = {
@@ -37,7 +57,8 @@ const SCHEMA: Schema = {
   telechargements: {
     dossier: texte(4096),
     demander: booleen
-  }
+  },
+  sites
 }
 
 function filtrer(brut: unknown, schema: Schema): Obj {

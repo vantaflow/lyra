@@ -18,6 +18,18 @@ export interface EtatEtoile {
   couleur?: string
 }
 
+/** État des Boucliers pour l'étoile active d'une fenêtre. */
+export interface EtatBoucliers {
+  actif: boolean
+  bloques: number
+  /** Origine de la page (« https://hôte », « file:// ») ; '' pour une page interne. */
+  origine: string
+  /** 20 dernières adresses bloquées, la plus récente d'abord. */
+  dernieres: string[]
+}
+
+export type RouteOverlay = 'palette' | 'shields'
+
 export interface SkyChange {
   sky: SkyState
   etats: Record<string, EtatEtoile>
@@ -45,6 +57,13 @@ export type Requetes = {
   'tabs:pin': [{ id: string; pinned: boolean }, void]
   'tabs:reopen': [void, void]
   'sky:get': [void, SkyChange]
+  'shields:get': [void, EtatBoucliers]
+  'shields:toggleSite': [{ origine: string; actif: boolean }, void]
+  'shields:stats': [void, { semaine: number; date: string; source: string }]
+  /** Chrome → main : ouvre le panneau des Boucliers dans l'overlay. */
+  'shields:open': [void, void]
+  /** Overlay → main : referme l'overlay (Échap, clic à côté). */
+  'overlay:close': [void, void]
   /** Test uniquement (LYRA_TEST=1) : charge une URL dans la vue de page. */
   'test:navigate': [string, void]
   /** Test uniquement (LYRA_TEST=1) : dernière URL demandée par la palette. */
@@ -57,6 +76,10 @@ export type Evenements = {
   'sky:changed': SkyChange
   /** Main → overlay : la palette s'affiche. */
   'palette:open': { texteInitial?: string }
+  /** Main → overlay : panneau à afficher. */
+  'overlay:route': RouteOverlay
+  /** Main → chrome : le compteur ou l'état des Boucliers de l'étoile active a changé. */
+  'shields:changed': EtatBoucliers
 }
 
 export type CanalRequete = keyof Requetes

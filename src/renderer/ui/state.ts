@@ -1,5 +1,5 @@
 import { computed, signal } from '@preact/signals'
-import type { EtatEtoile } from '../../shared/ipc'
+import type { EtatBoucliers, EtatEtoile } from '../../shared/ipc'
 import type { SkyState, Star } from '../../shared/types'
 
 const CIEL_VIDE: SkyState = { stars: [], constellations: [], activeId: null, pinned: [] }
@@ -12,6 +12,13 @@ export const etats = signal<Record<string, EtatEtoile>>({})
 export const actif = computed<Star | undefined>(() => sky.value.stars.find((s) => s.id === sky.value.activeId))
 export const etatActif = computed<EtatEtoile | undefined>(() => (sky.value.activeId ? etats.value[sky.value.activeId] : undefined))
 
+/** Boucliers de l'étoile active (compteur du pied du ciel). */
+export const boucliers = signal<EtatBoucliers>({ actif: false, bloques: 0, origine: '', dernieres: [] })
+
+const rafraichirBoucliers = (): void => {
+  void window.lyra.invoke('shields:get').then((b) => (boucliers.value = b))
+}
+
 /** Étoile en cours de glisser-déposer. */
 export const glisse = signal<string | null>(null)
 
@@ -19,10 +26,14 @@ export async function initialiserEtat(): Promise<void> {
   window.lyra.on('sky:changed', (c) => {
     sky.value = c.sky
     etats.value = c.etats
+    // Étoile activée ou page changée : le compteur suit l'étoile active.
+    rafraichirBoucliers()
   })
+  window.lyra.on('shields:changed', (b) => (boucliers.value = b))
   const c = await window.lyra.invoke('sky:get')
   sky.value = c.sky
   etats.value = c.etats
+  rafraichirBoucliers()
 }
 
 export function titreEtoile(star: Star, etat?: EtatEtoile): string {

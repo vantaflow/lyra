@@ -1,9 +1,9 @@
-import { WebContentsView, session } from 'electron'
+import { WebContentsView, session, type WebContents } from 'electron'
 import type { LyraWindow } from '../window/WindowManager'
 import { PRELOAD_INTERNAL, PRELOAD_PAGE } from '../preloads'
 import { envoyer } from '../ipc'
 import { TabTree } from './TabTree'
-import type { EtatEtoile, SkyChange } from '../../shared/ipc'
+import type { CanalEvenement, EtatEtoile, Evenements, RouteOverlay, SkyChange } from '../../shared/ipc'
 
 const URL_NEWTAB = 'lyra://newtab'
 const SCHEMAS_OUVRABLES = /^(https?|lyra|file):/i
@@ -22,6 +22,8 @@ export class TabManager {
   readonly tree = new TabTree()
   private vues = new Map<string, WebContentsView>()
   private extras = new Map<string, Extras>()
+  /** Popups ouvertes depuis nos pages (OAuth…) : ce sont aussi des pages web. */
+  private popups = new Set<WebContents>()
   private minuteur: NodeJS.Timeout | undefined
 
   constructor(private fenetre: LyraWindow) {
@@ -137,8 +139,30 @@ export class TabManager {
     envoyer(this.fenetre.overlay.webContents, 'palette:open', { texteInitial })
   }
 
-  /** Referme l'overlay et rend le focus à la page active. */
-  fermerPalette(): void {
+  ouvrirOverlay(route: RouteOverlay): void {
+    this.fenetre.montrerOverlay(route)
+  }
+
+  /** WebContents de l'étoile active. */
+  wcActif(): WebContents | undefined {
+    const id = this.idActif()
+    const wc = id ? this.vues.get(id)?.webContents : undefined
+    return wc && !wc.isDestroyed() ? wc : undefined
+  }
+
+  /** Vrai si `wc` est une page web de cette fenêtre (étoile ou popup), jamais l'interface. */
+  possede(wc: WebContents): boolean {
+    if (this.popups.has(wc)) return true
+    for (const v of this.vues.values()) if (v.webContents === wc) return true
+    return false
+  }
+
+  envoyerAuChrome<K extends CanalEvenement>(canal: K, data: Evenements[K]): void {
+    if (!this.fenetre.win.isDestroyed()) envoyer(this.fenetre.chrome.webContents, canal, data)
+  }
+
+  /** Referme l'overlay (palette ou panneau) et rend le focus à la page active. */
+  fermerOverlay(): void {
     this.fenetre.cacherOverlay()
     const id = this.idActif()
     if (id) this.vues.get(id)?.webContents.focus()
@@ -184,12 +208,17 @@ export class TabManager {
   }
 
   private creerVue(id: string, url: string): WebContentsView {
+    const interne = url.startsWith('lyra://')
     const vue = new WebContentsView({
       webPreferences: {
         session: session.fromPartition('persist:lyra'),
         sandbox: true,
         contextIsolation: true,
-        preload: url.startsWith('lyra://') ? PRELOAD_INTERNAL : PRELOAD_PAGE
+        // Un seul mécanisme de preload : webPreferences.preload (pas de session.registerPreloadScript,
+        // qui l'exécuterait une seconde fois). nodeIntegrationInSubFrames le fait aussi tourner dans les
+        // iframes (toujours en sandbox, sans Node) : les scriptlets couvrent ainsi les lecteurs intégrés.
+        preload: interne ? PRELOAD_INTERNAL : PRELOAD_PAGE,
+        nodeIntegrationInSubFrames: !interne
       }
     })
     const wc = vue.webContents
@@ -230,6 +259,11 @@ export class TabManager {
         this.ouvrir(URL_NEWTAB)
       }
     })
+    wc.on('did-create-window', (popup) => {
+      const pwc = popup.webContents
+      this.popups.add(pwc)
+      pwc.once('destroyed', () => this.popups.delete(pwc))
+    })
     wc.setWindowOpenHandler((details) => {
       if (details.features) {
         return {
@@ -237,7 +271,7 @@ export class TabManager {
           overrideBrowserWindowOptions: {
             width: 500,
             height: 640,
-            webPreferences: { sandbox: true, contextIsolation: true, preload: PRELOAD_PAGE }
+            webPreferences: { sandbox: true, contextIsolation: true, preload: PRELOAD_PAGE, nodeIntegrationInSubFrames: true }
           }
         }
       }

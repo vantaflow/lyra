@@ -533,3 +533,172 @@ html.overlay #app {
   color: #7f7fb0;
   font-size: 12px;
 }
+
+/* ---- Pied du ciel : bouclier désactivé ---- */
+.boucliers.off {
+  color: #8a8aa6;
+}
+
+/* ---- Panneau des Boucliers (fidèle à docs/design/project/Panneaux.dc.html) ---- */
+.pn-fond {
+  position: fixed;
+  inset: 0;
+  font-family: 'Manrope', -apple-system, 'Segoe UI', system-ui, sans-serif;
+}
+.pn-bouclier {
+  position: absolute;
+  width: min(360px, calc(100vw - 24px));
+  box-sizing: border-box;
+  background: #fff;
+  color: var(--texte);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(20, 20, 46, 0.18);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.pn-tete {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.pn-site {
+  flex: 1;
+  min-width: 0;
+}
+.pn-nom {
+  font-weight: 700;
+  font-size: 15px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.pn-sous {
+  color: #6b6b80;
+  font-size: 12.5px;
+}
+.tg {
+  position: relative;
+  width: 40px;
+  height: 24px;
+  border: 0;
+  border-radius: 12px;
+  padding: 0;
+  cursor: pointer;
+  flex: none;
+}
+.tg i {
+  position: absolute;
+  top: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.tg.on {
+  background: #1e7f6c;
+}
+.tg.on i {
+  right: 3px;
+}
+.tg.off {
+  background: #c9c9d6;
+}
+.tg.off i {
+  left: 3px;
+}
+.tg:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.pn-compteurs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  text-align: center;
+}
+.pn-compteurs > div {
+  background: #f3f3f9;
+  border-radius: 10px;
+  padding: 10px 6px;
+}
+.pn-n {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1e7f6c;
+}
+.pn-l {
+  color: #6b6b80;
+  font-size: 12px;
+}
+.pn-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+.pn-ligne {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pn-ligne > span:first-child {
+  flex: 1;
+}
+.pn-seg {
+  display: inline-flex;
+  border: 1px solid #d6d6e2;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.pn-seg button {
+  padding: 5px 10px;
+  border: 0;
+  background: #f8f8fc;
+  color: #3a3a50;
+  font: 13px 'Manrope', sans-serif;
+  cursor: pointer;
+}
+.pn-seg button.on {
+  background: #1e7f6c;
+  color: #fff;
+}
+.pn-seg button:disabled {
+  cursor: default;
+}
+.pn-details {
+  font-size: 12.5px;
+  color: #3a3a50;
+}
+.pn-details summary {
+  cursor: pointer;
+  color: #4a48c4;
+}
+.pn-liste {
+  padding-top: 8px;
+  font: 12px ui-monospace, Menlo, monospace;
+  color: #6b6b80;
+  line-height: 1.7;
+  max-height: 180px;
+  overflow: auto;
+}
+.pn-liste > div {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.pn-liens {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+}
+.pn-liens a {
+  color: #4a48c4;
+  text-decoration: none;
+}
+.pn-liens span {
+  color: #d6d6e2;
+}

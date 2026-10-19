@@ -11,6 +11,7 @@ export function reglagesParDefaut(dossierTelechargements: string): Settings {
     moteurChoisi: false,
     ciel: { position: 'gauche', largeur: 272, masque: false, ternirApresMin: 30, endormirApresMin: 120 },
     boucliers: { niveau: 'standard', genes: false, majHeures: 6 },
-    telechargements: { dossier: dossierTelechargements, demander: false }
+    telechargements: { dossier: dossierTelechargements, demander: false },
+    sites: {}
   }
 }

@@ -47,6 +47,13 @@ export interface Settings {
     dossier: string
     demander: boolean
   }
+  /** Règles par site, indexées par origine (« https://exemple.fr », « file:// »). */
+  sites: Record<string, RegleSite>
+}
+
+export interface RegleSite {
+  /** false : Boucliers désactivés sur ce site. Absent : actifs. */
+  boucliers?: boolean
 }
 
 export interface HistoryEntry {

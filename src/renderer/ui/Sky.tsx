@@ -1,7 +1,7 @@
 import type { Star as StarT } from '../../shared/types'
 import { Branche } from './Branche'
 import { Epingle } from './Epingle'
-import { sky } from './state'
+import { boucliers, sky } from './state'
 
 const mac = window.lyra.plateforme === 'darwin'
 const ouvrirReglages = (): void => void window.lyra.invoke('tabs:open', { url: 'lyra://settings' })
@@ -19,6 +19,12 @@ export function Sky() {
   const connues = new Set(constellations.map((c) => c.id))
   const sans = ouvertes.filter((s) => !s.constellationId || !connues.has(s.constellationId))
   const touche = mac ? '⌘' : 'Ctrl'
+  const b = boucliers.value
+  const libelleBoucliers = !b.origine
+    ? 'Boucliers'
+    : b.actif
+      ? `Boucliers : ${b.bloques} ${b.bloques > 1 ? 'éléments bloqués' : 'élément bloqué'} sur ce site`
+      : 'Boucliers désactivés sur ce site'
 
   return (
     <aside class="ciel" aria-label="Ciel des onglets">
@@ -81,12 +87,18 @@ export function Sky() {
       </nav>
 
       <div class="pied ciel-pied">
-        <button class="boucliers" type="button" aria-label="Boucliers : 0 élément bloqué sur ce site">
+        <button
+          class={`boucliers${b.origine && !b.actif ? ' off' : ''}`}
+          type="button"
+          aria-label={libelleBoucliers}
+          title={libelleBoucliers}
+          onClick={() => void window.lyra.invoke('shields:open')}
+        >
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 3l7 3v5c0 4.5-3 8.2-7 9.5C8 19.2 5 15.5 5 11V6z" />
             <path d="M9 12l2 2 4-4" />
           </svg>
-          <span>0</span>
+          <span class="boucliers-n">{b.bloques}</span>
         </button>
         <span class="souple"></span>
         <button class="sb" type="button" aria-label="Extensions">

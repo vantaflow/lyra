@@ -5,6 +5,8 @@ export interface ListesEmbarquees {
   textes: string[]
   resources?: string
   date: string
+  /** Adresses des listes texte (hors resources.json), pour la mise à jour réseau. */
+  urls?: string[]
 }
 
 /** Dossier des listes embarquées en production (extraResources). */
@@ -16,14 +18,18 @@ export function dossierListesEmbarquees(): string {
 export async function chargerListesEmbarquees(dossier: string = dossierListesEmbarquees()): Promise<ListesEmbarquees> {
   const index = JSON.parse(await readFile(join(dossier, 'LISTES.json'), 'utf8')) as {
     date: string
-    listes: { fichier: string }[]
+    listes: { fichier: string; url?: string }[]
   }
   const textes: string[] = []
+  const urls: string[] = []
   let resources: string | undefined
   for (const l of index.listes) {
     const contenu = await readFile(join(dossier, l.fichier), 'utf8')
     if (l.fichier === 'resources.json') resources = contenu
-    else textes.push(contenu)
+    else {
+      textes.push(contenu)
+      if (l.url) urls.push(l.url)
+    }
   }
-  return { textes, resources, date: index.date }
+  return { textes, resources, date: index.date, urls }
 }

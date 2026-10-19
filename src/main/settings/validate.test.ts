@@ -37,6 +37,30 @@ describe('validerPatch', () => {
     expect(({} as Record<string, unknown>).polluee).toBeUndefined()
   })
 
+  it('valide les règles de site', () => {
+    expect(
+      validerPatch({
+        sites: {
+          'https://www.youtube.com': { boucliers: false },
+          'file://': { boucliers: false },
+          'http://[::1]:8080': { boucliers: true },
+          'javascript:alert(1)': { boucliers: false },
+          'https://a.fr/chemin': { boucliers: false },
+          'https://b.fr': { boucliers: 'non' },
+          'https://c.fr': 'x'
+        }
+      })
+    ).toEqual({
+      sites: {
+        'https://www.youtube.com': { boucliers: false },
+        'file://': { boucliers: false },
+        'http://[::1]:8080': { boucliers: true }
+      }
+    })
+    expect(validerPatch({ sites: JSON.parse('{"__proto__":{"boucliers":false}}') })).toEqual({})
+    expect(validerPatch({ sites: [] })).toEqual({})
+  })
+
   it('entrée non objet : patch vide', () => {
     expect(validerPatch(null)).toEqual({})
     expect(validerPatch('x')).toEqual({})

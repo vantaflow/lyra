@@ -116,6 +116,18 @@ describe('cache et réseau', () => {
     expect(r.date).toBe(embarquees.date)
   })
 
+  it('sans fetch, cache périmé plus récent que les listes embarquées : cache', async () => {
+    const cacheDir = await dossier('lyra-demarrage-')
+    const embarquees = await miniEmb()
+    const faux = (async () => new Response('||reseau.test^')) as unknown as typeof fetch
+    await construireMoteur({ cacheDir, listesEmbarquees: embarquees, listesDistantes: ['https://liste.test/a.txt'], fetch: faux, majHeures: 6, maintenant: new Date('2026-01-05T00:00:00.000Z') })
+    const r = await construireMoteur({ cacheDir, listesEmbarquees: embarquees, listesDistantes: [], majHeures: 6, maintenant: new Date('2026-02-01T00:00:00.000Z') })
+    expect(r.source).toBe('cache')
+    expect(r.moteur.match(req('https://reseau.test/x.js', 'script')).match).toBe(true)
+    const plusNeuves = { ...embarquees, date: '2026-01-10T00:00:00.000Z' }
+    expect((await construireMoteur({ cacheDir, listesEmbarquees: plusNeuves, listesDistantes: [], majHeures: 6, maintenant: new Date('2026-02-01T00:00:00.000Z') })).source).toBe('embarque')
+  })
+
   it('mettreAJour en échec : moteur actuel conservé, cache intact', async () => {
     const cacheDir = await dossier('lyra-maj-')
     const embarquees = await miniEmb()

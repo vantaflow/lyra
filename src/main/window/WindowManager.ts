@@ -3,6 +3,8 @@ import { join } from 'node:path'
 import { PRELOAD_UI } from '../preloads'
 import { computeLayout, type Layout } from './layout'
 import type { Settings } from '../../shared/types'
+import type { RouteOverlay } from '../../shared/ipc'
+import { envoyer } from '../ipc'
 
 export interface LyraWindow {
   id: number
@@ -12,7 +14,7 @@ export interface LyraWindow {
   setPageView(v: WebContentsView | null): void
   relayout(): void
   setPleinEcran(b: boolean): void
-  montrerOverlay(route: 'palette'): void
+  montrerOverlay(route: RouteOverlay): void
   cacherOverlay(): void
   /** Mise en page courante (pour l'IPC layout:get). */
   bounds(): Layout
@@ -92,7 +94,8 @@ export class WindowManager {
         pleinEcran = b
         relayout()
       },
-      montrerOverlay(_route) {
+      montrerOverlay(route) {
+        envoyer(overlay.webContents, 'overlay:route', route)
         win.contentView.addChildView(overlay)
         overlay.setVisible(true)
         overlay.webContents.focus()
