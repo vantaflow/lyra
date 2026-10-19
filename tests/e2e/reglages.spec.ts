@@ -53,9 +53,12 @@ test('réglages : thème sombre → une page web voit prefers-color-scheme: dark
     await fenetre.evaluate((u) => window.lyra.invoke('test:navigate', u), FIXTURE)
     await expect.poll(() => page(app, FIXTURE)).toBeDefined()
     // Playwright émule « light » par défaut : on rend la main au thème réel du navigateur.
-    await page(app, FIXTURE)!.emulateMedia({ colorScheme: null })
     await expect
-      .poll(() => page(app, FIXTURE)!.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches))
+      .poll(async () => {
+        const p = page(app, FIXTURE)!
+        await p.emulateMedia({ colorScheme: null })
+        return p.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches)
+      })
       .toBe(true)
   } finally {
     await app.close()
