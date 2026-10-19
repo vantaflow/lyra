@@ -5,7 +5,7 @@ import { basename, join } from 'node:path'
 import { shell, type DownloadItem, type Session } from 'electron'
 import type { DownloadInfo } from '../../shared/types'
 import { JsonStore } from '../settings/store'
-import { nomUnique, reduire } from './logique'
+import { ajouterFinal, estFinal, nomUnique, reduire } from './logique'
 
 const MAX = 200
 const DEBOUNCE_MS = 150
@@ -22,7 +22,7 @@ function migrer(brut: unknown): Contenu {
   const valides = items.filter(
     (i): i is DownloadInfo => typeof i === 'object' && i !== null && typeof (i as DownloadInfo).id === 'string' && typeof (i as DownloadInfo).nom === 'string' && typeof (i as DownloadInfo).chemin === 'string'
   )
-  return { version: 1, items: valides.map((i) => ({ ...i, etat: 'termine' })) }
+  return { version: 1, items: valides.filter(estFinal) }
 }
 
 export interface OptionsDownloads {
@@ -102,9 +102,7 @@ export class Downloads {
   }
 
   private persister(info: DownloadInfo): void {
-    if (info.etat !== 'termine') return
-    const items = [info, ...this.store.get().items.filter((i) => i.id !== info.id)].slice(0, MAX)
-    this.store.set({ items })
+    this.store.set({ items: ajouterFinal(this.store.get().items, info, MAX) })
   }
 
   liste(): DownloadInfo[] {

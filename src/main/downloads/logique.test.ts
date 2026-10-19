@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { DownloadInfo } from '../../shared/types'
-import { nomUnique, reduire } from './logique'
+import { ajouterFinal, nomUnique, reduire } from './logique'
 
 const existe = (...chemins: string[]) => (c: string) => chemins.includes(c)
 
@@ -48,5 +48,20 @@ describe('reduire', () => {
   it('un état final n’est plus modifié par un updated tardif', () => {
     const fini = { ...base, etat: 'termine' as const, recu: 10, total: 10 }
     expect(reduire(fini, { type: 'updated', recu: 5, total: 10, pause: false, interrompu: false, dtMs: 1 })).toBe(fini)
+  })
+})
+
+describe('ajouterFinal (persistance)', () => {
+  const fin = (id: string, etat: DownloadInfo['etat']): DownloadInfo => ({ ...base, id, etat })
+  it('garde les entrées terminées, annulées et en échec issues d’un done', () => {
+    const annule = reduire({ ...base, id: 'a' }, { type: 'done', resultat: 'cancelled', recu: 1, total: 10 })
+    const erreur = reduire({ ...base, id: 'b' }, { type: 'done', resultat: 'interrupted', recu: 1, total: 10 })
+    const liste = ajouterFinal(ajouterFinal([], annule, 200), erreur, 200)
+    expect(liste.map((i) => [i.id, i.etat])).toEqual([['b', 'erreur'], ['a', 'annule']])
+  })
+  it('ignore un état non final et respecte le plafond', () => {
+    expect(ajouterFinal([], fin('x', 'en-cours'), 200)).toEqual([])
+    const trois = ajouterFinal(ajouterFinal(ajouterFinal([], fin('1', 'termine'), 2), fin('2', 'erreur'), 2), fin('3', 'annule'), 2)
+    expect(trois.map((i) => i.id)).toEqual(['3', '2'])
   })
 })

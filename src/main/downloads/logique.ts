@@ -40,3 +40,12 @@ export function reduire(info: DownloadInfo, ev: EvenementTelechargement): Downlo
 
 /** Dossier parent d'un chemin (pour « Afficher »). */
 export const dossierDe = (chemin: string): string => dirname(chemin)
+
+const ETATS_FINAUX = new Set<DownloadInfo['etat']>(['termine', 'annule', 'erreur'])
+export const estFinal = (info: DownloadInfo): boolean => ETATS_FINAUX.has(info.etat)
+
+/** Liste persistée après un `done` : l'entrée finale (terminée, annulée ou en échec) passe en tête, plafond `max`. */
+export function ajouterFinal(items: DownloadInfo[], info: DownloadInfo, max: number): DownloadInfo[] {
+  if (!estFinal(info)) return items
+  return [info, ...items.filter((i) => i.id !== info.id)].slice(0, max)
+}

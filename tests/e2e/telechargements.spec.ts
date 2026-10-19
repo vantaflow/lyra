@@ -65,3 +65,26 @@ test('lyra://downloads liste le téléchargement ; « Effacer la liste » la vid
     await app.close()
   }
 })
+
+test('un téléchargement en échec reste dans la liste avec l’état erreur', async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const userData = await app.evaluate(({ app: a }) => a.getPath('userData'))
+    await fenetre.evaluate((d) => window.lyra.invoke('settings:set', { telechargements: { dossier: d, demander: false } }), join(userData, 'dl'))
+    await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), FIXTURE)
+    await expect.poll(() => page(app, FIXTURE)).toBeDefined()
+    await page(app, FIXTURE)!.evaluate(() => {
+      const a = document.getElementById('dl') as HTMLAnchorElement
+      a.href = 'absent.bin'
+      a.click()
+    })
+    await expect.poll(async () => (await liste(fenetre))[0]?.etat).toBe('erreur')
+    await fenetre.getByRole('button', { name: 'Téléchargements' }).click()
+    await expect.poll(() => app.windows().some((w) => w.url().includes('#overlay'))).toBe(true)
+    const overlay = app.windows().find((w) => w.url().includes('#overlay'))!
+    await expect(overlay.locator('.dl-etat')).toHaveText('Échec')
+    await expect(overlay.locator('.dl-btn')).toHaveCount(0)
+  } finally {
+    await app.close()
+  }
+})

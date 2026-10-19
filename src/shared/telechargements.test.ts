@@ -38,6 +38,6 @@ describe('texteEtat', () => {
   })
   it('annulé et erreur', () => {
     expect(texteEtat({ ...base, etat: 'annule' })).toBe('Annulé')
-    expect(texteEtat({ ...base, etat: 'erreur' })).toBe('Échec du téléchargement')
+    expect(texteEtat({ ...base, etat: 'erreur' })).toBe('Échec')
   })
 })

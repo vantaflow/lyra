@@ -59,7 +59,7 @@ export function texteEtat(d: DownloadInfo): string {
     case 'annule':
       return 'Annulé'
     case 'erreur':
-      return 'Échec du téléchargement'
+      return 'Échec'
     case 'pause':
       return `En pause — ${d.total > 0 ? surTotal(d.recu, d.total) : formaterTaille(d.recu)}`
     default: {
