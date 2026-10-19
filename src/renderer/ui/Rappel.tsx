@@ -36,7 +36,7 @@ export function RappelDnd() {
       </button>
     )
   }
-  const detail = [texteNotifications(e.notifications), texteFenetres(e.popups), texteReste(e.fin, maintenant.value)].filter(Boolean).join(' · ')
+  const detail = [texteNotifications(e.notifications), texteFenetres(e.popups), texteReste(e.fin, Math.max(maintenant.value, Date.now()))].filter(Boolean).join(' · ')
   return (
     <div class="dnd-rappel" role="status">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="#F4C56A" aria-hidden="true">

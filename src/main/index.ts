@@ -370,23 +370,28 @@ void app.whenReady().then(async () => {
   const court = (v: unknown, max: number): string => (typeof v === 'string' ? v.slice(0, max) : '')
   ipcMain.on('dnd:notification', (e, d: { titre?: unknown; corps?: unknown; tag?: unknown; silencieuse?: unknown } | null) => {
     // null : la notification suit son cours normal (mode inactif, site en exception, notifications non autorisées).
-    e.returnValue = null
-    const c = contexteNotification(e)
-    if (!c || !d || typeof d.titre !== 'string' || decisionNotifications(c.origine) !== 'autoriser') return
-    const id = dnd.retenirNotification(c.m.fenetreId, {
-      origine: c.origine,
-      titre: court(d.titre, 300),
-      corps: court(d.corps, 1000),
-      tag: court(d.tag, 200) || undefined,
-      silencieuse: d.silencieuse === true,
-      etoileId: c.m.idDe(e.sender)
-    })
-    if (id !== null && e.senderFrame) {
-      cadresNotifications.set(id, e.senderFrame)
-      // Les cadres des notifications jetées ou livrées ne s'accumulent pas.
-      if (cadresNotifications.size > 500) cadresNotifications.delete(cadresNotifications.keys().next().value!)
+    // returnValue répond tout de suite à l'appel synchrone : il n'est fixé qu'une fois, à la fin.
+    let id: number | null = null
+    try {
+      const c = contexteNotification(e)
+      if (c && d && typeof d.titre === 'string' && decisionNotifications(c.origine) === 'autoriser') {
+        id = dnd.retenirNotification(c.m.fenetreId, {
+          origine: c.origine,
+          titre: court(d.titre, 300),
+          corps: court(d.corps, 1000),
+          tag: court(d.tag, 200) || undefined,
+          silencieuse: d.silencieuse === true,
+          etoileId: c.m.idDe(e.sender)
+        })
+        if (id !== null && e.senderFrame) {
+          cadresNotifications.set(id, e.senderFrame)
+          // Les cadres des notifications jetées ou livrées ne s'accumulent pas.
+          if (cadresNotifications.size > 500) cadresNotifications.delete(cadresNotifications.keys().next().value!)
+        }
+      }
+    } finally {
+      e.returnValue = id
     }
-    e.returnValue = id
   })
   ipcMain.on('dnd:permission', (e) => {
     const c = contexteNotification(e)

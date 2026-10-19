@@ -584,7 +584,7 @@ export class TabManager {
       if (categorie === 'web' && interditAuxSites(details.url)) return { action: 'deny' }
       if (details.features) {
         // Ne pas déranger : la popup est retenue (comptée, ouverte à la sortie), la page n'en reçoit pas de fenêtre.
-        if (/^https?:/i.test(details.url) && this.options.retenirPopup?.({ url: details.url, origine: origineDe(wc.getURL()), etoileId: id })) return { action: 'deny' }
+        if (/^(https?|file):/i.test(details.url) && this.options.retenirPopup?.({ url: details.url, origine: origineDe(wc.getURL()), etoileId: id })) return { action: 'deny' }
         return {
           action: 'allow',
           overrideBrowserWindowOptions: {
