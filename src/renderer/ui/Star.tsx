@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks'
 import type { Star as StarT } from '../../shared/types'
-import { deposer, etats, glisse, sky, titreEtoile } from './state'
+import { deposer, estTerne, etats, glisse, sky, titreEtoile } from './state'
 
 interface Props {
   star: StarT
@@ -10,7 +10,7 @@ export function Star({ star }: Props) {
   const [cible, setCible] = useState<'avant' | 'apres' | null>(null)
   const etat = etats.value[star.id]
   const estActive = sky.value.activeId === star.id
-  const classes = ['star', estActive ? 'active' : '', star.dormant ? 'dim' : '', cible ? `drop-${cible}` : '']
+  const classes = ['star', estActive ? 'active' : '', star.dormant ? 'dim' : '', estTerne(star, etat) ? 'terne' : '', cible ? `drop-${cible}` : '']
     .filter(Boolean)
     .join(' ')
 

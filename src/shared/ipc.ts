@@ -16,6 +16,8 @@ export interface EtatEtoile {
   canGoBack: boolean
   canGoForward: boolean
   couleur?: string
+  /** Timestamp (ms) depuis lequel l'étoile est inactive ; absent pour l'étoile active. */
+  inactifDepuis?: number
 }
 
 /** État des Boucliers pour l'étoile active d'une fenêtre. */
@@ -92,6 +94,7 @@ export type Requetes = {
   'downloads:panel': [void, void]
   /** Test uniquement (LYRA_TEST=1) : charge une URL dans la vue de page. */
   'test:navigate': [string, void]
+  'test:endormir': [string, boolean]
   /** Test uniquement (LYRA_TEST=1) : dernière URL demandée par la palette. */
   'test:lastNavigation': [void, string | null]
 }

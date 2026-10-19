@@ -3,7 +3,10 @@ import type { LyraWindow } from '../window/WindowManager'
 import { PRELOAD_INTERNAL, PRELOAD_PAGE } from '../preloads'
 import { envoyer } from '../ipc'
 import { TabTree } from './TabTree'
+import { peutEndormir } from './dormance'
+import type { FenetreSession, HistoriqueEtoile } from '../session/SessionStore'
 import { categorieDe, type Categorie } from './categorie'
+import type { SkyState } from '../../shared/types'
 import type { CanalEvenement, EtatEtoile, Evenements, RouteOverlay, SkyChange } from '../../shared/ipc'
 
 const URL_NEWTAB = 'lyra://newtab'
@@ -29,21 +32,34 @@ export interface RappelsHistorique {
  * jamais de page lyra://. Quand une navigation change de catégorie, la vue est recréée (l'historique
  * Précédent/Suivant repart alors de zéro) ; une page web ne peut pas naviguer d'elle-même vers lyra://.
  */
+/** Réglages de dormance et rappel de changement (sauvegarde de la session). */
+export interface OptionsTabs {
+  /** Minutes d'inactivité avant l'endormissement (0 ou moins : jamais). */
+  endormirApresMin?: () => number
+  surChangement?: () => void
+}
+
 export class TabManager {
-  readonly tree = new TabTree()
+  tree = new TabTree()
   private vues = new Map<string, WebContentsView>()
   private extras = new Map<string, Extras>()
   private categories = new Map<string, Categorie>()
   /** Popups ouvertes depuis nos pages (OAuth…) : ce sont aussi des pages web. */
   private popups = new Set<WebContents>()
   private minuteur: NodeJS.Timeout | undefined
+  /** Historique de navigation des étoiles endormies. */
+  private entrees = new Map<string, HistoriqueEtoile>()
+  private minuteursSommeil = new Map<string, NodeJS.Timeout>()
+  private inactifDepuis = new Map<string, number>()
 
   constructor(
     private fenetre: LyraWindow,
-    private historique?: RappelsHistorique
+    private historique?: RappelsHistorique,
+    private options: OptionsTabs = {}
   ) {
     fenetre.win.on('closed', () => {
       clearTimeout(this.minuteur)
+      for (const t of this.minuteursSommeil.values()) clearTimeout(t)
       for (const v of this.vues.values()) if (!v.webContents.isDestroyed()) v.webContents.close()
       this.vues.clear()
     })
@@ -54,22 +70,29 @@ export class TabManager {
     const vue = this.creerVue(star.id, url)
     this.vues.set(star.id, vue)
     if (o.actif ?? true) this.activer(star.id)
+    else this.armer(star.id)
     void vue.webContents.loadURL(url).catch(() => undefined)
     this.notifier()
     return star.id
   }
 
   fermer(id: string): void {
+    if (!this.tree.star(id)) return
     const vue = this.vues.get(id)
-    if (!vue || !this.tree.star(id)) return
     const etaitActive = this.tree.toJSON().activeId === id
     const { suivantActif } = this.tree.fermer(id)
     this.vues.delete(id)
     this.extras.delete(id)
     this.categories.delete(id)
-    this.fenetre.win.contentView.removeChildView(vue)
-    if (!vue.webContents.isDestroyed()) vue.webContents.close()
-    if (this.vues.size === 0) {
+    this.entrees.delete(id)
+    this.inactifDepuis.delete(id)
+    clearTimeout(this.minuteursSommeil.get(id))
+    this.minuteursSommeil.delete(id)
+    if (vue) {
+      this.fenetre.win.contentView.removeChildView(vue)
+      if (!vue.webContents.isDestroyed()) vue.webContents.close()
+    }
+    if (this.tree.toJSON().stars.length === 0) {
       this.fenetre.setPageView(null)
       this.ouvrir(URL_NEWTAB)
       return
@@ -79,20 +102,27 @@ export class TabManager {
   }
 
   activer(id: string): void {
+    if (this.tree.star(id)?.dormant) this.reveiller(id)
     const vue = this.vues.get(id)
     if (!vue) return
+    const precedent = this.tree.toJSON().activeId
     this.tree.activer(id)
+    clearTimeout(this.minuteursSommeil.get(id))
+    this.inactifDepuis.delete(id)
+    if (precedent && precedent !== id) this.armer(precedent)
     this.fenetre.setPageView(vue)
     vue.webContents.focus()
     this.notifier()
   }
 
   naviguer(id: string, url: string): void {
+    if (this.tree.star(id)?.dormant) this.reveiller(id)
     void this.vueAdaptee(id, url)?.webContents.loadURL(url).catch(() => undefined)
   }
 
   /** Navigue et attend la fin du chargement (test:navigate). */
   async naviguerEtAttendre(id: string, url: string): Promise<void> {
+    if (this.tree.star(id)?.dormant) this.reveiller(id)
     await this.vueAdaptee(id, url)?.webContents.loadURL(url).catch(() => undefined)
   }
 
@@ -145,6 +175,95 @@ export class TabManager {
     this.vues.set(star.id, vue)
     this.activer(star.id)
     void vue.webContents.loadURL(star.url).catch(() => undefined)
+  }
+
+  /** Minuterie d'endormissement d'une étoile inactive, réarmée à chaque activation. */
+  private armer(id: string): void {
+    clearTimeout(this.minuteursSommeil.get(id))
+    this.inactifDepuis.set(id, Date.now())
+    const min = this.options.endormirApresMin?.() ?? 0
+    if (min <= 0) return
+    const t = setTimeout(() => {
+      if (this.vues.has(id) && !this.endormir(id)) this.armer(id)
+    }, min * 60_000)
+    t.unref()
+    this.minuteursSommeil.set(id, t)
+  }
+
+  /** Libère la vue d'une étoile en gardant son historique ; false si elle ne peut pas dormir. */
+  endormir(id: string): boolean {
+    const vue = this.vues.get(id)
+    const star = this.tree.star(id)
+    if (!vue || !star || vue.webContents.isDestroyed()) return false
+    const wc = vue.webContents
+    const ok = peutEndormir({
+      active: this.tree.toJSON().activeId === id,
+      epinglee: star.pinned,
+      audible: wc.isCurrentlyAudible(),
+      chargement: wc.isLoading(),
+      dormante: star.dormant
+    })
+    if (!ok) return false
+    const h = this.historiqueDe(wc)
+    if (h) this.entrees.set(id, h)
+    star.url = wc.getURL() || star.url
+    star.title = wc.getTitle() || star.title
+    star.dormant = true
+    clearTimeout(this.minuteursSommeil.get(id))
+    this.minuteursSommeil.delete(id)
+    this.inactifDepuis.delete(id)
+    this.vues.delete(id)
+    this.extras.delete(id)
+    this.fenetre.win.contentView.removeChildView(vue)
+    wc.close()
+    this.notifier()
+    return true
+  }
+
+  /** Recrée la vue d'une étoile endormie ; l'historique est restauré avant tout chargement. */
+  reveiller(id: string): void {
+    const star = this.tree.star(id)
+    if (!star || !star.dormant || this.vues.has(id)) return
+    const h = this.entrees.get(id)
+    const url = h ? h.entries[h.index].url : star.url
+    const vue = this.creerVue(id, url)
+    this.vues.set(id, vue)
+    star.dormant = false
+    this.entrees.delete(id)
+    if (this.tree.toJSON().activeId !== id) this.armer(id)
+    if (star.favicon) this.extras.set(id, { favicon: star.favicon })
+    if (h) void vue.webContents.navigationHistory.restore({ entries: h.entries, index: h.index }).catch(() => undefined)
+    else void vue.webContents.loadURL(url).catch(() => undefined)
+    this.notifier()
+  }
+
+  private historiqueDe(wc: WebContents): HistoriqueEtoile | undefined {
+    const entries = wc.navigationHistory.getAllEntries()
+    return entries.length > 0 ? { entries, index: Math.max(0, wc.navigationHistory.getActiveIndex()) } : undefined
+  }
+
+  /** État à sauvegarder : ciel et historiques (réels pour les vues vivantes, mémorisés pour les endormies). */
+  exporter(): FenetreSession {
+    const entrees: Record<string, HistoriqueEtoile> = {}
+    for (const [id, h] of this.entrees) entrees[id] = h
+    for (const [id, vue] of this.vues) {
+      if (vue.webContents.isDestroyed()) continue
+      const h = this.historiqueDe(vue.webContents)
+      if (h) entrees[id] = h
+    }
+    return { ciel: this.tree.toJSON(), entrees }
+  }
+
+  /** Recrée le ciel sauvegardé : étoiles endormies (sans vue) sauf l'active, réveillée. */
+  restaurer(f: FenetreSession): void {
+    const ciel: SkyState = {
+      ...f.ciel,
+      stars: f.ciel.stars.map((s) => ({ ...s, dormant: true }))
+    }
+    const actif = ciel.stars.find((s) => s.id === ciel.activeId) ?? ciel.stars[0]
+    this.tree = TabTree.fromJSON({ ...ciel, activeId: actif.id })
+    for (const [id, h] of Object.entries(f.entrees)) if (this.tree.star(id)) this.entrees.set(id, h)
+    this.activer(actif.id)
   }
 
   /** Étoile voisine dans l'ordre du ciel ; delta = +1 / -1, circulaire. */
@@ -223,6 +342,7 @@ export class TabManager {
         url: wc.getURL() || star?.url || '',
         canGoBack: wc.navigationHistory.canGoBack(),
         canGoForward: wc.navigationHistory.canGoForward(),
+        ...(this.inactifDepuis.has(id) ? { inactifDepuis: this.inactifDepuis.get(id) } : {}),
         ...(ex.favicon ? { favicon: ex.favicon } : {}),
         ...(ex.couleur ? { couleur: ex.couleur } : {})
       }
@@ -236,6 +356,7 @@ export class TabManager {
       this.minuteur = undefined
       if (this.fenetre.win.isDestroyed()) return
       envoyer(this.fenetre.chrome.webContents, 'sky:changed', this.snapshot())
+      this.options.surChangement?.()
     }, 30)
   }
 
@@ -295,6 +416,8 @@ export class TabManager {
     wc.on('page-title-updated', (_e, titre) => this.historique?.titre(wc.getURL(), titre))
     wc.on('page-favicon-updated', (_e, favicons) => {
       this.extras.set(id, { ...this.extras.get(id), favicon: favicons[0] })
+      const etoile = this.tree.star(id)
+      if (etoile && favicons[0]) etoile.favicon = favicons[0]
       this.notifier()
     })
     wc.on('did-change-theme-color', (_e, couleur) => {

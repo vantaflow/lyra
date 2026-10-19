@@ -14,6 +14,7 @@ import { demarrerBoucliers } from './shields/installer'
 import { History } from './history/History'
 import { Bookmarks } from './bookmarks/Bookmarks'
 import { Downloads } from './downloads/Downloads'
+import { SessionStore, type FenetreSession } from './session/SessionStore'
 
 definirFournisseurLangue(() => app.getLocale())
 app.setPath('userData', paths.userData())
@@ -28,6 +29,22 @@ let reglagesCourants: () => Settings = () => {
 const manager = new WindowManager(() => reglagesCourants().ciel)
 const onglets = new Map<number, TabManager>()
 let historique: History | undefined
+let sessionStore: SessionStore | undefined
+const privees = new Set<number>()
+
+/** Fenêtres normales : une fenêtre privée ne laisse aucune trace dans la session. */
+function etatSession(): { version: 1; fenetres: FenetreSession[] } | null {
+  const fenetres = [...onglets].filter(([id]) => !privees.has(id)).map(([, m]) => m.exporter())
+  return fenetres.length > 0 ? { version: 1, fenetres } : null
+}
+
+let enFermeture = false
+
+function sauverSession(): void {
+  if (enFermeture) return
+  const etat = etatSession()
+  if (etat) sessionStore?.sauvegarder(etat)
+}
 
 function ongletsCourants(): TabManager | undefined {
   const focus = BaseWindow.getFocusedWindow()?.id
@@ -42,7 +59,7 @@ function ongletsDe(wc: WebContents): TabManager {
   return m
 }
 
-function creerFenetre(opts: { privee?: boolean } = {}): void {
+function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSession): void {
   const fenetre = manager.creerFenetre(opts)
   // Une fenêtre privée n'alimente jamais l'historique.
   const h = historique
@@ -53,11 +70,21 @@ function creerFenetre(opts: { privee?: boolean } = {}): void {
       : {
           visite: (url, title, date) => h.ajouter({ url, title, date }),
           titre: (url, title) => h.majTitre(url, title)
-        }
+        },
+    {
+      endormirApresMin: () => reglagesCourants().ciel.endormirApresMin,
+      surChangement: sauverSession
+    }
   )
   onglets.set(fenetre.id, tabs)
-  fenetre.win.on('closed', () => onglets.delete(fenetre.id))
-  tabs.ouvrir('lyra://newtab')
+  if (opts.privee) privees.add(fenetre.id)
+  fenetre.win.on('closed', () => {
+    onglets.delete(fenetre.id)
+    privees.delete(fenetre.id)
+    sauverSession()
+  })
+  if (restauration) tabs.restaurer(restauration)
+  else tabs.ouvrir('lyra://newtab')
 }
 
 app.on('session-created', installerProtocoleLyra)
@@ -115,6 +142,7 @@ void app.whenReady().then(async () => {
       const id = m?.idActif()
       if (m && id) await m.naviguerEtAttendre(id, url)
     })
+    handle('test:endormir', (id) => ongletsCourants()?.endormir(id) ?? false)
   }
   handle('tabs:open', (d, e) => ongletsDe(e.sender).ouvrir(d.url, { parentId: d.parentId, actif: d.actif }))
   handle('tabs:close', (d, e) => ongletsDe(e.sender).fermer(d.id))
@@ -144,13 +172,20 @@ void app.whenReady().then(async () => {
     if (ecrituresAttendues) return
     ecrituresAttendues = true
     e.preventDefault()
+    // Avant que les fenêtres ne se ferment : l'état courant est écrit tout de suite.
+    sauverSession()
+    sessionStore?.vider()
+    enFermeture = true
     void hist.attendre().finally(() => app.quit())
   })
   reglages.onChanged((s) => {
     manager.relayoutAll()
     for (const wc of webContents.getAllWebContents()) envoyer(wc, 'settings:changed', s)
   })
-  creerFenetre()
+  sessionStore = new SessionStore(join(paths.userData(), 'session.json'))
+  const restauree = sessionStore.charger()
+  if (restauree) for (const f of restauree.fenetres) creerFenetre({}, f)
+  else creerFenetre()
   app.on('activate', () => {
     if (BaseWindow.getAllWindows().length === 0) creerFenetre()
   })

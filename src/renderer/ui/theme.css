@@ -186,6 +186,9 @@ body,
     0 0 0 3px rgba(244, 197, 106, 0.22),
     0 0 14px rgba(244, 197, 106, 0.7);
 }
+.star.terne:not(.active) {
+  opacity: 0.72;
+}
 .star.dim {
   color: #8686b4;
 }

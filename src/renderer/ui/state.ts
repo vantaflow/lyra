@@ -42,6 +42,18 @@ export function rafraichirFavori(url: string): void {
   })
 }
 
+/** Délai (minutes) avant qu'une étoile inactive ne devienne terne ; relu avec les réglages. */
+export const ternirApresMin = signal(30)
+/** Horloge grossière : fait revenir l'UI évaluer les étoiles ternes sans changement du ciel. */
+export const maintenant = signal(Date.now())
+setInterval(() => (maintenant.value = Date.now()), 30_000)
+
+/** Étoile inactive depuis plus de `ternirApresMin` (et pas encore endormie). */
+export function estTerne(star: Star, etat?: EtatEtoile): boolean {
+  if (star.dormant || ternirApresMin.value <= 0 || !etat?.inactifDepuis) return false
+  return maintenant.value - etat.inactifDepuis > ternirApresMin.value * 60_000
+}
+
 /** Étoile en cours de glisser-déposer. */
 export const glisse = signal<string | null>(null)
 
@@ -55,6 +67,9 @@ export async function initialiserEtat(): Promise<void> {
   window.lyra.on('shields:changed', (b) => (boucliers.value = b))
   window.lyra.on('downloads:changed', rafraichirTelechargements)
   window.lyra.on('bookmarks:changed', () => rafraichirFavori(adresseFavori))
+  const relireReglages = (): void => void window.lyra.invoke('settings:get').then((r) => (ternirApresMin.value = r.ciel.ternirApresMin))
+  window.lyra.on('settings:changed', (r) => (ternirApresMin.value = r.ciel.ternirApresMin))
+  relireReglages()
   const c = await window.lyra.invoke('sky:get')
   sky.value = c.sky
   etats.value = c.etats
