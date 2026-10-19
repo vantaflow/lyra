@@ -30,6 +30,11 @@
     "vitest": "^5.0.5"
   },
   "dependencies": {
-    "@preact/signals": "^2.11.3"
+    "@ghostery/adblocker": "2.20.1",
+    "@ghostery/adblocker-content": "2.20.1",
+    "@ghostery/adblocker-electron": "2.20.1",
+    "@ghostery/adblocker-electron-preload": "2.20.1",
+    "@preact/signals": "^2.11.3",
+    "tldts-experimental": "7.4.18"
   }
 }

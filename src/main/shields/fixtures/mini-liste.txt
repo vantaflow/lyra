@@ -1,0 +1,4 @@
+! Mini liste de test
+||ads.exemple.test^
+||pub.exemple.test^$script
+exemple.test##.bandeau-pub

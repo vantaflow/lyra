@@ -1,0 +1,90 @@
+{
+  "date": "2026-10-19T11:33:10.920Z",
+  "listes": [
+    {
+      "nom": "uBO filters",
+      "url": "https://ublockorigin.github.io/uAssets/filters/filters.txt",
+      "fichier": "ubo-filters.txt"
+    },
+    {
+      "nom": "uBO filters-2020",
+      "url": "https://ublockorigin.github.io/uAssets/filters/filters-2020.txt",
+      "fichier": "ubo-filters-2020.txt"
+    },
+    {
+      "nom": "uBO filters-2021",
+      "url": "https://ublockorigin.github.io/uAssets/filters/filters-2021.txt",
+      "fichier": "ubo-filters-2021.txt"
+    },
+    {
+      "nom": "uBO filters-2022",
+      "url": "https://ublockorigin.github.io/uAssets/filters/filters-2022.txt",
+      "fichier": "ubo-filters-2022.txt"
+    },
+    {
+      "nom": "uBO filters-2023",
+      "url": "https://ublockorigin.github.io/uAssets/filters/filters-2023.txt",
+      "fichier": "ubo-filters-2023.txt"
+    },
+    {
+      "nom": "uBO filters-2024",
+      "url": "https://ublockorigin.github.io/uAssets/filters/filters-2024.txt",
+      "fichier": "ubo-filters-2024.txt"
+    },
+    {
+      "nom": "uBO filters-2025",
+      "url": "https://ublockorigin.github.io/uAssets/filters/filters-2025.txt",
+      "fichier": "ubo-filters-2025.txt"
+    },
+    {
+      "nom": "uBO filters-2026",
+      "url": "https://ublockorigin.github.io/uAssets/filters/filters-2026.txt",
+      "fichier": "ubo-filters-2026.txt"
+    },
+    {
+      "nom": "uBO privacy",
+      "url": "https://ublockorigin.github.io/uAssets/filters/privacy.txt",
+      "fichier": "ubo-privacy.txt"
+    },
+    {
+      "nom": "uBO unbreak",
+      "url": "https://ublockorigin.github.io/uAssets/filters/unbreak.txt",
+      "fichier": "ubo-unbreak.txt"
+    },
+    {
+      "nom": "uBO badware",
+      "url": "https://ublockorigin.github.io/uAssets/filters/badware.txt",
+      "fichier": "ubo-badware.txt"
+    },
+    {
+      "nom": "uBO quick-fixes",
+      "url": "https://ublockorigin.github.io/uAssets/filters/quick-fixes.txt",
+      "fichier": "ubo-quick-fixes.txt"
+    },
+    {
+      "nom": "uBO resource-abuse",
+      "url": "https://ublockorigin.github.io/uAssets/filters/resource-abuse.txt",
+      "fichier": "ubo-resource-abuse.txt"
+    },
+    {
+      "nom": "EasyList",
+      "url": "https://easylist.to/easylist/easylist.txt",
+      "fichier": "easylist.txt"
+    },
+    {
+      "nom": "EasyPrivacy",
+      "url": "https://easylist.to/easylist/easyprivacy.txt",
+      "fichier": "easyprivacy.txt"
+    },
+    {
+      "nom": "Peter Lowe",
+      "url": "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblockplus&showintro=0&mimetype=plaintext",
+      "fichier": "peter-lowe.txt"
+    },
+    {
+      "nom": "Scriptlets uBO (resources.json)",
+      "url": "https://raw.githubusercontent.com/ghostery/adblocker/master/packages/adblocker/assets/ublock-origin/resources.json",
+      "fichier": "resources.json"
+    }
+  ]
+}
