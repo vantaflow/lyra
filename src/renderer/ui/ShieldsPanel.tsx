@@ -38,7 +38,7 @@ export function ShieldsPanel() {
 
   const fermer = (): void => void window.lyra.invoke('overlay:close')
   const basculer = (actif: boolean): void => {
-    if (!etat?.origine) return
+    if (!etat?.origine || etat.privee) return
     setEtat({ ...etat, actif })
     void window.lyra.invoke('shields:toggleSite', { origine: etat.origine, actif })
   }
@@ -57,7 +57,8 @@ export function ShieldsPanel() {
           </svg>
           <div class="pn-site">
             <div class="pn-nom">{interne ? 'Page de Lyra' : hote(etat?.origine ?? '')}</div>
-            <div class="pn-sous">{interne ? 'Rien à bloquer ici' : actif ? 'Boucliers actifs — règle standard' : 'Boucliers désactivés sur ce site'}</div>
+            <div class="pn-sous">{interne ? 'Rien à bloquer ici' : actif ? 'Boucliers actifs — règle standard' : 'Boucliers désactivés sur ce site'}
+            {etat?.privee && !interne && <div class="pn-sous">Indisponible en fenêtre privée</div>}</div>
           </div>
           <button
             class={`tg ${actif ? 'on' : 'off'}`}
@@ -65,7 +66,8 @@ export function ShieldsPanel() {
             role="switch"
             aria-checked={actif}
             aria-label="Boucliers pour ce site"
-            disabled={interne || etat === null}
+            disabled={interne || etat === null || etat.privee === true}
+            title={etat?.privee ? 'Indisponible en fenêtre privée' : undefined}
             onClick={() => basculer(!actif)}
           >
             <i></i>

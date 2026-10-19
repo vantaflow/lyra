@@ -186,3 +186,23 @@ test('zoom par site : mémorisé en fenêtre normale, jamais en fenêtre privée
     await app.close()
   }
 })
+
+test('Boucliers : la bascule par site en fenêtre privée n’écrit rien dans les réglages', async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const privee = await ouvrirPrivee(app)
+    await privee.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), `${BASE}/boucliers`)
+    await expect.poll(() => cookieVu('/boucliers')).toBeDefined()
+    await expect.poll(() => privee.evaluate(() => window.lyra.invoke('shields:get')).then((e) => e.origine)).toBe(BASE)
+    expect((await privee.evaluate(() => window.lyra.invoke('shields:get'))).privee).toBe(true)
+    await privee.evaluate((o) => window.lyra.invoke('shields:toggleSite', { origine: o, actif: false }), BASE)
+    expect((await fenetre.evaluate(() => window.lyra.invoke('settings:get'))).sites).toEqual({})
+    // Fenêtre normale : la bascule s'écrit.
+    await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), `${BASE}/boucliers-n`)
+    await expect.poll(() => fenetre.evaluate(() => window.lyra.invoke('shields:get')).then((e) => e.origine)).toBe(BASE)
+    await fenetre.evaluate((o) => window.lyra.invoke('shields:toggleSite', { origine: o, actif: false }), BASE)
+    expect((await fenetre.evaluate(() => window.lyra.invoke('settings:get'))).sites[BASE]).toMatchObject({ boucliers: false })
+  } finally {
+    await app.close()
+  }
+})

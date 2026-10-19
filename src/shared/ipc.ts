@@ -51,6 +51,8 @@ export interface EtatBoucliers {
   origine: string
   /** 20 dernières adresses bloquées, la plus récente d'abord. */
   dernieres: string[]
+  /** Fenêtre privée : la règle par site ne peut pas être changée (rien n'est écrit dans les réglages). */
+  privee?: boolean
 }
 
 /** Favori tel que l'exposent les pages internes. */

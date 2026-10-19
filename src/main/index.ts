@@ -601,6 +601,7 @@ void app.whenReady().then(async () => {
     cacheDir: join(paths.userData(), 'shields'),
     onglets: () => onglets.values(),
     ongletsDe,
+    privee: (tm) => privees.has(tm.fenetreId),
     // http/ws vers un site contourné : annulé avant tout envoi, quel que soit l'état (asynchrone) du PAC.
     garde: (d) => /^(http|ws):/i.test(d.url) && pass.refusHttp(d.url) !== null
   })
