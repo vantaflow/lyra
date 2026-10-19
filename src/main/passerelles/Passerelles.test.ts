@@ -181,6 +181,27 @@ describe('Passerelles — routage', () => {
     expect(p.viaPasserelle('http://a.fr/x')).toBe(false)
   })
 
+  it('session créée après coup (fenêtre privée) : même PAC que les autres, sans nouvelle détection', async () => {
+    const { p, env } = monter({ sites: [site('a.fr')] })
+    p.demarrer()
+    await p.rechercher()
+    await p.attendre()
+    const appels = { ...env.appels }
+    const privee = fausseSession()
+    await p.attacherSession(privee)
+    expect(privee.proxys).toHaveLength(1)
+    expect(evaluer(privee, 'https://www.a.fr/')).toBe('SOCKS5 1.1.1.1:1080; PROXY 2.2.2.2:8080; SOCKS5 3.3.3.3:1080')
+    expect(evaluer(privee, 'https://b.fr/')).toBe('DIRECT')
+    expect(env.appels).toEqual(appels)
+  })
+
+  it('session créée sans site contourné : proxy système', async () => {
+    const { p } = monter()
+    const privee = fausseSession()
+    await p.attacherSession(privee)
+    expect(privee.proxys).toEqual([{ mode: 'system' }])
+  })
+
   it('dernier site retiré : retour au proxy système, re-test arrêté', async () => {
     const { p, env, modifier } = monter({ sites: [site('a.fr')] })
     p.demarrer()

@@ -1,6 +1,6 @@
 import { useEffect } from 'preact/hooks'
 import { ouvrirRecherche } from './FindBar'
-import { actif, cielMasque, estNouvelleEtoile, etatActif, favori, rafraichirFavori, reveler } from './state'
+import { actif, cielMasque, estNouvelleEtoile, etatActif, favori, fenetrePrivee, rafraichirFavori, reveler } from './state'
 
 interface Affichage {
   /** Icône : cadenas vert (https), avertissement (http), engrenage (lyra://), aucune. */
@@ -48,7 +48,7 @@ export function Capsule() {
   const charge = etat?.chargement ?? false
   const via = etat?.viaPasserelle ?? false
   useEffect(() => rafraichirFavori(url), [url])
-  const peutFavori = !!url && !url.startsWith('lyra://')
+  const peutFavori = !!url && !url.startsWith('lyra://') && !fenetrePrivee
   const basculerFavori = (): void => {
     if (!peutFavori) return
     void window.lyra.invoke('bookmarks:toggle', { url, title: etat?.titre || star?.title || url })
@@ -135,6 +135,7 @@ export function Capsule() {
         type="button"
         aria-label={favori.value ? 'Retirer des favoris' : 'Ajouter aux favoris'}
         aria-pressed={favori.value}
+        title={fenetrePrivee ? 'Favoris indisponibles en fenêtre privée' : undefined}
         disabled={!peutFavori}
         onClick={basculerFavori}
       >

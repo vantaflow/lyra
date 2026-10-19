@@ -1,4 +1,4 @@
-import { WebContentsView, session, type WebContents } from 'electron'
+import { WebContentsView, session, type Session, type WebContents } from 'electron'
 import type { LyraWindow } from '../window/WindowManager'
 import { PRELOAD_INTERNAL, PRELOAD_PAGE } from '../preloads'
 import { envoyer } from '../ipc'
@@ -46,6 +46,8 @@ export interface RappelsHistorique {
  */
 /** Réglages de dormance et rappel de changement (sauvegarde de la session). */
 export interface OptionsTabs {
+  /** Session des pages web (fenêtre privée : partition mémoire propre à la fenêtre) ; `persist:lyra` par défaut. */
+  session?: Session
   /** Minutes d'inactivité avant l'endormissement (0 ou moins : jamais). */
   endormirApresMin?: () => number
   surChangement?: () => void
@@ -486,7 +488,7 @@ export class TabManager {
     this.categories.set(id, categorie)
     const vue = new WebContentsView({
       webPreferences: {
-        session: session.fromPartition('persist:lyra'),
+        session: this.options.session ?? session.fromPartition('persist:lyra'),
         sandbox: true,
         contextIsolation: true,
         // Un seul mécanisme de preload : webPreferences.preload (pas de session.registerPreloadScript,
