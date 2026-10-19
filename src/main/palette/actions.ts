@@ -2,14 +2,28 @@
 import type { WebContents } from 'electron'
 import { handle } from '../ipc'
 import type { TabManager } from '../tabs/TabManager'
-import type { Settings, Suggestion } from '../../shared/types'
+import type { HistoryEntry, Settings, Suggestion } from '../../shared/types'
 import { moteurParId, urlDeRecherche } from './engines'
+import type { History } from '../history/History'
+import type { Bookmarks } from '../bookmarks/Bookmarks'
 import { interpreterSaisie, suggerer, trouverCommande } from './suggest'
 
 export interface DepsPalette {
   ongletsDe(wc: WebContents): TabManager
   reglages(): Settings
+  historique: History
+  favoris: Bookmarks
   creerFenetre(opts: { privee?: boolean }): void
+}
+
+/** Favoris puis historique correspondant à la saisie (les favoris sont marqués pour la palette). */
+function historiquePalette(deps: DepsPalette, texte: string): HistoryEntry[] {
+  const t = texte.trim()
+  if (!t || /^[>?#]/.test(t)) return []
+  const favoris: HistoryEntry[] = deps.favoris.rechercher(t).map((f) => ({ url: f.url, title: f.title, favori: true }))
+  const vus = new Set(favoris.map((f) => f.url))
+  const histo = deps.historique.rechercher(t, 8).filter((h) => !vus.has(h.url))
+  return [...favoris, ...histo]
 }
 
 let derniereNavigation: string | null = null
@@ -30,7 +44,7 @@ export function installerPalette(deps: DepsPalette): void {
       etoiles: sky.stars,
       activeId: sky.activeId ?? undefined,
       constellations: sky.constellations,
-      historique: [], // le module Historique arrive en tâche 10
+      historique: historiquePalette(deps, texte),
       moteurParDefaut: deps.reglages().moteurParDefaut
     })
   })

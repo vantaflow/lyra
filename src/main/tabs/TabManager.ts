@@ -17,6 +17,12 @@ interface Extras {
 /** Drapeau transmis aux preloads web : la sonde window.__lyraShields n'existe qu'en test. */
 const ARGS_TEST = process.env.LYRA_TEST === '1' ? ['--lyra-test'] : []
 
+/** Rappels vers l'historique ; absents pour une fenêtre privée. */
+export interface RappelsHistorique {
+  visite(url: string, titre: string, date: number): void
+  titre(url: string, titre: string): void
+}
+
 /**
  * Une WebContentsView par étoile. Le preload est fixé à la création de la vue : une vue `interne`
  * (lyra://, preload avec window.lyra) ne montre jamais de site, une vue `web` (preload des Boucliers)
@@ -32,7 +38,10 @@ export class TabManager {
   private popups = new Set<WebContents>()
   private minuteur: NodeJS.Timeout | undefined
 
-  constructor(private fenetre: LyraWindow) {
+  constructor(
+    private fenetre: LyraWindow,
+    private historique?: RappelsHistorique
+  ) {
     fenetre.win.on('closed', () => {
       clearTimeout(this.minuteur)
       for (const v of this.vues.values()) if (!v.webContents.isDestroyed()) v.webContents.close()
@@ -277,6 +286,9 @@ export class TabManager {
     ] as const) {
       wc.on(evt as 'did-stop-loading', maj)
     }
+    // L'historique se nourrit des navigations de page principale ; le titre arrive après, on le complète.
+    wc.on('did-navigate', (_e, urlNavigue) => this.historique?.visite(urlNavigue, '', Date.now()))
+    wc.on('page-title-updated', (_e, titre) => this.historique?.titre(wc.getURL(), titre))
     wc.on('page-favicon-updated', (_e, favicons) => {
       this.extras.set(id, { ...this.extras.get(id), favicon: favicons[0] })
       this.notifier()

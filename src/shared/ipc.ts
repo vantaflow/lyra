@@ -1,4 +1,4 @@
-import type { Settings, SkyState, Suggestion } from './types'
+import type { HistoryEntry, Settings, SkyState, Suggestion } from './types'
 
 export interface RectIpc {
   x: number
@@ -26,6 +26,14 @@ export interface EtatBoucliers {
   origine: string
   /** 20 dernières adresses bloquées, la plus récente d'abord. */
   dernieres: string[]
+}
+
+/** Favori tel que l'exposent les pages internes. */
+export interface FavoriIpc {
+  url: string
+  title: string
+  dossier?: string
+  date: number
 }
 
 export type RouteOverlay = 'palette' | 'shields'
@@ -64,6 +72,15 @@ export type Requetes = {
   'shields:open': [void, void]
   /** Overlay → main : referme l'overlay (Échap, clic à côté). */
   'overlay:close': [void, void]
+  'history:search': [{ texte: string; limite?: number }, HistoryEntry[]]
+  'history:delete': [{ url: string }, void]
+  'history:clear': [void, void]
+  'history:frequent': [{ n: number }, HistoryEntry[]]
+  /** Renvoie vrai si l'adresse est désormais en favori. */
+  'bookmarks:toggle': [{ url: string; title: string }, boolean]
+  'bookmarks:exists': [{ url: string }, boolean]
+  'bookmarks:list': [void, FavoriIpc[]]
+  'bookmarks:remove': [{ url: string }, void]
   /** Test uniquement (LYRA_TEST=1) : charge une URL dans la vue de page. */
   'test:navigate': [string, void]
   /** Test uniquement (LYRA_TEST=1) : dernière URL demandée par la palette. */
@@ -78,6 +95,8 @@ export type Evenements = {
   'palette:open': { texteInitial?: string }
   /** Main → overlay : panneau à afficher. */
   'overlay:route': RouteOverlay
+  /** Main → chrome : la liste des favoris a changé. */
+  'bookmarks:changed': void
   /** Main → chrome : le compteur ou l'état des Boucliers de l'étoile active a changé. */
   'shields:changed': EtatBoucliers
 }

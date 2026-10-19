@@ -19,6 +19,22 @@ const rafraichirBoucliers = (): void => {
   void window.lyra.invoke('shields:get').then((b) => (boucliers.value = b))
 }
 
+/** L'adresse de l'étoile active est-elle en favori ? (étoile de la capsule) */
+export const favori = signal(false)
+
+/** Relit `bookmarks:exists` pour l'adresse donnée ; une réponse tardive d'une autre adresse est ignorée. */
+let adresseFavori = ''
+export function rafraichirFavori(url: string): void {
+  adresseFavori = url
+  if (!url || url.startsWith('lyra://')) {
+    favori.value = false
+    return
+  }
+  void window.lyra.invoke('bookmarks:exists', { url }).then((v) => {
+    if (adresseFavori === url) favori.value = v
+  })
+}
+
 /** Étoile en cours de glisser-déposer. */
 export const glisse = signal<string | null>(null)
 
@@ -30,6 +46,7 @@ export async function initialiserEtat(): Promise<void> {
     rafraichirBoucliers()
   })
   window.lyra.on('shields:changed', (b) => (boucliers.value = b))
+  window.lyra.on('bookmarks:changed', () => rafraichirFavori(adresseFavori))
   const c = await window.lyra.invoke('sky:get')
   sky.value = c.sky
   etats.value = c.etats

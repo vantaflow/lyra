@@ -50,3 +50,114 @@ body {
   font-weight: 400;
   font-size: 32px;
 }
+
+/* Cartes, lignes, boutons et recherche (Parametres.dc.html) */
+.card {
+  border: 1px solid #e6e6ee;
+  border-radius: 12px;
+  padding: 0 18px;
+  background: #fff;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 0;
+  border-top: 1px solid #eeeef4;
+}
+.row:first-child {
+  border-top: 0;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid #d6d6e2;
+  border-radius: 9px;
+  background: #fff;
+  color: #1c1c2e;
+  font: 500 13px 'Manrope', sans-serif;
+  cursor: pointer;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.barre {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px;
+}
+.champ {
+  flex: 1;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #d6d6e2;
+  border-radius: 9px;
+  background: #fff;
+  font: 13px 'Manrope', sans-serif;
+  color: #1c1c2e;
+  box-sizing: border-box;
+}
+.champ:focus {
+  outline: none;
+  border-color: #5452c8;
+}
+.jour h2 {
+  margin: 18px 0 8px;
+  font: 600 13px 'Manrope', sans-serif;
+  color: #6b6b80;
+}
+.vide {
+  color: #6b6b80;
+  font-size: 13.5px;
+}
+.entree .heure {
+  flex: 0 0 44px;
+  font-size: 12px;
+  color: #6b6b80;
+}
+.entree .ico {
+  flex: 0 0 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: #e6e6f7;
+  color: #2f2d8a;
+  font: 600 12px 'Manrope', sans-serif;
+}
+.entree .texte {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-decoration: none;
+  color: inherit;
+}
+.entree .titre {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #1c1c2e;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.entree .url {
+  font-size: 12px;
+  color: #8a8aa0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.entree .dossier {
+  font-size: 12px;
+  color: #6b6b80;
+}
+.entree .suppr {
+  height: 30px;
+}

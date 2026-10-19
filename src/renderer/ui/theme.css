@@ -372,6 +372,10 @@ body,
   background: #eeeef6;
   color: #1c1c2e;
 }
+.cb.favori,
+.cb.favori:hover {
+  color: #d99a12;
+}
 .cb[disabled] {
   color: #b8b8cc;
   cursor: default;

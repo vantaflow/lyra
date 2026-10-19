@@ -1,4 +1,5 @@
-import { actif, estNouvelleEtoile, etatActif } from './state'
+import { useEffect } from 'preact/hooks'
+import { actif, estNouvelleEtoile, etatActif, favori, rafraichirFavori } from './state'
 
 interface Affichage {
   /** Icône : cadenas vert (https), avertissement (http), engrenage (lyra://), aucune. */
@@ -44,6 +45,12 @@ export function Capsule() {
   const url = etat?.url || star?.url || ''
   const p = affichagePilule(url)
   const charge = etat?.chargement ?? false
+  useEffect(() => rafraichirFavori(url), [url])
+  const peutFavori = !!url && !url.startsWith('lyra://')
+  const basculerFavori = (): void => {
+    if (!peutFavori) return
+    void window.lyra.invoke('bookmarks:toggle', { url, title: etat?.titre || star?.title || url })
+  }
   const agir = (canal: 'tabs:back' | 'tabs:forward' | 'tabs:reload' | 'tabs:stop') => () => {
     if (id) void window.lyra.invoke(canal, { id })
   }
@@ -101,8 +108,15 @@ export function Capsule() {
         {p.chemin && <span class="chemin">{p.chemin}</span>}
       </button>
       <span class="souple"></span>
-      <button class="cb" type="button" aria-label="Ajouter aux favoris">
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true">
+      <button
+        class={`cb${favori.value ? ' favori' : ''}`}
+        type="button"
+        aria-label={favori.value ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+        aria-pressed={favori.value}
+        disabled={!peutFavori}
+        onClick={basculerFavori}
+      >
+        <svg viewBox="0 0 24 24" width="17" height="17" fill={favori.value ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true">
           <path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9-5.3-2.8-5.3 2.8 1.1-5.9L5.5 9.7l5.9-.8z" />
         </svg>
       </button>

@@ -2,6 +2,8 @@ import { render } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import '../ui/theme.css'
 import './settings.css'
+import { Historique } from './Historique'
+import { Favoris } from './Favoris'
 
 interface Section {
   id: string
@@ -26,18 +28,18 @@ const SECTIONS: Section[] = [
   { id: 'reseau', titre: 'Réseau et identité' },
   { id: 'importer', titre: 'Importer et exporter' },
   { id: 'sauvegarde', titre: 'Sauvegarde et profils' },
+  { id: 'historique', titre: 'Historique' },
+  { id: 'favoris', titre: 'Favoris' },
   { id: 'labo', titre: 'Labo' },
   { id: 'apropos', titre: 'À propos' }
 ]
 
-const TITRES_AUTRES: Record<string, string> = {
-  historique: 'Historique',
-  favoris: 'Favoris'
-}
+/** Hôtes lyra:// qui ouvrent directement une section (lyra://history → #/historique). */
+const SECTION_DE_L_HOTE: Record<string, string> = { history: 'historique', bookmarks: 'favoris' }
 
-/** Route courante lue dans le hash (`#/historique`), « general » par défaut. */
-function routeDepuisHash(hash: string): string {
-  return hash.replace(/^#\/?/, '').split('/')[0] || 'general'
+/** Route courante : le hash (`#/historique`) prime, sinon l'hôte lyra://, sinon « general ». */
+function routeDepuisHash(hash: string, hote: string = location.hostname): string {
+  return hash.replace(/^#\/?/, '').split('/')[0] || SECTION_DE_L_HOTE[hote] || 'general'
 }
 
 function App() {
@@ -48,7 +50,7 @@ function App() {
     return () => window.removeEventListener('hashchange', maj)
   }, [])
 
-  const titre = SECTIONS.find((s) => s.id === route)?.titre ?? TITRES_AUTRES[route] ?? 'Général'
+  const titre = SECTIONS.find((s) => s.id === route)?.titre ?? 'Général'
   return (
     <div class="reglages">
       <nav class="nav" aria-label="Sections des réglages">
@@ -60,6 +62,8 @@ function App() {
       </nav>
       <main class="contenu">
         <h1>{titre}</h1>
+        {route === 'historique' && <Historique />}
+        {route === 'favoris' && <Favoris />}
       </main>
     </div>
   )

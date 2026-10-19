@@ -61,6 +61,8 @@ export interface HistoryEntry {
   title: string
   /** Horodatage de la dernière visite (ms). */
   visitedAt?: number
+  /** Nombre de visites (historique). */
+  visites?: number
   favori?: boolean
 }
 

@@ -11,6 +11,8 @@ import { TabManager } from './tabs/TabManager'
 import { installerMenu } from './tabs/appMenu'
 import { installerPalette } from './palette/actions'
 import { demarrerBoucliers } from './shields/installer'
+import { History } from './history/History'
+import { Bookmarks } from './bookmarks/Bookmarks'
 
 definirFournisseurLangue(() => app.getLocale())
 app.setPath('userData', paths.userData())
@@ -24,6 +26,7 @@ let reglagesCourants: () => Settings = () => {
 }
 const manager = new WindowManager(() => reglagesCourants().ciel)
 const onglets = new Map<number, TabManager>()
+let historique: History | undefined
 
 function ongletsCourants(): TabManager | undefined {
   const focus = BaseWindow.getFocusedWindow()?.id
@@ -40,7 +43,17 @@ function ongletsDe(wc: WebContents): TabManager {
 
 function creerFenetre(opts: { privee?: boolean } = {}): void {
   const fenetre = manager.creerFenetre(opts)
-  const tabs = new TabManager(fenetre)
+  // Une fenêtre privée n'alimente jamais l'historique.
+  const h = historique
+  const tabs = new TabManager(
+    fenetre,
+    opts.privee || !h
+      ? undefined
+      : {
+          visite: (url, title, date) => h.ajouter({ url, title, date }),
+          titre: (url, title) => h.majTitre(url, title)
+        }
+  )
   onglets.set(fenetre.id, tabs)
   fenetre.win.on('closed', () => onglets.delete(fenetre.id))
   tabs.ouvrir('lyra://newtab')
@@ -52,6 +65,21 @@ void app.whenReady().then(async () => {
   installerProtocoleLyra(session.defaultSession)
   const reglages = creerReglages(join(paths.userData(), 'settings.json'), app.getPath('downloads'))
   reglagesCourants = () => reglages.getSettings()
+  // file:// n'est enregistré que sous LYRA_TEST=1 : les e2e naviguent sur une fixture locale.
+  historique = new History(join(paths.userData(), 'historique.jsonl'), { enregistrerFichiers: process.env.LYRA_TEST === '1' })
+  const hist = historique
+  const favoris = new Bookmarks(join(paths.userData(), 'favoris.json'))
+  favoris.onChange(() => {
+    for (const m of onglets.values()) m.envoyerAuChrome('bookmarks:changed', undefined)
+  })
+  handle('history:search', ({ texte, limite }) => hist.rechercher(texte, limite))
+  handle('history:delete', ({ url }) => hist.supprimer(url))
+  handle('history:clear', () => hist.effacer())
+  handle('history:frequent', ({ n }) => hist.frequents(n))
+  handle('bookmarks:toggle', (f) => favoris.toggle(f))
+  handle('bookmarks:exists', ({ url }) => favoris.existe(url))
+  handle('bookmarks:list', () => favoris.lister())
+  handle('bookmarks:remove', ({ url }) => favoris.retirer(url))
   handle('layout:get', (_d, event) => {
     const f = manager.deWebContents(event.sender) ?? manager.premiere()
     if (!f) throw new Error('aucune fenêtre')
@@ -78,7 +106,7 @@ void app.whenReady().then(async () => {
   handle('tabs:pin', (d, e) => ongletsDe(e.sender).epingler(d.id, d.pinned))
   handle('tabs:reopen', (_d, e) => ongletsDe(e.sender).rouvrirDerniere())
   handle('sky:get', (_d, e) => ongletsDe(e.sender).snapshot())
-  installerPalette({ ongletsDe, reglages: () => reglages.getSettings(), creerFenetre })
+  installerPalette({ ongletsDe, historique: hist, favoris, reglages: () => reglages.getSettings(), creerFenetre })
   installerMenu(ongletsCourants)
   // Les Boucliers sont prêts avant la première fenêtre : aucune page ne se charge sans eux.
   await demarrerBoucliers({
@@ -88,6 +116,7 @@ void app.whenReady().then(async () => {
     onglets: () => onglets.values(),
     ongletsDe
   })
+  app.on('before-quit', () => void hist.attendre())
   reglages.onChanged((s) => {
     manager.relayoutAll()
     for (const wc of webContents.getAllWebContents()) envoyer(wc, 'settings:changed', s)

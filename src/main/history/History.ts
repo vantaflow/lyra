@@ -1,0 +1,170 @@
+/** Historique de navigation : JSON lignes en append + index en mémoire (pur Node, sans Electron). */
+import { appendFile, mkdir, rename, rm, writeFile } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
+import { dirname } from 'node:path'
+import type { HistoryEntry } from '../../shared/types'
+import { normaliser } from '../palette/suggest'
+
+const JOUR = 86_400_000
+const SCHEMAS_EXCLUS = /^(lyra|file):/i
+
+interface Visite {
+  url: string
+  title: string
+  date: number
+  prive?: boolean
+}
+
+interface Fiche {
+  title: string
+  /** Dates de visite, croissantes à l'insertion courante (jamais vide). */
+  dates: number[]
+}
+
+export interface OptionsHistory {
+  /**
+   * Enregistre aussi les pages file://. Faux par défaut ; activé uniquement quand LYRA_TEST=1 pour que
+   * les tests e2e puissent naviguer sur une fixture locale. lyra:// n'est jamais enregistré.
+   */
+  enregistrerFichiers?: boolean
+}
+
+/** Ligne du fichier : une visite, ou (maj) un titre arrivé après coup, qui n'est pas une visite. */
+interface Ligne extends Visite {
+  maj?: boolean
+}
+
+function lireLigne(brut: string): Ligne | null {
+  try {
+    const v: unknown = JSON.parse(brut)
+    if (typeof v !== 'object' || v === null) return null
+    const { url, title, date, maj } = v as Record<string, unknown>
+    if (typeof url !== 'string' || !url || typeof date !== 'number' || !Number.isFinite(date)) return null
+    return { url, title: typeof title === 'string' ? title : '', date, ...(maj === true ? { maj: true } : {}) }
+  } catch {
+    return null
+  }
+}
+
+export class History {
+  private index = new Map<string, Fiche>()
+  /** File des écritures : append et compactions s'exécutent dans l'ordre d'appel. */
+  private file: Promise<void> = Promise.resolve()
+
+  constructor(
+    private chemin: string,
+    private opts: OptionsHistory = {}
+  ) {
+    this.charger()
+  }
+
+  private charger(): void {
+    let texte = ''
+    try {
+      texte = readFileSync(this.chemin, 'utf8')
+    } catch {
+      return // absent ou illisible : historique vide
+    }
+    for (const brut of texte.split('\n')) {
+      const l = brut.trim() ? lireLigne(brut) : null
+      if (l) this.appliquer(l, !l.maj)
+    }
+  }
+
+  private retenu(url: string): boolean {
+    if (/^file:/i.test(url)) return this.opts.enregistrerFichiers === true
+    return !SCHEMAS_EXCLUS.test(url)
+  }
+
+  private appliquer(l: Visite, visite: boolean): void {
+    let f = this.index.get(l.url)
+    if (!f) {
+      if (!visite) return
+      f = { title: '', dates: [] }
+      this.index.set(l.url, f)
+    }
+    if (l.title) f.title = l.title
+    if (visite) f.dates.push(l.date)
+  }
+
+  /** Enregistre une visite. `prive` : navigation privée, jamais enregistrée. */
+  ajouter(v: Visite): void {
+    if (v.prive || !this.retenu(v.url)) return
+    this.appliquer(v, true)
+    this.ecrire(JSON.stringify({ url: v.url, title: v.title, date: v.date }) + '\n')
+  }
+
+  /** Le titre d'une page arrive après la navigation : met à jour l'entrée sans compter de visite. */
+  majTitre(url: string, title: string, date: number = Date.now()): void {
+    if (!title || !this.index.has(url)) return
+    this.appliquer({ url, title, date }, false)
+    this.ecrire(JSON.stringify({ url, title, date, maj: true }) + '\n')
+  }
+
+  rechercher(texte: string, limite = 50): HistoryEntry[] {
+    const mots = normaliser(texte).split(/\s+/).filter(Boolean)
+    const res: HistoryEntry[] = []
+    for (const [url, f] of this.index) {
+      const cible = normaliser(`${f.title} ${url}`)
+      if (mots.every((m) => cible.includes(m))) {
+        res.push({ url, title: f.title, visitedAt: Math.max(...f.dates), visites: f.dates.length })
+      }
+    }
+    return res.sort((a, b) => (b.visitedAt ?? 0) - (a.visitedAt ?? 0)).slice(0, limite)
+  }
+
+  supprimer(url: string): void {
+    if (this.index.delete(url)) this.compacter()
+  }
+
+  effacer(): void {
+    this.index.clear()
+    this.compacter()
+  }
+
+  /** Top n par visites sur 30 jours (égalité : la plus récente d'abord), sans lyra:// ni file://. */
+  frequents(n: number, maintenant: number = Date.now()): HistoryEntry[] {
+    const depuis = maintenant - 30 * JOUR
+    const res: HistoryEntry[] = []
+    for (const [url, f] of this.index) {
+      if (SCHEMAS_EXCLUS.test(url)) continue
+      const recentes = f.dates.filter((d) => d >= depuis && d <= maintenant)
+      if (recentes.length) res.push({ url, title: f.title, visitedAt: Math.max(...recentes), visites: recentes.length })
+    }
+    return res.sort((a, b) => b.visites! - a.visites! || b.visitedAt! - a.visitedAt!).slice(0, Math.max(0, n))
+  }
+
+  /** Résout quand toutes les écritures demandées jusque-là sont terminées. */
+  attendre(): Promise<void> {
+    return this.file
+  }
+
+  private enfiler(tache: () => Promise<void>): void {
+    this.file = this.file.then(tache).catch(() => undefined)
+  }
+
+  private ecrire(ligne: string): void {
+    this.enfiler(async () => {
+      await mkdir(dirname(this.chemin), { recursive: true })
+      await appendFile(this.chemin, ligne)
+    })
+  }
+
+  /** Réécrit le fichier d'après l'index courant (instantané pris maintenant, écrit dans l'ordre de la file). */
+  private compacter(): void {
+    const lignes: string[] = []
+    for (const [url, f] of this.index) for (const date of f.dates) lignes.push(JSON.stringify({ url, title: f.title, date }))
+    const contenu = lignes.length ? lignes.join('\n') + '\n' : ''
+    this.enfiler(async () => {
+      const tmp = `${this.chemin}.tmp`
+      try {
+        await mkdir(dirname(this.chemin), { recursive: true })
+        await writeFile(tmp, contenu)
+        await rename(tmp, this.chemin)
+      } catch (e) {
+        await rm(tmp, { force: true })
+        throw e
+      }
+    })
+  }
+}
