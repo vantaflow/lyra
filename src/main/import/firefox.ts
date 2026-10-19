@@ -332,6 +332,37 @@ async function lireMoteurs(c: Contexte): Promise<Moteur[]> {
   return moteurs
 }
 
+/** Moteur par défaut déclaré dans `search.json.mozlz4` : identifiant Firefox (`google`, `ddg`, `wikipedia-fr`…) et nom. */
+export interface MoteurParDefautFirefox {
+  /** `metaData.defaultEngineId` (Firefox ≥ 100) ou `metaData.current` (ancien format, c'est alors le nom). */
+  id: string
+  /** Nom du moteur si l'identifiant correspond à une entrée de `engines`. */
+  nom?: string
+  /** Intégré à Firefox (son adresse n'est pas dans le profil : à faire correspondre aux moteurs de Lyra). */
+  integre: boolean
+}
+
+async function lireMoteurParDefaut(c: Contexte): Promise<MoteurParDefautFirefox | undefined> {
+  const source = join(c.profil.chemin, 'search.json.mozlz4')
+  if (!estFichier(source)) throw new ErreurImport('Aucun fichier de moteurs de recherche dans ce profil.')
+  const json = objet(lireJsonMozlz4(await c.copieur.lire(source, { sujet: 'La liste des moteurs' }), 'la liste des moteurs', c.opts.tailleMaxFichier))
+  if (!json) throw new ErreurImport('Liste des moteurs au format inattendu.')
+  const meta = objet(json.metaData)
+  const id = texte(meta?.defaultEngineId) ?? texte(meta?.current)
+  if (!id) return undefined
+  const moteur = (Array.isArray(json.engines) ? json.engines : []).map((e) => objet(e)).find((e) => e && (texte(e.id) === id || texte(e._name) === id))
+  return { id, nom: texte(moteur?._name) ?? texte(moteur?.name), integre: moteur?._isAppProvided === true || String(moteur?._loadPath ?? '').startsWith('[app]') }
+}
+
+/**
+ * Moteur par défaut du profil, même intégré à Firefox (Task 3 fait correspondre `google`, `ddg`, `bing`,
+ * `wikipedia-fr`… aux moteurs de Lyra). `undefined` si le profil n'en déclare pas ; `Indisponible` si illisible.
+ */
+export async function lireMoteurParDefautFirefox(profil: ProfilDetecte, opts: Omit<OptionsLecture, 'elements'> = {}): Promise<MoteurParDefautFirefox | undefined | Indisponible> {
+  if (!estDossier(profil.chemin)) return indisponible(`Le profil « ${profil.nom} » est introuvable (dossier supprimé ou déplacé).`)
+  return avecCopieur((copieur) => proteger(() => lireMoteurParDefaut({ profil, copieur, opts })), optionsCopie(profil, opts)).catch((e: unknown) => versIndisponible(e))
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 // Extensions : extensions.json
 

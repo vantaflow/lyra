@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { convertirModeleFirefox, detecterProfilsFirefox, firefoxVersMs, lireIni, lirePrefsJs, lireProfilFirefox, parcourirHistoriqueFirefox } from './firefox'
+import { convertirModeleFirefox, detecterProfilsFirefox, firefoxVersMs, lireIni, lireMoteurParDefautFirefox, lirePrefsJs, lireProfilFirefox, parcourirHistoriqueFirefox } from './firefox'
 import { MAINTENANT_FIXTURES_FIREFOX, PROFIL_DEFAUT, jsonMozlz4 } from './fixtures/generer-firefox'
 import { estIndisponible } from './types'
 import type { ElementImport, ProfilDetecte, Visite } from './types'
@@ -172,6 +172,16 @@ describe('moteurs', () => {
       { nom: 'Mon moteur', motCle: 'mm', url: 'https://search.example.org/?q=%s&lang=fr', perso: true }
     ])
     expect(r.compteurs.moteurs).toEqual({ moteurs: 0, motsCles: 2 })
+  })
+
+  it('moteur par défaut exposé même intégré (ddg), absent → undefined, fichier absent → Indisponible', async () => {
+    expect(await lireMoteurParDefautFirefox(await profil(), { maintenant: MAINTENANT })).toEqual({ id: 'ddg', nom: 'DuckDuckGo', integre: true })
+    const p = profilJetable()
+    expect(estIndisponible(await lireMoteurParDefautFirefox(p))).toBe(true)
+    writeFileSync(join(p.chemin, 'search.json.mozlz4'), jsonMozlz4({ engines: [{ id: 'x', _name: 'X', _loadPath: '[user]' }], metaData: { current: 'X' } }))
+    expect(await lireMoteurParDefautFirefox(p)).toEqual({ id: 'X', nom: 'X', integre: false })
+    writeFileSync(join(p.chemin, 'search.json.mozlz4'), jsonMozlz4({ engines: [], metaData: {} }))
+    expect(await lireMoteurParDefautFirefox(p)).toBeUndefined()
   })
 
   it('convertirModeleFirefox', () => {
