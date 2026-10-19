@@ -7,7 +7,7 @@
  * profil reprend le schéma de Safari.
  *
  * Accès complet au disque : sans lui, macOS refuse la lecture de `~/Library/Safari` (EPERM/EACCES) ; l'élément est
- * alors `Indisponible` avec le code `verrouille` et la marche à suivre.
+ * alors `Indisponible` avec le code `acces` et la marche à suivre.
  */
 import { statSync } from 'node:fs'
 import { stat } from 'node:fs/promises'
@@ -110,7 +110,7 @@ interface Contexte {
 }
 
 function versIndisponible(e: unknown, c: Pick<Contexte, 'cfg'>): Indisponible {
-  if (c.cfg.accesRefuse && estRefusAcces(e)) return indisponible(c.cfg.accesRefuse, 'verrouille')
+  if (c.cfg.accesRefuse && estRefusAcces(e)) return indisponible(c.cfg.accesRefuse, 'acces')
   if (e instanceof ErreurImport) return indisponible(e.raison, e.code)
   return indisponible(`Lecture impossible : ${e instanceof Error ? e.message : String(e)}`)
 }

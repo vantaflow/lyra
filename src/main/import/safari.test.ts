@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -8,6 +8,12 @@ import { MAINTENANT_FIXTURES_APPLE, appleSecondes } from './fixtures/generer-app
 import { MESSAGE_ACCES_COMPLET_SAFARI, appleVersMs, detecterProfilsSafari, favorisDepuisPlist, lireProfilSafari, msVersApple } from './safari'
 import { ErreurImport, estIndisponible } from './types'
 import type { ElementImport, FavorisImportes, ProfilDetecte, Visite } from './types'
+
+// statSync est un passe-plat : un test peut lui faire lever EPERM sur un chemin précis (macOS le fait avant toute copie)
+vi.mock('node:fs', async (importOriginal) => {
+  const reel = await importOriginal<typeof import('node:fs')>()
+  return { ...reel, statSync: vi.fn(reel.statSync) }
+})
 
 const FIXTURES = fileURLToPath(new URL('./fixtures/safari', import.meta.url))
 const MAINTENANT = MAINTENANT_FIXTURES_APPLE
@@ -24,6 +30,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.mocked(statSync).mockReset() // revient au passe-plat (restoreAllMocks ne touche pas aux vi.fn)
   rmSync(tmp, { recursive: true, force: true })
 })
 
@@ -211,20 +218,42 @@ describe('fichiers absents ou corrompus', () => {
 })
 
 describe('accès complet au disque et annulation', () => {
-  it('EPERM à la copie → message Safari et code « verrouille »', async () => {
+  it('EPERM à la copie → message Safari et code « acces »', async () => {
     const eperm = Object.assign(new Error('operation not permitted'), { code: 'EPERM' })
     vi.spyOn(Copieur.prototype, 'copier').mockRejectedValue(new ErreurImport('Accès refusé à Bookmarks.plist.', { cause: eperm, code: 'verrouille' }))
     const { donnees } = await lire(profilFixtures, ['favoris', 'historique'])
     for (const v of [donnees.favoris, donnees.historique]) {
-      expect(v).toEqual({ indisponible: true, raison: MESSAGE_ACCES_COMPLET_SAFARI, code: 'verrouille' })
+      expect(v).toEqual({ indisponible: true, raison: MESSAGE_ACCES_COMPLET_SAFARI, code: 'acces' })
     }
     expect(MESSAGE_ACCES_COMPLET_SAFARI).toBe('Safari : autorisez Lyra dans Réglages Système → Confidentialité et sécurité → Accès complet au disque, puis réessayez.')
+  })
+
+  /** Fait lever EPERM à statSync pour les chemins qui satisfont `refuse`, comme macOS sans « Accès complet au disque ». */
+  function refuserStat(refuse: (chemin: string) => boolean): void {
+    const reel = vi.mocked(statSync).getMockImplementation() as (...a: unknown[]) => unknown
+    vi.mocked(statSync).mockImplementation(((chemin: unknown, ...reste: unknown[]) => {
+      if (refuse(String(chemin))) throw Object.assign(new Error('operation not permitted'), { code: 'EPERM' })
+      return reel(chemin, ...reste)
+    }) as unknown as typeof statSync)
+  }
+
+  it('EPERM sur le fichier (statSync de trouverFichier, sans simuler le copieur) → message Safari, code « acces »', async () => {
+    refuserStat((c) => c.endsWith('Bookmarks.plist'))
+    const { donnees } = await lire(profilFixtures, ['favoris', 'historique'])
+    expect(donnees.favoris).toEqual({ indisponible: true, raison: MESSAGE_ACCES_COMPLET_SAFARI, code: 'acces' })
+    expect(estIndisponible(donnees.historique)).toBe(false) // seul le fichier refusé est touché
+  })
+
+  it("EPERM sur le dossier du profil (statSync d'estDossier) : le profil existe, c'est la lecture des fichiers qui est refusée", async () => {
+    refuserStat((c) => c === FIXTURES || c.endsWith('Bookmarks.plist') || c.endsWith('History.db'))
+    const { donnees } = await lire(profilFixtures, ['favoris', 'historique'])
+    for (const v of [donnees.favoris, donnees.historique]) expect(v).toEqual({ indisponible: true, raison: MESSAGE_ACCES_COMPLET_SAFARI, code: 'acces' })
   })
 
   it('EACCES aussi', async () => {
     const eacces = Object.assign(new Error('permission denied'), { code: 'EACCES' })
     vi.spyOn(Copieur.prototype, 'copier').mockRejectedValue(new ErreurImport('x', { cause: eacces, code: 'verrouille' }))
-    expect((await lire(profilFixtures, ['favoris'])).donnees.favoris).toMatchObject({ raison: MESSAGE_ACCES_COMPLET_SAFARI, code: 'verrouille' })
+    expect((await lire(profilFixtures, ['favoris'])).donnees.favoris).toMatchObject({ raison: MESSAGE_ACCES_COMPLET_SAFARI, code: 'acces' })
   })
 
   it('signal déjà annulé → tout est « Lecture annulée. »', async () => {

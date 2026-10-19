@@ -51,11 +51,12 @@ export const JOURS_HISTORIQUE_PAR_DEFAUT = 92
 /**
  * Nature d'un échec quand l'interface ou l'appelant peut vouloir réagir autrement qu'en affichant la raison :
  * - `verrouille` : fichier tenu par le navigateur ouvert (« fermez-le puis réessayez ») ;
+ * - `acces` : accès refusé par le système (macOS : « Accès complet au disque » à accorder) ; la `raison` dit quoi faire ;
  * - `absent` : fichier absent ; `vide` : session valide sans aucun onglet ; `chiffre` : donnée chiffrée par le système ;
  * - `volumineux` : au-delà de la taille que Lyra accepte de lire ; `disque-plein` : copie temporaire impossible ;
  * - `memoire` : mémoire insuffisante ; `annule` : lecture abandonnée par l'appelant (`AbortSignal`).
  */
-export type CodeErreurImport = 'verrouille' | 'absent' | 'vide' | 'chiffre' | 'volumineux' | 'disque-plein' | 'memoire' | 'annule'
+export type CodeErreurImport = 'verrouille' | 'acces' | 'absent' | 'vide' | 'chiffre' | 'volumineux' | 'disque-plein' | 'memoire' | 'annule'
 
 /** Élément illisible : jamais d'exception qui remonte, une raison lisible par l'utilisateur. */
 export interface Indisponible {
