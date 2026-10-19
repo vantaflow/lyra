@@ -24,6 +24,8 @@ export default defineConfig({
   },
   renderer: {
     plugins: [preact()],
+    // Les pages lyra:// ont pour origine lyra://<hôte> : le HMR doit viser explicitement le serveur Vite.
+    server: { hmr: { protocol: 'ws', host: 'localhost', port: 5173 } },
     build: {
       rollupOptions: {
         input: {

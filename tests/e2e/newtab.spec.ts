@@ -17,3 +17,15 @@ test('lyra://newtab affiche « Bonsoir. » dans la vue de page', async () => {
     await app.close()
   }
 })
+
+test('lyra:// renvoie 404 pour un fichier absent', async () => {
+  const { app } = await lancerLyra()
+  try {
+    const trouver = (): Page | undefined => app.windows().find((w) => w.url().startsWith('lyra://newtab'))
+    await expect.poll(trouver).toBeDefined()
+    const statut = await trouver()!.evaluate(() => fetch('lyra://newtab/assets/absent.js').then((r) => r.status))
+    expect(statut).toBe(404)
+  } finally {
+    await app.close()
+  }
+})
