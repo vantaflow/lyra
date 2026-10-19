@@ -1,4 +1,4 @@
-import { app, BaseWindow, webContents, type WebContents, protocol, session } from 'electron'
+import { app, BaseWindow, ipcMain, Notification as NotificationSysteme, webContents, type WebContents, type WebFrameMain, protocol, session } from 'electron'
 import { WindowManager } from './window/WindowManager'
 import type { Settings } from '../shared/types'
 import { join } from 'node:path'
@@ -27,6 +27,9 @@ import type { TypePermission } from '../shared/types'
 import type { Passerelles } from './passerelles/Passerelles'
 import { creerPasserelles } from './passerelles/electron'
 import { installerPasserellesIpc } from './passerelles/ipc'
+import { Dnd, type NotificationRetenue } from './dnd/Dnd'
+import { origineDe } from './shields/Shields'
+import type { DureeDnd } from '../shared/ipc'
 
 definirFournisseurLangue(() => app.getLocale())
 app.setPath('userData', paths.userData())
@@ -45,6 +48,82 @@ let historique: History | undefined
 let sessionStore: SessionStore | undefined
 let passerelles: Passerelles | undefined
 const privees = new Set<number>()
+
+/** Cadres (iframes comprises) d'où viennent les notifications retenues : un clic y est rejoué. */
+const cadresNotifications = new Map<number, WebFrameMain>()
+/** Notifications système affichées (références gardées : sinon le ramasse-miettes les retire). */
+const notificationsAffichees = new Set<InstanceType<typeof NotificationSysteme>>()
+/** Test uniquement (LYRA_TEST=1) : ce qui aurait été affiché à la sortie du mode (aucune notification système en test). */
+const livraisonsTest: Array<{ titre: string; corps?: string; origine: string; etoileId?: string }> = []
+
+/** Clic sur une notification livrée : la fenêtre et l'étoile d'origine (si elles existent encore) passent devant. */
+function focaliserNotification(fenetre: number, n: NotificationRetenue): void {
+  const f = manager.fenetre(fenetre)
+  const m = onglets.get(fenetre)
+  if (f && m) {
+    if (f.win.isMinimized()) f.win.restore()
+    f.win.show()
+    f.win.focus()
+    m.focaliserEtoile(n.etoileId)
+  }
+  try {
+    cadresNotifications.get(n.id)?.send('dnd:clic', n.id)
+  } catch {
+    // page partie : rien à rejouer
+  }
+}
+
+/**
+ * Livraison à la sortie du mode : vraies notifications système (Electron), émises par le main. Une notification rejouée
+ * dans la page serait perdue si la page a navigué, a été fermée ou endormie entre-temps (un mode « jusqu'à l'arrêt »
+ * dure des heures) ; la livraison par le main y résiste, et le clic retrouve l'étoile d'origine.
+ */
+function livrerNotifications(fenetre: number, notifications: NotificationRetenue[]): void {
+  if (process.env.LYRA_TEST === '1') {
+    for (const n of notifications) livraisonsTest.push({ titre: n.titre, corps: n.corps, origine: n.origine, etoileId: n.etoileId })
+    return
+  }
+  if (!NotificationSysteme.isSupported()) return
+  for (const n of notifications) {
+    const notif = new NotificationSysteme({ title: n.titre, body: n.corps ?? '', silent: n.silencieuse === true, subtitle: n.origine.replace(/^https?:\/\//, '') })
+    notificationsAffichees.add(notif)
+    const fin = (): void => void notificationsAffichees.delete(notif)
+    notif.on('click', () => {
+      focaliserNotification(fenetre, n)
+      fin()
+    })
+    notif.on('close', fin)
+    notif.show()
+  }
+}
+
+const dnd = new Dnd({
+  exception: (origine) => reglagesCourants().sites[origine]?.exceptionDnd === true,
+  livrerNotifications,
+  // Popups retenues : ouvertes en étoiles d'arrière-plan, reliées à leur opener s'il existe encore.
+  ouvrirPopups: (fenetre, popups) => {
+    for (const p of popups) onglets.get(fenetre)?.ouvrirRetenue(p.url, p.etoileId)
+  },
+  surChangement: (fenetre, etat) => {
+    const f = manager.fenetre(fenetre)
+    if (!f) return
+    f.setDnd(etat.actif ? { rappel: etat.rappel } : null)
+    envoyer(f.chrome.webContents, 'dnd:changed', etat)
+  }
+})
+
+/** Entre dans Ne pas déranger : la page prend le focus (le ciel et la capsule disparaissent). */
+function entrerDnd(fenetre: number, duree: DureeDnd | undefined): void {
+  const m = onglets.get(fenetre)
+  m?.fermerOverlay()
+  dnd.entrer(fenetre, duree)
+  m?.wcActif()?.focus()
+}
+
+function basculerDnd(fenetre: number, duree?: DureeDnd): void {
+  if (dnd.actif(fenetre)) dnd.sortir(fenetre)
+  else entrerDnd(fenetre, duree)
+}
 
 /** Fenêtres normales : une fenêtre privée ne laisse aucune trace dans la session. */
 function etatSession(): { version: 1; fenetres: FenetreSession[] } | null {
@@ -92,7 +171,9 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
       memoriserZoom: (origine, zoom) => void reglagesStore?.setSettings({ sites: { [origine]: { zoom } } }),
       rechercheUrl: (texte) => urlDeRecherche(moteurParId(reglagesCourants().moteurParDefaut), texte),
       // Fenêtre privée : ni détection automatique ni proposition d'ajout (rien n'est écrit dans les réglages).
-      passerelles: passerelles?.crochets({ privee: opts.privee === true })
+      passerelles: passerelles?.crochets({ privee: opts.privee === true }),
+      surEchap: () => dnd.sortir(fenetre.id),
+      retenirPopup: (p) => dnd.retenirPopup(fenetre.id, p)
     }
   )
   // Une demande de permission ne survit pas à un changement de route ou à la fermeture de l'overlay.
@@ -102,6 +183,7 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
   fenetre.win.on('closed', () => {
     onglets.delete(fenetre.id)
     privees.delete(fenetre.id)
+    dnd.fermer(fenetre.id)
     sauverSession()
   })
   if (restauration) tabs.restaurer(restauration)
@@ -182,7 +264,17 @@ void app.whenReady().then(async () => {
   const permissions = new Permissions({
     lire: (origine, type) => reglages.getSettings().sites[origine]?.permissions?.[type],
     memoriser: (origine, type, decision) => void reglages.setSettings({ sites: { [origine]: { permissions: { [type]: decision } } } }),
-    demander: demanderPermission
+    demander: demanderPermission,
+    // Ne pas déranger : demande de notifications retenue jusqu'à la sortie ; notifications suspendues (service workers compris).
+    retenir: (wc, origine) => {
+      const m = ongletsPossedant(wc)
+      return m && dnd.retient(m.fenetreId, origine) ? dnd.attendreSortie(m.fenetreId) : undefined
+    },
+    suspendues: (wc, origine) => {
+      const m = wc ? ongletsPossedant(wc) : undefined
+      if (m) return dnd.retient(m.fenetreId, origine)
+      return !wc && dnd.actifQuelquePart() && reglages.getSettings().sites[origine]?.exceptionDnd !== true
+    }
   })
   permissions.attacher(session.defaultSession)
   permissions.attacher(session.fromPartition('persist:lyra'))
@@ -249,6 +341,65 @@ void app.whenReady().then(async () => {
     if (largeur === null) manager.apercuLargeur(null)
     else if (typeof largeur === 'number' && Number.isFinite(largeur)) manager.apercuLargeur(largeur)
   })
+  // Ne pas déranger : seule la vue chrome de la fenêtre pilote le mode.
+  const fenetreChrome = (e: { sender: WebContents }): number | undefined => {
+    const f = manager.deWebContents(e.sender)
+    return f && f.chrome.webContents === e.sender ? f.id : undefined
+  }
+  handle('dnd:get', (_d, e) => dnd.etat((manager.deWebContents(e.sender) ?? manager.premiere())?.id ?? -1))
+  handle('dnd:basculer', (d, e) => {
+    const id = fenetreChrome(e)
+    const duree = d && typeof d === 'object' && (d.duree === 30 || d.duree === 60 || d.duree === 'arret') ? d.duree : undefined
+    if (id !== undefined) basculerDnd(id, duree)
+  })
+  handle('dnd:sortir', (_d, e) => {
+    const id = fenetreChrome(e)
+    if (id !== undefined) dnd.sortir(id)
+  })
+  handle('dnd:rappel', (_d, e) => {
+    const id = fenetreChrome(e)
+    if (id !== undefined) dnd.montrerRappel(id)
+  })
+  // Surcharge de window.Notification (preload page) : appels synchrones, l'origine vient du cadre expéditeur.
+  const decisionNotifications = (origine: string): string | undefined => reglages.getSettings().sites[origine]?.permissions?.notifications
+  const contexteNotification = (e: { sender: WebContents; senderFrame?: WebFrameMain | null }): { m: TabManager; origine: string } | undefined => {
+    const m = ongletsPossedant(e.sender)
+    const origine = origineDe(e.senderFrame?.url ?? '')
+    return m && origine && dnd.retient(m.fenetreId, origine) ? { m, origine } : undefined
+  }
+  const court = (v: unknown, max: number): string => (typeof v === 'string' ? v.slice(0, max) : '')
+  ipcMain.on('dnd:notification', (e, d: { titre?: unknown; corps?: unknown; tag?: unknown; silencieuse?: unknown } | null) => {
+    // null : la notification suit son cours normal (mode inactif, site en exception, notifications non autorisées).
+    e.returnValue = null
+    const c = contexteNotification(e)
+    if (!c || !d || typeof d.titre !== 'string' || decisionNotifications(c.origine) !== 'autoriser') return
+    const id = dnd.retenirNotification(c.m.fenetreId, {
+      origine: c.origine,
+      titre: court(d.titre, 300),
+      corps: court(d.corps, 1000),
+      tag: court(d.tag, 200) || undefined,
+      silencieuse: d.silencieuse === true,
+      etoileId: c.m.idDe(e.sender)
+    })
+    if (id !== null && e.senderFrame) {
+      cadresNotifications.set(id, e.senderFrame)
+      // Les cadres des notifications jetées ou livrées ne s'accumulent pas.
+      if (cadresNotifications.size > 500) cadresNotifications.delete(cadresNotifications.keys().next().value!)
+    }
+    e.returnValue = id
+  })
+  ipcMain.on('dnd:permission', (e) => {
+    const c = contexteNotification(e)
+    const d = c ? decisionNotifications(c.origine) : undefined
+    e.returnValue = !c ? null : d === 'autoriser' ? 'granted' : d === 'refuser' ? 'denied' : 'default'
+  })
+  ipcMain.on('dnd:fermer', (e, id: unknown) => {
+    const m = ongletsPossedant(e.sender)
+    if (m && typeof id === 'number') {
+      dnd.retirerNotification(m.fenetreId, id)
+      cadresNotifications.delete(id)
+    }
+  })
   handle('settings:get', () => reglages.getSettings())
   handle('settings:set', (patch) => reglages.setSettings(patch))
   installerReglagesIpc(reglages)
@@ -277,6 +428,7 @@ void app.whenReady().then(async () => {
       if (m && id) await m.naviguerEtAttendre(id, url)
     })
     handle('test:endormir', (id) => ongletsCourants()?.endormir(id) ?? false)
+    handle('test:livraisons', () => livraisonsTest)
   }
   handle('tabs:open', (d, e) => ongletsDe(e.sender).ouvrir(d.url, { parentId: d.parentId, actif: d.actif }))
   handle('tabs:close', (d, e) => ongletsDe(e.sender).fermer(d.id))
@@ -360,6 +512,8 @@ void app.whenReady().then(async () => {
     else m.ouvrir('lyra://settings')
   })
   installerPalette({ ongletsDe, historique: hist, favoris, reglages: () => reglages.getSettings(), creerFenetre,
+    dndActif: (m) => dnd.actif(m.fenetreId),
+    dnd: (m, action) => (action === 'sortir' ? dnd.sortir(m.fenetreId) : entrerDnd(m.fenetreId, action)),
     deplacerCiel: (position) => void reglages.setSettings({ ciel: { position, masque: false } } as Partial<Settings>)
   })
   const basculerFavori = (m: TabManager): void => {
@@ -370,6 +524,10 @@ void app.whenReady().then(async () => {
   installerMenu(ongletsCourants, {
     nouvelleFenetre: () => creerFenetre(),
     basculerFavori,
+    basculerDnd: () => {
+      const id = BaseWindow.getFocusedWindow()?.id ?? manager.premiere()?.id
+      if (id !== undefined && onglets.has(id)) basculerDnd(id)
+    },
     // Épinglé : masque ; masqué : révèle ; révélé : épingle.
     basculerCiel: () => {
       const id = BaseWindow.getFocusedWindow()?.id

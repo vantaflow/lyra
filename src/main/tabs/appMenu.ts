@@ -7,6 +7,8 @@ export interface ActionsMenu {
   basculerFavori(m: TabManager): void
   /** Replie le ciel (rail) ou l'épingle de nouveau : bascule `ciel.masque`. */
   basculerCiel(): void
+  /** Entre dans Ne pas déranger (1 h) ou en sort, dans la fenêtre courante. */
+  basculerDnd(): void
 }
 
 export function installerMenu(courant: () => TabManager | undefined, actions: ActionsMenu): void {
@@ -47,6 +49,7 @@ export function installerMenu(courant: () => TabManager | undefined, actions: Ac
         { label: 'Zoom avant', accelerator: 'CmdOrCtrl+=', visible: false, click: agir((m, id) => id && m.zoomer(id, { delta: 1 })) },
         { id: 'zoom-moins', label: 'Zoom arrière', accelerator: 'CmdOrCtrl+-', click: agir((m, id) => id && m.zoomer(id, { delta: -1 })) },
         { id: 'zoom-zero', label: 'Taille réelle', accelerator: 'CmdOrCtrl+0', click: agir((m, id) => id && m.zoomer(id, { reset: true })) },
+        { id: 'ne-pas-deranger', label: 'Ne pas déranger', accelerator: 'CmdOrCtrl+Shift+D', click: actions.basculerDnd },
         { id: 'basculer-ciel', label: 'Replier ou épingler le ciel', accelerator: 'CmdOrCtrl+\\', click: actions.basculerCiel },
         { type: 'separator' },
         { id: 'imprimer', label: 'Imprimer…', accelerator: 'CmdOrCtrl+P', click: agir((m) => m.imprimer()) },

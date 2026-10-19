@@ -93,6 +93,18 @@ describe('validerPatch', () => {
     })
   })
 
+  it('exception Ne pas déranger par site : booléen seulement, absent par défaut', () => {
+    expect(
+      validerPatch({
+        sites: {
+          'https://a.fr': { exceptionDnd: true },
+          'https://b.fr': { exceptionDnd: 'oui', zoom: 2 },
+          'https://c.fr': { exceptionDnd: false }
+        }
+      })
+    ).toEqual({ sites: { 'https://a.fr': { exceptionDnd: true }, 'https://b.fr': { zoom: 2 }, 'https://c.fr': { exceptionDnd: false } } })
+  })
+
   it('entrée non objet : patch vide', () => {
     expect(validerPatch(null)).toEqual({})
     expect(validerPatch('x')).toEqual({})

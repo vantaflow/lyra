@@ -5,7 +5,8 @@ import { Capsule } from './Capsule'
 import { Bande } from './Bande'
 import { Sky } from './Sky'
 import { CielRevele, Rail } from './Rail'
-import { cielAppui, cielCible, cielMasque, cielPosition, cielRevele, initialiserEtat } from './state'
+import { cielAppui, cielCible, cielMasque, cielPosition, cielRevele, dnd, initialiserEtat } from './state'
+import { RappelDnd } from './Rappel'
 import { Overlay } from './Overlay'
 import { FindBar } from './FindBar'
 
@@ -39,11 +40,20 @@ function App() {
   )
 }
 
+/** Ne pas déranger : plus de ciel ni de capsule, la vue chrome se réduit au rappel (ou au croissant). */
+function Racine() {
+  const enDnd = dnd.value.actif
+  useEffect(() => {
+    document.documentElement.classList.toggle('dnd', enDnd)
+  }, [enDnd])
+  return enDnd ? <RappelDnd /> : <App />
+}
+
 // La vue overlay (#overlay) dessine la palette ou un panneau, sur fond transparent ; elle ne dessine pas le ciel.
 if (location.hash === '#overlay') {
   document.documentElement.classList.add('overlay')
   render(<Overlay />, document.getElementById('app')!)
 } else {
   void initialiserEtat()
-  render(<App />, document.getElementById('app')!)
+  render(<Racine />, document.getElementById('app')!)
 }

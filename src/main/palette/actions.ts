@@ -16,6 +16,10 @@ export interface DepsPalette {
   creerFenetre(opts: { privee?: boolean }): void
   /** Déplace le ciel (démasqué) à la position donnée. */
   deplacerCiel(position: 'gauche' | 'droite' | 'haut' | 'bas'): void
+  /** Ne pas déranger est actif dans la fenêtre de cet onglet. */
+  dndActif(tabs: TabManager): boolean
+  /** Entre dans Ne pas déranger (durée) ou en sort. */
+  dnd(tabs: TabManager, action: 30 | 60 | 'arret' | 'sortir'): void
 }
 
 /** Favoris puis historique correspondant à la saisie (les favoris sont marqués pour la palette). */
@@ -35,6 +39,10 @@ export function installerPalette(deps: DepsPalette): void {
     if (id === 'nouvelle-etoile') tabs.ouvrir('lyra://newtab')
     else if (id === 'fenetre-privee') deps.creerFenetre({ privee: true })
     else if (id === 'reglages') tabs.ouvrir('lyra://settings')
+    else if (id === 'dnd-30') deps.dnd(tabs, 30)
+    else if (id === 'dnd-60') deps.dnd(tabs, 60)
+    else if (id === 'dnd-arret') deps.dnd(tabs, 'arret')
+    else if (id === 'dnd-sortir') deps.dnd(tabs, 'sortir')
     else if (id === 'ciel-gauche' || id === 'ciel-droite' || id === 'ciel-haut' || id === 'ciel-bas') deps.deplacerCiel(id.slice(5) as 'gauche' | 'droite' | 'haut' | 'bas')
   }
 
@@ -50,7 +58,8 @@ export function installerPalette(deps: DepsPalette): void {
       historique: historiquePalette(deps, texte),
       moteurParDefaut: deps.reglages().moteurParDefaut,
       // Démasqué seulement : masqué, « à gauche » est une vraie commande (elle réaffiche le ciel).
-      positionCiel: deps.reglages().ciel.masque ? undefined : deps.reglages().ciel.position
+      positionCiel: deps.reglages().ciel.masque ? undefined : deps.reglages().ciel.position,
+      dnd: deps.dndActif(tabs)
     })
   })
   handle('palette:go', ({ suggestion, texte, nouvelleEtoile }, e) => {

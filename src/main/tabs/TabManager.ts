@@ -55,6 +55,10 @@ export interface OptionsTabs {
   rechercheUrl?: (texte: string) => string
   /** Passerelles (rotation, détection, icône de la pilule). */
   passerelles?: CrochetsPasserelles
+  /** Échap dans une page : sort du mode Ne pas déranger s'il est actif. */
+  surEchap?: () => void
+  /** Ne pas déranger : retient une popup (`window.open` avec features) ; faux si elle doit s'ouvrir normalement. */
+  retenirPopup?: (popup: { url: string; origine: string; etoileId: string }) => boolean
 }
 
 export class TabManager {
@@ -349,6 +353,19 @@ export class TabManager {
     if (cible) this.activer(cible.id)
   }
 
+  /** Sortie de Ne pas déranger : popup retenue ouverte en étoile d'arrière-plan, reliée à son opener s'il existe encore. */
+  ouvrirRetenue(url: string, etoileId?: string): void {
+    if (!SCHEMAS_OUVRABLES.test(url) || interditAuxSites(url)) return
+    this.ouvrir(url, { parentId: etoileId && this.tree.star(etoileId) ? etoileId : undefined, actif: false })
+  }
+
+  /** Active l'étoile d'origine d'une notification, si elle existe encore (réveillée si endormie). */
+  focaliserEtoile(etoileId: string | undefined): boolean {
+    if (!etoileId || !this.tree.star(etoileId)) return false
+    this.activer(etoileId)
+    return true
+  }
+
   idActif(): string | null {
     return this.tree.toJSON().activeId
   }
@@ -526,6 +543,10 @@ export class TabManager {
       this.notifier()
     })
     wc.on('before-input-event', (_e, input) => {
+      // Échap sort de Ne pas déranger (sauf en plein écran HTML : Échap y sert d'abord à en sortir). La page le reçoit aussi.
+      if (input.type === 'keyDown' && input.key === 'Escape' && !input.isAutoRepeat && !input.control && !input.meta && !input.alt && !input.shift && !this.fenetre.estPleinEcran()) {
+        this.options.surEchap?.()
+      }
       if (input.type !== 'keyDown' || !(input.control || input.meta) || input.alt) return
       const k = input.key.toLowerCase()
       // La page ne doit pas avaler ces raccourcis : preventDefault coupe aussi le menu, on agit donc ici.
@@ -562,6 +583,8 @@ export class TabManager {
     wc.setWindowOpenHandler((details) => {
       if (categorie === 'web' && interditAuxSites(details.url)) return { action: 'deny' }
       if (details.features) {
+        // Ne pas déranger : la popup est retenue (comptée, ouverte à la sortie), la page n'en reçoit pas de fenêtre.
+        if (/^https?:/i.test(details.url) && this.options.retenirPopup?.({ url: details.url, origine: origineDe(wc.getURL()), etoileId: id })) return { action: 'deny' }
         return {
           action: 'allow',
           overrideBrowserWindowOptions: {

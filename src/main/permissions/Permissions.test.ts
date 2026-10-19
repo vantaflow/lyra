@@ -118,4 +118,40 @@ describe('Permissions', () => {
     expect(await demande('geolocation')).toBe(false)
     expect(await demande('clipboard-read')).toBe(true)
   })
+  it("Ne pas déranger : la demande de notifications attend la sortie du mode, puis affiche l'invite (pas de refus)", async () => {
+    let sortie!: () => void
+    const attente = new Promise<void>((ok) => (sortie = ok))
+    const demander = vi.fn(async () => ({ decision: 'autoriser' as DecisionPermission, memoriser: false }))
+    const deps: DepsPermissions = { lire: () => undefined, memoriser: () => undefined, demander, retenir: (_wc, o) => (o === SITE ? attente : undefined) }
+    let requete!: Parameters<SessionPermissions['setPermissionRequestHandler']>[0]
+    new Permissions(deps).attacher({ setPermissionRequestHandler: (h) => void (requete = h), setPermissionCheckHandler: () => undefined })
+    const n = new Promise<boolean>((ok) => requete(WC as never, 'notifications', ok, { requestingUrl: SITE }))
+    // Autre permission, ou autre site : aucune retenue.
+    const g = new Promise<boolean>((ok) => requete(WC as never, 'geolocation', ok, { requestingUrl: SITE }))
+    expect(await g).toBe(true)
+    expect(demander).toHaveBeenCalledTimes(1)
+    await new Promise((r) => setTimeout(r, 10))
+    expect(demander).toHaveBeenCalledTimes(1)
+    sortie()
+    expect(await n).toBe(true)
+    expect(demander).toHaveBeenCalledTimes(2)
+    expect(demander).toHaveBeenLastCalledWith(WC, SITE, ['notifications'])
+  })
+
+  it("Ne pas déranger : une décision mémorisée n'attend pas", async () => {
+    const deps: DepsPermissions = { lire: () => 'autoriser', memoriser: () => undefined, demander: vi.fn(), retenir: () => new Promise<void>(() => undefined) }
+    let requete!: Parameters<SessionPermissions['setPermissionRequestHandler']>[0]
+    new Permissions(deps).attacher({ setPermissionRequestHandler: (h) => void (requete = h), setPermissionCheckHandler: () => undefined })
+    expect(await new Promise<boolean>((ok) => requete(WC as never, 'notifications', ok, { requestingUrl: SITE }))).toBe(true)
+  })
+
+  it("Ne pas déranger : la vérification des notifications répond « refusé » tant qu'elles sont suspendues (service workers)", () => {
+    const deps: DepsPermissions = { lire: () => 'autoriser', memoriser: () => undefined, demander: vi.fn(), suspendues: (wc, o) => wc === null && o === SITE }
+    let verif!: Parameters<SessionPermissions['setPermissionCheckHandler']>[0]
+    new Permissions(deps).attacher({ setPermissionRequestHandler: () => undefined, setPermissionCheckHandler: (h) => void (verif = h) })
+    expect(verif(null, 'notifications', SITE, {})).toBe(false)
+    expect(verif(WC as never, 'notifications', SITE, {})).toBe(true)
+    expect(verif(null, 'notifications', 'https://autre.fr', {})).toBe(true)
+    expect(verif(null, 'geolocation', SITE, {})).toBe(true)
+  })
 })

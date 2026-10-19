@@ -1464,3 +1464,73 @@ html.revele #app,
 .win .ciel.ciel-revele.pos-droite {
   padding-top: 42px;
 }
+
+/* ---- Ne pas déranger (docs/design/project/NePasDeranger.dc.html) : la vue chrome ne couvre que le coin haut droit ---- */
+html.dnd,
+html.dnd body,
+html.dnd #app {
+  background: transparent;
+}
+.dnd-rappel,
+.dnd-croissant {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  height: 36px;
+  border-radius: 18px;
+  background: rgba(21, 21, 46, 0.94);
+  color: #e8e8f4;
+  font-family: 'Manrope', system-ui, sans-serif;
+  font-size: 12.5px;
+  box-shadow: 0 10px 30px rgba(10, 10, 40, 0.25);
+  z-index: 2;
+}
+.dnd-rappel {
+  gap: 10px;
+  padding: 0 12px 0 10px;
+  white-space: nowrap;
+}
+.dnd-titre {
+  font-weight: 600;
+}
+.dnd-detail {
+  color: #9e9ec8;
+}
+.dnd-rappel kbd {
+  font: 600 10.5px/1 'Manrope', sans-serif;
+  background: #2e2e5a;
+  color: #b3b3da;
+  padding: 4px 6px;
+  border-radius: 5px;
+  letter-spacing: 0.02em;
+}
+.dnd-quitter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #9e9ec8;
+  cursor: pointer;
+  padding: 0;
+}
+.dnd-quitter:hover {
+  background: #23234a;
+  color: #fff;
+}
+/* Rappel effacé : seul le croissant reste, dans la même pastille. */
+.dnd-croissant {
+  justify-content: center;
+  width: 36px;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.dnd-croissant:hover {
+  background: #23234a;
+}

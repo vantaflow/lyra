@@ -36,7 +36,7 @@ function permissions(v: unknown): Obj | undefined {
   return Object.keys(sortie).length > 0 ? sortie : undefined
 }
 
-/** sites : { origine: { boucliers?, permissions?, zoom? } } ; champs et entrées invalides ignorés. */
+/** sites : { origine: { boucliers?, permissions?, zoom?, exceptionDnd? } } ; champs et entrées invalides ignorés. */
 function sites(v: unknown): Obj | undefined {
   if (!estObjet(v)) return undefined
   const sortie: Obj = {}
@@ -51,6 +51,9 @@ function sites(v: unknown): Obj | undefined {
     if (perms) champs.permissions = perms
     const zoom = entier(0.25, 5)(propre(regle, 'zoom'))
     if (zoom !== undefined) champs.zoom = zoom
+    // Absent par défaut ; false annule une exception déjà accordée.
+    const exceptionDnd = booleen(propre(regle, 'exceptionDnd'))
+    if (exceptionDnd !== undefined) champs.exceptionDnd = exceptionDnd
     if (Object.keys(champs).length === 0) continue
     sortie[origine] = champs
     n++
