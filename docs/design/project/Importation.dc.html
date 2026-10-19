@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Lyra — réglages : importer et exporter</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Manrope,-apple-system,"Segoe UI",system-ui,sans-serif;color:#1C1C2E}
+a{color:#4A48C4}a:hover{color:#2F2D8A}
+.star{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px;border:0;border-radius:8px;background:transparent;color:#C9C9EA;font:13px/1 Manrope,sans-serif;width:100%;text-align:left;cursor:pointer;box-sizing:border-box;position:relative}
+.star.active{background:#262650;color:#fff}
+.star .dot{width:8px;height:8px;border-radius:50%;background:#A8A8D8;flex:none}
+.star.active .dot{background:#F4C56A;box-shadow:0 0 0 3px rgba(244,197,106,.22),0 0 14px rgba(244,197,106,.7)}
+.star.dim{color:#8686B4}.star.dim .dot{background:#4E4E7A}
+.star .t{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.branch{margin-left:12px;padding-left:12px;border-left:1px solid #3B3B70;display:flex;flex-direction:column}
+.branch .star::before{content:"";position:absolute;left:-12px;top:50%;width:10px;height:1px;background:#3B3B70}
+.grp{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#7F7FB0;padding:12px 8px 4px;font-weight:600}
+.sb{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:0;border-radius:9px;background:transparent;color:#B3B3DA;cursor:pointer;padding:0}
+.pin{width:28px;height:28px;border-radius:50%;border:0;padding:0;display:inline-flex;align-items:center;justify-content:center;font:700 11px Manrope,sans-serif;color:#fff;cursor:pointer}
+.cb{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:#4A4A66;cursor:pointer;padding:0}
+.cb[disabled]{color:#B8B8CC;cursor:default}
+kbd{font:600 10.5px/1 Manrope,sans-serif;background:#2E2E5A;color:#B3B3DA;padding:4px 6px;border-radius:5px}
+.nav a{display:flex;align-items:center;gap:10px;height:34px;padding:0 12px;border-radius:8px;color:#3A3A50;text-decoration:none;font-size:13.5px;white-space:nowrap}
+.nav a:hover{background:#EEEEF6;color:#1C1C2E}
+.nav a.on{background:#E6E6F7;color:#2F2D8A;font-weight:600}
+.card{border:1px solid #E6E6EE;border-radius:12px;padding:0 18px;background:#fff}
+.row{display:flex;align-items:center;gap:16px;padding:14px 0;border-top:1px solid #EEEEF4}
+.row:first-child{border-top:0}
+.lbl{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.hint{color:#6B6B80;font-size:12.5px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px;border:1px solid #D6D6E2;border-radius:9px;background:#fff;color:#1C1C2E;font:500 13px Manrope,sans-serif;cursor:pointer}
+.btn.pri{background:#5452C8;border-color:#5452C8;color:#fff}
+.src{display:flex;flex-direction:column;gap:6px;padding:14px;border:1px solid #E6E6EE;border-radius:12px;background:#fff;text-align:left;cursor:pointer;color:#1C1C2E;font:13px Manrope,sans-serif;min-width:0}
+.src[aria-pressed="true"]{border-color:#5452C8;box-shadow:0 0 0 3px rgba(84,82,200,.16)}
+.src .logo{width:36px;height:36px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:#fff}
+.src .n{font-weight:600;font-size:14px}
+.src .d{color:#6B6B80;font-size:12px}
+.chk{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid #EEEEF4}
+.chk:first-child{border-top:0}
+.chk input{width:18px;height:18px;accent-color:#5452C8;margin:0}
+.chk label{flex:1;display:flex;flex-direction:column;gap:2px;cursor:pointer}
+.tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:11px;font-size:12px;font-weight:600}
+</style>
+</helmet>
+
+<div style="width: 100%; min-height: 100vh; display: flex; background: #15152E; font-size: 14px; line-height: 1.45">
+
+  <aside aria-label="Ciel des onglets" style="width: 272px; flex: none; display: flex; flex-direction: column; gap: 10px; background: #15152E; color: #D9D9F0; padding: 10px 12px 12px; box-sizing: border-box">
+    <div style="display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 2px">
+      <div aria-hidden="true" style="display: flex; gap: 8px; padding-right: 8px"><span style="width: 12px; height: 12px; border-radius: 50%; background: #2E2E55"></span><span style="width: 12px; height: 12px; border-radius: 50%; background: #2E2E55"></span><span style="width: 12px; height: 12px; border-radius: 50%; background: #2E2E55"></span></div>
+      <span style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 21px; color: #F3F3FF">Lyra</span>
+    </div>
+    <button type="button" aria-label="Aller à une adresse, rechercher ou lancer une commande" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px 0 12px; border: 0; border-radius: 10px; background: #222247; color: #9D9DC8; font: 13px Manrope, sans-serif; cursor: pointer; width: 100%; box-sizing: border-box; text-align: left">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
+      <span style="flex: 1">Aller à, rechercher, commander…</span><kbd>⌘ L</kbd>
+    </button>
+    <div aria-label="Onglets épinglés" style="display: flex; gap: 8px; padding: 2px 6px 0">
+      <button class="pin" type="button" aria-label="Messagerie" style="background: #1E7F6C">M</button>
+      <button class="pin" type="button" aria-label="Agenda" style="background: #2D5BD1">A</button>
+      <button class="pin" type="button" aria-label="Kagi" style="background: #D97A2B">K</button>
+      <button class="pin" type="button" aria-label="GitHub" style="background: #3A3A62">G</button>
+    </div>
+    <nav aria-label="Onglets ouverts" style="flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden">
+      <button class="star active" type="button" style="margin-top: 6px"><span class="dot" aria-hidden="true"></span><span class="t">Réglages — Importer et exporter</span></button>
+      <div class="grp"><span>Astronomie</span><span style="letter-spacing: 0; color: #5E5E92">4</span></div>
+      <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Lyra (constellation) — Atlas du ciel</span></button>
+      <div class="branch">
+        <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Véga — Wikipédia</span></button>
+        <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Véga, l'étoile de l'été — vidéo</span></button>
+      </div>
+      <div class="grp"><span>Travail</span><span style="letter-spacing: 0; color: #5E5E92">3</span></div>
+      <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Boîte de réception (3)</span></button>
+      <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Pull request #42 — GitHub</span></button>
+    </nav>
+    <div style="display: flex; align-items: center; gap: 2px; padding-top: 8px; border-top: 1px solid #26264A">
+      <button type="button" aria-label="Boucliers" style="display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px 0 8px; border: 0; border-radius: 9px; background: transparent; color: #5FD3B3; cursor: pointer"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 9.5C8 19.2 5 15.5 5 11V6z"/><path d="M9 12l2 2 4-4"/></svg></button>
+      <span style="flex: 1"></span>
+      <button class="sb" type="button" aria-label="Extensions"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M10 4a2 2 0 0 1 4 0v1h3a1 1 0 0 1 1 1v3h1a2 2 0 0 1 0 4h-1v3a1 1 0 0 1-1 1h-3v-1a2 2 0 0 0-4 0v1H7a1 1 0 0 1-1-1v-3H5a2 2 0 0 1 0-4h1V6a1 1 0 0 1 1-1h3z"/></svg></button>
+      <button class="sb" type="button" aria-label="Téléchargements"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg></button>
+      <button class="sb" type="button" aria-label="Ne pas déranger"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button>
+      <button class="sb" type="button" aria-label="Réglages" style="background: #23234A; color: #fff"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button>
+    </div>
+  </aside>
+
+  <section aria-label="Page active" style="flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 0; box-sizing: border-box">
+    <div style="flex: 1; display: flex; flex-direction: column; background: #F7F7FB; border-radius: 12px 0 0 12px; overflow: hidden">
+      <div style="display: flex; align-items: center; gap: 6px; height: 46px; padding: 0 10px; box-sizing: border-box; border-bottom: 1px solid #E6E6EE; background: #fff; flex-wrap: wrap">
+        <button class="cb" type="button" aria-label="Page précédente"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <button class="cb" type="button" aria-label="Page suivante" disabled><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+        <span style="flex: 1"></span>
+        <button type="button" aria-label="lyra://settings/import — modifier l'adresse" style="display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 14px 0 12px; border: 0; border-radius: 16px; background: #F3F3F9; color: #1C1C2E; font: 500 13.5px Manrope, sans-serif; cursor: pointer">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#5452C8" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg>
+          <span>lyra://settings</span><span style="color: #8A8AA6; font-weight: 400">/import</span>
+        </button>
+        <span style="flex: 1"></span>
+        <button class="cb" type="button" aria-label="Menu de la page"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg></button>
+      </div>
+
+      <main style="flex: 1; display: flex; flex-wrap: wrap; gap: 24px; padding: 24px 28px 40px; box-sizing: border-box; max-width: 1240px; width: 100%; margin: 0 auto">
+        <nav class="nav" aria-label="Sections des réglages" style="flex: 0 1 236px; min-width: 200px; display: flex; flex-direction: column; gap: 2px">
+          <label for="chercher-reglage-3" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Rechercher un réglage</label>
+          <input id="chercher-reglage-3" type="search" placeholder="Rechercher un réglage…" style="height: 36px; margin: 0 0 10px; padding: 0 12px; border: 1px solid #D6D6E2; border-radius: 9px; background: #fff; font: 13px Manrope, sans-serif; color: #1C1C2E; box-sizing: border-box; width: 100%">
+          <a href="#">Général</a>
+          <a href="Parametres.dc.html">Le ciel et l'apparence</a>
+          <a href="Couleurs.dc.html">Couleurs et thèmes</a>
+          <a href="#">Palette et recherche</a>
+          <a href="#">Boucliers</a>
+          <a href="ParametresSites.dc.html">Règles par site</a>
+          <a href="#">Extensions</a>
+          <a href="#">Confidentialité</a>
+          <a href="#">Téléchargements</a>
+          <a href="#">Raccourcis clavier</a>
+          <a href="#">Gestes et souris</a>
+          <a href="#">Ne pas déranger</a>
+          <a href="#">Démarrage et sessions</a>
+          <a href="#">Styles et scripts</a>
+          <a href="#">Réseau et identité</a>
+          <a href="#" class="on">Importer et exporter</a>
+          <a href="#">Sauvegarde et profils</a>
+          <a href="#">Labo</a>
+          <a href="#">À propos</a>
+        </nav>
+
+        <div style="flex: 1 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
+          <div>
+            <h1 style="margin: 0; font-size: 26px; letter-spacing: -0.4px">Importer et exporter</h1>
+            <p style="margin: 4px 0 0; color: #6B6B80">Apportez tout ce qui compte depuis votre navigateur actuel, ou emportez Lyra ailleurs. Tout se passe sur cet ordinateur.</p>
+          </div>
+
+          <h2 style="margin: 6px 0 -6px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #6B6B80">1. Depuis quel navigateur</h2>
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px">
+            <button class="src" type="button" aria-pressed="true"><span class="logo" style="background: #3A3A62">C</span><span class="n">Chrome</span><span class="d">2 profils détectés · ouvert</span></button>
+            <button class="src" type="button" aria-pressed="false"><span class="logo" style="background: #1F6FB2">E</span><span class="n">Edge</span><span class="d">1 profil détecté</span></button>
+            <button class="src" type="button" aria-pressed="false"><span class="logo" style="background: #B5452F">B</span><span class="n">Brave</span><span class="d">1 profil détecté</span></button>
+            <button class="src" type="button" aria-pressed="false"><span class="logo" style="background: #7A3EB1">V</span><span class="n">Vivaldi</span><span class="d">Non installé</span></button>
+            <button class="src" type="button" aria-pressed="false"><span class="logo" style="background: #D97A2B">F</span><span class="n">Firefox</span><span class="d">1 profil détecté</span></button>
+            <button class="src" type="button" aria-pressed="false"><span class="logo" style="background: #2D5BD1">S</span><span class="n">Safari</span><span class="d">Accès au disque à autoriser</span></button>
+            <button class="src" type="button" aria-pressed="false"><span class="logo" style="background: #15152E">O</span><span class="n">Orion</span><span class="d">1 profil détecté</span></button>
+            <button class="src" type="button" aria-pressed="false"><span class="logo" style="background: #6B6B80; font-size: 20px">…</span><span class="n">Un fichier</span><span class="d">Favoris HTML, CSV, JSON, paquet .lyra</span></button>
+          </div>
+
+          <h2 style="margin: 6px 0 -6px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #6B6B80">2. Quoi importer — Chrome, profil « Khalil »</h2>
+          <div class="card">
+            <div class="chk"><input id="i-fav" type="checkbox" checked><label for="i-fav"><span>Favoris</span><span class="hint">1 284 favoris, 37 dossiers → barre et dossiers conservés</span></label><span class="tag" style="background: #DDF5EC; color: #146A52">Prêt</span></div>
+            <div class="chk"><input id="i-hist" type="checkbox" checked><label for="i-hist"><span>Historique</span><span class="hint">92 jours, 18 420 visites → suggestions de la palette dès le premier jour</span></label><span class="tag" style="background: #DDF5EC; color: #146A52">Prêt</span></div>
+            <div class="chk"><input id="i-tabs" type="checkbox" checked><label for="i-tabs"><span>Onglets ouverts et groupes</span><span class="hint">23 onglets, 3 groupes → 3 constellations, mêmes noms et couleurs</span></label><span class="tag" style="background: #DDF5EC; color: #146A52">Prêt</span></div>
+            <div class="chk"><input id="i-ext" type="checkbox" checked><label for="i-ext"><span>Extensions</span><span class="hint">6 trouvées : uBlock Origin, Dark Reader, Bitwarden, Vimium, SponsorBlock, 1 inconnue → réinstallées depuis le Chrome Web Store</span></label><span class="tag" style="background: #FBEFD8; color: #8A5A10">5 sur 6</span></div>
+            <div class="chk"><input id="i-search" type="checkbox" checked><label for="i-search"><span>Moteurs de recherche et mots-clés</span><span class="hint">4 moteurs, 7 raccourcis (ex. « w » → Wikipédia)</span></label><span class="tag" style="background: #DDF5EC; color: #146A52">Prêt</span></div>
+            <div class="chk"><input id="i-pw" type="checkbox"><label for="i-pw"><span>Mots de passe</span><span class="hint">Lyra n'en stocke pas : export vers un fichier chiffré (.csv.age) à importer dans Bitwarden, 1Password ou le trousseau</span></label><span class="tag" style="background: #F3F3F9; color: #6B6B80">Fichier</span></div>
+            <div class="chk"><input id="i-cook" type="checkbox"><label for="i-cook"><span>Cookies et sessions ouvertes</span><span class="hint">Rester connecté aux mêmes sites ; déconseillé pour les sites bancaires</span></label><span class="tag" style="background: #F3F3F9; color: #6B6B80">Optionnel</span></div>
+            <div class="chk"><input id="i-set" type="checkbox" checked><label for="i-set"><span>Réglages transposables</span><span class="hint">Page d'accueil, dossier de téléchargement, langue, zoom par site, bloqueur Brave → Boucliers, Focus mode Orion → Ne pas déranger</span></label><span class="tag" style="background: #DDF5EC; color: #146A52">Prêt</span></div>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap">
+            <button class="btn pri" type="button">Importer maintenant</button>
+            <button class="btn" type="button">Aperçu détaillé</button>
+            <span class="hint">Chrome peut rester ouvert ; Lyra lit une copie. Rien n'est envoyé nulle part.</span>
+          </div>
+
+          <h2 style="margin: 12px 0 -6px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #6B6B80">Exporter depuis Lyra</h2>
+          <div class="card">
+            <div class="row"><div class="lbl"><span>Favoris</span><span class="hint">Fichier HTML lisible par tous les navigateurs</span></div><button class="btn" type="button">Exporter…</button></div>
+            <div class="row"><div class="lbl"><span>Historique</span><span class="hint">CSV (date, titre, adresse, visites)</span></div><button class="btn" type="button">Exporter…</button></div>
+            <div class="row"><div class="lbl"><span>Le ciel</span><span class="hint">Constellations, étoiles et épingles en JSON ; réimportable</span></div><button class="btn" type="button">Exporter…</button></div>
+            <div class="row"><div class="lbl"><span>Réglages, règles par site, raccourcis</span><span class="hint">JSON, le même que « Exporter les réglages »</span></div><button class="btn" type="button">Exporter…</button></div>
+            <div class="row"><div class="lbl"><span>Paquet Lyra complet (.lyra)</span><span class="hint">Tout ce qui précède plus extensions et données de sites, chiffré par une phrase de passe — pour changer de machine</span></div><button class="btn pri" type="button">Créer le paquet…</button></div>
+            <div class="row"><div class="lbl"><span>Sauvegarde automatique du paquet</span><span class="hint">Chaque nuit, dans un dossier de votre choix (iCloud Drive, OneDrive, disque externe…)</span></div><button class="btn" type="button">Choisir un dossier…</button></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

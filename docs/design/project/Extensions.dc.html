@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Lyra — extensions Chrome et Firefox</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Manrope,-apple-system,"Segoe UI",system-ui,sans-serif;color:#1C1C2E}
+a{color:#4A48C4}a:hover{color:#2F2D8A}
+.star{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px;border:0;border-radius:8px;background:transparent;color:#C9C9EA;font:13px/1 Manrope,sans-serif;width:100%;text-align:left;cursor:pointer;box-sizing:border-box;position:relative}
+.star.active{background:#262650;color:#fff}
+.star .dot{width:8px;height:8px;border-radius:50%;background:#A8A8D8;flex:none}
+.star.active .dot{background:#F4C56A;box-shadow:0 0 0 3px rgba(244,197,106,.22),0 0 14px rgba(244,197,106,.7)}
+.star.dim{color:#8686B4}.star.dim .dot{background:#4E4E7A}
+.star .t{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.branch{margin-left:12px;padding-left:12px;border-left:1px solid #3B3B70;display:flex;flex-direction:column}
+.branch .star::before{content:"";position:absolute;left:-12px;top:50%;width:10px;height:1px;background:#3B3B70}
+.grp{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#7F7FB0;padding:12px 8px 4px;font-weight:600}
+.sb{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:0;border-radius:9px;background:transparent;color:#B3B3DA;cursor:pointer;padding:0}
+.pin{width:28px;height:28px;border-radius:50%;border:0;padding:0;display:inline-flex;align-items:center;justify-content:center;font:700 11px Manrope,sans-serif;color:#fff;cursor:pointer}
+.cb{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:#4A4A66;cursor:pointer;padding:0}
+.cb[disabled]{color:#B8B8CC;cursor:default}
+kbd{font:600 10.5px/1 Manrope,sans-serif;background:#2E2E5A;color:#B3B3DA;padding:4px 6px;border-radius:5px}
+.card{border:1px solid #E6E6EE;border-radius:12px;padding:0 18px;background:#fff}
+.row{display:flex;align-items:center;gap:14px;padding:14px 0;border-top:1px solid #EEEEF4}
+.row:first-child{border-top:0}
+.hint{color:#6B6B80;font-size:12.5px}
+.tg{position:relative;width:40px;height:24px;border:0;border-radius:12px;padding:0;cursor:pointer;flex:none}
+.tg i{position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.tg.on{background:#5452C8}.tg.on i{right:3px}
+.tg.off{background:#C9C9D6}.tg.off i{left:3px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border:1px solid #D6D6E2;border-radius:9px;background:#fff;color:#1C1C2E;font:500 13px Manrope,sans-serif;cursor:pointer;white-space:nowrap}
+.btn.pri{background:#5452C8;border-color:#5452C8;color:#fff}
+.btn.danger{color:#8E2E22}
+.inp{height:36px;padding:0 12px;border:1px solid #D6D6E2;border-radius:9px;background:#F8F8FC;font:13px Manrope,sans-serif;color:#1C1C2E;box-sizing:border-box;flex:1;min-width:0}
+.tag{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:11px;font-size:12px;font-weight:600;white-space:nowrap}
+.ico{width:36px;height:36px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:#fff;flex:none}
+.log{font:12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#F3F3F9;border:1px solid #E6E6EE;border-radius:8px;padding:10px 12px;color:#1C1C2E;margin:0;white-space:pre-wrap;line-height:1.6}
+</style>
+</helmet>
+
+<div style="width: 100%; min-height: 100vh; display: flex; background: #15152E; font-size: 14px; line-height: 1.45">
+
+  <aside aria-label="Ciel des onglets" style="width: 272px; flex: none; display: flex; flex-direction: column; gap: 10px; background: #15152E; color: #D9D9F0; padding: 10px 12px 12px; box-sizing: border-box">
+    <div style="display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 2px">
+      <div aria-hidden="true" style="display: flex; gap: 8px; padding-right: 8px"><span style="width: 12px; height: 12px; border-radius: 50%; background: #2E2E55"></span><span style="width: 12px; height: 12px; border-radius: 50%; background: #2E2E55"></span><span style="width: 12px; height: 12px; border-radius: 50%; background: #2E2E55"></span></div>
+      <span style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 21px; color: #F3F3FF">Lyra</span>
+    </div>
+    <button type="button" aria-label="Aller à une adresse, rechercher ou lancer une commande" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px 0 12px; border: 0; border-radius: 10px; background: #222247; color: #9D9DC8; font: 13px Manrope, sans-serif; cursor: pointer; width: 100%; box-sizing: border-box; text-align: left">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
+      <span style="flex: 1">Aller à, rechercher, commander…</span><kbd>⌘ L</kbd>
+    </button>
+    <div aria-label="Onglets épinglés" style="display: flex; gap: 8px; padding: 2px 6px 0">
+      <button class="pin" type="button" aria-label="Messagerie" style="background: #1E7F6C">M</button>
+      <button class="pin" type="button" aria-label="Agenda" style="background: #2D5BD1">A</button>
+      <button class="pin" type="button" aria-label="Kagi" style="background: #D97A2B">K</button>
+      <button class="pin" type="button" aria-label="GitHub" style="background: #3A3A62">G</button>
+    </div>
+    <nav aria-label="Onglets ouverts" style="flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden">
+      <button class="star active" type="button" style="margin-top: 6px"><span class="dot" aria-hidden="true"></span><span class="t">Extensions</span></button>
+      <div class="grp"><span>Astronomie</span><span style="letter-spacing: 0; color: #5E5E92">4</span></div>
+      <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Lyra (constellation) — Atlas du ciel</span></button>
+      <div class="branch">
+        <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Véga — Wikipédia</span></button>
+        <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Véga, l'étoile de l'été — vidéo</span></button>
+      </div>
+      <div class="grp"><span>Travail</span><span style="letter-spacing: 0; color: #5E5E92">3</span></div>
+      <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Boîte de réception (3)</span></button>
+      <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Pull request #42 — GitHub</span></button>
+    </nav>
+    <div style="display: flex; align-items: center; gap: 2px; padding-top: 8px; border-top: 1px solid #26264A">
+      <button type="button" aria-label="Boucliers" style="display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px 0 8px; border: 0; border-radius: 9px; background: transparent; color: #5FD3B3; cursor: pointer"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 9.5C8 19.2 5 15.5 5 11V6z"/><path d="M9 12l2 2 4-4"/></svg></button>
+      <span style="flex: 1"></span>
+      <button class="sb" type="button" aria-label="Extensions" style="background: #23234A; color: #fff"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M10 4a2 2 0 0 1 4 0v1h3a1 1 0 0 1 1 1v3h1a2 2 0 0 1 0 4h-1v3a1 1 0 0 1-1 1h-3v-1a2 2 0 0 0-4 0v1H7a1 1 0 0 1-1-1v-3H5a2 2 0 0 1 0-4h1V6a1 1 0 0 1 1-1h3z"/></svg></button>
+      <button class="sb" type="button" aria-label="Téléchargements"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg></button>
+      <button class="sb" type="button" aria-label="Ne pas déranger"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button>
+      <button class="sb" type="button" aria-label="Réglages"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button>
+    </div>
+  </aside>
+
+  <section aria-label="Page active" style="flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 0; box-sizing: border-box">
+    <div style="flex: 1; display: flex; flex-direction: column; background: #F7F7FB; border-radius: 12px 0 0 12px; overflow: hidden">
+      <div style="display: flex; align-items: center; gap: 6px; height: 46px; padding: 0 10px; box-sizing: border-box; border-bottom: 1px solid #E6E6EE; background: #fff; flex-wrap: wrap">
+        <button class="cb" type="button" aria-label="Page précédente"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <button class="cb" type="button" aria-label="Page suivante" disabled><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+        <span style="flex: 1"></span>
+        <button type="button" aria-label="lyra://extensions — modifier l'adresse" style="display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 14px 0 12px; border: 0; border-radius: 16px; background: #F3F3F9; color: #1C1C2E; font: 500 13.5px Manrope, sans-serif; cursor: pointer">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#5452C8" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M10 4a2 2 0 0 1 4 0v1h3a1 1 0 0 1 1 1v3h1a2 2 0 0 1 0 4h-1v3a1 1 0 0 1-1 1h-3v-1a2 2 0 0 0-4 0v1H7a1 1 0 0 1-1-1v-3H5a2 2 0 0 1 0-4h1V6a1 1 0 0 1 1-1h3z"/></svg>
+          <span>lyra://extensions</span>
+        </button>
+        <span style="flex: 1"></span>
+        <button class="cb" type="button" aria-label="Menu de la page"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg></button>
+      </div>
+
+      <main style="flex: 1; display: flex; flex-direction: column; gap: 18px; padding: 24px 28px 40px; box-sizing: border-box; max-width: 1040px; width: 100%; margin: 0 auto">
+        <div style="display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap">
+          <div style="flex: 1; min-width: 240px">
+            <h1 style="margin: 0; font-size: 26px; letter-spacing: -0.4px">Extensions</h1>
+            <p style="margin: 4px 0 0; color: #6B6B80">Chrome et Firefox, côte à côte. Ce qui ne marche pas est dit, pas caché.</p>
+          </div>
+          <button class="btn" type="button">Tout mettre à jour</button>
+          <span class="hint">Vérifiées il y a 2 h</span>
+        </div>
+
+        <h2 style="margin: 6px 0 -6px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #6B6B80">Installer</h2>
+        <div class="card">
+          <div class="row">
+            <span class="tag" style="background: #E6E6F7; color: #2F2D8A; width: 72px; justify-content: center">Chrome</span>
+            <label for="cws" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Identifiant ou adresse du Chrome Web Store</label>
+            <input id="cws" class="inp" type="text" placeholder="Identifiant ou adresse chromewebstore.google.com/detail/…">
+            <button class="btn pri" type="button">Installer</button>
+          </div>
+          <div class="row">
+            <span class="tag" style="background: #FBEFD8; color: #8A5A10; width: 72px; justify-content: center">Firefox</span>
+            <label for="amo" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Nom ou adresse addons.mozilla.org</label>
+            <input id="amo" class="inp" type="text" placeholder="Nom ou adresse addons.mozilla.org/fr/firefox/addon/…">
+            <button class="btn pri" type="button">Installer</button>
+          </div>
+          <div class="row">
+            <span class="tag" style="background: #F3F3F9; color: #6B6B80; width: 72px; justify-content: center">Fichier</span>
+            <span style="flex: 1; color: #3A3A50">Un fichier <strong>.crx</strong>, <strong>.zip</strong> ou <strong>.xpi</strong>, ou un dossier d'extension en développement</span>
+            <button class="btn" type="button">Choisir…</button>
+          </div>
+        </div>
+
+        <h2 style="margin: 6px 0 -6px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #6B6B80">Installées — 6</h2>
+        <div class="card">
+          <div class="row">
+            <span class="ico" style="background: #B5452F">u</span>
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px"><span style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"><strong>uBlock Origin</strong><span class="hint">1.62.0</span><span class="tag" style="background: #E6E6F7; color: #2F2D8A">Chrome</span></span><span class="hint">Tous les sites · s'ajoute aux Boucliers, ne les remplace pas</span></div>
+            <button class="btn" type="button">Options</button><button class="btn" type="button">Sites</button><button class="btn" type="button">Journal</button><button class="tg on" type="button" role="switch" aria-checked="true" aria-label="Activer uBlock Origin"><i></i></button>
+          </div>
+          <div class="row" style="align-items: flex-start; background: #F7F7FB; margin: 0 -18px; padding: 14px 18px">
+            <span class="ico" style="background: #3A3A46"><svg viewBox="0 0 24 24" width="18" height="18" fill="#fff" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></span>
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px">
+              <span style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"><strong>Dark Reader</strong><span class="hint">4.9.106</span><span class="tag" style="background: #FBEFD8; color: #8A5A10">Firefox · convertie</span></span>
+              <span class="hint">Tous les sites sauf youtube.com (règle par site) · fonctionne ; 2 fonctions Firefox ignorées</span>
+<pre class="log">✓ browser.storage, browser.tabs, browser.runtime, browser.commands  — par le pont browser.* de Lyra
+✓ content_scripts, options_ui, browser_action (popup)
+– browser.theme.getCurrent  — thème Firefox : ignorée, Dark Reader lit le thème du système
+– browser_specific_settings.gecko  — retirée du manifest (sans effet)
+ℹ Permissions accordées : &lt;all_urls&gt;, storage, tabs</pre>
+            </div>
+            <button class="btn" type="button">Options</button><button class="btn" type="button">Sites</button><button class="btn" type="button">Replier</button><button class="tg on" type="button" role="switch" aria-checked="true" aria-label="Activer Dark Reader"><i></i></button>
+          </div>
+          <div class="row">
+            <span class="ico" style="background: #2D5BD1">B</span>
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px"><span style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"><strong>Bitwarden</strong><span class="hint">2026.9.1</span><span class="tag" style="background: #FBEFD8; color: #8A5A10">Firefox · convertie</span></span><span class="hint">Tous les sites · fenêtres privées : non</span></div>
+            <button class="btn" type="button">Options</button><button class="btn" type="button">Sites</button><button class="btn" type="button">Journal</button><button class="tg on" type="button" role="switch" aria-checked="true" aria-label="Activer Bitwarden"><i></i></button>
+          </div>
+          <div class="row">
+            <span class="ico" style="background: #1F6FB2">V</span>
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px"><span style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"><strong>Vimium</strong><span class="hint">2.1.2</span><span class="tag" style="background: #E6E6F7; color: #2F2D8A">Chrome</span></span><span class="hint">Tous les sites · 3 raccourcis en conflit avec Lyra, Lyra gagne (modifiable)</span></div>
+            <button class="btn" type="button">Options</button><button class="btn" type="button">Sites</button><button class="btn" type="button">Journal</button><button class="tg on" type="button" role="switch" aria-checked="true" aria-label="Activer Vimium"><i></i></button>
+          </div>
+          <div class="row">
+            <span class="ico" style="background: #1E7F6C">S</span>
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px"><span style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"><strong>SponsorBlock</strong><span class="hint">5.11</span><span class="tag" style="background: #E6E6F7; color: #2F2D8A">Chrome</span></span><span class="hint">youtube.com seulement</span></div>
+            <button class="btn" type="button">Options</button><button class="btn" type="button">Sites</button><button class="btn" type="button">Journal</button><button class="tg off" type="button" role="switch" aria-checked="false" aria-label="Activer SponsorBlock"><i></i></button>
+          </div>
+          <div class="row" style="opacity: .9">
+            <span class="ico" style="background: #8A8AA6">T</span>
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px"><span style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"><strong>Tree Style Tab</strong><span class="hint">4.0.3</span><span class="tag" style="background: #FBEFD8; color: #8A5A10">Firefox</span><span class="tag" style="background: #F3E3E1; color: #8E2E22">Incompatible</span></span><span class="hint">Demande une barre latérale Firefox (sidebar_action) — et le ciel de Lyra fait déjà ce travail</span></div>
+            <button class="btn" type="button">Journal</button><button class="btn danger" type="button">Supprimer</button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

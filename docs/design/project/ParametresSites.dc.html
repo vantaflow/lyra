@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Lyra — réglages : règles par site</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Manrope,-apple-system,"Segoe UI",system-ui,sans-serif;color:#1C1C2E}
+a{color:#4A48C4}a:hover{color:#2F2D8A}
+.star{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px;border:0;border-radius:8px;background:transparent;color:#C9C9EA;font:13px/1 Manrope,sans-serif;width:100%;text-align:left;cursor:pointer;box-sizing:border-box;position:relative}
+.star.active{background:#262650;color:#fff}
+.star .dot{width:8px;height:8px;border-radius:50%;background:#A8A8D8;flex:none}
+.star.active .dot{background:#F4C56A;box-shadow:0 0 0 3px rgba(244,197,106,.22),0 0 14px rgba(244,197,106,.7)}
+.star.dim{color:#8686B4}.star.dim .dot{background:#4E4E7A}
+.star .t{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.branch{margin-left:12px;padding-left:12px;border-left:1px solid #3B3B70;display:flex;flex-direction:column}
+.branch .star::before{content:"";position:absolute;left:-12px;top:50%;width:10px;height:1px;background:#3B3B70}
+.grp{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#7F7FB0;padding:12px 8px 4px;font-weight:600}
+.sb{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:0;border-radius:9px;background:transparent;color:#B3B3DA;cursor:pointer;padding:0}
+.pin{width:28px;height:28px;border-radius:50%;border:0;padding:0;display:inline-flex;align-items:center;justify-content:center;font:700 11px Manrope,sans-serif;color:#fff;cursor:pointer}
+.cb{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:#4A4A66;cursor:pointer;padding:0}
+.cb[disabled]{color:#B8B8CC;cursor:default}
+kbd{font:600 10.5px/1 Manrope,sans-serif;background:#2E2E5A;color:#B3B3DA;padding:4px 6px;border-radius:5px}
+.nav a{display:flex;align-items:center;gap:10px;height:34px;padding:0 12px;border-radius:8px;color:#3A3A50;text-decoration:none;font-size:13.5px;white-space:nowrap}
+.nav a:hover{background:#EEEEF6;color:#1C1C2E}
+.nav a.on{background:#E6E6F7;color:#2F2D8A;font-weight:600}
+.card{border:1px solid #E6E6EE;border-radius:12px;padding:0 18px;background:#fff}
+.row{display:flex;align-items:center;gap:16px;padding:14px 0;border-top:1px solid #EEEEF4}
+.row:first-child{border-top:0}
+.lbl{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.hint{color:#6B6B80;font-size:12.5px}
+.tg{position:relative;width:40px;height:24px;border:0;border-radius:12px;padding:0;cursor:pointer;flex:none}
+.tg i{position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.tg.on{background:#5452C8}.tg.on i{right:3px}
+.tg.off{background:#C9C9D6}.tg.off i{left:3px}
+.sel{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 10px 0 12px;border:1px solid #D6D6E2;border-radius:8px;background:#F8F8FC;color:#1C1C2E;font:13px Manrope,sans-serif;cursor:pointer;flex:none}
+.seg{display:inline-flex;border:1px solid #D6D6E2;border-radius:8px;overflow:hidden;flex:none}
+.seg button{height:30px;padding:0 12px;border:0;background:#F8F8FC;color:#3A3A50;font:13px Manrope,sans-serif;cursor:pointer}
+.seg button+button{border-left:1px solid #D6D6E2}
+.seg button[aria-pressed="true"]{background:#5452C8;color:#fff}
+.btn{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px;border:1px solid #D6D6E2;border-radius:9px;background:#fff;color:#1C1C2E;font:500 13px Manrope,sans-serif;cursor:pointer}
+.btn.pri{background:#5452C8;border-color:#5452C8;color:#fff}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#6B6B80;font-weight:600;padding:10px 12px;border-bottom:1px solid #E6E6EE;white-space:nowrap}
+td{padding:11px 12px;border-bottom:1px solid #EEEEF4;white-space:nowrap;vertical-align:middle}
+tr.on td{background:#F1F1FA}
+.tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:11px;font-size:12px;font-weight:600}
+.site{display:inline-flex;align-items:center;gap:8px;font-weight:600}
+.site i{width:18px;height:18px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:10px;font-weight:700;color:#fff}
+.code{font:12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#F3F3F9;border:1px solid #E6E6EE;border-radius:8px;padding:10px 12px;color:#1C1C2E;white-space:pre-wrap;margin:0}
+</style>
+</helmet>
+
+<div style="width: 100%; min-height: 100vh; display: flex; background: #15152E; font-size: 14px; line-height: 1.45">
+
+  <aside aria-label="Ciel des onglets" style="width: 272px; flex: none; display: flex; flex-direction: column; gap: 10px; background: #15152E; color: #D9D9F0; padding: 10px 12px 12px; box-sizing: border-box">
+    <div style="display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 2px">
+      <div aria-hidden="true" style="display: flex; gap: 8px; padding-right: 8px"><span style="width: 12px; height: 12px; border-radius: 50%; background: #2E2E55"></span><span style="width: 12px; height: 12px; border-radius: 50%; background: #2E2E55"></span><span style="width: 12px; height: 12px; border-radius: 50%; background: #2E2E55"></span></div>
+      <span style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 21px; color: #F3F3FF">Lyra</span>
+    </div>
+    <button type="button" aria-label="Aller à une adresse, rechercher ou lancer une commande" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px 0 12px; border: 0; border-radius: 10px; background: #222247; color: #9D9DC8; font: 13px Manrope, sans-serif; cursor: pointer; width: 100%; box-sizing: border-box; text-align: left">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
+      <span style="flex: 1">Aller à, rechercher, commander…</span><kbd>⌘ L</kbd>
+    </button>
+    <div aria-label="Onglets épinglés" style="display: flex; gap: 8px; padding: 2px 6px 0">
+      <button class="pin" type="button" aria-label="Messagerie" style="background: #1E7F6C">M</button>
+      <button class="pin" type="button" aria-label="Agenda" style="background: #2D5BD1">A</button>
+      <button class="pin" type="button" aria-label="Kagi" style="background: #D97A2B">K</button>
+      <button class="pin" type="button" aria-label="GitHub" style="background: #3A3A62">G</button>
+    </div>
+    <nav aria-label="Onglets ouverts" style="flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden">
+      <button class="star active" type="button" style="margin-top: 6px"><span class="dot" aria-hidden="true"></span><span class="t">Réglages — Règles par site</span></button>
+      <div class="grp"><span>Astronomie</span><span style="letter-spacing: 0; color: #5E5E92">4</span></div>
+      <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Lyra (constellation) — Atlas du ciel</span></button>
+      <div class="branch">
+        <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Véga — Wikipédia</span></button>
+        <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Véga, l'étoile de l'été — vidéo</span></button>
+      </div>
+      <div class="grp"><span>Travail</span><span style="letter-spacing: 0; color: #5E5E92">3</span></div>
+      <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Boîte de réception (3)</span></button>
+      <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Pull request #42 — GitHub</span></button>
+    </nav>
+    <div style="display: flex; align-items: center; gap: 2px; padding-top: 8px; border-top: 1px solid #26264A">
+      <button type="button" aria-label="Boucliers" style="display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px 0 8px; border: 0; border-radius: 9px; background: transparent; color: #5FD3B3; cursor: pointer"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 9.5C8 19.2 5 15.5 5 11V6z"/><path d="M9 12l2 2 4-4"/></svg></button>
+      <span style="flex: 1"></span>
+      <button class="sb" type="button" aria-label="Extensions"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M10 4a2 2 0 0 1 4 0v1h3a1 1 0 0 1 1 1v3h1a2 2 0 0 1 0 4h-1v3a1 1 0 0 1-1 1h-3v-1a2 2 0 0 0-4 0v1H7a1 1 0 0 1-1-1v-3H5a2 2 0 0 1 0-4h1V6a1 1 0 0 1 1-1h3z"/></svg></button>
+      <button class="sb" type="button" aria-label="Téléchargements"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg></button>
+      <button class="sb" type="button" aria-label="Ne pas déranger"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button>
+      <button class="sb" type="button" aria-label="Réglages" style="background: #23234A; color: #fff"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button>
+    </div>
+  </aside>
+
+  <section aria-label="Page active" style="flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 0; box-sizing: border-box">
+    <div style="flex: 1; display: flex; flex-direction: column; background: #F7F7FB; border-radius: 12px 0 0 12px; overflow: hidden">
+      <div style="display: flex; align-items: center; gap: 6px; height: 46px; padding: 0 10px; box-sizing: border-box; border-bottom: 1px solid #E6E6EE; background: #fff; flex-wrap: wrap">
+        <button class="cb" type="button" aria-label="Page précédente"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <button class="cb" type="button" aria-label="Page suivante" disabled><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+        <span style="flex: 1"></span>
+        <button type="button" aria-label="lyra://settings/sites — modifier l'adresse" style="display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 14px 0 12px; border: 0; border-radius: 16px; background: #F3F3F9; color: #1C1C2E; font: 500 13.5px Manrope, sans-serif; cursor: pointer">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#5452C8" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg>
+          <span>lyra://settings</span><span style="color: #8A8AA6; font-weight: 400">/sites</span>
+        </button>
+        <span style="flex: 1"></span>
+        <button class="cb" type="button" aria-label="Menu de la page"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg></button>
+      </div>
+
+      <main style="flex: 1; display: flex; flex-wrap: wrap; gap: 24px; padding: 24px 28px 40px; box-sizing: border-box; max-width: 1240px; width: 100%; margin: 0 auto">
+        <nav class="nav" aria-label="Sections des réglages" style="flex: 0 1 236px; min-width: 200px; display: flex; flex-direction: column; gap: 2px">
+          <label for="chercher-reglage-2" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Rechercher un réglage</label>
+          <input id="chercher-reglage-2" type="search" placeholder="Rechercher un réglage…" style="height: 36px; margin: 0 0 10px; padding: 0 12px; border: 1px solid #D6D6E2; border-radius: 9px; background: #fff; font: 13px Manrope, sans-serif; color: #1C1C2E; box-sizing: border-box; width: 100%">
+          <a href="#">Général</a>
+          <a href="Parametres.dc.html">Le ciel et l'apparence</a>
+          <a href="Couleurs.dc.html">Couleurs et thèmes</a>
+          <a href="#">Palette et recherche</a>
+          <a href="#">Boucliers</a>
+          <a href="#" class="on">Règles par site</a>
+          <a href="#">Extensions</a>
+          <a href="#">Confidentialité</a>
+          <a href="#">Téléchargements</a>
+          <a href="#">Raccourcis clavier</a>
+          <a href="#">Gestes et souris</a>
+          <a href="#">Ne pas déranger</a>
+          <a href="#">Démarrage et sessions</a>
+          <a href="#">Styles et scripts</a>
+          <a href="#">Réseau et identité</a>
+          <a href="Importation.dc.html">Importer et exporter</a>
+          <a href="#">Sauvegarde et profils</a>
+          <a href="#">Labo</a>
+          <a href="#">À propos</a>
+        </nav>
+
+        <div style="flex: 1 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
+          <div style="display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap">
+            <div style="flex: 1; min-width: 240px">
+              <h1 style="margin: 0; font-size: 26px; letter-spacing: -0.4px">Règles par site</h1>
+              <p style="margin: 4px 0 0; color: #6B6B80">Chaque site peut avoir ses propres boucliers, cookies, scripts, extensions, zoom, style et exceptions. La règle la plus précise gagne.</p>
+            </div>
+            <button class="btn pri" type="button"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>Nouvelle règle</button>
+          </div>
+
+          <div class="card" style="padding: 0; overflow: auto">
+            <table>
+              <thead><tr><th>Site</th><th>Boucliers</th><th>Cookies</th><th>Scripts</th><th>Extensions</th><th>Zoom</th><th>Ne pas déranger</th><th>Style</th></tr></thead>
+              <tbody>
+                <tr class="on"><td><span class="site"><i style="background: #B5452F">Y</i>youtube.com</span></td><td><span class="tag" style="background: #DDF5EC; color: #146A52">Strict</span></td><td>1re partie</td><td>Autorisés</td><td>uBO seulement</td><td>100 %</td><td>Exception</td><td><span class="tag" style="background: #E6E6F7; color: #2F2D8A">CSS</span></td></tr>
+                <tr><td><span class="site"><i style="background: #5452C8">A</i>atlasduciel.fr</span></td><td><span class="tag" style="background: #DDF5EC; color: #146A52">Standard</span></td><td>Tous</td><td>Autorisés</td><td>Toutes</td><td>110 %</td><td>—</td><td>—</td></tr>
+                <tr><td><span class="site"><i style="background: #3A3A62">G</i>github.com</span></td><td><span class="tag" style="background: #DDF5EC; color: #146A52">Standard</span></td><td>Tous</td><td>Autorisés</td><td>Toutes</td><td>90 %</td><td>—</td><td><span class="tag" style="background: #E6E6F7; color: #2F2D8A">CSS + script</span></td></tr>
+                <tr><td><span class="site"><i style="background: #1E7F6C">M</i>mail.exemple.fr</span></td><td><span class="tag" style="background: #F3E3E1; color: #8E2E22">Désactivés</span></td><td>Tous</td><td>Autorisés</td><td>Bitwarden seulement</td><td>100 %</td><td>Exception</td><td>—</td></tr>
+                <tr><td><span class="site"><i style="background: #6B6B80">*</i>*.tracking-exemple.net</span></td><td><span class="tag" style="background: #DDF5EC; color: #146A52">Strict</span></td><td>Bloqués</td><td><span class="tag" style="background: #F3E3E1; color: #8E2E22">Bloqués</span></td><td>Aucune</td><td>—</td><td>—</td><td>—</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h2 style="margin: 6px 0 -6px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #6B6B80">youtube.com — détail de la règle</h2>
+          <div class="card">
+            <div class="row"><div class="lbl"><span>Boucliers</span><span class="hint">Strict ajoute les listes de gênes et bloque les scripts tiers inconnus</span></div><div class="seg"><button type="button" aria-pressed="false">Désactivés</button><button type="button" aria-pressed="false">Standard</button><button type="button" aria-pressed="true">Strict</button></div></div>
+            <div class="row"><div class="lbl"><span>Scriptlets anti-publicité YouTube</span><span class="hint">Mis à jour avec les listes ; toujours actifs en Standard et Strict</span></div><button class="tg on" type="button" role="switch" aria-checked="true" aria-label="Scriptlets YouTube"><i></i></button></div>
+            <div class="row"><div class="lbl"><span>Cookies</span></div><div class="seg"><button type="button" aria-pressed="false">Tous</button><button type="button" aria-pressed="true">1re partie</button><button type="button" aria-pressed="false">Bloqués</button><button type="button" aria-pressed="false">Session seulement</button></div></div>
+            <div class="row"><div class="lbl"><span>Lecture automatique des vidéos</span></div><div class="seg"><button type="button" aria-pressed="false">Autoriser</button><button type="button" aria-pressed="true">Sans le son</button><button type="button" aria-pressed="false">Bloquer</button></div></div>
+            <div class="row"><div class="lbl"><span>Notifications</span></div><div class="seg"><button type="button" aria-pressed="false">Demander</button><button type="button" aria-pressed="false">Autoriser</button><button type="button" aria-pressed="true">Refuser</button></div></div>
+            <div class="row"><div class="lbl"><span>Extensions autorisées sur ce site</span><span class="hint">Les autres ne voient pas la page</span></div><div style="display: flex; gap: 8px; flex-wrap: wrap"><span class="tag" style="background: #DDF5EC; color: #146A52">uBlock Origin ✓</span><span class="tag" style="background: #F3F3F9; color: #6B6B80">Dark Reader ✗</span><span class="tag" style="background: #F3F3F9; color: #6B6B80">Bitwarden ✗</span><button class="btn" type="button" style="height: 26px; padding: 0 10px">Modifier</button></div></div>
+            <div class="row"><div class="lbl"><span>Ne pas déranger : laisser passer les notifications de ce site</span><span class="hint">Exception au mode</span></div><button class="tg on" type="button" role="switch" aria-checked="true" aria-label="Exception Ne pas déranger"><i></i></button></div>
+            <div class="row"><div class="lbl"><span>Identité du navigateur (user-agent)</span></div><button class="sel" type="button">Lyra (Chrome 152)<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div>
+            <div class="row" style="flex-direction: column; align-items: stretch; gap: 8px">
+              <div class="lbl"><span>Style personnalisé</span><span class="hint">Appliqué à chaque page du site, avant son premier rendu</span></div>
+<pre class="code">/* masque les suggestions à droite de la vidéo */
+#secondary { display: none !important; }
+#primary { max-width: 1280px !important; }</pre>
+            </div>
+            <div class="row" style="flex-direction: column; align-items: stretch; gap: 8px">
+              <div class="lbl"><span>Script personnalisé</span><span class="hint">Exécuté au chargement, dans un monde isolé</span></div>
+              <button class="btn" type="button" style="align-self: flex-start">Ajouter un script…</button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

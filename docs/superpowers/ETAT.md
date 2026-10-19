@@ -1,6 +1,6 @@
 # Lyra — état d'avancement
 
-Dernière mise à jour : 2026-10-19 (run autopilot **en pause** à la demande de l'utilisateur, phase conception).
+Dernière mise à jour : 2026-10-19, tard (run autopilot **en pause** à la demande de l'utilisateur, phase conception).
 
 ## Le projet
 
@@ -14,12 +14,15 @@ Navigateur web type Orion (Kagi) pour Windows et macOS, en Electron/TypeScript. 
 - Spike bloqueur (vérifié sur youtube.com) : moteur Ghostery 2.20.1 retenu, adblock-rs écarté ; l'injection standard laisse passer les pubs vidéo (5/5), le correctif « scriptlets tôt » en preload donne 0/5. Code de référence : `docs/superpowers/spikes/adblock/`.
 - Recherche technique : 2 sujets sur 8 terminés (`electron-chrome-extensions`, `adblock-engines`) dans `docs/superpowers/research/`.
 
+- **Design (Claude Design)** : canevas https://claude.ai/artifact/US6xYeYjRNejcSueqTdanQ, source dans `docs/design/` (12 écrans : ciel des onglets en constellations, 4 positions + masqué, Ne pas déranger, nouvel onglet, réglages complets, règles par site, couleurs et thèmes, import/export depuis 7 navigateurs, extensions). Voir `docs/design/README.md`.
+
 ## Reste à faire (conception)
 
 1. Spike extensions : Chrome (uBlock Origin) + Firefox converties (xpi → manifest + polyfill `browser.*`) — interrompu avant résultat.
 2. Recherche : 6 sujets restants (Electron extensions natif, YouTube 2026, extensions Firefox, build, architecture UI, Orion) + synthèse.
 3. Spec : sections 5 (architecture), 7 (extensions), 9 (laissé au constructeur), 10 (risques) ; relecture par un constructeur (builder-check).
-4. Plan en tâches (`writing-plans`), puis exécution tâche par tâche avec tests.
+4. Design : écrans Panneaux (palette ⌘ L, boucliers, téléchargements, menu) et Composants ; reporter la nouvelle direction (ciel, capsule, palette, Ne pas déranger, réglages, import/export, couleurs) dans la spec §4.
+5. Plan en tâches (`writing-plans`), puis exécution tâche par tâche avec tests.
 
 ## Reprendre
 

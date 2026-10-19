@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Lyra — réglages : couleurs et thèmes</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Manrope,-apple-system,"Segoe UI",system-ui,sans-serif;color:#1C1C2E}
+a{color:#4A48C4}a:hover{color:#2F2D8A}
+.star{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px;border:0;border-radius:8px;background:transparent;color:#C9C9EA;font:13px/1 Manrope,sans-serif;width:100%;text-align:left;cursor:pointer;box-sizing:border-box;position:relative}
+.star.active{background:#262650;color:#fff}
+.star .dot{width:8px;height:8px;border-radius:50%;background:#A8A8D8;flex:none}
+.star.active .dot{background:#F4C56A;box-shadow:0 0 0 3px rgba(244,197,106,.22),0 0 14px rgba(244,197,106,.7)}
+.star .t{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.branch{margin-left:12px;padding-left:12px;border-left:1px solid #3B3B70;display:flex;flex-direction:column}
+.branch .star::before{content:"";position:absolute;left:-12px;top:50%;width:10px;height:1px;background:#3B3B70}
+.grp{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#7F7FB0;padding:12px 8px 4px;font-weight:600}
+.sb{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:0;border-radius:9px;background:transparent;color:#B3B3DA;cursor:pointer;padding:0}
+.pin{width:28px;height:28px;border-radius:50%;border:0;padding:0;display:inline-flex;align-items:center;justify-content:center;font:700 11px Manrope,sans-serif;color:#fff;cursor:pointer}
+.cb{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:#4A4A66;cursor:pointer;padding:0}
+.cb[disabled]{color:#B8B8CC;cursor:default}
+kbd{font:600 10.5px/1 Manrope,sans-serif;background:#2E2E5A;color:#B3B3DA;padding:4px 6px;border-radius:5px}
+.nav a{display:flex;align-items:center;gap:10px;height:34px;padding:0 12px;border-radius:8px;color:#3A3A50;text-decoration:none;font-size:13.5px;white-space:nowrap}
+.nav a:hover{background:#EEEEF6;color:#1C1C2E}
+.nav a.on{background:#E6E6F7;color:#2F2D8A;font-weight:600}
+.card{border:1px solid #E6E6EE;border-radius:12px;padding:0 18px;background:#fff}
+.row{display:flex;align-items:center;gap:16px;padding:12px 0;border-top:1px solid #EEEEF4}
+.row:first-child{border-top:0}
+.lbl{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.hint{color:#6B6B80;font-size:12.5px}
+.tg{position:relative;width:40px;height:24px;border:0;border-radius:12px;padding:0;cursor:pointer;flex:none}
+.tg i{position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.tg.on{background:#5452C8}.tg.on i{right:3px}
+.tg.off{background:#C9C9D6}.tg.off i{left:3px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px;border:1px solid #D6D6E2;border-radius:9px;background:#fff;color:#1C1C2E;font:500 13px Manrope,sans-serif;cursor:pointer}
+.btn.pri{background:#5452C8;border-color:#5452C8;color:#fff}
+.th{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid #E6E6EE;border-radius:12px;background:#fff;cursor:pointer;text-align:left;font:600 13px Manrope,sans-serif;color:#1C1C2E}
+.th[aria-pressed="true"]{border-color:#5452C8;box-shadow:0 0 0 3px rgba(84,82,200,.16)}
+.th .pv{height:64px;border-radius:8px;display:flex;overflow:hidden}
+.th .pv i{display:block;width:30%;height:100%}
+.th .pv b{display:block;flex:1;height:100%;position:relative}
+.th .pv b::after{content:"";position:absolute;left:10px;top:10px;width:40%;height:6px;border-radius:3px;background:currentColor;opacity:.35}
+.hex{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 8px 0 6px;border:1px solid #D6D6E2;border-radius:8px;background:#F8F8FC;font:12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#1C1C2E;cursor:pointer;min-width:118px}
+.hex i{width:18px;height:18px;border-radius:5px;border:1px solid rgba(0,0,0,.12);flex:none}
+.seg{display:inline-flex;border:1px solid #D6D6E2;border-radius:8px;overflow:hidden;flex:none}
+.seg button{height:30px;padding:0 12px;border:0;background:#F8F8FC;color:#3A3A50;font:13px Manrope,sans-serif;cursor:pointer}
+.seg button+button{border-left:1px solid #D6D6E2}
+.seg button[aria-pressed="true"]{background:#5452C8;color:#fff}
+</style>
+</helmet>
+
+<div style="width: 100%; min-height: 100vh; display: flex; background: #15152E; font-size: 14px; line-height: 1.45">
+
+  <aside aria-label="Ciel des onglets" style="width: 272px; flex: none; display: flex; flex-direction: column; gap: 10px; background: #15152E; color: #D9D9F0; padding: 10px 12px 12px; box-sizing: border-box">
+    <div style="display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 2px">
+      <div aria-hidden="true" style="display: flex; gap: 8px; padding-right: 8px"><span style="width: 12px; height: 12px; border-radius: 50%; background: #2E2E55"></span><span style="width: 12px; height: 12px; border-radius: 50%; background: #2E2E55"></span><span style="width: 12px; height: 12px; border-radius: 50%; background: #2E2E55"></span></div>
+      <span style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 21px; color: #F3F3FF">Lyra</span>
+    </div>
+    <button type="button" aria-label="Aller à une adresse, rechercher ou lancer une commande" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px 0 12px; border: 0; border-radius: 10px; background: #222247; color: #9D9DC8; font: 13px Manrope, sans-serif; cursor: pointer; width: 100%; box-sizing: border-box; text-align: left">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
+      <span style="flex: 1">Aller à, rechercher, commander…</span><kbd>⌘ L</kbd>
+    </button>
+    <div aria-label="Onglets épinglés" style="display: flex; gap: 8px; padding: 2px 6px 0">
+      <button class="pin" type="button" aria-label="Messagerie" style="background: #1E7F6C">M</button>
+      <button class="pin" type="button" aria-label="Agenda" style="background: #2D5BD1">A</button>
+      <button class="pin" type="button" aria-label="Kagi" style="background: #D97A2B">K</button>
+      <button class="pin" type="button" aria-label="GitHub" style="background: #3A3A62">G</button>
+    </div>
+    <nav aria-label="Onglets ouverts" style="flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden">
+      <button class="star active" type="button" style="margin-top: 6px"><span class="dot" aria-hidden="true"></span><span class="t">Réglages — Couleurs et thèmes</span></button>
+      <div class="grp"><span>Astronomie</span><span style="letter-spacing: 0; color: #5E5E92">4</span></div>
+      <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Lyra (constellation) — Atlas du ciel</span></button>
+      <div class="branch">
+        <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Véga — Wikipédia</span></button>
+      </div>
+      <div class="grp"><span>Travail</span><span style="letter-spacing: 0; color: #5E5E92">3</span></div>
+      <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Boîte de réception (3)</span></button>
+    </nav>
+    <div style="display: flex; align-items: center; gap: 2px; padding-top: 8px; border-top: 1px solid #26264A">
+      <button type="button" aria-label="Boucliers" style="display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px 0 8px; border: 0; border-radius: 9px; background: transparent; color: #5FD3B3; cursor: pointer"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 9.5C8 19.2 5 15.5 5 11V6z"/><path d="M9 12l2 2 4-4"/></svg></button>
+      <span style="flex: 1"></span>
+      <button class="sb" type="button" aria-label="Extensions"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M10 4a2 2 0 0 1 4 0v1h3a1 1 0 0 1 1 1v3h1a2 2 0 0 1 0 4h-1v3a1 1 0 0 1-1 1h-3v-1a2 2 0 0 0-4 0v1H7a1 1 0 0 1-1-1v-3H5a2 2 0 0 1 0-4h1V6a1 1 0 0 1 1-1h3z"/></svg></button>
+      <button class="sb" type="button" aria-label="Téléchargements"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg></button>
+      <button class="sb" type="button" aria-label="Ne pas déranger"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button>
+      <button class="sb" type="button" aria-label="Réglages" style="background: #23234A; color: #fff"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button>
+    </div>
+  </aside>
+
+  <section aria-label="Page active" style="flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 0; box-sizing: border-box">
+    <div style="flex: 1; display: flex; flex-direction: column; background: #F7F7FB; border-radius: 12px 0 0 12px; overflow: hidden">
+      <div style="display: flex; align-items: center; gap: 6px; height: 46px; padding: 0 10px; box-sizing: border-box; border-bottom: 1px solid #E6E6EE; background: #fff; flex-wrap: wrap">
+        <button class="cb" type="button" aria-label="Page précédente"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <button class="cb" type="button" aria-label="Page suivante" disabled><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+        <span style="flex: 1"></span>
+        <button type="button" aria-label="lyra://settings/couleurs — modifier l'adresse" style="display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 14px 0 12px; border: 0; border-radius: 16px; background: #F3F3F9; color: #1C1C2E; font: 500 13.5px Manrope, sans-serif; cursor: pointer">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#5452C8" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg>
+          <span>lyra://settings</span><span style="color: #8A8AA6; font-weight: 400">/couleurs</span>
+        </button>
+        <span style="flex: 1"></span>
+        <button class="cb" type="button" aria-label="Menu de la page"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg></button>
+      </div>
+
+      <main style="flex: 1; display: flex; flex-wrap: wrap; gap: 24px; padding: 24px 28px 40px; box-sizing: border-box; max-width: 1240px; width: 100%; margin: 0 auto">
+        <nav class="nav" aria-label="Sections des réglages" style="flex: 0 1 236px; min-width: 200px; display: flex; flex-direction: column; gap: 2px">
+          <label for="chercher-reglage-4" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Rechercher un réglage</label>
+          <input id="chercher-reglage-4" type="search" placeholder="Rechercher un réglage…" style="height: 36px; margin: 0 0 10px; padding: 0 12px; border: 1px solid #D6D6E2; border-radius: 9px; background: #fff; font: 13px Manrope, sans-serif; color: #1C1C2E; box-sizing: border-box; width: 100%">
+          <a href="#">Général</a>
+          <a href="Parametres.dc.html">Le ciel et l'apparence</a>
+          <a href="#" class="on">Couleurs et thèmes</a>
+          <a href="#">Palette et recherche</a>
+          <a href="#">Boucliers</a>
+          <a href="ParametresSites.dc.html">Règles par site</a>
+          <a href="#">Extensions</a>
+          <a href="#">Confidentialité</a>
+          <a href="#">Téléchargements</a>
+          <a href="#">Raccourcis clavier</a>
+          <a href="#">Gestes et souris</a>
+          <a href="#">Ne pas déranger</a>
+          <a href="#">Démarrage et sessions</a>
+          <a href="#">Styles et scripts</a>
+          <a href="#">Réseau et identité</a>
+          <a href="Importation.dc.html">Importer et exporter</a>
+          <a href="#">Sauvegarde et profils</a>
+          <a href="#">Labo</a>
+          <a href="#">À propos</a>
+        </nav>
+
+        <div style="flex: 1 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
+          <div style="display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap">
+            <div style="flex: 1; min-width: 240px">
+              <h1 style="margin: 0; font-size: 26px; letter-spacing: -0.4px">Couleurs et thèmes</h1>
+              <p style="margin: 4px 0 0; color: #6B6B80">Chaque couleur de Lyra se change, en clair comme en sombre. Partez d'un thème ou faites le vôtre.</p>
+            </div>
+            <button class="btn" type="button">Importer un thème</button>
+            <button class="btn" type="button">Exporter « Mes couleurs »</button>
+          </div>
+
+          <h2 style="margin: 6px 0 -6px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #6B6B80">Thèmes</h2>
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px">
+            <button class="th" type="button" aria-pressed="true"><span class="pv" style="background: #FFFFFF; color: #1C1C2E"><i style="background: #15152E"></i><b></b></span>Indigo nuit <span class="hint" style="font-weight: 400">par défaut</span></button>
+            <button class="th" type="button" aria-pressed="false"><span class="pv" style="background: #FFFFFF; color: #1C1C2E"><i style="background: #0B0B12"></i><b></b></span>Encre</button>
+            <button class="th" type="button" aria-pressed="false"><span class="pv" style="background: #FFFFFF; color: #1C1C2E"><i style="background: #12261F"></i><b></b></span>Forêt</button>
+            <button class="th" type="button" aria-pressed="false"><span class="pv" style="background: #FBF7F0; color: #3A2E1E"><i style="background: #E9DEC8"></i><b></b></span>Sable</button>
+            <button class="th" type="button" aria-pressed="false"><span class="pv" style="background: #FFFFFF; color: #1C1C2E"><i style="background: #2A1540"></i><b></b></span>Aurore</button>
+            <button class="th" type="button" aria-pressed="false"><span class="pv" style="background: #FFFFFF; color: #1C1C2E"><i style="background: #ECECF3"></i><b></b></span>Clair total</button>
+            <button class="th" type="button" aria-pressed="false"><span class="pv" style="background: #121214; color: #E6E6EA"><i style="background: #0E0E1E"></i><b></b></span>Nuit complète</button>
+            <button class="th" type="button" aria-pressed="false"><span class="pv" style="background: #FFFFFF; color: #1C1C2E"><i style="background: #15152E"></i><b></b></span>Mes couleurs <span class="hint" style="font-weight: 400">modifié</span></button>
+          </div>
+
+          <h2 style="margin: 6px 0 -6px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #6B6B80">Chaque couleur</h2>
+          <div class="card">
+            <div class="row" style="padding: 10px 0"><div class="lbl"><span class="hint">Élément</span></div><span class="hint" style="width: 118px">Clair</span><span class="hint" style="width: 118px">Sombre</span></div>
+            <div class="row"><div class="lbl"><span>Ciel — fond</span></div><button class="hex" type="button"><i style="background: #15152E"></i>#15152E</button><button class="hex" type="button"><i style="background: #0E0E1E"></i>#0E0E1E</button></div>
+            <div class="row"><div class="lbl"><span>Ciel — texte</span></div><button class="hex" type="button"><i style="background: #C9C9EA"></i>#C9C9EA</button><button class="hex" type="button"><i style="background: #C9C9EA"></i>#C9C9EA</button></div>
+            <div class="row"><div class="lbl"><span>Étoile active</span><span class="hint">Et sa lueur</span></div><button class="hex" type="button"><i style="background: #F4C56A"></i>#F4C56A</button><button class="hex" type="button"><i style="background: #F4C56A"></i>#F4C56A</button></div>
+            <div class="row"><div class="lbl"><span>Étoile active — fond</span></div><button class="hex" type="button"><i style="background: #262650"></i>#262650</button><button class="hex" type="button"><i style="background: #1E1E3C"></i>#1E1E3C</button></div>
+            <div class="row"><div class="lbl"><span>Étoiles</span></div><button class="hex" type="button"><i style="background: #A8A8D8"></i>#A8A8D8</button><button class="hex" type="button"><i style="background: #A8A8D8"></i>#A8A8D8</button></div>
+            <div class="row"><div class="lbl"><span>Étoiles endormies</span></div><button class="hex" type="button"><i style="background: #4E4E7A"></i>#4E4E7A</button><button class="hex" type="button"><i style="background: #44446A"></i>#44446A</button></div>
+            <div class="row"><div class="lbl"><span>Lignes de constellation</span></div><button class="hex" type="button"><i style="background: #3B3B70"></i>#3B3B70</button><button class="hex" type="button"><i style="background: #33335E"></i>#33335E</button></div>
+            <div class="row"><div class="lbl"><span>Capsule — fond</span></div><button class="hex" type="button"><i style="background: #FFFFFF"></i>#FFFFFF</button><button class="hex" type="button"><i style="background: #17172A"></i>#17172A</button></div>
+            <div class="row"><div class="lbl"><span>Capsule — texte</span></div><button class="hex" type="button"><i style="background: #1C1C2E"></i>#1C1C2E</button><button class="hex" type="button"><i style="background: #E8E8F4"></i>#E8E8F4</button></div>
+            <div class="row"><div class="lbl"><span>Accent</span><span class="hint">Boutons, réglages, liens de Lyra</span></div><button class="hex" type="button"><i style="background: #5452C8"></i>#5452C8</button><button class="hex" type="button"><i style="background: #8B8AF0"></i>#8B8AF0</button></div>
+            <div class="row"><div class="lbl"><span>Boucliers</span></div><button class="hex" type="button"><i style="background: #1E7F6C"></i>#1E7F6C</button><button class="hex" type="button"><i style="background: #5FD3B3"></i>#5FD3B3</button></div>
+            <div class="row"><div class="lbl"><span>Pages de Lyra — fond</span><span class="hint">Nouvel onglet, réglages, extensions…</span></div><button class="hex" type="button"><i style="background: #F7F7FB"></i>#F7F7FB</button><button class="hex" type="button"><i style="background: #121214"></i>#121214</button></div>
+            <div class="row"><div class="lbl"><span>Nouvel onglet — ciel</span></div><button class="hex" type="button"><i style="background: #0F0F26"></i>#0F0F26</button><button class="hex" type="button"><i style="background: #090916"></i>#090916</button></div>
+            <div class="row"><div class="lbl"><span>Contraste insuffisant ?</span><span class="hint">Lyra vérifie chaque paire texte/fond (4,5:1) et propose une correction</span></div><button class="tg on" type="button" role="switch" aria-checked="true" aria-label="Vérifier le contraste"><i></i></button></div>
+          </div>
+
+          <h2 style="margin: 6px 0 -6px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #6B6B80">Comportement</h2>
+          <div class="card">
+            <div class="row"><div class="lbl"><span>Le ciel prend la teinte du site actif</span><span class="hint">Couleur du site (theme-color ou icône), fondue dans la couleur du ciel</span></div><button class="tg off" type="button" role="switch" aria-checked="false" aria-label="Teinte du site"><i></i></button></div>
+            <div class="row"><div class="lbl"><span>Chaque constellation a sa couleur</span><span class="hint">Étoile active et lignes prennent la couleur du groupe</span></div><button class="tg on" type="button" role="switch" aria-checked="true" aria-label="Couleur par constellation"><i></i></button></div>
+            <div class="row"><div class="lbl"><span>Passer en sombre</span></div><div class="seg"><button type="button" aria-pressed="true">Avec le système</button><button type="button" aria-pressed="false">Au coucher du soleil</button><button type="button" aria-pressed="false">À une heure fixe</button><button type="button" aria-pressed="false">Jamais</button></div></div>
+            <div class="row"><div class="lbl"><span>Fenêtres privées</span><span class="hint">Un thème à part, pour les reconnaître d'un coup d'œil</span></div><button class="btn" type="button">Aurore<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div>
+            <div class="row"><div class="lbl"><span>Thème du site dans la page</span><span class="hint">Demander aux sites leur version sombre quand Lyra est sombre (prefers-color-scheme)</span></div><button class="tg on" type="button" role="switch" aria-checked="true" aria-label="Sombre pour les sites"><i></i></button></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

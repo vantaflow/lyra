@@ -13,10 +13,12 @@
     "CielMasque.dc.html": { "x": 1520, "y": 2040, "w": 1440, "h": 900, "title": "Ciel masqué — révélé au survol du bord", "expand": "fill" },
     "NePasDeranger.dc.html": { "x": 0, "y": 3060, "w": 1440, "h": 900, "title": "Mode Ne pas déranger", "expand": "fill" },
     "Extensions.dc.html": { "x": 1520, "y": 3060, "w": 1440, "h": 900, "title": "lyra://extensions", "expand": "fill" },
-    "Parametres.dc.html": { "x": 0, "y": 4080, "w": 1440, "h": 900, "title": "lyra://settings", "expand": "fill" },
-    "Historique.dc.html": { "x": 1520, "y": 4080, "w": 1440, "h": 900, "title": "lyra://history", "expand": "fill" },
-    "Panneaux.dc.html": { "x": 0, "y": 5100, "w": 1440, "h": 760, "title": "Panneaux : palette, boucliers, téléchargements, menu" },
-    "Composants.dc.html": { "x": 1520, "y": 5100, "w": 1440, "h": 760, "title": "Composants et couleurs" }
+    "Parametres.dc.html": { "x": 0, "y": 4080, "w": 1440, "h": 1040, "title": "lyra://settings — Le ciel et l'apparence", "expand": "fill" },
+    "ParametresSites.dc.html": { "x": 1520, "y": 4080, "w": 1440, "h": 1040, "title": "lyra://settings — Règles par site", "expand": "fill" },
+    "Importation.dc.html": { "x": 0, "y": 5240, "w": 1440, "h": 1040, "title": "lyra://settings — Importer et exporter", "expand": "fill" },
+    "Panneaux.dc.html": { "x": 1520, "y": 5240, "w": 1440, "h": 900, "title": "Panneaux : palette, boucliers, téléchargements, menu" },
+    "Couleurs.dc.html": { "x": 0, "y": 6400, "w": 1440, "h": 1100, "title": "lyra://settings — Couleurs et thèmes", "expand": "fill" },
+    "Composants.dc.html": { "x": 1520, "y": 6400, "w": 1440, "h": 760, "title": "Composants et couleurs" }
   },
   "order": [
     "Main.dc.html",
@@ -28,8 +30,10 @@
     "NePasDeranger.dc.html",
     "Extensions.dc.html",
     "Parametres.dc.html",
-    "Historique.dc.html",
+    "ParametresSites.dc.html",
+    "Importation.dc.html",
     "Panneaux.dc.html",
+    "Couleurs.dc.html",
     "Composants.dc.html"
   ],
   "notes": {
@@ -37,7 +41,9 @@
     "concept": { "x": 3040, "y": 0, "w": 380, "text": "Le ciel : la colonne des onglets. Chaque onglet est une étoile ; un onglet ouvert depuis un autre lui reste relié par une ligne : une constellation. Les groupes ont un nom. Une étoile ternie dort (onglet déchargé). Pas de barre d'onglets ni de barre d'adresse : la palette ⌘ L fait les deux.", "fill": "blue" },
     "positions": { "x": 3040, "y": 1020, "w": 380, "text": "Position du ciel : gauche (défaut), droite, haut ou bas, par les réglages ou en glissant son en-tête vers un bord. En haut ou en bas, il devient une bande : mêmes étoiles, mêmes constellations, en ligne.", "fill": "blue" },
     "masque": { "x": 3040, "y": 2040, "w": 380, "text": "Ciel masqué (⌘ \\) : il ne reste qu'un rail avec une poignée. Au survol du rail, le ciel glisse par-dessus la page et se retire quand la souris le quitte.", "fill": "blue" },
-    "dnd": { "x": 3040, "y": 3060, "w": 380, "text": "Ne pas déranger (⌘ ⇧ D) : plus de ciel, plus de capsule, seulement la page. Notifications et fenêtres surgissantes sont retenues et comptées. Un croissant discret rappelle le mode ; Échap, le croissant ou ⌘ ⇧ D en sortent. Durée réglable (30 min, 1 h, jusqu'à ce que je l'arrête).", "fill": "purple" }
+    "dnd": { "x": 3040, "y": 3060, "w": 380, "text": "Ne pas déranger (⌘ ⇧ D) : plus de ciel, plus de capsule, seulement la page. Notifications et fenêtres surgissantes sont retenues et comptées. Un croissant discret rappelle le mode ; Échap, le croissant ou ⌘ ⇧ D en sortent. Durée réglable (30 min, 1 h, jusqu'à ce que je l'arrête).", "fill": "purple" },
+    "reglages": { "x": 3040, "y": 4080, "w": 380, "text": "Réglages : 18 sections, tout est réglable et exportable (.json). Les réglages se cherchent par mot-clé. Chaque site peut avoir ses propres règles (boucliers, cookies, scripts, extensions, zoom, style perso, exceptions Ne pas déranger). Raccourcis et gestes entièrement redéfinissables.", "fill": "green" },
+    "import": { "x": 3040, "y": 5240, "w": 380, "text": "Importer depuis Chrome, Edge, Brave, Vivaldi, Firefox, Safari et Orion : favoris, historique, onglets ouverts (en constellations), moteurs de recherche, extensions (retrouvées sur le Chrome Web Store ou addons.mozilla.org), mots de passe vers un fichier chiffré pour votre gestionnaire. Exporter : favoris HTML, historique CSV, paquet Lyra complet (.lyra) pour changer de machine.", "fill": "green" }
   },
   "designSystems": []
 }
