@@ -1,9 +1,17 @@
 import type { Settings } from './types'
 
+export interface RectIpc {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 /** Requêtes renderer → main : canal → [données, réponse]. Complétée par les tâches suivantes. */
 export type Requetes = {
   'settings:get': [void, Settings]
   'settings:set': [Partial<Settings>, Settings]
+  'layout:get': [void, { ciel: Settings['ciel']; bounds: { chrome: RectIpc; page: RectIpc; overlay: RectIpc } }]
   /** Test uniquement (LYRA_TEST=1) : charge une URL dans la vue de page. */
   'test:navigate': [string, void]
 }
