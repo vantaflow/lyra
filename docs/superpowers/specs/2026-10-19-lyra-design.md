@@ -18,7 +18,8 @@ Ces trois points sont les exigences de l'utilisateur. Tout le reste de ce docume
 
 ### Objectifs (v1)
 
-- Un navigateur à onglets utilisable au quotidien : barre d'adresse omnibox, onglets, historique, favoris, téléchargements, recherche dans la page, zoom, plein écran, impression, visionneuse PDF, navigation privée, restauration de session, raccourcis clavier standards, menu contextuel.
+- Un navigateur utilisable au quotidien, avec l'interface décrite en §4 : le **ciel** des onglets en constellations (colonne déplaçable gauche/droite/haut/bas, masquable), la **palette ⌘ L** (adresse, recherche, commandes), la **capsule** de navigation, le mode **Ne pas déranger**, historique, favoris, téléchargements, recherche dans la page, zoom, plein écran, impression, visionneuse PDF, navigation privée, restauration de session, raccourcis clavier redéfinissables, menu contextuel.
+- Des **réglages complets et personnalisables** (19 sections, règles par site, couleurs et thèmes, export/import JSON) et l'**import depuis Chrome, Edge, Brave, Vivaldi, Firefox, Safari et Orion** / export (favoris, historique, ciel, réglages, paquet `.lyra`).
 - **Shields** intégrés (nom repris de Brave pour la fonction, pas pour la marque) : blocage réseau + cosmétique + scriptlets, listes EasyList / EasyPrivacy / uBlock Origin (dont les règles YouTube), mises à jour automatiques des listes, bouton par site (activer/désactiver, compteur), aucune configuration nécessaire pour que YouTube soit sans publicité.
 - **Extensions** : page `lyra://extensions` ; installation depuis le Chrome Web Store (ID ou URL), depuis addons.mozilla.org (slug ou URL) et depuis un fichier local (`.crx`, `.zip`, `.xpi`) ; activation / désactivation / suppression ; icônes d'action dans la barre d'outils avec leur popup ; page d'options ; journal des API non supportées pour expliquer honnêtement ce qui ne marche pas.
 - **Zéro télémétrie** : aucune requête réseau qui ne soit pas la navigation de l'utilisateur, la mise à jour des listes de filtres, ou l'installation / la mise à jour des extensions demandées. Aucun compte, aucune synchronisation.
@@ -27,7 +28,7 @@ Ces trois points sont les exigences de l'utilisateur. Tout le reste de ce docume
 
 ### Non-objectifs (v1, explicitement remis à plus tard ou jamais)
 
-- Onglets verticaux / arborescents, Focus mode, aperçu de lien, mode lecture, profils multiples : **v2**.
+- Aperçu de lien, mode lecture, profils multiples, listes de filtres personnalisées, gestes à la souris : **v2** (les réglages en réservent la place).
 - Gestionnaire de mots de passe intégré : **jamais** (une extension Bitwarden / 1Password fait mieux).
 - Synchronisation cloud, compte utilisateur, versions iOS/Android, boutique d'extensions propre : **jamais**.
 - Fork de Chromium ou moteur WebKit : **jamais** (hors de portée d'un projet personnel).
@@ -50,23 +51,40 @@ Ces trois points sont les exigences de l'utilisateur. Tout le reste de ce docume
 
 ## 4. Ce que l'utilisateur verra (produit)
 
-### Fenêtre
+Le design a été dessiné avec Claude Design le 2026-10-19 et validé écran par écran avec l'utilisateur (une première version « comme tous les navigateurs » a été rejetée). Canevas : https://claude.ai/artifact/US6xYeYjRNejcSueqTdanQ ; source de chaque écran dans `docs/design/project/` (un `.dc.html` par écran, `canvas.json` en index, `docs/design/README.md` pour la lecture). **Les écrans font foi** pour les proportions, couleurs et libellés ; ce qui suit en est la description.
 
-Une fenêtre par défaut, composée de haut en bas :
+### Le ciel (les onglets)
 
-1. **Barre d'onglets** horizontale (favicon, titre, bouton fermer, bouton « + »), glisser-déposer pour réordonner, onglet épinglé en v2.
-2. **Barre d'outils** : précédent, suivant, recharger/arrêter, barre d'adresse omnibox (URL ou recherche ; suggestions depuis l'historique et les favoris ; affichage du domaine en évidence, cadenas HTTPS), bouton **bouclier** (Shields du site), icônes des **extensions** (actions avec popup), bouton **téléchargements** (quand il y en a), menu **⋯** (nouvelle fenêtre, fenêtre privée, historique, favoris, extensions, téléchargements, zoom, imprimer, rechercher, paramètres, à propos, quitter).
-3. **Barre de favoris** (masquable).
-4. **La page** (un `WebContentsView` par onglet ; seul l'onglet actif est visible).
-5. **Barre de recherche dans la page** (flottante, Ctrl/Cmd+F).
+- Pas de barre d'onglets ni de barre d'adresse. Les onglets vivent dans **le ciel**, une colonne de 272 px (réglable 200-420) : chaque onglet est une **étoile** (point + titre). Un onglet ouvert depuis un autre reste **relié** à lui par une ligne : une **constellation** (arbre d'onglets). Les constellations portent un nom (« Astronomie », « Travail ») ; une étoile peut être hors constellation.
+- États d'une étoile : active (point or de Véga avec lueur, fond `#262650`), ouverte, survolée, **endormie** (ternie : onglet déchargé après N minutes, rechargé au clic), attention (son / notification). Fermeture au survol (×). Glisser-déposer pour réordonner, rattacher ou détacher.
+- En tête du ciel : les trois pastilles macOS (espace réservé sur Windows), le mot « Lyra » (Instrument Serif italique), le bouton de **palette** « Aller à, rechercher, commander… ⌘ L », les **étoiles épinglées** (icônes rondes). En pied : **bouclier** avec le compteur du site, extensions, téléchargements, **Ne pas déranger** (croissant), réglages.
+- **Position** : gauche (défaut), droite, haut, bas (le ciel devient une bande de 56 px : mêmes étoiles en ligne, enfants représentés par de petits points reliés), ou **masqué** (rail de 14 px avec une poignée or ; au survol du rail, ou ⌘ \, le ciel glisse par-dessus la page, collé au bord, et se retire quand la souris le quitte). Changement par les réglages ou en glissant l'en-tête du ciel vers un bord.
+- La page occupe tout le reste, **sans espace** autour ; seuls les coins côté ciel sont arrondis (12 px) sur le fond indigo du ciel.
+
+### La capsule et la palette
+
+- **Capsule** : une ligne de 46 px au-dessus de la page : précédent, suivant, recharger ; au centre une **pilule** avec cadenas et domaine en gras, chemin en gris (clic ou ⌘ L → palette) ; à droite favoris, recherche dans la page, menu ⋯ (nouvelle étoile, fenêtre, fenêtre privée, favoris, rechercher, zoom, imprimer, mode lecture v2, règles du site, style perso du site, outils de développement, historique, réglages). Option : la capsule se masque quand la souris ne bouge plus.
+- **Palette ⌘ L** : overlay centré sur fond ciel : un champ ; résultats groupés : onglets ouverts (aller à l'étoile), historique et favoris, recherche (moteur par défaut + mots-clés « k », « w »…), **commandes** (Ne pas déranger 1 h, déplacer le ciel, nouvelle constellation, tout réglage par son nom). Préfixes : `?` recherche, `>` commande, `#` constellation ; ⌘ ↩ ouvre dans une nouvelle étoile ; ⌘ K = commandes seulement.
+
+### Ne pas déranger (⌘ ⇧ D)
+
+Plus de ciel, plus de capsule : seulement la page, plein cadre. Notifications web et fenêtres surgissantes **retenues** et comptées (sauf sites en exception). Un rappel discret en haut à droite (croissant or, « Ne pas déranger · 3 notifications retenues · encore 42 min », Échap) qui s'efface en quelques secondes pour ne laisser que le croissant. Durées : 30 min, 1 h, jusqu'à l'arrêt ; sortie par Échap, le croissant ou ⌘ ⇧ D. Les notifications retenues sont livrées à la sortie.
 
 ### Pages internes (`lyra://`)
 
-- `lyra://newtab` : champ de recherche, raccourcis vers les sites fréquents (calculés localement), rien d'autre.
-- `lyra://settings` : moteur de recherche (DuckDuckGo par défaut ; Kagi, Google, Brave Search, Startpage, Qwant), page d'accueil, Shields (niveau global, listes, mise à jour), téléchargements (dossier, demander où enregistrer), apparence (clair/sombre/système, barre de favoris), langue, confidentialité (effacer historique/cookies/cache, « ne pas garder l'historique »), raccourcis.
-- `lyra://extensions` : liste installées (icône, nom, version, origine Chrome/Firefox, état, bouton options, journal des API non supportées), installation (ID/URL Chrome Web Store, slug/URL addons.mozilla.org, fichier local), mise à jour manuelle.
-- `lyra://history`, `lyra://bookmarks`, `lyra://downloads` : listes simples avec recherche et suppression.
-- `lyra://shields` : statistiques globales (bloqués depuis l'installation), listes actives et date de mise à jour, bouton « mettre à jour maintenant ».
+- `lyra://newtab` (« Nouvelle étoile ») : carte ciel nocturne (étoiles, tracé de la Lyre), « Bonsoir. », grand champ de recherche avec le moteur en chip, **vos constellations** (chips avec compteur, dormantes comprises), **sites fréquents** (calculés localement), pied : compteur des Boucliers de la semaine et « Aucune donnée ne quitte cet ordinateur. »
+- `lyra://settings` : sommaire de **19 sections** avec recherche par mot-clé : Général · Le ciel et l'apparence (position, révélation au survol, largeur, étoiles et constellations : relier, icônes, ternir après, endormir après, archiver, placement d'une nouvelle étoile, regroupement par site ; thème, police, taille, densité, coins, capsule automatique) · **Couleurs et thèmes** (thèmes prêts : Indigo nuit, Encre, Forêt, Sable, Aurore, Clair total, Nuit complète, Mes couleurs ; **chaque couleur** modifiable en clair et en sombre avec vérification de contraste ; ciel teinté par le site ; couleur par constellation ; passage en sombre : système / coucher du soleil / heure fixe ; thème à part pour les fenêtres privées ; `prefers-color-scheme` pour les sites) · Palette et recherche · Boucliers · **Règles par site** (tableau : boucliers désactivés/standard/strict, cookies tous/1re partie/bloqués/session, scripts, extensions autorisées, zoom, exception Ne pas déranger, style et script perso ; détail par site avec lecture auto, notifications, user-agent) · Extensions · Confidentialité · Téléchargements · Raccourcis clavier (tous redéfinissables) · Gestes et souris · Ne pas déranger · Démarrage et sessions · Styles et scripts · Réseau et identité · **Importer et exporter** · Sauvegarde et profils · Labo · À propos. Boutons « Exporter les réglages » / « Importer » (JSON) en tête.
+- **Importer et exporter** : sources détectées **Chrome, Edge, Brave, Vivaldi, Firefox, Safari, Orion** (+ fichier : favoris HTML, CSV, JSON, paquet `.lyra`) ; choix par élément : favoris, historique, onglets ouverts et groupes (→ constellations), extensions (retrouvées sur le Chrome Web Store ou addons.mozilla.org), moteurs de recherche et mots-clés, mots de passe (Lyra n'en stocke pas : fichier chiffré pour le gestionnaire de l'utilisateur), cookies et sessions, réglages transposables (bloqueur Brave → Boucliers, Focus mode Orion → Ne pas déranger). Export : favoris HTML, historique CSV, le ciel en JSON, réglages JSON, **paquet Lyra complet** (`.lyra`, chiffré par phrase de passe) avec sauvegarde automatique nocturne dans un dossier choisi.
+- `lyra://extensions` : installation par ID/URL du Chrome Web Store, par nom/URL addons.mozilla.org, ou fichier `.crx` / `.zip` / `.xpi` / dossier ; liste installées avec origine (Chrome / Firefox · convertie / Fichier), activation, Options, Sites (règles par site), **Journal de compatibilité** (API prises en charge ✓, ignorées –, infos ℹ), incompatibles expliquées (ex. Tree Style Tab : `sidebar_action`) ; mise à jour de toutes.
+- `lyra://history`, `lyra://bookmarks`, `lyra://downloads` : listes simples avec recherche et suppression ; `lyra://shields` : statistiques, listes et date de mise à jour, bouton « mettre à jour ».
+
+### Panneaux
+
+Boucliers (depuis le pied du ciel : site, interrupteur, compteurs pubs / traqueurs / scripts, niveau, gênes, liste des éléments bloqués, règles du site, signaler un site cassé) ; téléchargements (progression, pause, afficher) ; extensions (rangée d'icônes + la fenêtre de l'extension telle quelle) ; menu ⋯.
+
+### Identité visuelle
+
+Thème « Indigo nuit » par défaut : ciel `#15152E`, étoile active or de Véga `#F4C56A`, étoiles `#A8A8D8`, endormies `#4E4E7A`, lignes `#3B3B70`, accent `#5452C8`, Boucliers `#1E7F6C` (sur ciel `#5FD3B3`), page blanche, pages Lyra `#F7F7FB`, texte `#1C1C2E` / `#6B6B80`. Polices : Manrope (interface), Instrument Serif italique (mot « Lyra », accroches), monospace système (adresses, code). Icônes en trait, jamais d'emoji. Tout est redéfinissable dans Couleurs et thèmes.
 
 ### Comportements
 

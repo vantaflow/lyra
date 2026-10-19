@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Lyra — composants et couleurs</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Manrope,-apple-system,"Segoe UI",system-ui,sans-serif;color:#1C1C2E}
+a{color:#4A48C4}a:hover{color:#2F2D8A}
+h2{margin:0 0 10px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#6B6B80}
+.sw{display:flex;flex-direction:column;gap:6px;font-size:12px}
+.sw i{display:block;height:48px;border-radius:10px}
+.sw b{font-weight:600}.sw span{color:#6B6B80;font:11.5px ui-monospace,Menlo,monospace}
+.star{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px;border-radius:8px;color:#C9C9EA;font-size:13px;width:230px;box-sizing:border-box}
+.star .dot{width:8px;height:8px;border-radius:50%;background:#A8A8D8;flex:none}
+.star.active{background:#262650;color:#fff}.star.active .dot{background:#F4C56A;box-shadow:0 0 0 3px rgba(244,197,106,.22),0 0 14px rgba(244,197,106,.7)}
+.star.hover{background:#1F1F42;color:#fff}
+.star.dim{color:#8686B4}.star.dim .dot{background:#4E4E7A}
+.star.alert .dot{background:#F08FB0;box-shadow:0 0 8px rgba(240,143,176,.8)}
+.btn{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px;border:1px solid #D6D6E2;border-radius:9px;background:#fff;color:#1C1C2E;font:500 13px Manrope,sans-serif}
+.btn.pri{background:#5452C8;border-color:#5452C8;color:#fff}
+.btn.ghost{border-color:transparent;background:transparent;color:#4A48C4}
+.btn.danger{color:#8E2E22}
+.tg{position:relative;width:40px;height:24px;border-radius:12px;display:inline-block}
+.tg i{position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.tg.on{background:#5452C8}.tg.on i{right:3px}.tg.off{background:#C9C9D6}.tg.off i{left:3px}
+.tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:11px;font-size:12px;font-weight:600}
+.pill{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 14px 0 12px;border-radius:16px;background:#F3F3F9;color:#1C1C2E;font:500 13.5px Manrope,sans-serif}
+kbd{font:600 10.5px/1 Manrope,sans-serif;background:#2E2E5A;color:#B3B3DA;padding:4px 6px;border-radius:5px}
+</style>
+</helmet>
+
+<div style="width: 1440px; height: 760px; box-sizing: border-box; padding: 32px 40px; background: #FFFFFF; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 28px 32px; align-content: start">
+
+  <section style="grid-column: span 12">
+    <h2>Couleurs — thème Indigo nuit (clair)</h2>
+    <div style="display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 12px">
+      <div class="sw"><i style="background: #15152E"></i><b>Ciel</b><span>#15152E</span></div>
+      <div class="sw"><i style="background: #262650"></i><b>Étoile active, fond</b><span>#262650</span></div>
+      <div class="sw"><i style="background: #F4C56A"></i><b>Or de Véga</b><span>#F4C56A</span></div>
+      <div class="sw"><i style="background: #A8A8D8"></i><b>Étoile</b><span>#A8A8D8</span></div>
+      <div class="sw"><i style="background: #4E4E7A"></i><b>Étoile endormie</b><span>#4E4E7A</span></div>
+      <div class="sw"><i style="background: #3B3B70"></i><b>Ligne</b><span>#3B3B70</span></div>
+      <div class="sw"><i style="background: #5452C8"></i><b>Accent</b><span>#5452C8</span></div>
+      <div class="sw"><i style="background: #1E7F6C"></i><b>Boucliers</b><span>#1E7F6C</span></div>
+      <div class="sw"><i style="background: #5FD3B3"></i><b>Boucliers sur ciel</b><span>#5FD3B3</span></div>
+      <div class="sw"><i style="background: #8E2E22"></i><b>Attention</b><span>#8E2E22</span></div>
+      <div class="sw"><i style="background: #FFFFFF; border: 1px solid #E6E6EE"></i><b>Page</b><span>#FFFFFF</span></div>
+      <div class="sw"><i style="background: #F7F7FB"></i><b>Pages Lyra</b><span>#F7F7FB</span></div>
+      <div class="sw"><i style="background: #F3F3F9"></i><b>Pilule, champs</b><span>#F3F3F9</span></div>
+      <div class="sw"><i style="background: #E6E6EE"></i><b>Trait</b><span>#E6E6EE</span></div>
+      <div class="sw"><i style="background: #1C1C2E"></i><b>Texte</b><span>#1C1C2E</span></div>
+      <div class="sw"><i style="background: #6B6B80"></i><b>Texte secondaire</b><span>#6B6B80</span></div>
+      <div class="sw"><i style="background: #C9C9EA"></i><b>Texte sur ciel</b><span>#C9C9EA</span></div>
+      <div class="sw"><i style="background: #7F7FB0"></i><b>Libellés sur ciel</b><span>#7F7FB0</span></div>
+      <div class="sw"><i style="background: #0F0F26"></i><b>Nouvel onglet</b><span>#0F0F26</span></div>
+      <div class="sw"><i style="background: #2A1540"></i><b>Privé (Aurore)</b><span>#2A1540</span></div>
+    </div>
+  </section>
+
+  <section style="grid-column: span 4">
+    <h2>Typographie</h2>
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <div style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 34px; line-height: 1">Lyra — Instrument Serif italique</div>
+      <div style="font-size: 26px; font-weight: 700; letter-spacing: -0.4px">Titre de page — Manrope 700 · 26</div>
+      <div style="font-size: 15px; font-weight: 600">Sous-titre — Manrope 600 · 15</div>
+      <div style="font-size: 14px">Corps — Manrope 400 · 14, interligne 1,45</div>
+      <div style="font-size: 13px; color: #C9C9EA; background: #15152E; padding: 6px 10px; border-radius: 8px; display: inline-block">Ciel — Manrope 400 · 13</div>
+      <div style="font-size: 12.5px; color: #6B6B80">Aide — Manrope 400 · 12,5</div>
+      <div style="font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: #7F7FB0; font-weight: 600">Libellé de constellation · 10,5</div>
+      <div style="font: 12.5px ui-monospace, Menlo, monospace; background: #F3F3F9; padding: 6px 10px; border-radius: 8px; display: inline-block">Code et adresses — monospace système</div>
+    </div>
+  </section>
+
+  <section style="grid-column: span 3">
+    <h2>Étoiles (onglets)</h2>
+    <div style="background: #15152E; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 4px">
+      <div class="star active"><span class="dot"></span>Active</div>
+      <div class="star hover"><span class="dot"></span>Survolée</div>
+      <div class="star"><span class="dot"></span>Ouverte</div>
+      <div class="star dim"><span class="dot"></span>Endormie (déchargée)</div>
+      <div class="star alert"><span class="dot"></span>Attention (son, notification)</div>
+      <div style="margin-left: 12px; padding-left: 12px; border-left: 1px solid #3B3B70"><div class="star" style="width: 206px; position: relative"><span style="position: absolute; left: -12px; top: 50%; width: 10px; height: 1px; background: #3B3B70"></span><span class="dot"></span>Reliée à son parent</div></div>
+    </div>
+  </section>
+
+  <section style="grid-column: span 5">
+    <h2>Boutons, interrupteurs, étiquettes, pilule</h2>
+    <div style="display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center"><span class="btn pri">Principal</span><span class="btn">Secondaire</span><span class="btn ghost">Discret</span><span class="btn danger">Supprimer</span><span class="btn" style="color: #B8B8CC; border-color: #EEEEF4">Inactif</span></div>
+      <div style="display: flex; gap: 14px; align-items: center"><span class="tg on"><i></i></span><span class="tg off"><i></i></span><span class="tg on" style="background: #1E7F6C"><i></i></span><span style="color: #6B6B80; font-size: 12.5px">activé · désactivé · boucliers</span></div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap"><span class="tag" style="background: #E6E6F7; color: #2F2D8A">Chrome</span><span class="tag" style="background: #FBEFD8; color: #8A5A10">Firefox · convertie</span><span class="tag" style="background: #DDF5EC; color: #146A52">Prêt</span><span class="tag" style="background: #F3E3E1; color: #8E2E22">Incompatible</span><span class="tag" style="background: #F3F3F9; color: #6B6B80">Optionnel</span></div>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center">
+        <span class="pill"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#1E7F6C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>atlasduciel.fr<span style="color: #8A8AA6; font-weight: 400">/constellations/lyre</span></span>
+        <span class="pill"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#8E2E22" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9L2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span style="color: #8E2E22">Non sécurisé</span> exemple.net</span>
+        <span class="pill" style="color: #8E8EBE">Nouvel onglet</span>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center; color: #6B6B80; font-size: 12.5px"><kbd>⌘ L</kbd> palette <kbd>⌘ T</kbd> étoile <kbd>⌘ \</kbd> ciel <kbd>⌘ ⇧ D</kbd> ne pas déranger <kbd>⌘ ,</kbd> réglages</div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
