@@ -1,16 +1,24 @@
 import { render } from 'preact'
+import { useEffect } from 'preact/hooks'
 import './theme.css'
 import { Capsule } from './Capsule'
 import { Sky } from './Sky'
-import { initialiserEtat } from './state'
+import { CielRevele, Rail } from './Rail'
+import { cielMasque, cielRevele, initialiserEtat } from './state'
 import { Overlay } from './Overlay'
 import { FindBar } from './FindBar'
 
 function App() {
-  const winStyle = window.lyra.plateforme === 'win32' ? ' win' : ''
+  const winStyle = window.lyra.plateforme === 'win32' ? ' win' : window.lyra.plateforme === 'darwin' ? ' mac' : ''
+  const masque = cielMasque.value
+  const revele = masque && cielRevele.value
+  // Révélé, la vue chrome ne couvre plus que le ciel : fond transparent autour pour laisser voir la page.
+  useEffect(() => {
+    document.documentElement.classList.toggle('revele', revele)
+  }, [revele])
   return (
-    <div class={`fenetre${winStyle}`}>
-      <Sky />
+    <div class={`fenetre${winStyle}${masque ? ' masque' : ''}${revele ? ' revele' : ''}`}>
+      {masque ? <Rail /> : <Sky />}
       <section class="page-zone" aria-label="Page active">
         <div class="carte">
           <Capsule />
@@ -19,6 +27,7 @@ function App() {
           <main class="page-vide"></main>
         </div>
       </section>
+      {revele && <CielRevele />}
     </div>
   )
 }

@@ -1,6 +1,7 @@
-import type { Star as StarT } from '../../shared/types'
+import type { Settings, Star as StarT } from '../../shared/types'
 import { Branche } from './Branche'
 import { Epingle } from './Epingle'
+import type { Ref } from 'preact'
 import { boucliers, sky, telechargementActif } from './state'
 
 const mac = window.lyra.plateforme === 'darwin'
@@ -12,7 +13,20 @@ function racines(groupe: StarT[]): StarT[] {
   return groupe.filter((s) => !s.parentId || !ids.has(s.parentId))
 }
 
-export function Sky() {
+const masquerCiel = (masque: boolean): void => {
+  const patch: Record<string, unknown> = { ciel: { masque } }
+  void window.lyra.invoke('settings:set', patch as Partial<Settings>)
+}
+
+interface PropsSky {
+  /** Ciel masqué révélé : glissé par-dessus la page, avec « Épingler le ciel » à la place de « Replier le ciel ». */
+  revele?: boolean
+  refCiel?: Ref<HTMLElement>
+  surEntree?: () => void
+  surSortie?: () => void
+}
+
+export function Sky({ revele = false, refCiel, surEntree, surSortie }: PropsSky = {}) {
   const { stars, constellations } = sky.value
   const ouvertes = stars.filter((s) => !s.pinned)
   const epinglees = stars.filter((s) => s.pinned)
@@ -27,17 +41,32 @@ export function Sky() {
       : 'Boucliers désactivés sur ce site'
 
   return (
-    <aside class="ciel" aria-label="Ciel des onglets">
+    <aside
+      class={revele ? 'ciel ciel-revele' : 'ciel'}
+      aria-label={revele ? 'Ciel des onglets (survol)' : 'Ciel des onglets'}
+      ref={refCiel}
+      onMouseEnter={surEntree}
+      onMouseLeave={surSortie}
+    >
       <div class="ciel-entete">
         {mac && <div class="pastilles" aria-hidden="true"></div>}
         <span class="marque-lyra">Lyra</span>
         <span class="souple"></span>
-        <button class="sb replier" type="button" aria-label="Replier le ciel">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="3" y="4" width="18" height="16" rx="3" />
-            <path d="M9 4v16" />
-          </svg>
-        </button>
+        {revele ? (
+          <button class="sb replier" type="button" aria-label="Épingler le ciel" title="Épingler le ciel" onClick={() => masquerCiel(false)}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M9 3h6l-1 6 4 3v2H6v-2l4-3z" />
+              <path d="M12 14v7" />
+            </svg>
+          </button>
+        ) : (
+          <button class="sb replier" type="button" aria-label="Replier le ciel" title={`Replier le ciel (${touche} \\)`} onClick={() => masquerCiel(true)}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="16" rx="3" />
+              <path d="M9 4v16" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <button class="palette" type="button" aria-label="Aller à une adresse, rechercher ou lancer une commande" onClick={() => void window.lyra.invoke('palette:open')}>

@@ -230,7 +230,13 @@ void app.whenReady().then(async () => {
   handle('layout:get', (_d, event) => {
     const f = manager.deWebContents(event.sender) ?? manager.premiere()
     if (!f) throw new Error('aucune fenêtre')
-    return { ciel: reglages.getSettings().ciel, bounds: f.bounds() }
+    return { ciel: reglages.getSettings().ciel, bounds: f.bounds(), revele: f.estRevele(), ordre: f.ordreVues() }
+  })
+  handle('ciel:reveler', ({ actif }, event) => {
+    // Seule la vue chrome (le ciel lui-même) pilote la révélation.
+    const f = manager.deWebContents(event.sender)
+    if (!f || f.chrome.webContents !== event.sender) return false
+    return f.reveler(actif === true)
   })
   handle('settings:get', () => reglages.getSettings())
   handle('settings:set', (patch) => reglages.setSettings(patch))
@@ -348,7 +354,14 @@ void app.whenReady().then(async () => {
     const url = wc ? urlOriginale(wc.getURL()) : ''
     if (/^(https?|file):/i.test(url) && wc) favoris.toggle({ url, title: wc.getTitle() || url })
   }
-  installerMenu(ongletsCourants, { nouvelleFenetre: () => creerFenetre(), basculerFavori })
+  installerMenu(ongletsCourants, {
+    nouvelleFenetre: () => creerFenetre(),
+    basculerFavori,
+    basculerCiel: () => {
+      const patch: Record<string, unknown> = { ciel: { masque: !reglages.getSettings().ciel.masque } }
+      reglages.setSettings(patch as Partial<Settings>)
+    }
+  })
   // Les Boucliers sont prêts avant la première fenêtre : aucune page ne se charge sans eux.
   await demarrerBoucliers({
     reglages,

@@ -101,6 +101,7 @@ const SCHEMA: Schema = {
     position: enumeration('gauche', 'droite', 'haut', 'bas'),
     largeur: entier(160, 640),
     masque: booleen,
+    revelerAuSurvol: booleen,
     ternirApresMin: entier(1, 10080),
     endormirApresMin: entier(1, 10080)
   },

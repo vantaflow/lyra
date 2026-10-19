@@ -12,6 +12,12 @@ describe('validerPatch', () => {
     })
   })
 
+  it('accepte ciel.masque et ciel.revelerAuSurvol booléens, rejette le reste', () => {
+    expect(validerPatch({ ciel: { masque: true, revelerAuSurvol: false } })).toEqual({ ciel: { masque: true, revelerAuSurvol: false } })
+    expect(validerPatch({ ciel: { revelerAuSurvol: 'non' } })).toEqual({})
+    expect(validerPatch({ ciel: { revelerAuSurvol: 0 } })).toEqual({})
+  })
+
   it('rejette types et énumérations invalides', () => {
     expect(validerPatch({ theme: 42 })).toEqual({})
     expect(validerPatch({ theme: 'rose' })).toEqual({})

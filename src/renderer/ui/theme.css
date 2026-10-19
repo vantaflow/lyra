@@ -1022,3 +1022,79 @@ html.overlay #app {
   font-size: 11.5px;
   font-weight: 600;
 }
+
+/* ---- Ciel masqué : rail de 14 px, poignée or, ciel glissé par-dessus la page (design CielMasque.dc.html) ---- */
+:root {
+  --glisse: 180ms;
+}
+.rail {
+  width: 14px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ciel);
+}
+.poignee {
+  width: 4px;
+  height: 44px;
+  border: 0;
+  padding: 0;
+  border-radius: 2px;
+  background: #f4c56a;
+  box-shadow: 0 0 10px rgba(244, 197, 106, 0.7);
+  cursor: pointer;
+}
+.poignee:focus-visible {
+  outline: 2px solid #f4c56a;
+  outline-offset: 3px;
+}
+/* Sous les boutons de fenêtre de macOS, la capsule laisse la place aux pastilles. */
+.fenetre.mac.masque .capsule {
+  padding-left: 72px;
+}
+/* Vue chrome réduite au ciel révélé : fond transparent, la page reste visible autour. */
+html.revele,
+html.revele body,
+html.revele #app {
+  background: transparent;
+}
+.fenetre.revele {
+  background: transparent;
+}
+.fenetre.revele > .rail,
+.fenetre.revele > .page-zone {
+  visibility: hidden;
+}
+.ciel.ciel-revele {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+  z-index: 30;
+  padding: 10px 12px 12px 14px;
+  border-radius: 0 12px 12px 0;
+  box-shadow: 14px 0 44px rgba(10, 10, 40, 0.38);
+  animation: ciel-glisse var(--glisse) ease-out;
+}
+.ciel.ciel-revele.sortant {
+  transform: translateX(-100%);
+  transition: transform var(--glisse) ease-in;
+}
+@keyframes ciel-glisse {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ciel.ciel-revele {
+    animation: none;
+  }
+  .ciel.ciel-revele.sortant {
+    transition: none;
+  }
+}

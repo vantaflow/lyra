@@ -1,6 +1,6 @@
 import { computed, signal } from '@preact/signals'
 import type { EtatBoucliers, EtatEtoile } from '../../shared/ipc'
-import type { SkyState, Star } from '../../shared/types'
+import type { Settings, SkyState, Star } from '../../shared/types'
 
 const CIEL_VIDE: SkyState = { stars: [], constellations: [], activeId: null, pinned: [] }
 
@@ -54,6 +54,18 @@ export function estTerne(star: Star, etat?: EtatEtoile): boolean {
   return maintenant.value - etat.inactifDepuis > ternirApresMin.value * 60_000
 }
 
+/** Ciel masqué (rail de 14 px) ; relu avec les réglages. */
+export const cielMasque = signal(false)
+/** Le ciel masqué se révèle au survol du rail (sinon : poignée, bouton de la capsule ou ⌘ \ seulement). */
+export const revelerAuSurvol = signal(true)
+/** Le ciel masqué est glissé par-dessus la page : la vue chrome a été élargie par le main. */
+export const cielRevele = signal(false)
+
+/** Demande au main de révéler ou retirer le ciel masqué (la vue chrome change de taille et d'ordre). */
+export function reveler(actif: boolean): void {
+  void window.lyra.invoke('ciel:reveler', { actif })
+}
+
 /** Étoile en cours de glisser-déposer. */
 export const glisse = signal<string | null>(null)
 
@@ -67,9 +79,15 @@ export async function initialiserEtat(): Promise<void> {
   window.lyra.on('shields:changed', (b) => (boucliers.value = b))
   window.lyra.on('downloads:changed', rafraichirTelechargements)
   window.lyra.on('bookmarks:changed', () => rafraichirFavori(adresseFavori))
-  const relireReglages = (): void => void window.lyra.invoke('settings:get').then((r) => (ternirApresMin.value = r.ciel.ternirApresMin))
-  window.lyra.on('settings:changed', (r) => (ternirApresMin.value = r.ciel.ternirApresMin))
-  relireReglages()
+  const appliquer = (r: Settings): void => {
+    ternirApresMin.value = r.ciel.ternirApresMin
+    cielMasque.value = r.ciel.masque
+    revelerAuSurvol.value = r.ciel.revelerAuSurvol
+  }
+  window.lyra.on('settings:changed', appliquer)
+  window.lyra.on('ciel:revele', (b) => (cielRevele.value = b))
+  void window.lyra.invoke('settings:get').then(appliquer)
+  void window.lyra.invoke('layout:get').then((l) => (cielRevele.value = l.revele))
   const c = await window.lyra.invoke('sky:get')
   sky.value = c.sky
   etats.value = c.etats

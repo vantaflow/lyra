@@ -109,7 +109,19 @@ export interface SkyChange {
 export type Requetes = {
   'settings:get': [void, Settings]
   'settings:set': [Partial<Settings>, Settings]
-  'layout:get': [void, { ciel: Settings['ciel']; bounds: { chrome: RectIpc; page: RectIpc; overlay: RectIpc } }]
+  'layout:get': [
+    void,
+    {
+      ciel: Settings['ciel']
+      bounds: { chrome: RectIpc; page: RectIpc; overlay: RectIpc }
+      /** Ciel masqué glissé par-dessus la page. */
+      revele: boolean
+      /** Ordre des vues, de la plus basse à la plus haute. */
+      ordre: Array<'chrome' | 'page' | 'overlay'>
+    }
+  ]
+  /** Chrome → main : révèle (actif) ou retire le ciel masqué ; renvoie l'état obtenu. */
+  'ciel:reveler': [{ actif: boolean }, boolean]
   'tabs:open': [{ url: string; parentId?: string; actif?: boolean }, string]
   'tabs:close': [{ id: string }, void]
   'tabs:activate': [{ id: string }, void]
@@ -198,6 +210,8 @@ export type Requetes = {
 /** Évènements main → renderer : canal → données. */
 export type Evenements = {
   'settings:changed': Settings
+  /** Main → chrome : le ciel masqué est révélé (vue chrome élargie au-dessus de la page) ou retiré. */
+  'ciel:revele': boolean
   'sky:changed': SkyChange
   /** Main → overlay : la palette s'affiche. */
   'palette:open': { texteInitial?: string }

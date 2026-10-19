@@ -45,6 +45,17 @@ export function General() {
 
   return (
     <>
+      <Titre>Le ciel</Titre>
+      <div class="card">
+        <Ligne titre="Révéler le ciel masqué au survol du bord" aide="Sinon seulement avec ⌘ \ ou le bouton de la capsule">
+          <Interrupteur
+            actif={s.ciel.revelerAuSurvol}
+            libelle="Révéler au survol"
+            surChange={(revelerAuSurvol) => regler({ ciel: { revelerAuSurvol } })}
+          />
+        </Ligne>
+      </div>
+
       <Titre>Moteur de recherche</Titre>
       <div class="card">
         <Ligne titre="Moteur par défaut" aide="Utilisé par le nouvel onglet et la palette">

@@ -1,6 +1,6 @@
 import { useEffect } from 'preact/hooks'
 import { ouvrirRecherche } from './FindBar'
-import { actif, estNouvelleEtoile, etatActif, favori, rafraichirFavori } from './state'
+import { actif, cielMasque, estNouvelleEtoile, etatActif, favori, rafraichirFavori, reveler } from './state'
 
 interface Affichage {
   /** Icône : cadenas vert (https), avertissement (http), engrenage (lyra://), aucune. */
@@ -63,6 +63,14 @@ export function Capsule() {
 
   return (
     <div class="capsule">
+      {cielMasque.value && (
+        <button class="cb" type="button" aria-label="Afficher le ciel" onClick={() => reveler(true)}>
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="16" rx="3" />
+            <path d="M9 4v16" />
+          </svg>
+        </button>
+      )}
       <button class="cb" type="button" aria-label="Page précédente" disabled={!id || !etat?.canGoBack} onClick={agir('tabs:back')}>
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M15 6l-6 6 6 6" />

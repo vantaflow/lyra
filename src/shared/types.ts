@@ -35,6 +35,8 @@ export interface Settings {
     position: 'gauche' | 'droite' | 'haut' | 'bas'
     largeur: number
     masque: boolean
+    /** Ciel masqué : se révèle au survol du rail (sinon seulement par la poignée, le bouton de la capsule ou ⌘ \). */
+    revelerAuSurvol: boolean
     ternirApresMin: number
     endormirApresMin: number
   }

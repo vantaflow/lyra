@@ -16,7 +16,7 @@ describe('réglages', () => {
     expect(s.theme).toBe('systeme')
     expect(s.moteurParDefaut).toBe('duckduckgo')
     expect(s.moteurChoisi).toBe(false)
-    expect(s.ciel).toEqual({ position: 'gauche', largeur: 272, masque: false, ternirApresMin: 30, endormirApresMin: 120 })
+    expect(s.ciel).toEqual({ position: 'gauche', largeur: 272, masque: false, revelerAuSurvol: true, ternirApresMin: 30, endormirApresMin: 120 })
     expect(s.boucliers).toEqual({ niveau: 'standard', genes: false, majHeures: 6 })
     expect(s.telechargements).toEqual({ dossier: '/tmp/dl', demander: false })
   })

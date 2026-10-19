@@ -5,6 +5,8 @@ import type { TabManager } from './TabManager'
 export interface ActionsMenu {
   nouvelleFenetre(): void
   basculerFavori(m: TabManager): void
+  /** Replie le ciel (rail) ou l'épingle de nouveau : bascule `ciel.masque`. */
+  basculerCiel(): void
 }
 
 export function installerMenu(courant: () => TabManager | undefined, actions: ActionsMenu): void {
@@ -45,6 +47,7 @@ export function installerMenu(courant: () => TabManager | undefined, actions: Ac
         { label: 'Zoom avant', accelerator: 'CmdOrCtrl+=', visible: false, click: agir((m, id) => id && m.zoomer(id, { delta: 1 })) },
         { id: 'zoom-moins', label: 'Zoom arrière', accelerator: 'CmdOrCtrl+-', click: agir((m, id) => id && m.zoomer(id, { delta: -1 })) },
         { id: 'zoom-zero', label: 'Taille réelle', accelerator: 'CmdOrCtrl+0', click: agir((m, id) => id && m.zoomer(id, { reset: true })) },
+        { id: 'basculer-ciel', label: 'Replier ou épingler le ciel', accelerator: 'CmdOrCtrl+\\', click: actions.basculerCiel },
         { type: 'separator' },
         { id: 'imprimer', label: 'Imprimer…', accelerator: 'CmdOrCtrl+P', click: agir((m) => m.imprimer()) },
         { role: 'toggleDevTools' }
