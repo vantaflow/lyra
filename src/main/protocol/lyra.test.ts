@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { resolveLyraPath, urlDev } from './lyra'
 
 const racine = join('/', 'app', 'renderer')
@@ -20,7 +20,7 @@ describe('resolveLyraPath', () => {
     expect(urlDev('lyra://erreur?type=reseau', 'http://localhost:5173')).toBe('http://localhost:5173/erreur.html')
   })
   it('les assets sont résolus sous la racine', () => {
-    expect(resolveLyraPath('lyra://newtab/assets/x.js', racine)).toBe(join(racine, 'assets', 'x.js'))
+    expect(resolveLyraPath('lyra://newtab/assets/x.js', racine)).toBe(resolve(racine, 'assets', 'x.js'))
   })
   it('refuse la traversée de chemin', () => {
     expect(resolveLyraPath('lyra://newtab/../secret', racine)).toBeNull()

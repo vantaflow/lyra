@@ -1,8 +1,9 @@
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { DownloadInfo } from '../../shared/types'
 import { ajouterFinal, nomUnique, reduire } from './logique'
 
-const existe = (...chemins: string[]) => (c: string) => chemins.includes(c)
+const existe = (...chemins: string[]) => (c: string) => chemins.map((x) => join(x)).includes(join(c))
 
 describe('nomUnique', () => {
   it('garde le nom libre', () => {
