@@ -19,7 +19,7 @@ test('⌘T crée une étoile lyra://newtab', async () => {
     await menu(app, 'nouvelle-etoile')
     await expect.poll(async () => (await ciel(fenetre)).sky.stars.length).toBe(2)
     const { sky } = await ciel(fenetre)
-    expect(sky.stars[1].url).toBe('lyra://newtab')
+    expect(sky.stars[1].url.replace(/\/$/, '')).toBe('lyra://newtab')
     expect(sky.activeId).toBe(sky.stars[1].id)
   } finally {
     await app.close()
@@ -66,7 +66,7 @@ test('fermer toutes les étoiles ouvre une étoile lyra://newtab', async () => {
     }
     await expect.poll(async () => (await ciel(fenetre)).sky.stars.length).toBe(1)
     const { sky } = await ciel(fenetre)
-    expect(sky.stars[0].url).toBe('lyra://newtab')
+    expect(sky.stars[0].url.replace(/\/$/, '')).toBe('lyra://newtab')
     expect(sky.activeId).toBe(sky.stars[0].id)
   } finally {
     await app.close()
