@@ -97,22 +97,28 @@ test('la poignée révèle, y compris sans révélation au survol ; le survol es
   }
 })
 
-test('CmdOrCtrl+\\ (menu) bascule masqué / épinglé ; l’état replié est restauré au redémarrage', async () => {
+test('CmdOrCtrl+'+String.fromCharCode(92)+' (menu) : épinglé, masqué, révélé, épinglé, masqué ; l’état replié est restauré au redémarrage', async () => {
   const userData = mkdtempSync(join(tmpdir(), 'lyra-masque-e2e-'))
   const premier = await lancerLyra({ LYRA_USER_DATA: userData })
   try {
     const accel = await premier.app.evaluate(({ Menu }) => Menu.getApplicationMenu()!.getMenuItemById('basculer-ciel')!.accelerator)
     expect(accel).toBe('CmdOrCtrl+\\')
+    // Épinglé : ⌘ + antislash masque.
     await menu(premier.app, 'basculer-ciel')
     await expect(premier.fenetre.locator('.rail')).toBeVisible()
     expect((await layout(premier.fenetre)).bounds.page.x).toBe(14)
-    // Révélé, puis ⌘ \ : épinglé (révélation retirée).
-    await premier.fenetre.locator('.rail').dispatchEvent('mouseenter')
+    // Masqué : il révèle.
+    await menu(premier.app, 'basculer-ciel')
     await expect(premier.fenetre.locator('.ciel-revele')).toBeVisible()
+    expect((await layout(premier.fenetre)).revele).toBe(true)
+    // Révélé : il épingle.
     await menu(premier.app, 'basculer-ciel')
     await expect(premier.fenetre.locator('.ciel')).toBeVisible()
     await expect(premier.fenetre.locator('.ciel-revele')).toHaveCount(0)
-    expect((await layout(premier.fenetre)).bounds.page.x).toBe(272)
+    const l = await layout(premier.fenetre)
+    expect(l.bounds.page.x).toBe(272)
+    expect(l.revele).toBe(false)
+    // Épinglé : masqué (état gardé pour le redémarrage).
     await menu(premier.app, 'basculer-ciel')
     await expect(premier.fenetre.locator('.rail')).toBeVisible()
   } finally {

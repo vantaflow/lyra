@@ -357,8 +357,16 @@ void app.whenReady().then(async () => {
   installerMenu(ongletsCourants, {
     nouvelleFenetre: () => creerFenetre(),
     basculerFavori,
+    // Épinglé : masque ; masqué : révèle ; révélé : épingle.
     basculerCiel: () => {
-      const patch: Record<string, unknown> = { ciel: { masque: !reglages.getSettings().ciel.masque } }
+      const id = BaseWindow.getFocusedWindow()?.id
+      const f = (id !== undefined ? manager.fenetre(id) : undefined) ?? manager.premiere()
+      const masque = reglages.getSettings().ciel.masque
+      if (masque && f && !f.estRevele()) {
+        f.reveler(true)
+        return
+      }
+      const patch: Record<string, unknown> = { ciel: { masque: !masque } }
       reglages.setSettings(patch as Partial<Settings>)
     }
   })

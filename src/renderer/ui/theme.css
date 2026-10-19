@@ -1070,7 +1070,6 @@ html.revele #app,
   position: fixed;
   left: 0;
   right: 0;
-  top: 46px;
   bottom: 0;
   z-index: 20;
   background: transparent;
@@ -1085,6 +1084,8 @@ html.revele #app,
   border-radius: 0 12px 12px 0;
   box-shadow: 14px 0 44px rgba(10, 10, 40, 0.38);
   animation: ciel-glisse var(--glisse) ease-out;
+  /* Le retour de la souris pendant la sortie revient en glissant (pas de saut). */
+  transition: transform var(--glisse) ease-out;
 }
 .ciel.ciel-revele.sortant {
   transform: translateX(-100%);

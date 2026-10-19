@@ -60,6 +60,8 @@ export const cielMasque = signal(false)
 export const revelerAuSurvol = signal(true)
 /** Le ciel masqué est glissé par-dessus la page : la vue chrome a été élargie par le main. */
 export const cielRevele = signal(false)
+/** La révélation vient du clavier (Entrée sur la poignée) : le ciel prend le focus. */
+export const revelationClavier = signal(false)
 /** Largeur du ciel (réglage) : celle du ciel révélé, rail de 14 px en plus. */
 export const cielLargeur = signal(272)
 

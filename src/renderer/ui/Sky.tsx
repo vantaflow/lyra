@@ -24,11 +24,13 @@ interface PropsSky {
   refCiel?: Ref<HTMLElement>
   surEntree?: () => void
   surSortie?: () => void
+  /** Le focus quitte le ciel (clavier). */
+  surSortieFocus?: (e: FocusEvent) => void
   /** Largeur imposée (ciel révélé : largeur du ciel + rail). */
   largeur?: number
 }
 
-export function Sky({ revele = false, refCiel, surEntree, surSortie, largeur }: PropsSky = {}) {
+export function Sky({ revele = false, refCiel, surEntree, surSortie, surSortieFocus, largeur }: PropsSky = {}) {
   const { stars, constellations } = sky.value
   const ouvertes = stars.filter((s) => !s.pinned)
   const epinglees = stars.filter((s) => s.pinned)
@@ -50,6 +52,7 @@ export function Sky({ revele = false, refCiel, surEntree, surSortie, largeur }: 
       style={largeur ? { width: `${largeur}px` } : undefined}
       onMouseEnter={surEntree}
       onMouseLeave={surSortie}
+      onFocusOut={surSortieFocus}
     >
       <div class="ciel-entete">
         {mac && <div class="pastilles" aria-hidden="true"></div>}
