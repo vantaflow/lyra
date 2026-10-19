@@ -1,0 +1,24 @@
+electron 44.9.0 chrome 152.0.7977.167 scen cws
+API used for load: session.extensions.loadExtension
+INSTALL_ERROR TypeError [ERR_INVALID_ARG_TYPE]: The "readableStream" argument must be an instance of ReadableStream. Received null
+    at Object.newStreamReadableFromReadableStream (node:internal/webstreams/adapters:640:11)
+    at Readable.fromWeb (node:internal/streams/readable:1827:27)
+    at downloadCrx (/private/tmp/claude-501/-Users-lilou-Projects/def3bec1-9d14-4d36-92f3-4d4114696239/scratchpad/spike-extensions/node_modules/electron-chrome-web-store/dist/cjs/browser/index.js:1071:54)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async downloadExtensionFromURL (/private/tmp/claude-501/-Users-lilou-Projects/def3bec1-9d14-4d36-92f3-4d4114696239/scratchpad/spike-extensions/node_modules/electron-chrome-web-store/dist/cjs/browser/index.js:1079:5)
+    at async downloadExtension (/private/tmp/claude-501/-Users-lilou-Projects/def3bec1-9d14-4d36-92f3-4d4114696239/scratchpad/spike-extensions/node_modules/electron-chrome-web-store/dist/cjs/browser/index.js:1101:10)
+    at async installExtension (/private/tmp/claude-501/-Users-lilou-Projects/def3bec1-9d14-4d36-92f3-4d4114696239/scratchpad/spike-extensions/node_modules/electron-chrome-web-store/dist/cjs/browser/index.js:1121:25)
+    at async /private/tmp/claude-501/-Users-lilou-Projects/def3bec1-9d14-4d36-92f3-4d4114696239/scratchpad/spike-extensions/main.js:81:19
+listing dir absent
+getAllExtensions []
+background contents []
+selectTab 1
+MULTI#0 ["OK","OK","OK","OK","OK","ERR"]
+MULTI#1 ["OK","OK","OK","OK","OK","ERR"]
+FETCH#1 ERR Failed to fetch | no-cors: ERR Failed to fetch
+FETCH#2 ERR Failed to fetch | no-cors: ERR Failed to fetch
+DARKREADER {"styleDarkreader":0,"attrs":["lang"],"meta":false,"bg":"rgba(0, 0, 0, 0)"}
+YT {"keys":["responseContext","playabilityStatus","streamingData","playbackTracking","captions","videoDetails","annotations","playerConfig","storyboards","microformat","cards","trackingParams","messages","endscreen","adPlacements","adBreakHeartbeatParams","frameworkUpdates"],"adPlacements":"object"}
+YT-detail {"adPlacementsLen":1,"playerAds":"undefined","adSlots":"undefined","status":"OK","adClassPresent":true}
+DONE
+removeTab 1

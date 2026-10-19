@@ -1,6 +1,6 @@
 # Lyra — conception
 
-Date : 2026-10-19. Statut : brouillon en cours (sections techniques à compléter après la recherche et les spikes).
+Date : 2026-10-19. Statut : complète, en relecture (builder-check) avant le plan.
 
 ## 1. Intention
 
@@ -186,7 +186,45 @@ Vérifié par un spike jetable le 2026-10-19 (Electron 44.9.0, `@ghostery/adbloc
 
 ## 7. Extensions Chrome et Firefox
 
-_À compléter._
+Vérifié par un spike jetable le 2026-10-19 (Electron 44.9.0, electron-chrome-extensions 4.9.0, electron-chrome-web-store 0.13.0, webextension-polyfill 0.12.0 ; code et logs dans `docs/superpowers/spikes/extensions/` ; recherche dans `docs/superpowers/research/2026-10-19-electron-et-firefox-extensions.md`).
+
+### Ce qui marche, mesuré
+
+- **MV2** se charge dans Electron 44 (avertissement « Manifest version 2 is deprecated ») ; **MV3** avec service worker fonctionne (Dark Reader 4.9.133 installé depuis le Chrome Web Store, service worker démarré, styles injectés).
+- Chargement par `session.extensions.loadExtension(dossier, { allowFileAccess })` sur une session persistante, à chaque démarrage (Electron ne mémorise rien) ; `getAllExtensions()` les liste ; dossiers décompressés seulement.
+- `electron-chrome-extensions` (constructeur `new ElectronChromeExtensions({ license: 'GPL-3.0', session, createTab, selectTab, removeTab, createWindow, removeWindow, requestPermissions, assignTabDetails })`, `addTab(webContents, window)` par étoile, preload enregistré automatiquement, `ElectronChromeExtensions.handleCRXProtocol(session)` et `injectBrowserAction()` pour les icônes d'action) ajoute `action` (MV3), `contextMenus`, `cookies`, `notifications`, `storage.sync`→local, `windows`, `webNavigation` partiel ; `commands` non supporté.
+- `electron-chrome-web-store` : `installExtension(id, { session, extensionsPath })` télécharge le CRX, injecte `manifest.key`, charge ; `installChromeWebStore({ … minimumManifestVersion, beforeInstall })`, `updateExtensions`, `loadAllExtensions`. uBlock Origin MV2 n'est **plus servi** par le Chrome Web Store (HTTP 204) : on le charge depuis sa release GitHub (`uBlock0_<v>.chromium.zip`) ou un fichier.
+- **uBlock Origin** (Chrome MV2 et Firefox MV2 converti) plante au démarrage (`chrome.browserAction` undefined : electron-chrome-extensions n'implémente `action` qu'en MV3) ; avec des **stubs** (`browserAction`, `contextMenus`, `webNavigation`, `privacy`, `windows`, `commands`, `dns` : proxys inertes injectés avant le polyfill et recopiés dans `browser.*` après) il démarre et **bloque via webRequest** (4 requêtes pub sur 6, redirections de ressources).
+- **Dark Reader Firefox** (xpi MV2) converti par le convertisseur fonctionne (8 `style.darkreader`, fond sombre).
+
+### Règle fondatrice : les Boucliers priment
+
+Un listener `session.webRequest` côté application **neutralise les listeners webRequest des extensions** (README electron-chrome-extensions, confirmé). Lyra garde ses Boucliers sur `session.webRequest` ; en conséquence, une extension bloqueuse (uBO, Privacy Badger…) s'installe mais son blocage réseau est inopérant — le journal de compatibilité le dit en clair (« blocage réseau assuré par les Boucliers »), ses filtres cosmétiques et scriptlets restent actifs. Une extension qui n'a de sens que par webRequest est signalée « redondante avec les Boucliers ».
+
+### Chrome (`Extensions.installChrome`)
+
+1. Sources : ID ou URL du Chrome Web Store (`installExtension`), fichier `.crx` (en-tête CRX3 retiré → zip), `.zip`, dossier.
+2. Chargement sur `persist:lyra` au démarrage, dans l'ordre d'installation, avant la création des vues ; état activé/désactivé dans `settings.json` ; mise à jour via `updateExtensions` (bouton + toutes les 6 h).
+3. **Couche de compatibilité MV2** : stubs inertes (ceux du spike, généralisés) injectés en tête des scripts d'arrière-plan et des pages de l'extension, uniquement quand le manifest est MV2 et que l'API manque ; journalisés (« API ignorée : browserAction.setBadgeText »). MV3 : rien d'ajouté.
+4. Icônes d'action dans le pied du ciel (`<browser-action-list>` via `injectBrowserAction()` dans le preload `ui`) ; popup rendu dans l'overlay ; pages d'options en nouvelle étoile.
+5. Journal de compatibilité par extension : avertissements de chargement (permissions inconnues), API stubées, API manquantes appelées (comptées), conflits de raccourcis.
+
+### Firefox (`Extensions.installFirefox`, convertisseur `xpi → dossier`)
+
+1. Sources : nom/URL addons.mozilla.org (API v5 : `current_version.file.url`, hash sha256 vérifié avant extraction, cache local par version), fichier `.xpi`.
+2. Conversion réglée et auditable (rapport JSON) : extraction, suppression de `META-INF/` ; `browser_specific_settings`/`applications` retirés ; `menus`→`contextMenus` ; permissions Firefox-only retirées et journalisées (`dns`, `theme`, `contextualIdentities`, `find`, `pkcs11`, `captivePortal`, `browserSettings`, `tabHide`…) ; `sidebar_action`, `theme_experiment`, `experiment_apis`, `protocol_handlers`, `user_scripts`, `developer` retirés ; `browser_style` retiré ; `_execute_browser_action`→`_execute_action` (MV3) ; MV2 : `background.scripts` et `background.page` conservés, `persistent: true` ; MV3 : `background.scripts` → `background.sw.js` (`importScripts`), CSP chaîne → `{ extension_pages }`, `web_accessible_resources` → `[{ resources, matches }]`, `permissions` hôtes → `host_permissions` ; polyfill `browser-polyfill.js` (et les stubs MV2) ajoutés en tête des scripts d'arrière-plan, des content scripts et des pages HTML (popup, options, overrides) ; icônes SVG converties en PNG si nécessaire.
+3. Refus motivé (pas de chargement) si le manifest exige ce que Chromium n'a pas : `sidebar_action` seul moyen d'interaction (Tree Style Tab), API `experiment_apis`.
+4. Quand l'auteur publie aussi une version Chrome (même nom sur le Chrome Web Store, proposé dans l'interface), l'installation Chrome est recommandée (Bitwarden, Dark Reader).
+5. Journal : clés retirées, permissions retirées, API Firefox appelées à l'exécution (détectées par les stubs), avertissements Electron.
+
+### Tests
+
+- Unitaires (vitest) : convertisseur sur des manifests de fixture (uBO FF, Dark Reader FF, Bitwarden, Tree Style Tab → refus, Return YouTube Dislike MV2→MV3), lecture CRX3, parsing des réponses AMO, couche de stubs.
+- Bout en bout (Playwright, réseau) : installer Dark Reader depuis le Chrome Web Store et depuis AMO (converti), vérifier `style.darkreader` sur une page ; charger uBO depuis la release GitHub, vérifier que le background démarre sans erreur et que le journal signale la redondance webRequest.
+
+### Limites honnêtes (affichées dans `lyra://extensions`)
+
+Pas de `declarativeNetRequest` (uBO Lite inopérant), pas de `commands` (raccourcis d'extension), `contextMenus.update`, `tabs.move/duplicate/captureVisibleTab/discard`, `sidePanel`/`sidebar_action`, messagerie native (`nativeMessaging`), `fontSettings`, `theme`, `contextualIdentities` ; pas d'extensions en fenêtre privée (limite d'electron-chrome-extensions) ; MV2 déprécié par Electron (risque de retrait dans une version future : Lyra reste sur Electron 44 tant que le MV2 des extensions clés en dépend, et pousse les auteurs vers MV3).
 
 ## 8. Build, tests, packaging
 
@@ -246,8 +284,27 @@ nsis: { oneClick: false, allowToChangeInstallationDirectory: true }
 
 ## 9. Ce qui est laissé au constructeur
 
-_À compléter._
+- Le découpage exact des fichiers, les noms des composants Preact, le schéma de `settings.json` et de l'état du ciel (versionnés, migrables), le format du paquet `.lyra`.
+- Le choix SQLite vs JSON pour l'historique (Ruling au scaffold selon la disponibilité d'un binaire précompilé de `better-sqlite3` pour Electron 44 ; JSON append-only + index en mémoire sinon).
+- L'implémentation de la file des notifications retenues (surcharge de `window.Notification` par le preload page ; les notifications de service worker sont hors v1 et simplement refusées en Ne pas déranger).
+- Les lecteurs d'import : commencer par Chromium (Chrome, Edge, Brave, Vivaldi partagent `Bookmarks` JSON, `History` SQLite, `Preferences`), puis Firefox (`places.sqlite`), puis Safari/Orion (`Bookmarks.plist`, `History.db`) ; les mots de passe Chromium chiffrés par le trousseau sont hors v1 (export impossible sans la clé) — l'interface le dit.
+- Les animations (glissement du ciel, palette), tant qu'elles restent sobres et désactivables (`prefers-reduced-motion`).
+- Les textes anglais (i18n FR/EN par fichiers JSON, FR source).
+- Les icônes de l'application (`build/icon.png` 1024 : lyre stylisée en constellation sur fond indigo).
 
 ## 10. Risques et parades
 
-_À compléter._
+| Risque | Gravité | Parade |
+|---|---|---|
+| YouTube change ses défenses chaque semaine ; le blocage se dégrade sans listes fraîches | haute | rotation 4-8 h de `quick-fixes`, mise à jour au démarrage, bouton manuel, date visible ; test « 5 vidéos » rejouable ; listes embarquées pour le premier lancement |
+| Scriptlets `trusted-*` ou nouveaux (`json-edit`, `trusted-edit-inbound-object`) non exécutés ou cassant les autres (bug Brave #679) | haute | exécuter chaque scriptlet dans son propre bloc avec `try/catch`, journaliser les échecs, test unitaire sur les scriptlets YouTube de la liste du jour |
+| Notifications web : aucune API d'interception ; surcharge contournable ; push non couvert | moyenne | surcharge + permission refusée pendant DND ; documenter la limite ; v2 : CDP `Page.addScriptToEvaluateOnNewDocument` |
+| MV2 déprécié dans Electron ; uBO dépend de stubs | moyenne | Boucliers intégrés rendent uBO facultatif ; stubs génériques testés ; suivre Electron 45+ avant de migrer |
+| `session.webRequest` neutralise le webRequest des extensions | moyenne (assumé) | journal de compatibilité explicite, Boucliers comme bloqueur officiel |
+| Dormance des étoiles : perte d'état (vidéo, formulaires) | moyenne | jamais endormir une étoile avec audio, formulaire modifié ou téléchargement ; délai réglable ; réveil par `navigationHistory.restore` |
+| Overlay plein cadre : clics et focus | moyenne | overlay dimensionné au contenu quand c'est possible, fermeture au clic extérieur, Échap, retour du focus |
+| Licence GPL-3.0 imposée par electron-chrome-extensions | basse (projet personnel) | Lyra en GPL-3.0 ; licence Patron si distribution fermée un jour |
+| Paquets non signés : Gatekeeper, SmartScreen, pas de notifications macOS (Electron ≥ 42) | moyenne | README d'installation ; signature ad hoc valide ; vraie signature plus tard via CI (`CSC_LINK`) |
+| `electron-context-menu` ESM + `electron-dl` en conflit avec Downloads | basse | menu contextuel maison sur l'événement `context-menu` (params fournis par Electron) |
+| API expérimentales (`executeInMainWorld`, `isolatedEntries`) | basse | épinglage des versions, tests e2e qui cassent tôt |
+| Import Safari/Orion : accès disque complet requis sur macOS | basse | message clair, import par fichier en repli |

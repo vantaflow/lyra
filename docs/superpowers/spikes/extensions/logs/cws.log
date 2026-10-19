@@ -1,0 +1,24 @@
+electron 44.9.0 chrome 152.0.7977.167 scen cws
+API used for load: session.extensions.loadExtension
+INSTALL_OK eimadpbcbfnmbkopoojfekhnkhdbieeh Dark Reader /private/tmp/claude-501/-Users-lilou-Projects/def3bec1-9d14-4d36-92f3-4d4114696239/scratchpad/spike-extensions/ud/cws-ext/eimadpbcbfnmbkopoojfekhnkhdbieeh/4.9.133_0
+listing dir ["eimadpbcbfnmbkopoojfekhnkhdbieeh","eimadpbcbfnmbkopoojfekhnkhdbieeh/4.9.133_0","eimadpbcbfnmbkopoojfekhnkhdbieeh/4.9.133_0/_locales","eimadpbcbfnmbkopoojfekhnkhdbieeh/4.9.133_0/background","eimadpbcbfnmbkopoojfekhnkhdbieeh/4.9.133_0/config","eimadpbcbfnmbkopoojfekhnkhdbieeh/4.9.133_0/icons","eimadpbcbfnmbkopoojfekhnkhdbieeh/4.9.133_0/inject","eimadpbcbfnmbkopoojfekhnkhdbieeh/4.9.133_0/manifest.json","eimadpbcbfnmbkopoojfekhnkhdbieeh/4.9.133_0/ui","eimadpbcbfnmbkopoojfekhnkhdbieeh/4.9.133_0/_locales/ar","eimadpbcbfnmbkopoojfekhnkhdbieeh/4.9.133_0/_locales/be","eimadpbcbfnmbkopoojfekhnkhdbieeh/4.9.133_0/_locales/bg","eimadpbcbfnmbkopoojfekhnkhdbieeh/4.9.133_0/_locales/bn","eimadpbcbfnmbkopoojfekhnkhdbieeh/4.9.133_0/_locales/cs","eimadpbcbfnmbkopoojfekhnkhdbieeh/4.9.133_0/_locales/da_DK"]
+getAllExtensions [{"id":"eimadpbcbfnmbkopoojfekhnkhdbieeh","name":"Dark Reader","v":"4.9.133","mv":3}]
+[SW console] {"versionId":1,"source":"security","level":3,"message":"Unrecognized Content-Security-Policy directive 'navigate-to'.","lineNumber":0,"sourceUrl":""}
+[SW console] {"versionId":1,"source":"console-api","level":1,"message":"  /''''\\\n (0)==(0)\n/__||||__\\\nWelcome to Dark Reader!","lineNumber":7210,"sourceUrl":"chrome-extension://eimadpbcbfnmbkopoojfekhnkhdbieeh/background/index.js"}
+[SW console] {"versionId":1,"source":"console-api","level":1,"message":"tabs.query [object Object]","lineNumber":48,"sourceUrl":""}
+[SW console] {"versionId":1,"source":"console-api","level":1,"message":"tabs.query (result) ","lineNumber":66,"sourceUrl":""}
+[SW console] {"versionId":1,"source":"console-api","level":1,"message":"browserAction.setIcon [object Object]","lineNumber":48,"sourceUrl":""}
+[SW console] {"versionId":1,"source":"console-api","level":1,"message":"browserAction.setIcon (result) undefined","lineNumber":66,"sourceUrl":""}
+[SW console] {"versionId":1,"source":"console-api","level":1,"message":"browserAction.setBadgeText [object Object]","lineNumber":48,"sourceUrl":""}
+[SW console] {"versionId":1,"source":"console-api","level":1,"message":"browserAction.setBadgeText (result) undefined","lineNumber":66,"sourceUrl":""}
+background contents []
+selectTab 1
+MULTI#0 ["OK","OK","OK","OK","OK","ERR"]
+MULTI#1 ["OK","OK","OK","OK","OK","ERR"]
+FETCH#1 ERR Failed to fetch | no-cors: ERR Failed to fetch
+FETCH#2 ERR Failed to fetch | no-cors: ERR Failed to fetch
+DARKREADER {"styleDarkreader":8,"attrs":["lang","data-darkreader-mode","data-darkreader-scheme","data-darkreader-proxy-injected"],"meta":true,"bg":"rgb(24, 26, 27)"}
+YT {"keys":["responseContext","playabilityStatus","streamingData","playerAds","playbackTracking","captions","videoDetails","annotations","playerConfig","storyboards","microformat","cards","trackingParams","messages","endscreen","adPlacements","adSlots","adBreakHeartbeatParams","frameworkUpdates"],"adPlacements":"object"}
+YT-detail {"adPlacementsLen":1,"playerAds":1,"adSlots":7,"status":"OK","adClassPresent":true}
+DONE
+removeTab 1

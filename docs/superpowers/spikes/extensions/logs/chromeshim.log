@@ -1,0 +1,18 @@
+electron 44.9.0 chrome 152.0.7977.167 scen chromeshim
+API used for load: session.extensions.loadExtension
+LOADED odicdmimcgmdihhpllokmhllfnjepbhc uBlock Origin MV2 chrome-extension://odicdmimcgmdihhpllokmhllfnjepbhc/
+getAllExtensions [{"id":"odicdmimcgmdihhpllokmhllfnjepbhc","name":"uBlock Origin","v":"1.75.0","mv":2}]
+[CONSOLE backgroundPage warning ] injectExtensionAPIs: context isolation disabled in chrome-extension://odicdmimcgmdihhpllokmhllfnjepbhc/background.html @ /private/tmp/claude-501/-Users-lilou-Projects/def3bec1-9d14-4d36-92f3-4d4114696239/scratchpad/spike-extensions/node_modules/electron-chrome-extensions/dist/chrome-extension-api.preload.js
+background contents [{"type":"backgroundPage","url":"chrome-extension://odicdmimcgmdihhpllokmhllfnjepbhc/background.html"}]
+BG chrome keys chrome-extension://odicdmimcgmdihhpllokmhllfnjepbhc/background.html ["action","alarms","browserAction","commands","contextMenus","dns","dom","extension","i18n","management","menus","privacy","runtime","storage","tabs","webNavigation","webRequest","windows"]
+BG sub keys {"alarms":["onAlarm","clear","clearAll","create","get","getAll"],"storage":["sync","managed","local","onChanged","AccessLevel"],"tabs":["onZoomChange","onReplaced","onRemoved","onAttached","onDetached","onHighlighted","onHighlightChanged","onActivated","onActiveChanged","onSelectionChanged","onMoved","onUpdated","onCreated","connect","executeScript","get","getZoom","getZoomSettings","query","reload","sendMessage","setZoom","setZoomSettings","update","MutedInfoReason","TabStatus","WindowType","ZoomSettingsMode","ZoomSettingsScope"],"runtime":["dynamicId","id","onRestartRequired","onMessageExternal","onMessage","onConnectExternal","onConnect","onBrowserUpdateAvailable","onUpdateAvailable","onSuspendCanceled","onSuspend","onInstalled","onStartup","connect","getBackgroundPage","getManifest","getPackageDirectoryEntry","getPlatformInfo","getURL","getVersion","openOptionsPage","reload","requestUpdateCheck","restart","restartAfterDelay","sendMessage","setUninstallURL","ContextType","OnInstalledReason","OnRestartRequiredReason","PlatformArch","PlatformNaclArch","PlatformOs","RequestUpdateCheckStatus"],"webRequest":["onActionIgnored","onErrorOccurred","onCompleted","onBeforeRedirect","onResponseStarted","onAuthRequired","onHeadersReceived","onSendHeaders","onBeforeSendHeaders","onBeforeRequest","handlerBehaviorChanged","IgnoredActionType","OnAuthRequiredOptions","OnBeforeRedirectOptions","OnBeforeRequestOptions","OnBeforeSendHeadersOptions","OnCompletedOptions","OnErrorOccurredOptions","OnHeadersReceivedOptions","OnResponseStartedOptions","OnSendHeadersOptions","ResourceType","MAX_HANDLER_BEHAVIOR_CHANGED_CALLS_PER_10_MINUTES"]}
+selectTab 2
+MULTI#0 ["ERR","OK","OK","ERR","ERR","ERR"]
+MULTI#1 ["ERR","OK","OK","ERR","ERR","ERR"]
+FETCH#1 OK 200 | no-cors: OK type=basic status=200
+FETCH#2 OK 200 | no-cors: OK type=basic status=200
+DARKREADER {"styleDarkreader":0,"attrs":["lang"],"meta":false,"bg":"rgba(0, 0, 0, 0)"}
+YT {"keys":["responseContext","playabilityStatus","streamingData","playerAds","playbackTracking","captions","videoDetails","annotations","playerConfig","storyboards","microformat","cards","trackingParams","endscreen","adPlacements","adBreakHeartbeatParams","frameworkUpdates"],"adPlacements":"object"}
+YT-detail {"adPlacementsLen":2,"playerAds":1,"adSlots":"undefined","status":"OK","adClassPresent":true}
+DONE
+removeTab 2

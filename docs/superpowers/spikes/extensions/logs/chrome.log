@@ -1,0 +1,17 @@
+electron 44.9.0 chrome 152.0.7977.167 scen chrome
+API used for load: session.extensions.loadExtension
+LOADED hijkjahdncfgopedjbiigfcfdneegbga uBlock Origin MV2 chrome-extension://hijkjahdncfgopedjbiigfcfdneegbga/
+getAllExtensions [{"id":"hijkjahdncfgopedjbiigfcfdneegbga","name":"uBlock Origin","v":"1.75.0","mv":2}]
+[CONSOLE backgroundPage warning ] injectExtensionAPIs: context isolation disabled in chrome-extension://hijkjahdncfgopedjbiigfcfdneegbga/background.html @ /private/tmp/claude-501/-Users-lilou-Projects/def3bec1-9d14-4d36-92f3-4d4114696239/scratchpad/spike-extensions/node_modules/electron-chrome-extensions/dist/chrome-extension-api.preload.js
+[CONSOLE backgroundPage error ] Uncaught TypeError: Cannot read properties of undefined (reading 'setBadgeBackgroundColor') @ chrome-extension://hijkjahdncfgopedjbiigfcfdneegbga/js/webext.js
+background contents [{"type":"backgroundPage","url":"chrome-extension://hijkjahdncfgopedjbiigfcfdneegbga/background.html"}]
+BG chrome keys chrome-extension://hijkjahdncfgopedjbiigfcfdneegbga/background.html ["alarms","dom","extension","i18n","management","runtime","storage","tabs","webRequest"]
+selectTab 2
+MULTI#0 ["OK","OK","OK","OK","OK","ERR"]
+MULTI#1 ["OK","OK","OK","OK","OK","ERR"]
+FETCH#1 ERR Failed to fetch | no-cors: ERR Failed to fetch
+FETCH#2 ERR Failed to fetch | no-cors: ERR Failed to fetch
+DARKREADER {"styleDarkreader":0,"attrs":["lang"],"meta":false,"bg":"rgba(0, 0, 0, 0)"}
+YT {"keys":["responseContext","playabilityStatus","streamingData","playerAds","playbackTracking","captions","videoDetails","annotations","playerConfig","storyboards","microformat","cards","trackingParams","messages","endscreen","adPlacements","adSlots","adBreakHeartbeatParams","frameworkUpdates"],"adPlacements":"object"}
+DONE
+removeTab 2

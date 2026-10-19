@@ -1,0 +1,14 @@
+electron 44.9.0 chrome 152.0.7977.167 scen base
+API used for load: session.extensions.loadExtension
+getAllExtensions []
+background contents []
+selectTab 1
+MULTI#0 ["OK","OK","OK","OK","OK","ERR"]
+MULTI#1 ["OK","OK","OK","OK","OK","ERR"]
+FETCH#1 ERR Failed to fetch | no-cors: ERR Failed to fetch
+FETCH#2 ERR Failed to fetch | no-cors: ERR Failed to fetch
+DARKREADER {"styleDarkreader":0,"attrs":["lang"],"meta":false,"bg":"rgba(0, 0, 0, 0)"}
+YT {"keys":["responseContext","playabilityStatus","streamingData","playerAds","playbackTracking","captions","videoDetails","annotations","playerConfig","storyboards","microformat","cards","trackingParams","messages","endscreen","adPlacements","adSlots","adBreakHeartbeatParams","frameworkUpdates"],"adPlacements":"object"}
+YT-detail {"adPlacementsLen":1,"playerAds":1,"adSlots":6,"status":"OK","adClassPresent":true}
+DONE
+removeTab 1
