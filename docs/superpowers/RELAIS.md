@@ -1,21 +1,21 @@
 # Lyra — travail à plusieurs sessions
 
-Mis à jour : 2026-10-19 17:40. Plusieurs sessions Claude Code avancent en même temps, chacune sur **sa** branche. Lire d'abord `docs/superpowers/ETAT.md`, la spec `docs/superpowers/specs/2026-10-19-lyra-design.md` et `docs/design/README.md`.
+Mis à jour : 2026-10-19 18:00. Plusieurs sessions Claude Code avancent en même temps, chacune sur **sa** branche. Lire d'abord `docs/superpowers/ETAT.md`, la spec `docs/superpowers/specs/2026-10-19-lyra-design.md` et `docs/design/README.md`.
 
 ## Qui fait quoi
 
 | Jalon | Branche | Session | État |
 |---|---|---|---|
-| C — ciel déplaçable, Ne pas déranger, fenêtre privée | `main` | session principale | tâches 1-2 faites, 3 en cours |
+| C — ciel déplaçable, Ne pas déranger, fenêtre privée | `main` | session principale | tâches 1-3 faites (3 en relecture), 4-5 à faire |
 | E — import/export | `jalon-e` (worktree `lyra.worktrees/jalon-e`) | session principale | tâche 1 en corrections |
-| E tâche 2 — lecteurs Firefox, Safari, Orion | `jalon-e-t2` (worktree `lyra.worktrees/jalon-e-t2`) | session downloads-60 | en cours, fusion dans `jalon-e` par la session principale |
-| **B — extensions Chrome + Firefox** | **`jalon-b`** | **libre (session d'appoint)** | à commencer |
-| D — réglages complets, règles par site, couleurs | `jalon-d` | libre (après C) | à faire |
+| E tâche 2 — lecteurs Firefox, Safari, Orion | `jalon-e-t2` → fusionnée dans `jalon-e` (a633fb7) | session downloads-60 | faite, corrections de relecture sur `jalon-e` |
+| **B — extensions Chrome + Firefox** | **`jalon-b`** (plan 67dde31) | **libre (session d'appoint, p. ex. sur le Mac)** | plan prêt, à implémenter |
+| D — réglages complets, règles par site, couleurs | `jalon-d` (plan 94be3a2) | libre (après C) | plan prêt |
 
 ## Consignes pour la session d'appoint (jalon B)
 
-1. Partir de `main` à jour : `git fetch && git switch -c jalon-b origin/main` (ou un worktree `lyra.worktrees/jalon-b`). Ne jamais committer sur `main` ni sur `jalon-e` ; la session principale fusionne `jalon-b` dans `main` à la fin (relecture finale incluse).
-2. Méthode : skills superpowers — écrire `docs/superpowers/plans/2026-10-19-lyra-jalon-b.md` (format des plans C et E, 4 à 6 tâches) à partir de la spec **§7 Extensions** et des réponses du constructeur (§9), du spike `docs/superpowers/spikes/extensions/` et de la recherche `docs/superpowers/research/` ; puis subagent-driven-development (implémenteur Sonnet, relecture par tâche, rondes de corrections).
+1. Partir de la branche existante : `git fetch && git switch jalon-b` (ou un worktree `lyra.worktrees/jalon-b`), puis `git merge origin/main` pour récupérer le dernier état. Ne jamais committer sur `main` ni sur `jalon-e` ; la session principale fusionne `jalon-b` dans `main` à la fin (relecture finale incluse).
+2. Méthode : skills superpowers — le plan `docs/superpowers/plans/2026-10-19-lyra-jalon-b.md` (6 tâches) existe sur `jalon-b` ; le relire contre la spec **§7 Extensions** et §9, le spike `docs/superpowers/spikes/extensions/` et la recherche `docs/superpowers/research/`, puis subagent-driven-development (implémenteur Sonnet, relecture par tâche, rondes de corrections).
 3. Périmètre (spec §7) : `electron-chrome-extensions` (GPL-3.0, déjà retenu), installation depuis le Chrome Web Store, stubs MV2 nécessaires, convertisseur `.xpi` → extension Chromium avec le polyfill `browser.*`, journal de compatibilité, page `lyra://extensions` **conforme à `docs/design/project/Extensions.dc.html`**, icônes d'extensions dans la capsule, uBlock Origin en cible de test. Le filtrage des Boucliers ignore `chrome-extension://` (déjà décidé). Le jalon E mettra en file des IDs d'extensions à réinstaller (`import.extensionsEnAttente`, format `{ id, nom, magasin: 'chrome'|'edge'|'firefox'|'inconnu' }`) : prévoir une fonction d'installation par ID réutilisable.
 4. **Aucune fenêtre visible** (consigne impérative de l'utilisateur) : tests e2e et captures uniquement via la config Playwright (`LYRA_TEST=1` → fenêtres cachées, `src/main/modeTest.ts`) ; jamais `LYRA_E2E_VISIBLE`, jamais `npm run dev`, jamais l'app empaquetée lancée à l'écran. Toute nouvelle fenêtre ou vue (popup d'extension, page d'options) passe par `optionsFenetreCachee()` / `prefsPageCachee()` sous `LYRA_TEST`.
 5. **Respect strict du design** : valeurs, libellés, icônes copiés des `.dc.html`.
