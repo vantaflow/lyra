@@ -92,3 +92,21 @@ test('un clic hors du panneau ferme la palette', async () => {
     await app.close()
   }
 })
+
+test('↩ tout de suite après la frappe valide le texte tapé, pas une liste périmée', async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const overlay = await ouvrirPalette(app)
+    // Frappe et ↩ dans le même évènement : aucune réponse de palette:suggest n'a pu arriver.
+    await overlay.evaluate((url) => {
+      const champ = document.getElementById('palette') as HTMLInputElement
+      champ.value = url
+      champ.dispatchEvent(new Event('input', { bubbles: true }))
+      champ.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    }, FIXTURE)
+    await expect.poll(async () => (await ciel(fenetre)).sky.stars[0].url).toBe(FIXTURE)
+    expect((await ciel(fenetre)).sky.stars).toHaveLength(1)
+  } finally {
+    await app.close()
+  }
+})

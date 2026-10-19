@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import type { Suggestion } from '../../shared/types'
+import { choixPourEntree } from './paletteChoix'
 import { MOTEURS } from '../../main/palette/engines'
 
 /** Titres de groupe, dans l'ordre d'affichage (fidèle à Panneaux.dc.html). */
@@ -29,11 +30,15 @@ export function Palette() {
   const [sel, setSel] = useState(0)
   const champ = useRef<HTMLInputElement>(null)
   const requete = useRef(0)
+  // Texte courant et texte auquel correspond la liste affichée (↩ ne doit jamais ouvrir une liste périmée).
+  const texteCourant = useRef('')
+  const listePour = useRef<string | null>(null)
 
   const chercher = (t: string): void => {
     const n = ++requete.current
     void window.lyra.invoke('palette:suggest', { texte: t }).then((r) => {
       if (n !== requete.current) return
+      listePour.current = t
       setListe(r)
       setSel(0)
     })
@@ -42,6 +47,7 @@ export function Palette() {
   useEffect(() => {
     const off = window.lyra.on('palette:open', ({ texteInitial }) => {
       const t = texteInitial ?? ''
+      texteCourant.current = t
       setTexte(t)
       chercher(t)
       champ.current?.focus()
@@ -58,10 +64,11 @@ export function Palette() {
 
   const fermer = (): void => void window.lyra.invoke('palette:close')
   const aller = (s: Suggestion | undefined, nouvelleEtoile: boolean): void => {
-    void window.lyra.invoke('palette:go', { suggestion: s, texte, nouvelleEtoile })
+    void window.lyra.invoke('palette:go', { suggestion: s, texte: texteCourant.current, nouvelleEtoile })
   }
 
   const saisir = (t: string): void => {
+    texteCourant.current = t
     setTexte(t)
     chercher(t)
   }
@@ -80,7 +87,7 @@ export function Palette() {
       if (n) setSel((sel - 1 + n) % n)
     } else if (e.key === 'Enter') {
       e.preventDefault()
-      aller(liste[sel], e.metaKey || e.ctrlKey)
+      aller(choixPourEntree(texteCourant.current, listePour.current, liste, sel), e.metaKey || e.ctrlKey)
     } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault()
       saisir('>')
@@ -126,7 +133,7 @@ export function Palette() {
                   role="option"
                   aria-selected={i === sel}
                   onMouseMove={() => i !== sel && setSel(i)}
-                  onClick={(e) => aller(s, e.metaKey || e.ctrlKey)}
+                  onClick={(e) => aller(listePour.current === texteCourant.current ? s : undefined, e.metaKey || e.ctrlKey)}
                 >
                   <span class="k" style={{ background: p.fond, ...(p.couleur ? { color: p.couleur } : {}) }}>
                     {s.icone ?? ''}
