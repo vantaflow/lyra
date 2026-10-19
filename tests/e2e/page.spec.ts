@@ -122,6 +122,25 @@ test("une demande de permission s'affiche dans l'overlay ; Refuser la refuse", a
   }
 })
 
+test("ouvrir la palette pendant une demande la refuse et n'empêche pas la suivante", async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const p = await ouvrir(app, fenetre, PERMISSIONS)
+    await p.evaluate(() => void Notification.requestPermission().then((r) => (document.title = `notif:${r}`)))
+    await expect.poll(() => overlay(app) !== undefined).toBe(true)
+    const o = overlay(app)!
+    await expect(o.locator('.perm-texte')).toContainText('notifications')
+    await menu(app, 'palette')
+    await expect.poll(() => p.title()).toBe('notif:denied')
+    await o.keyboard.press('Escape')
+    await p.evaluate(() => navigator.geolocation.getCurrentPosition(() => undefined, () => undefined))
+    await expect(o.locator('.perm-texte')).toContainText('votre position')
+    await o.getByRole('button', { name: 'Refuser' }).click()
+  } finally {
+    await app.close()
+  }
+})
+
 test('« Autoriser » avec « Se souvenir » mémorise la décision, sans nouvelle demande', async () => {
   const { app, fenetre } = await lancerLyra()
   try {

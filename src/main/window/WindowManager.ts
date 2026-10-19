@@ -15,6 +15,8 @@ export interface LyraWindow {
   relayout(): void
   setPleinEcran(b: boolean): void
   montrerOverlay(route: RouteOverlay): void
+  /** Appelé à chaque changement de l'overlay : la route affichée, ou null quand il se ferme. */
+  surOverlay(cb: (route: RouteOverlay | null) => void): void
   cacherOverlay(): void
   /** Mise en page courante (pour l'IPC layout:get). */
   bounds(): Layout
@@ -58,6 +60,7 @@ export class WindowManager {
     win.contentView.addChildView(overlay)
 
     let pageView: WebContentsView | null = null
+    const ecouteursOverlay: Array<(route: RouteOverlay | null) => void> = []
     let pleinEcran = false
 
     const bounds = (): Layout => {
@@ -94,13 +97,18 @@ export class WindowManager {
         pleinEcran = b
         relayout()
       },
+      surOverlay(cb) {
+        ecouteursOverlay.push(cb)
+      },
       montrerOverlay(route) {
+        for (const cb of ecouteursOverlay) cb(route)
         envoyer(overlay.webContents, 'overlay:route', route)
         win.contentView.addChildView(overlay)
         overlay.setVisible(true)
         overlay.webContents.focus()
       },
       cacherOverlay() {
+        for (const cb of ecouteursOverlay) cb(null)
         overlay.setVisible(false)
       }
     }

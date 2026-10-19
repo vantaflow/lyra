@@ -37,3 +37,15 @@ export function hoteDe(url: string): string {
     return ''
   }
 }
+
+/** Garde de « Continuer quand même » : adresse https à accepter, seulement depuis une page d'erreur de certificat. */
+export function continuerAutorise(urlExpediteur: string): string | null {
+  if (!estUrlErreur(urlExpediteur)) return null
+  try {
+    if (new URL(urlExpediteur).searchParams.get('type') !== 'certificat') return null
+  } catch {
+    return null
+  }
+  const url = urlOriginale(urlExpediteur)
+  return /^https:/i.test(url) ? url : null
+}

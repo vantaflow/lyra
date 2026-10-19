@@ -17,8 +17,9 @@ import { Downloads } from './downloads/Downloads'
 import { installerReglagesIpc } from './settings/ipc'
 import { SessionStore, type FenetreSession } from './session/SessionStore'
 import { Permissions, type ReponsePermission } from './permissions/Permissions'
+import { Attentes, REFUS } from './permissions/attentes'
 import { nettoyerUserAgent } from './ua'
-import { estUrlErreur, exceptionsCertificat, hoteDe, urlOriginale } from './tabs/erreurs'
+import { continuerAutorise, estUrlErreur, exceptionsCertificat, hoteDe, urlOriginale } from './tabs/erreurs'
 import { moteurParId, urlDeRecherche } from './palette/engines'
 import type { ActionMenu, AncreMenu } from '../shared/ipc'
 import type { Reglages } from './settings/settings'
@@ -88,6 +89,8 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
       rechercheUrl: (texte) => urlDeRecherche(moteurParId(reglagesCourants().moteurParDefaut), texte)
     }
   )
+  // Une demande de permission ne survit pas à un changement de route ou à la fermeture de l'overlay.
+  tabs.surOverlay((route) => route !== 'permission' && attentes.abandonnerFenetre(fenetre.id))
   onglets.set(fenetre.id, tabs)
   if (opts.privee) privees.add(fenetre.id)
   fenetre.win.on('closed', () => {
@@ -109,26 +112,31 @@ app.on('certificate-error', (e, _wc, url, _erreur, _certificat, callback) => {
   }
 })
 
-const attentesPermission = new Map<number, (r: ReponsePermission) => void>()
-let prochainePermission = 1
+const attentes = new Attentes()
 
 /** Montre la demande dans l'overlay de la fenêtre qui possède la page ; refus si elle n'en a pas. */
-function demanderPermission(wc: WebContents, origine: string, types: TypePermission[]): Promise<ReponsePermission> {
-  const refus: ReponsePermission = { decision: 'refuser', memoriser: false }
+async function demanderPermission(wc: WebContents, origine: string, types: TypePermission[]): Promise<ReponsePermission> {
   const m = ongletsPossedant(wc)
-  if (!m) return Promise.resolve(refus)
-  return new Promise((ok) => {
-    const id = prochainePermission++
-    const abandon = (): void => fin(refus)
-    const fin = (r: ReponsePermission): void => {
-      attentesPermission.delete(id)
-      wc.removeListener('destroyed', abandon)
-      ok(r)
+  if (!m) return REFUS
+  const { id, promesse } = attentes.ouvrir(m.fenetreId, m.overlayId)
+  // Page partie ou détruite : la demande tombe, et l'overlay se referme s'il l'affichait encore.
+  const abandon = (): void => {
+    if (!attentes.abandonner(id)) return
+    try {
+      m.fermerOverlay()
+    } catch {
+      // fenêtre en cours de fermeture
     }
-    attentesPermission.set(id, fin)
-    wc.once('destroyed', abandon)
-    m.demanderPermission({ id, origine, types })
-  })
+  }
+  wc.once('destroyed', abandon)
+  wc.once('did-navigate', abandon)
+  m.demanderPermission({ id, origine, types })
+  try {
+    return await promesse
+  } finally {
+    wc.removeListener('destroyed', abandon)
+    wc.removeListener('did-navigate', abandon)
+  }
 }
 
 function ongletsPossedant(wc: WebContents): TabManager | undefined {
@@ -162,8 +170,9 @@ void app.whenReady().then(async () => {
   permissions.attacher(session.defaultSession)
   permissions.attacher(session.fromPartition('persist:lyra'))
   handle('permission:answer', (d, e) => {
-    attentesPermission.get(d.id)?.({ decision: d.decision === 'autoriser' ? 'autoriser' : 'refuser', memoriser: d.memoriser === true })
-    ongletsDe(e.sender).fermerOverlay()
+    // Seul l'overlay de la fenêtre qui a posé la demande peut y répondre.
+    const reponse = { decision: d.decision === 'autoriser' ? ('autoriser' as const) : ('refuser' as const), memoriser: d.memoriser === true }
+    if (attentes.repondre(d.id, e.sender.id, reponse)) ongletsDe(e.sender).fermerOverlay()
   })
   // file:// n'est enregistré que sous LYRA_TEST=1 : les e2e naviguent sur une fixture locale.
   historique = new History(join(paths.userData(), 'historique.jsonl'), { enregistrerFichiers: process.env.LYRA_TEST === '1' })
@@ -245,9 +254,10 @@ void app.whenReady().then(async () => {
   })
   handle('erreur:continuer', (_d, e) => {
     const p = pageErreur(e.sender)
-    if (!p || !/^https:/i.test(p.url)) return
-    exceptionsCertificat.add(hoteDe(p.url))
-    p.m.naviguer(p.id, p.url)
+    const url = continuerAutorise(e.sender.getURL())
+    if (!p || !url) return
+    exceptionsCertificat.add(hoteDe(url))
+    p.m.naviguer(p.id, url)
   })
   handle('menu:open', (d, e) => {
     const f = manager.deWebContents(e.sender) ?? manager.premiere()

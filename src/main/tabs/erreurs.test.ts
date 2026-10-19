@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { estUrlErreur, typeErreur, urlErreur, urlOriginale } from './erreurs'
+import { continuerAutorise, estUrlErreur, typeErreur, urlErreur, urlOriginale } from './erreurs'
 
 describe('erreurs', () => {
   it('classe les codes réseau', () => {
@@ -19,5 +19,13 @@ describe('erreurs', () => {
   it("une adresse ordinaire n'est pas modifiée", () => {
     expect(urlOriginale('https://exemple.fr/')).toBe('https://exemple.fr/')
     expect(estUrlErreur('lyra://newtab')).toBe(false)
+  })
+
+  it('« continuer » n’est accepté que depuis une page de certificat https', () => {
+    expect(continuerAutorise(urlErreur('certificat', 'https://a.fr/'))).toBe('https://a.fr/')
+    expect(continuerAutorise(urlErreur('reseau', 'https://a.fr/'))).toBeNull()
+    expect(continuerAutorise(urlErreur('certificat', 'http://a.fr/'))).toBeNull()
+    expect(continuerAutorise('lyra://settings')).toBeNull()
+    expect(continuerAutorise('https://a.fr/')).toBeNull()
   })
 })

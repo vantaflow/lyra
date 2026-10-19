@@ -358,6 +358,19 @@ export class TabManager {
     this.fenetre.montrerOverlay(route)
   }
 
+  get fenetreId(): number {
+    return this.fenetre.id
+  }
+
+  /** webContents.id de l'overlay de la fenêtre. */
+  get overlayId(): number {
+    return this.fenetre.overlay.webContents.id
+  }
+
+  surOverlay(cb: (route: RouteOverlay | null) => void): void {
+    this.fenetre.surOverlay(cb)
+  }
+
   /** Montre la demande de permission d'une page dans l'overlay. */
   demanderPermission(demande: DemandePermission): void {
     this.fenetre.montrerOverlay('permission')

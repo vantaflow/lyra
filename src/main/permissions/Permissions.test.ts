@@ -101,4 +101,21 @@ describe('Permissions', () => {
     await Promise.all([a, b])
     expect(ordre).toEqual(['debut-notifications', 'fin-notifications', 'debut-geolocalisation', 'fin-geolocalisation'])
   })
+
+  it('une demande abandonnée (refus) ne bloque pas la suivante, même si le prompt échoue', async () => {
+    const reponses: Array<() => Promise<{ decision: DecisionPermission; memoriser: boolean }>> = [
+      async () => ({ decision: 'refuser', memoriser: false }),
+      async () => {
+        throw new Error('overlay détruit')
+      },
+      async () => ({ decision: 'autoriser', memoriser: false })
+    ]
+    const deps: DepsPermissions = { lire: () => undefined, memoriser: () => undefined, demander: async () => reponses.shift()!() }
+    let requete!: Parameters<SessionPermissions['setPermissionRequestHandler']>[0]
+    new Permissions(deps).attacher({ setPermissionRequestHandler: (h) => void (requete = h), setPermissionCheckHandler: () => undefined })
+    const demande = (p: string): Promise<boolean> => new Promise((ok) => requete(WC as never, p, ok, { requestingUrl: SITE }))
+    expect(await demande('notifications')).toBe(false)
+    expect(await demande('geolocation')).toBe(false)
+    expect(await demande('clipboard-read')).toBe(true)
+  })
 })
