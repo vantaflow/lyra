@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Lyra — passerelles pour les sites bloqués</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Manrope,-apple-system,"Segoe UI",system-ui,sans-serif;color:#1C1C2E}
+a{color:#4A48C4}a:hover{color:#2F2D8A}
+h2{margin:0 0 10px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#6B6B80}
+.card{border:1px solid #E6E6EE;border-radius:12px;padding:0 18px;background:#fff}
+.row{display:flex;align-items:center;gap:16px;padding:14px 0;border-top:1px solid #EEEEF4}
+.row:first-child{border-top:0}
+.lbl{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.hint{color:#6B6B80;font-size:12.5px}
+.tg{position:relative;width:40px;height:24px;border:0;border-radius:12px;padding:0;cursor:pointer;flex:none}
+.tg i{position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.tg.on{background:#5452C8}.tg.on i{right:3px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border:1px solid #D6D6E2;border-radius:9px;background:#fff;color:#1C1C2E;font:500 13px Manrope,sans-serif;cursor:pointer;white-space:nowrap}
+.btn.pri{background:#5452C8;border-color:#5452C8;color:#fff}
+.inp{height:34px;padding:0 12px;border:1px solid #D6D6E2;border-radius:9px;background:#F8F8FC;font:13px Manrope,sans-serif;color:#1C1C2E;box-sizing:border-box;min-width:0}
+.tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:11px;font-size:12px;font-weight:600;white-space:nowrap}
+.seg{display:inline-flex;border:1px solid #D6D6E2;border-radius:8px;overflow:hidden;flex:none}
+.seg button{height:30px;padding:0 12px;border:0;background:#F8F8FC;color:#3A3A50;font:13px Manrope,sans-serif}
+.seg button+button{border-left:1px solid #D6D6E2}
+.seg button[aria-pressed="true"]{background:#5452C8;color:#fff}
+.pill{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 14px 0 12px;border-radius:16px;background:#F3F3F9;color:#1C1C2E;font:500 13.5px Manrope,sans-serif}
+.mi{display:flex;align-items:center;gap:12px;height:34px;padding:0 12px;border-radius:8px;color:#1C1C2E;font-size:13.5px}
+.mi.on{background:#F1F1F8}
+.mi .h{margin-left:auto;color:#8A8AA6;font-size:12px}
+.sep{height:1px;background:#EEEEF4;margin:6px 8px}
+.relais{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:7px;background:#E6E6F7;color:#5452C8;flex:none}
+</style>
+</helmet>
+
+<div style="width: 1440px; height: 1100px; box-sizing: border-box; padding: 36px 40px; background: #E9E9F3; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 28px 32px; align-content: start">
+
+  <!-- Réglages : Réseau et identité -->
+  <section aria-label="Réglages des passerelles" style="grid-column: span 7; grid-row: span 3; display: flex; flex-direction: column; gap: 12px">
+    <h2>lyra://settings — Réseau et identité</h2>
+    <div style="background: #F7F7FB; border-radius: 14px; padding: 22px 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 20px 60px rgba(20,20,46,.12)">
+      <div>
+        <h1 style="margin: 0; font-size: 26px; letter-spacing: -0.4px">Réseau et identité</h1>
+        <p style="margin: 4px 0 0; color: #6B6B80">Atteindre les sites bloqués par le réseau sur lequel vous êtes.</p>
+      </div>
+      <div class="card">
+        <div class="row"><div class="lbl"><span>Passerelles pour les sites bloqués</span><span class="hint">Les sites de la liste passent toujours par une passerelle ; les autres restent en direct</span></div><button class="tg on" type="button" role="switch" aria-checked="true" aria-label="Passerelles"><i></i></button></div>
+        <div class="row"><div class="lbl"><span>Détecter les sites bloqués automatiquement</span><span class="hint">Si un site https ne répond pas alors que le réseau fonctionne, Lyra essaie une passerelle et l'ajoute si elle réussit</span></div><button class="tg on" type="button" role="switch" aria-checked="true" aria-label="Détection automatique"><i></i></button></div>
+        <div class="row"><div class="lbl"><span>État</span><span class="hint">5 passerelles prêtes · liste du 19/10 à 14:30</span></div><span class="tag" style="background: #DDF5EC; color: #146A52">Prêtes</span><button class="btn" type="button">Tester maintenant</button></div>
+      </div>
+
+      <h2 style="margin: 6px 0 -6px">Sites contournés — 4</h2>
+      <div class="card">
+        <div class="row"><span class="relais" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3-3"/><path d="M20 16H7l3 3"/></svg></span><div class="lbl"><strong style="font-size: 13.5px">reddit.com</strong><span class="hint">et ses sous-domaines · ajouté le 19/10</span></div><span class="tag" style="background: #E6E6F7; color: #2F2D8A">Détecté</span><button class="btn" type="button">Retirer</button></div>
+        <div class="row"><span class="relais" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3-3"/><path d="M20 16H7l3 3"/></svg></span><div class="lbl"><strong style="font-size: 13.5px">discord.com</strong><span class="hint">et ses sous-domaines · ajouté le 18/10</span></div><span class="tag" style="background: #F3F3F9; color: #6B6B80">Ajouté</span><button class="btn" type="button">Retirer</button></div>
+        <div class="row"><span class="relais" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3-3"/><path d="M20 16H7l3 3"/></svg></span><div class="lbl"><strong style="font-size: 13.5px">web.telegram.org</strong><span class="hint">ajouté le 18/10</span></div><span class="tag" style="background: #E6E6F7; color: #2F2D8A">Détecté</span><button class="btn" type="button">Retirer</button></div>
+        <div class="row"><label for="ajout-site" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Ajouter un site</label><input id="ajout-site" class="inp" type="text" placeholder="Ajouter un site (ex. exemple.com)" style="flex: 1"><button class="btn pri" type="button">Ajouter</button></div>
+      </div>
+
+      <h2 style="margin: 6px 0 -6px">Passerelle personnelle</h2>
+      <div class="card">
+        <div class="row" style="flex-wrap: wrap"><div class="lbl" style="flex-basis: 100%"><span>Votre propre passerelle</span><span class="hint">Si elle est renseignée, elle remplace les passerelles publiques</span></div>
+          <div class="seg"><button type="button" aria-pressed="true">SOCKS5</button><button type="button" aria-pressed="false">HTTP</button></div>
+          <label for="hote-p" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Hôte</label><input id="hote-p" class="inp" type="text" placeholder="Hôte" style="flex: 1">
+          <label for="port-p" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Port</label><input id="port-p" class="inp" type="text" placeholder="Port" style="width: 90px">
+          <button class="btn" type="button">Tester</button>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 10px; background: #FBEFD8; color: #6B4A10; font-size: 12.5px; line-height: 1.5">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex: none; margin-top: 1px"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9L2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+        <span>Les passerelles publiques sont gérées par des inconnus. Lyra n'y fait passer que des sites chiffrés (https), mais le nom des sites visités leur est visible. Sur un réseau d'entreprise, contourner le filtrage peut être contraire au règlement : à vous de juger.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pilule -->
+  <section aria-label="Pilule via une passerelle" style="grid-column: span 5; display: flex; flex-direction: column; gap: 12px">
+    <h2>Capsule — site via une passerelle</h2>
+    <div style="background: #fff; border-radius: 14px; box-shadow: 0 20px 60px rgba(20,20,46,.12); height: 46px; display: flex; align-items: center; justify-content: center; padding: 0 12px">
+      <span class="pill" title="Via une passerelle">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#5452C8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Via une passerelle"><path d="M4 8h13l-3-3"/><path d="M20 16H7l3 3"/></svg>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#1E7F6C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+        <span>reddit.com</span><span style="color: #8A8AA6; font-weight: 400">/r/astronomy</span>
+      </span>
+    </div>
+    <p class="hint" style="margin: 0">Icône relais `#5452C8` à gauche du cadenas, seulement quand le site courant passe par une passerelle ; info-bulle « Via une passerelle ».</p>
+  </section>
+
+  <!-- Menu ⋯ -->
+  <section aria-label="Menu de la page avec passerelle" style="grid-column: span 5; display: flex; flex-direction: column; gap: 12px">
+    <h2>Menu ⋯ — bascule par site</h2>
+    <nav style="background: #fff; border-radius: 14px; box-shadow: 0 20px 60px rgba(20,20,46,.12); padding: 8px; display: flex; flex-direction: column">
+      <div class="mi">Rechercher dans la page<span class="h">⌘ F</span></div>
+      <div class="mi">Imprimer…<span class="h">⌘ P</span></div>
+      <div class="sep"></div>
+      <div class="mi">Règles pour reddit.com</div>
+      <div class="mi on"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#5452C8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13l-3-3"/><path d="M20 16H7l3 3"/></svg>Ne plus passer par une passerelle</div>
+      <div class="sep"></div>
+      <div class="mi">Réglages<span class="h">⌘ ,</span></div>
+    </nav>
+  </section>
+
+  <!-- Page d'erreur -->
+  <section aria-label="Page d'erreur avec passerelle" style="grid-column: span 5; display: flex; flex-direction: column; gap: 12px">
+    <h2>lyra://erreur — site bloqué</h2>
+    <div style="background: #F7F7FB; border-radius: 14px; box-shadow: 0 20px 60px rgba(20,20,46,.12); padding: 28px; display: flex; justify-content: center">
+      <div style="background: #fff; border: 1px solid #E6E6EE; border-radius: 14px; padding: 24px 26px; max-width: 420px; display: flex; flex-direction: column; gap: 10px">
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#8E2E22" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>
+        <strong style="font-size: 18px">Connexion impossible</strong>
+        <span class="hint">reddit.com ne répond pas sur ce réseau. Il est peut-être bloqué.</span>
+        <div style="display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap">
+          <button class="btn pri" type="button"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13l-3-3"/><path d="M20 16H7l3 3"/></svg>Passer par une passerelle</button>
+          <button class="btn" type="button">Réessayer</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
