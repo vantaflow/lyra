@@ -30,4 +30,11 @@ describe('réglages', () => {
     expect(recus).toEqual(['sombre'])
     expect(r.getSettings().theme).toBe('sombre')
   })
+
+  it('setSettings ignore un patch invalide', () => {
+    const r = creer()
+    const avant = r.getSettings()
+    const s = r.setSettings({ theme: 42, version: 2, x: 1 } as never)
+    expect(s).toEqual(avant)
+  })
 })

@@ -1,6 +1,7 @@
 import type { Settings } from '../../shared/types'
 import { reglagesParDefaut } from './defaults'
 import { JsonStore } from './store'
+import { validerPatch, validerSettings } from './validate'
 
 export interface Reglages {
   getSettings(): Settings
@@ -10,10 +11,11 @@ export interface Reglages {
 }
 
 export function creerReglages(chemin: string, dossierTelechargements: string): Reglages {
-  const store = new JsonStore<Settings>(chemin, reglagesParDefaut(dossierTelechargements))
+  const defauts = reglagesParDefaut(dossierTelechargements)
+  const store = new JsonStore<Settings>(chemin, defauts, (brut) => validerSettings(brut, defauts))
   return {
     getSettings: () => store.get(),
-    setSettings: (patch) => store.set(patch),
+    setSettings: (patch) => store.set(validerPatch(patch) as Partial<Settings>),
     onChanged: (cb) => store.onChange(cb)
   }
 }

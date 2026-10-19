@@ -1,15 +1,13 @@
 import { ipcMain, type IpcMainInvokeEvent, type WebContents } from 'electron'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { expediteurAutorise, type OriginesUI } from './ipc-origines'
 import type { CanalEvenement, CanalRequete, Evenements, Requetes } from '../shared/ipc'
 
-/** Origine de confiance : pages lyra:// ou vue UI (dev : serveur Vite, prod : out/renderer/). */
-export function expediteurAutorise(url: string): boolean {
-  if (url.startsWith('lyra://')) return true
-  const dev = process.env.ELECTRON_RENDERER_URL
-  if (dev) return url === dev || url.startsWith(`${dev}/`)
-  return url.startsWith(pathToFileURL(join(__dirname, '../renderer/')).href)
-}
+const origines = (): OriginesUI => ({
+  dev: process.env.ELECTRON_RENDERER_URL,
+  prod: pathToFileURL(join(__dirname, '../renderer/')).href
+})
 
 export function handle<K extends CanalRequete>(
   canal: K,
@@ -17,7 +15,7 @@ export function handle<K extends CanalRequete>(
 ): void {
   ipcMain.handle(canal, (event, data) => {
     const url = event.senderFrame?.url ?? ''
-    if (!expediteurAutorise(url)) throw new Error(`IPC refusé pour ${canal} depuis ${url}`)
+    if (!expediteurAutorise(url, origines())) throw new Error(`IPC refusé pour ${canal} depuis ${url}`)
     return fn(data as Requetes[K][0], event)
   })
 }

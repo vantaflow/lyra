@@ -5,11 +5,13 @@ function estObjet(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
 }
 
-function fusion<T>(base: T, patch: unknown): T {
+const CLES_INTERDITES = new Set(['__proto__', 'constructor', 'prototype'])
+
+export function fusion<T>(base: T, patch: unknown): T {
   if (!estObjet(base) || !estObjet(patch)) return (patch === undefined ? base : patch) as T
   const sortie: Record<string, unknown> = { ...base }
   for (const [k, v] of Object.entries(patch)) {
-    if (v !== undefined) sortie[k] = fusion(base[k], v)
+    if (v !== undefined && !CLES_INTERDITES.has(k)) sortie[k] = fusion(base[k], v)
   }
   return sortie as T
 }
