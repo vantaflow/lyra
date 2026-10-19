@@ -13,6 +13,11 @@ test.beforeAll(async () => {
   serveur = createServer((q, r) => {
     const chemin = q.url ?? '/'
     requetes.push({ chemin, cookie: q.headers.cookie ?? '' })
+    if (chemin.startsWith('/dl-')) {
+      r.writeHead(200, { 'content-type': 'application/octet-stream', 'content-disposition': `attachment; filename="${chemin.slice(1)}.txt"` })
+      r.end('contenu')
+      return
+    }
     r.writeHead(200, { 'content-type': 'text/html; charset=utf-8', ...(chemin === '/pose' ? { 'set-cookie': 'secret=1; Path=/' } : {}) })
     r.end(`<!doctype html><title>Web ${chemin}</title><p>${chemin}</p>`)
   })
@@ -50,6 +55,8 @@ test('⌘ ⇧ N : entrée de menu active ; thème Aurore sur la fenêtre privée
     const etoile = privee.locator('.capsule .cb[aria-label="Ajouter aux favoris"]')
     await expect(etoile).toBeDisabled()
     await expect(etoile).toHaveAttribute('title', 'Favoris indisponibles en fenêtre privée')
+    // La recherche dans la page reste utilisable en privé.
+    await expect(privee.locator('.capsule .cb[aria-label="Rechercher dans la page"]')).toBeEnabled()
     expect(await privee.evaluate((u) => window.lyra.invoke('bookmarks:toggle', { url: u, title: 'Fav' }), `${BASE}/fav`)).toBe(false)
     expect(await fenetre.evaluate((u) => window.lyra.invoke('bookmarks:exists', { url: u }), `${BASE}/fav`)).toBe(false)
   } finally {
@@ -202,6 +209,28 @@ test('Boucliers : la bascule par site en fenêtre privée n’écrit rien dans l
     await expect.poll(() => fenetre.evaluate(() => window.lyra.invoke('shields:get')).then((e) => e.origine)).toBe(BASE)
     await fenetre.evaluate((o) => window.lyra.invoke('shields:toggleSite', { origine: o, actif: false }), BASE)
     expect((await fenetre.evaluate(() => window.lyra.invoke('settings:get'))).sites[BASE]).toMatchObject({ boucliers: false })
+  } finally {
+    await app.close()
+  }
+})
+
+test('téléchargements : aucune trace (URL) en privé dans la liste ni dans telechargements.json', async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const userData = await app.evaluate(({ app: a }) => a.getPath('userData'))
+    const dossier = join(userData, 'dl')
+    await fenetre.evaluate((d) => window.lyra.invoke('settings:set', { telechargements: { dossier: d, demander: false } }), dossier)
+    const privee = await ouvrirPrivee(app)
+    await privee.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), `${BASE}/dl-prive`)
+    await expect.poll(() => existsSync(join(dossier, 'dl-prive.txt'))).toBe(true)
+    // Témoin : un téléchargement normal, lui, est listé et écrit.
+    await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), `${BASE}/dl-normal`)
+    await expect.poll(async () => (await fenetre.evaluate(() => window.lyra.invoke('downloads:list'))).filter((x) => x.etat === 'termine').length).toBe(1)
+    const urls = (await fenetre.evaluate(() => window.lyra.invoke('downloads:list'))).map((x) => x.url)
+    expect(urls).toEqual([`${BASE}/dl-normal`])
+    const fichier = join(userData, 'telechargements.json')
+    await expect.poll(() => existsSync(fichier) && readFileSync(fichier, 'utf8').includes('dl-normal')).toBe(true)
+    expect(readFileSync(fichier, 'utf8')).not.toContain('dl-prive')
   } finally {
     await app.close()
   }

@@ -48,8 +48,11 @@ let historique: History | undefined
 let sessionStore: SessionStore | undefined
 let passerelles: Passerelles | undefined
 const privees = new Set<number>()
-/** Équipe une session privée (UA, permissions, téléchargements, Boucliers, passerelles) ; défini au démarrage. */
-let equiperSessionPrivee: ((ses: Session) => Promise<void>) | undefined
+/** Équipe une session privée (UA, permissions, téléchargements, Boucliers, passerelles) ; fourni au démarrage : une fenêtre privée ouverte avant attend, jamais de repli sur la session persistante. */
+let fournirEquipementPrive: (equiper: (ses: Session) => Promise<void>) => void = () => undefined
+const equipementPret = new Promise<(ses: Session) => Promise<void>>((ok) => {
+  fournirEquipementPrive = ok
+})
 /** Sessions des fenêtres privées ouvertes : elles suivent les passerelles comme les sessions normales. */
 const sessionsPrivees: Session[] = []
 /** Partition d'une fenêtre privée : en mémoire (sans `persist:`), propre à la fenêtre. */
@@ -161,8 +164,9 @@ function ongletsDe(wc: WebContents): TabManager {
 function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSession): void {
   const fenetre = manager.creerFenetre(opts)
   // Fenêtre privée : session mémoire à elle (cookies, cache, stockage jetés à la fermeture).
-  const sesPrivee = opts.privee && equiperSessionPrivee ? session.fromPartition(partitionPrivee(fenetre.id)) : undefined
-  const equipement = sesPrivee ? equiperSessionPrivee!(sesPrivee) : Promise.resolve()
+  // Toujours créée, jamais de repli sur `persist:lyra` : la première navigation attend l'équipement (démarrage compris).
+  const sesPrivee = opts.privee ? session.fromPartition(partitionPrivee(fenetre.id)) : undefined
+  const equipement = sesPrivee ? equipementPret.then((equiper) => equiper(sesPrivee)) : Promise.resolve()
   // Une fenêtre privée n'alimente jamais l'historique.
   const h = historique
   const tabs = new TabManager(
@@ -605,15 +609,15 @@ void app.whenReady().then(async () => {
     // http/ws vers un site contourné : annulé avant tout envoi, quel que soit l'état (asynchrone) du PAC.
     garde: (d) => /^(http|ws):/i.test(d.url) && pass.refusHttp(d.url) !== null
   })
-  equiperSessionPrivee = async (ses) => {
+  fournirEquipementPrive(async (ses) => {
     ses.setUserAgent(ua)
     installerProtocoleLyra(ses)
     permissionsPrivees.attacher(ses)
-    telechargements.attacher(ses)
+    telechargements.attacher(ses, { privee: true })
     boucliers.attacher(ses)
     sessionsPrivees.push(ses)
     await pass.attacherSession(ses)
-  }
+  })
   // Laisse les écritures de l'historique se terminer avant de quitter (une seule fois).
   let ecrituresAttendues = false
   app.on('before-quit', (e) => {
