@@ -14,6 +14,7 @@ import { demarrerBoucliers } from './shields/installer'
 import { History } from './history/History'
 import { Bookmarks } from './bookmarks/Bookmarks'
 import { Downloads } from './downloads/Downloads'
+import { installerReglagesIpc } from './settings/ipc'
 import { SessionStore, type FenetreSession } from './session/SessionStore'
 
 definirFournisseurLangue(() => app.getLocale())
@@ -136,6 +137,7 @@ void app.whenReady().then(async () => {
   })
   handle('settings:get', () => reglages.getSettings())
   handle('settings:set', (patch) => reglages.setSettings(patch))
+  installerReglagesIpc(reglages)
   if (process.env.LYRA_TEST === '1') {
     handle('test:navigate', async (url) => {
       const m = ongletsCourants()

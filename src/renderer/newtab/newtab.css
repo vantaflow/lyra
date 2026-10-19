@@ -1,47 +1,324 @@
+/* Fidèle à docs/design/project/NouvelOnglet.dc.html (zone de page) */
 html,
-body {
+body,
+#app {
   background: #0f0f26;
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+.ciel-decor {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 .nouvel-onglet {
+  position: relative;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 28px;
-  padding: 24px;
+  gap: 36px;
+  padding: 40px 32px 72px;
   box-sizing: border-box;
+  color: #ececfa;
+  font-size: 14px;
+  line-height: 1.45;
 }
-.nouvel-onglet h1 {
+.salut {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+.salut p {
+  margin: 0;
+}
+.salut .titre {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  font-size: 48px;
+  line-height: 1.05;
+  color: #f6f6ff;
+}
+.salut .sous {
+  color: #9e9ec8;
+  font-size: 15px;
+}
+.recherche {
+  width: 100%;
+  max-width: 680px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 58px;
+  padding: 0 10px 0 18px;
+  box-sizing: border-box;
+  background: #1a1a3c;
+  border: 1px solid #30305f;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  position: relative;
+}
+.recherche input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: #f6f6ff;
+  font: 16px 'Manrope', sans-serif;
+}
+.moteur-zone {
+  position: relative;
+}
+.moteur-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: #2a2a55;
+  color: #c9c9ea;
+  font: 500 12.5px 'Manrope', sans-serif;
+  cursor: pointer;
+}
+.menu-moteurs {
+  position: absolute;
+  top: 40px;
+  right: 0;
+  z-index: 5;
+  min-width: 170px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  background: #1a1a3c;
+  border: 1px solid #30305f;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+.menu-moteurs button {
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #c9c9ea;
+  font: 500 13px 'Manrope', sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+.menu-moteurs button:hover {
+  background: #23234a;
+  color: #fff;
+}
+.menu-moteurs button.on {
+  background: #2a2a55;
+  color: #fff;
+}
+.bloc {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.bloc-sites {
+  gap: 8px;
+}
+.bloc h2 {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #7f7fb0;
+  font-weight: 600;
+}
+.chips {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid #2e2e5c;
+  border-radius: 17px;
+  background: #16163a;
+  color: #d9d9f0;
+  font: 500 13px 'Manrope', sans-serif;
+  cursor: pointer;
+}
+.chip:hover {
+  background: #20204a;
+  color: #fff;
+}
+.chip .pt {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.chip .nb {
+  color: #7f7fb0;
+}
+.chip.inerte {
+  color: #8e8ebe;
+}
+.sites {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 820px;
+}
+.site {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 92px;
+  border: 0;
+  background: transparent;
+  color: #c9c9ea;
+  font: 12.5px 'Manrope', sans-serif;
+  cursor: pointer;
+  padding: 8px 4px;
+  border-radius: 12px;
+}
+.site:hover {
+  background: #1b1b3a;
+  color: #fff;
+}
+.site i {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 15px;
+  color: #fff;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.04);
+}
+.pied {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #7f7fb0;
+  font-size: 12.5px;
+  flex-wrap: wrap;
+}
+.pied .bouclier {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #5fd3b3;
+}
+.pied .souple {
+  flex: 1;
+}
+.pied a {
+  color: #9e9ec8;
+  text-decoration: none;
+}
+.pied a:hover {
+  color: #fff;
+}
+
+/* Premier lancement : même langage que le champ (cartes #1A1A3C, rayon 16) */
+.premier {
+  width: 100%;
+  max-width: 680px;
+  box-sizing: border-box;
+  padding: 24px;
+  background: #1a1a3c;
+  border: 1px solid #30305f;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.premier h2 {
   margin: 0;
   font-family: 'Instrument Serif', serif;
   font-style: italic;
   font-weight: 400;
-  font-size: 48px;
+  font-size: 28px;
   color: #f6f6ff;
 }
-.recherche {
-  width: min(560px, 100%);
-}
-.recherche input {
-  width: 100%;
-  height: 48px;
-  padding: 0 18px;
-  box-sizing: border-box;
-  border: 1px solid #3b3b70;
-  border-radius: 14px;
-  background: #1a1a3a;
-  color: #f6f6ff;
-  font: 16px 'Manrope', sans-serif;
-  outline: none;
-}
-.recherche input:focus {
-  border-color: #5452c8;
-}
-.pied {
+.premier p {
   margin: 0;
-  font-size: 13px;
-  color: #a8a8d8;
+  color: #9e9ec8;
+  font-size: 13.5px;
+}
+.moteurs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+.moteur {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 14px 0 8px;
+  border: 1px solid #2e2e5c;
+  border-radius: 12px;
+  background: #16163a;
+  color: #d9d9f0;
+  font: 500 13px 'Manrope', sans-serif;
+  cursor: pointer;
+}
+.moteur:hover {
+  background: #20204a;
+}
+.moteur.on {
+  border-color: #7a7ad8;
+  background: #2a2a55;
+  color: #fff;
+}
+.moteur i {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 12px;
+  color: #fff;
+}
+.go {
+  height: 40px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 12px;
+  background: #5452c8;
+  color: #fff;
+  font: 600 14px 'Manrope', sans-serif;
+  cursor: pointer;
+}
+.go:hover {
+  background: #6462d6;
 }
 .sr-only {
   position: absolute;

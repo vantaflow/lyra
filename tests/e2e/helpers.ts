@@ -7,7 +7,8 @@ const racine = resolve(__dirname, '../..')
 
 /** Lance Lyra avec un userData temporaire et renvoie la première fenêtre. */
 export async function lancerLyra(
-  extraEnv: Record<string, string> = {}
+  extraEnv: Record<string, string> = {},
+  options: { premierLancement?: boolean } = {}
 ): Promise<{ app: ElectronApplication; fenetre: Page }> {
   const env: Record<string, string> = {}
   for (const [k, v] of Object.entries(process.env)) {
@@ -25,5 +26,7 @@ export async function lancerLyra(
   for (let i = 0; i < 100 && !app.windows().some(estUI); i++) await new Promise((r) => setTimeout(r, 100))
   const fenetre = app.windows().find(estUI)!
   await fenetre.waitForLoadState('domcontentloaded')
+  // Hors test dédié, le choix du moteur (premier lancement) est déjà fait : il n'interfère pas.
+  if (!options.premierLancement) await fenetre.evaluate(() => window.lyra.invoke('settings:set', { moteurChoisi: true }))
   return { app, fenetre }
 }

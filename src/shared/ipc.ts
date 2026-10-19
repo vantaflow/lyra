@@ -38,6 +38,13 @@ export interface FavoriIpc {
   date: number
 }
 
+/** Statistiques des Boucliers : éléments bloqués cette semaine, date et origine des listes. */
+export interface StatsBoucliers {
+  semaine: number
+  date: string
+  source: string
+}
+
 export type RouteOverlay = 'palette' | 'shields' | 'downloads'
 
 export interface SkyChange {
@@ -69,7 +76,15 @@ export type Requetes = {
   'sky:get': [void, SkyChange]
   'shields:get': [void, EtatBoucliers]
   'shields:toggleSite': [{ origine: string; actif: boolean }, void]
-  'shields:stats': [void, { semaine: number; date: string; source: string }]
+  'shields:stats': [void, StatsBoucliers]
+  /** Relit les listes de blocage maintenant ; renvoie les statistiques à jour. */
+  'shields:update': [void, StatsBoucliers]
+  /** Boîte de dialogue : dossier de téléchargement choisi, ou null si annulé. */
+  'settings:choisirDossier': [void, string | null]
+  /** Boîte de dialogue : enregistre les réglages en JSON ; vrai si le fichier est écrit. */
+  'settings:export': [void, boolean]
+  /** Boîte de dialogue : lit un JSON de réglages, le valide et l'applique ; null si annulé ou illisible. */
+  'settings:import': [void, Settings | null]
   /** Chrome → main : ouvre le panneau des Boucliers dans l'overlay. */
   'shields:open': [void, void]
   /** Overlay → main : referme l'overlay (Échap, clic à côté). */

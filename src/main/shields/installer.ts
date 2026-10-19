@@ -5,7 +5,7 @@
 import { app, ipcMain, type IpcMainEvent, type Session, type WebContents } from 'electron'
 import { join } from 'node:path'
 import type { Settings } from '../../shared/types'
-import type { EtatBoucliers } from '../../shared/ipc'
+import type { EtatBoucliers, StatsBoucliers } from '../../shared/ipc'
 import { handle } from '../ipc'
 import type { Reglages } from '../settings/settings'
 import type { TabManager } from '../tabs/TabManager'
@@ -118,7 +118,8 @@ export async function demarrerBoucliers(deps: DepsBoucliers): Promise<Shields> {
 
   // --- IPC de l'interface (expéditeur vérifié par handle). ---
   handle('shields:get', (_d, e) => etat(deps.ongletsDe(e.sender)))
-  handle('shields:stats', () => ({ semaine: shields.semaine(), date: actuel.date, source: actuel.source }))
+  const stats = (): StatsBoucliers => ({ semaine: shields.semaine(), date: actuel.date, source: actuel.source })
+  handle('shields:stats', stats)
   handle('shields:open', (_d, e) => deps.ongletsDe(e.sender).ouvrirOverlay('shields'))
   handle('overlay:close', (_d, e) => deps.ongletsDe(e.sender).fermerOverlay())
   handle('shields:toggleSite', ({ origine, actif }, e) => {
@@ -139,6 +140,10 @@ export async function demarrerBoucliers(deps: DepsBoucliers): Promise<Shields> {
       shields.remplacerMoteur(nouveau.moteur)
     }
   }
+  handle('shields:update', async () => {
+    await maj()
+    return stats()
+  })
   if (process.env.LYRA_TEST !== '1') {
     setTimeout(() => void maj(), DELAI_PREMIERE_MAJ).unref()
     setInterval(() => void maj(), majHeures * 3600_000).unref()

@@ -5,6 +5,8 @@ import './settings.css'
 import { Historique } from './Historique'
 import { Favoris } from './Favoris'
 import { Telechargements } from './Telechargements'
+import { General } from './General'
+import { ActionsReglages } from './ActionsReglages'
 
 interface Section {
   id: string
@@ -62,7 +64,11 @@ function App() {
         ))}
       </nav>
       <main class="contenu">
-        <h1>{titre}</h1>
+        <div class="entete">
+          <h1>{titre}</h1>
+          {route === 'general' && <ActionsReglages />}
+        </div>
+        {route === 'general' && <General />}
         {route === 'historique' && <Historique />}
         {route === 'favoris' && <Favoris />}
         {route === 'telechargements' && <Telechargements />}
