@@ -13,6 +13,7 @@ import { installerPalette } from './palette/actions'
 import { demarrerBoucliers } from './shields/installer'
 import { History } from './history/History'
 import { Bookmarks } from './bookmarks/Bookmarks'
+import { Downloads } from './downloads/Downloads'
 
 definirFournisseurLangue(() => app.getLocale())
 app.setPath('userData', paths.userData())
@@ -80,6 +81,27 @@ void app.whenReady().then(async () => {
   handle('bookmarks:exists', ({ url }) => favoris.existe(url))
   handle('bookmarks:list', () => favoris.lister())
   handle('bookmarks:remove', ({ url }) => favoris.retirer(url))
+  const telechargements = new Downloads({
+    fichier: join(paths.userData(), 'telechargements.json'),
+    reglages: () => reglages.getSettings().telechargements,
+    surChangement: () => {
+      // Chrome, overlay et pages internes (lyra://) ; jamais les pages web.
+      for (const wc of webContents.getAllWebContents()) {
+        const url = wc.getURL()
+        if (url.startsWith('lyra://') || url.includes('ui.html')) envoyer(wc, 'downloads:changed', undefined)
+      }
+    }
+  })
+  telechargements.attacher(session.defaultSession)
+  telechargements.attacher(session.fromPartition('persist:lyra'))
+  handle('downloads:list', () => telechargements.liste())
+  handle('downloads:pause', ({ id }) => telechargements.pause(id))
+  handle('downloads:resume', ({ id }) => telechargements.reprendre(id))
+  handle('downloads:cancel', ({ id }) => telechargements.annuler(id))
+  handle('downloads:open', ({ id }) => telechargements.ouvrir(id))
+  handle('downloads:reveal', ({ id }) => telechargements.afficherDansDossier(id))
+  handle('downloads:clear', () => telechargements.effacerListe())
+  handle('downloads:panel', (_d, e) => ongletsDe(e.sender).ouvrirOverlay('downloads'))
   handle('layout:get', (_d, event) => {
     const f = manager.deWebContents(event.sender) ?? manager.premiere()
     if (!f) throw new Error('aucune fenêtre')

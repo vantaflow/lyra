@@ -160,3 +160,15 @@ body {
 .entree .suppr {
   height: 30px;
 }
+
+/* Téléchargements : mêmes éléments que le panneau (Panneaux.dc.html), sur la mise en page des réglages */
+.dl .dl-ext {
+  flex: 0 0 36px;
+}
+.dl .dl-etat,
+.dl .url {
+  margin-top: 2px;
+}
+.dl .url {
+  display: block;
+}

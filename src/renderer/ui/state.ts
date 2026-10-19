@@ -19,6 +19,13 @@ const rafraichirBoucliers = (): void => {
   void window.lyra.invoke('shields:get').then((b) => (boucliers.value = b))
 }
 
+/** Vrai quand un téléchargement est en cours (point d'activité du pied du ciel). */
+export const telechargementActif = signal(false)
+
+const rafraichirTelechargements = (): void => {
+  void window.lyra.invoke('downloads:list').then((l) => (telechargementActif.value = l.some((d) => d.etat === 'en-cours')))
+}
+
 /** L'adresse de l'étoile active est-elle en favori ? (étoile de la capsule) */
 export const favori = signal(false)
 
@@ -46,11 +53,13 @@ export async function initialiserEtat(): Promise<void> {
     rafraichirBoucliers()
   })
   window.lyra.on('shields:changed', (b) => (boucliers.value = b))
+  window.lyra.on('downloads:changed', rafraichirTelechargements)
   window.lyra.on('bookmarks:changed', () => rafraichirFavori(adresseFavori))
   const c = await window.lyra.invoke('sky:get')
   sky.value = c.sky
   etats.value = c.etats
   rafraichirBoucliers()
+  rafraichirTelechargements()
 }
 
 export function titreEtoile(star: Star, etat?: EtatEtoile): string {

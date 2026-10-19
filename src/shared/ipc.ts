@@ -1,4 +1,4 @@
-import type { HistoryEntry, Settings, SkyState, Suggestion } from './types'
+import type { DownloadInfo, HistoryEntry, Settings, SkyState, Suggestion } from './types'
 
 export interface RectIpc {
   x: number
@@ -36,7 +36,7 @@ export interface FavoriIpc {
   date: number
 }
 
-export type RouteOverlay = 'palette' | 'shields'
+export type RouteOverlay = 'palette' | 'shields' | 'downloads'
 
 export interface SkyChange {
   sky: SkyState
@@ -81,6 +81,15 @@ export type Requetes = {
   'bookmarks:exists': [{ url: string }, boolean]
   'bookmarks:list': [void, FavoriIpc[]]
   'bookmarks:remove': [{ url: string }, void]
+  'downloads:list': [void, DownloadInfo[]]
+  'downloads:pause': [{ id: string }, void]
+  'downloads:resume': [{ id: string }, void]
+  'downloads:cancel': [{ id: string }, void]
+  'downloads:open': [{ id: string }, void]
+  'downloads:reveal': [{ id: string }, void]
+  'downloads:clear': [void, void]
+  /** Chrome → main : ouvre le panneau des téléchargements dans l'overlay. */
+  'downloads:panel': [void, void]
   /** Test uniquement (LYRA_TEST=1) : charge une URL dans la vue de page. */
   'test:navigate': [string, void]
   /** Test uniquement (LYRA_TEST=1) : dernière URL demandée par la palette. */
@@ -99,6 +108,8 @@ export type Evenements = {
   'bookmarks:changed': void
   /** Main → chrome : le compteur ou l'état des Boucliers de l'étoile active a changé. */
   'shields:changed': EtatBoucliers
+  /** Main → chrome, overlay et pages internes : la liste des téléchargements a changé (à relire). */
+  'downloads:changed': void
 }
 
 export type CanalRequete = keyof Requetes

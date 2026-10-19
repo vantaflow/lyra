@@ -706,3 +706,110 @@ html.overlay #app {
 .pn-liens span {
   color: #d6d6e2;
 }
+
+/* ---- Point d'activité du bouton Téléchargements ---- */
+.sb.dl {
+  position: relative;
+}
+.sb.dl.actif::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #8f8df0;
+  box-shadow: 0 0 0 2px #14142e;
+}
+
+/* ---- Panneau des téléchargements (fidèle à docs/design/project/Panneaux.dc.html) ---- */
+.pn-dl {
+  position: absolute;
+  width: min(360px, calc(100vw - 24px));
+  box-sizing: border-box;
+  background: #fff;
+  color: var(--texte);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(20, 20, 46, 0.18);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+}
+.dl-ligne {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.dl-ext {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+.dl-corps {
+  flex: 1;
+  min-width: 0;
+}
+.dl-nom {
+  font-weight: 600;
+  font-size: 13px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.dl-barre {
+  height: 4px;
+  border-radius: 2px;
+  background: #eeeef4;
+  margin: 6px 0;
+}
+.dl-barre > div {
+  height: 100%;
+  border-radius: 2px;
+  background: #5452c8;
+}
+.dl-etat {
+  color: #6b6b80;
+  font-size: 12px;
+}
+.dl-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #d6d6e2;
+  border-radius: 9px;
+  background: #fff;
+  color: #1c1c2e;
+  font: 500 13px 'Manrope', sans-serif;
+  cursor: pointer;
+}
+.dl-pied {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 6px;
+  border-top: 1px solid #eeeef4;
+  font-size: 12.5px;
+}
+.dl-pied a {
+  color: #4a48c4;
+  text-decoration: none;
+}
+.dl-pied a.discret {
+  color: #6b6b80;
+}
+.dl-vide {
+  margin: 0;
+  padding: 8px 0;
+  font-size: 13px;
+  color: #6b6b80;
+}

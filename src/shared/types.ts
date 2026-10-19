@@ -80,3 +80,22 @@ export interface Suggestion {
   /** Lettre ou glyphe de l'icône. */
   icone?: string
 }
+
+export type EtatTelechargement = 'en-cours' | 'pause' | 'termine' | 'annule' | 'erreur'
+
+/** Un téléchargement, tel que l'exposent le panneau et la page lyra://downloads. */
+export interface DownloadInfo {
+  id: string
+  nom: string
+  /** Chemin complet du fichier ('' tant qu'il n'est pas connu). */
+  chemin: string
+  url: string
+  /** Taille totale en octets (0 : inconnue). */
+  total: number
+  recu: number
+  etat: EtatTelechargement
+  /** Début du téléchargement (ms). */
+  date: number
+  /** Octets par seconde, tant que le téléchargement est en cours. */
+  vitesse?: number
+}

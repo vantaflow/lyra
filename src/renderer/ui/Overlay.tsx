@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks'
 import type { RouteOverlay } from '../../shared/ipc'
 import { Palette } from './Palette'
 import { ShieldsPanel } from './ShieldsPanel'
+import { DownloadsPanel } from './Downloads'
 
 /**
  * Routeur de la vue overlay. La palette reste montée (masquée) : elle écoute palette:open,
@@ -24,6 +25,7 @@ export function Overlay() {
         <Palette />
       </div>
       {route === 'shields' && <ShieldsPanel key={ouverture} />}
+      {route === 'downloads' && <DownloadsPanel key={ouverture} />}
     </>
   )
 }

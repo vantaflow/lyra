@@ -3,7 +3,7 @@ import type { EtatBoucliers } from '../../shared/ipc'
 import type { Settings } from '../../shared/types'
 
 /** Position du panneau : collé au pied du ciel, du côté du ciel. */
-function placement(ciel: Settings['ciel'] | undefined): Record<string, string> {
+export function placement(ciel: Settings['ciel'] | undefined): Record<string, string> {
   switch (ciel?.position) {
     case 'droite':
       return { right: '12px', bottom: '56px' }

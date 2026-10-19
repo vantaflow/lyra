@@ -4,6 +4,7 @@ import '../ui/theme.css'
 import './settings.css'
 import { Historique } from './Historique'
 import { Favoris } from './Favoris'
+import { Telechargements } from './Telechargements'
 
 interface Section {
   id: string
@@ -35,7 +36,7 @@ const SECTIONS: Section[] = [
 ]
 
 /** Hôtes lyra:// qui ouvrent directement une section (lyra://history → #/historique). */
-const SECTION_DE_L_HOTE: Record<string, string> = { history: 'historique', bookmarks: 'favoris' }
+const SECTION_DE_L_HOTE: Record<string, string> = { history: 'historique', bookmarks: 'favoris', downloads: 'telechargements' }
 
 /** Route courante : le hash (`#/historique`) prime, sinon l'hôte lyra://, sinon « general ». */
 function routeDepuisHash(hash: string, hote: string = location.hostname): string {
@@ -64,6 +65,7 @@ function App() {
         <h1>{titre}</h1>
         {route === 'historique' && <Historique />}
         {route === 'favoris' && <Favoris />}
+        {route === 'telechargements' && <Telechargements />}
       </main>
     </div>
   )

@@ -1,7 +1,7 @@
 import type { Star as StarT } from '../../shared/types'
 import { Branche } from './Branche'
 import { Epingle } from './Epingle'
-import { boucliers, sky } from './state'
+import { boucliers, sky, telechargementActif } from './state'
 
 const mac = window.lyra.plateforme === 'darwin'
 const ouvrirReglages = (): void => void window.lyra.invoke('tabs:open', { url: 'lyra://settings' })
@@ -106,7 +106,13 @@ export function Sky() {
             <path d="M10 4a2 2 0 0 1 4 0v1h3a1 1 0 0 1 1 1v3h1a2 2 0 0 1 0 4h-1v3a1 1 0 0 1-1 1h-3v-1a2 2 0 0 0-4 0v1H7a1 1 0 0 1-1-1v-3H5a2 2 0 0 1 0-4h1V6a1 1 0 0 1 1-1h3z" />
           </svg>
         </button>
-        <button class="sb" type="button" aria-label="Téléchargements" onClick={() => void window.lyra.invoke('tabs:open', { url: 'lyra://downloads' })}>
+        <button
+          class={`sb dl${telechargementActif.value ? ' actif' : ''}`}
+          type="button"
+          aria-label="Téléchargements"
+          title={telechargementActif.value ? 'Téléchargements (en cours)' : 'Téléchargements'}
+          onClick={() => void window.lyra.invoke('downloads:panel')}
+        >
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 4v11" />
             <path d="M7 11l5 5 5-5" />
