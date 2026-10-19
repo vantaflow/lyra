@@ -19,7 +19,8 @@ export interface Layout {
   overlay: Rect
 }
 
-const BANDE = 56
+/** Épaisseur de la bande du ciel (en haut ou en bas). */
+export const BANDE = 56
 /** Épaisseur du rail du ciel masqué (poignée dessinée par la vue chrome). */
 export const RAIL = 14
 /** Hauteur de la capsule de navigation (dessinée par la vue chrome au-dessus de la page). */
@@ -31,6 +32,15 @@ export const LARGEUR_MAX = 420
 
 /** Largeur du ciel ramenée dans les bornes. */
 export const bornerLargeur = (l: number): number => Math.min(LARGEUR_MAX, Math.max(LARGEUR_MIN, Math.round(l)))
+
+/** Fenêtre minimale : la colonne la plus large du ciel laisse au moins 480 px à la page ; 400 px de haut. */
+export const FENETRE_MIN = { width: LARGEUR_MAX + 480, height: 400 }
+
+/** Position des boutons de fenêtre de macOS (feux tricolores) : centrés sur la bande quand le ciel est en haut. */
+export function positionFeux(ciel: Pick<CielLayout, 'position' | 'masque'>): { x: number; y: number } {
+  const y = ciel.position === 'haut' && !ciel.masque ? Math.round((BANDE - 12) / 2) : 14
+  return { x: 14, y }
+}
 
 /**
  * Le chrome couvre toute la fenêtre quelle que soit la position : il dessine le ciel (colonne ou bande, ou rail en

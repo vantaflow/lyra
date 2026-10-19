@@ -116,6 +116,8 @@ export type Requetes = {
       bounds: { chrome: RectIpc; page: RectIpc; overlay: RectIpc }
       /** Ciel masqué glissé par-dessus la page. */
       revele: boolean
+      /** Glisser de l'en-tête du ciel en cours (la page est masquée). */
+      glisse: boolean
       /** Ordre des vues, de la plus basse à la plus haute. */
       ordre: Array<'chrome' | 'page' | 'overlay'>
     }
@@ -124,6 +126,8 @@ export type Requetes = {
   'ciel:reveler': [{ actif: boolean }, boolean]
   /** Chrome → main : un glisser de l'en-tête du ciel commence ou finit (la page se retire le temps du glisser). */
   'ciel:glisse': [{ actif: boolean }, void]
+  /** Chrome → main : largeur du ciel en cours de réglage à la poignée (aperçu en direct, rien n'est écrit) ; null l'efface. */
+  'ciel:apercu': [{ largeur: number | null }, void]
   'tabs:open': [{ url: string; parentId?: string; actif?: boolean }, string]
   'tabs:close': [{ id: string }, void]
   'tabs:activate': [{ id: string }, void]

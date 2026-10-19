@@ -13,6 +13,9 @@ const enumeration = <T extends string>(...valeurs: T[]) => (v: unknown): T | und
 const booleen = (v: unknown): boolean | undefined => (typeof v === 'boolean' ? v : undefined)
 const entier = (min: number, max: number) => (v: unknown): number | undefined =>
   typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max ? v : undefined
+/** Entier strict (pixels) : une largeur de 250,5 est refusée. */
+const pixels = (min: number, max: number) => (v: unknown): number | undefined =>
+  typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max ? v : undefined
 const texte = (max: number, motif?: RegExp) => (v: unknown): string | undefined =>
   typeof v === 'string' && v.length > 0 && v.length <= max && (!motif || motif.test(v)) ? v : undefined
 
@@ -99,7 +102,7 @@ const SCHEMA: Schema = {
   moteurChoisi: booleen,
   ciel: {
     position: enumeration('gauche', 'droite', 'haut', 'bas'),
-    largeur: entier(200, 420),
+    largeur: pixels(200, 420),
     masque: booleen,
     revelerAuSurvol: booleen,
     deplacerParGlisser: booleen,

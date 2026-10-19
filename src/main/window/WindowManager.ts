@@ -1,7 +1,7 @@
 import { BaseWindow, WebContentsView, type WebContents } from 'electron'
 import { join } from 'node:path'
 import { PRELOAD_UI } from '../preloads'
-import { computeLayout, type Layout } from './layout'
+import { FENETRE_MIN, bornerLargeur, computeLayout, positionFeux, type Layout } from './layout'
 import type { Settings } from '../../shared/types'
 import type { RouteOverlay } from '../../shared/ipc'
 import { envoyer } from '../ipc'
@@ -27,6 +27,8 @@ export interface LyraWindow {
   reveler(b: boolean): boolean
   /** Glisser de l'en-tête du ciel en cours : la page est masquée pour laisser voir le bord visé. */
   glisserCiel(b: boolean): void
+  /** Un glisser de l'en-tête du ciel est en cours (page masquée). */
+  estEnGlisse(): boolean
   /** Ordre des vues, de la plus basse à la plus haute (pour les tests). */
   ordreVues(): Array<'chrome' | 'page' | 'overlay'>
 }
@@ -46,19 +48,37 @@ function creerVueUI(): WebContentsView {
 export class WindowManager {
   private fenetres = new Map<number, LyraWindow>()
 
-  constructor(private lireCiel: () => Settings['ciel']) {}
+  /** Largeur en cours de réglage à la poignée (aperçu en direct, pas encore enregistrée). */
+  private apercu: number | null = null
+
+  constructor(private lireCielBrut: () => Settings['ciel']) {}
+
+  /** Réglage du ciel, avec l'aperçu de largeur en cours. */
+  private lireCiel(): Settings['ciel'] {
+    const ciel = this.lireCielBrut()
+    return this.apercu === null ? ciel : { ...ciel, largeur: this.apercu }
+  }
+
+  /** Aperçu en direct de la largeur du ciel (toutes les fenêtres) ; null l'efface. Rien n'est écrit. */
+  apercuLargeur(largeur: number | null): void {
+    this.apercu = largeur === null ? null : bornerLargeur(largeur)
+    this.relayoutAll()
+  }
 
   creerFenetre(opts: { privee?: boolean } = {}): LyraWindow {
     void opts.privee // la navigation privée est traitée par une tâche ultérieure
     const win = new BaseWindow({
       width: 1280,
       height: 800,
+      // Assez large pour la colonne la plus large du ciel plus une page, et pour que la bande reste lisible.
+      minWidth: FENETRE_MIN.width,
+      minHeight: FENETRE_MIN.height,
       title: 'Lyra',
       // Derrière le ciel révélé et la page : jamais de blanc quand la vue chrome change de taille.
       backgroundColor: '#15152E',
       ...optionsFenetreCachee(),
       ...(process.platform === 'darwin'
-        ? { titleBarStyle: 'hidden' as const, trafficLightPosition: { x: 14, y: 14 } }
+        ? { titleBarStyle: 'hidden' as const, trafficLightPosition: positionFeux(this.lireCiel()) }
         : {}),
       ...(process.platform === 'win32'
         ? { titleBarStyle: 'hidden' as const, titleBarOverlay: { color: '#00000000', symbolColor: '#888888', height: 32 } }
@@ -78,6 +98,8 @@ export class WindowManager {
     let pleinEcran = false
     let revele = false
     let glisse = false
+    /** Position des feux tricolores (macOS) appliquée la dernière fois. */
+    let feux = positionFeux(this.lireCiel())
     /** Ordre appliqué la dernière fois (révélé : le chrome passe au-dessus de la page). */
     let ordreRevele = false
 
@@ -106,6 +128,21 @@ export class WindowManager {
       overlay.setBounds(l.overlay)
       pageView?.setBounds(l.page)
       pageView?.setVisible(!glisse)
+      if (process.platform === 'darwin') {
+        // Centrés sur la bande quand le ciel est en haut, à leur place habituelle sinon.
+        const f = positionFeux(this.lireCiel())
+        if (f.x !== feux.x || f.y !== feux.y) {
+          feux = f
+          win.setWindowButtonPosition(f)
+        }
+      }
+    }
+    /** Un glisser (en-tête, poignée de largeur) est perdu, la vue chrome ayant planté ou rechargé : tout revient à la normale. */
+    const finGlisse = (): void => {
+      if (!glisse && this.apercu === null) return
+      glisse = false
+      this.apercu = null
+      this.relayoutAll()
     }
 
     const lw: LyraWindow = {
@@ -125,6 +162,7 @@ export class WindowManager {
         glisse = b
         relayout()
       },
+      estEnGlisse: () => glisse,
       ordreVues() {
         const ordre = win.contentView.children
         return ([['chrome', chrome], ['page', pageView], ['overlay', overlay]] as const)
@@ -160,6 +198,9 @@ export class WindowManager {
     }
 
     win.on('resize', relayout)
+    // Filet de sécurité : si la vue chrome plante ou se recharge pendant un glisser, la page ne reste pas masquée.
+    chrome.webContents.on('render-process-gone', finGlisse)
+    chrome.webContents.on('did-start-loading', finGlisse)
     win.on('closed', () => {
       this.fenetres.delete(lw.id)
       for (const v of [chrome, overlay, pageView]) {

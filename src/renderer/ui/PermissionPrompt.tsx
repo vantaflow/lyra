@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import type { DemandePermission } from '../../shared/ipc'
 import type { Settings, TypePermission } from '../../shared/types'
+import { marges } from './placements'
 
 const PHRASES: Record<TypePermission, string> = {
   camera: 'utiliser votre caméra',
@@ -25,14 +26,6 @@ export function nomDuSite(origine: string): string {
   } catch {
     return origine
   }
-}
-
-/** Marges laissées par le ciel : la carte se centre sous la pilule, dans la zone de la page. */
-function marges(ciel: Settings['ciel'] | undefined): { left: string; right: string; top: string } {
-  const epaisseur = ciel ? (ciel.masque ? 14 : ciel.largeur) : 0
-  const gauche = !ciel || ciel.position === 'gauche'
-  const haut = ciel?.position === 'haut' ? epaisseur : 0
-  return { left: gauche ? `${epaisseur}px` : '0', right: ciel?.position === 'droite' ? `${epaisseur}px` : '0', top: `${haut + 52}px` }
 }
 
 /**

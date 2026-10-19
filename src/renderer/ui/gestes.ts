@@ -1,11 +1,12 @@
-import type { Settings } from '../../shared/types'
 import { bornerLargeur } from '../../main/window/layout'
-import { SEUIL_GLISSER, positionDepuisPoint } from './deplacement'
-import { cielAppui, cielCible, cielDeplacer, cielLargeur, cielPosition, type PositionCiel } from './state'
+import { reglerCiel } from './cielCommun'
+import { SEUIL_GLISSER, bordVise } from './deplacement'
+import { cielAppui, cielCible, cielDeplacer, cielLargeur, cielLargeurApercu, cielPosition, type PositionCiel } from './state'
 
-const regler = (ciel: Record<string, unknown>): void => void window.lyra.invoke('settings:set', { ciel } as Partial<Settings>)
-
-/** Écoute le glisser d'un bouton enfoncé jusqu'au relâchement (ou Échap) ; la souris peut sortir de la fenêtre. */
+/**
+ * Écoute un glisser (bouton enfoncé) jusqu'au relâchement. Il est annulé par Échap, par la perte du focus de la
+ * fenêtre et par la perte de la capture du pointeur ; la souris peut sortir de la fenêtre.
+ */
 function suivre(e: PointerEvent, bouge: (e: PointerEvent) => void, fin: (e: PointerEvent | null) => void): void {
   const cible = e.currentTarget as HTMLElement
   try {
@@ -17,7 +18,9 @@ function suivre(e: PointerEvent, bouge: (e: PointerEvent) => void, fin: (e: Poin
     window.removeEventListener('pointermove', bouge)
     window.removeEventListener('pointerup', relache)
     window.removeEventListener('pointercancel', annule)
+    window.removeEventListener('blur', annule)
     window.removeEventListener('keydown', touche)
+    cible.removeEventListener('lostpointercapture', annule)
     try {
       cible.releasePointerCapture(e.pointerId)
     } catch {
@@ -38,12 +41,17 @@ function suivre(e: PointerEvent, bouge: (e: PointerEvent) => void, fin: (e: Poin
   window.addEventListener('pointermove', bouge)
   window.addEventListener('pointerup', relache)
   window.addEventListener('pointercancel', annule)
+  window.addEventListener('blur', annule)
   window.addEventListener('keydown', touche)
+  cible.addEventListener('lostpointercapture', annule)
 }
 
+const glisse = (actif: boolean): Promise<void> => window.lyra.invoke('ciel:glisse', { actif })
+
 /**
- * Appui sur l'en-tête du ciel : au-delà de quelques pixels c'est un glisser, le bord visé s'affiche ; relâché dans la
- * moitié d'écran d'un autre bord, le ciel s'y déplace (démasqué).
+ * Appui sur l'en-tête du ciel : au-delà de quelques pixels c'est un glisser ; tant que le point reste sur le ciel
+ * courant rien ne change. Sur un autre bord, le repère s'affiche (la page se retire) ; relâché là, le ciel s'y
+ * déplace (démasqué). Le réglage est écrit AVANT que la page ne revienne : pas de flash à l'ancien emplacement.
  */
 export function glisserEntete(e: PointerEvent): void {
   if (!cielDeplacer.value || e.button !== 0) return
@@ -51,40 +59,64 @@ export function glisserEntete(e: PointerEvent): void {
   const x0 = e.clientX
   const y0 = e.clientY
   let actif = false
+  let enGlisse = false
   // Levé tout de suite : les zones de déplacement de la fenêtre (capsule) avaleraient le relâchement.
   cielAppui.value = true
+  // Un ciel révélé a l'épaisseur du ciel (pas celle du rail) : on vise à partir du ciel affiché.
   const viser = (ev: PointerEvent): PositionCiel | null => {
     if (!actif && Math.hypot(ev.clientX - x0, ev.clientY - y0) < SEUIL_GLISSER) return null
     actif = true
-    return positionDepuisPoint(ev.clientX, ev.clientY, window.innerWidth, window.innerHeight)
+    const p = bordVise(
+      ev.clientX,
+      ev.clientY,
+      { width: window.innerWidth, height: window.innerHeight },
+      { position: cielPosition.value, largeur: cielLargeur.value, masque: false }
+    )
+    return p === cielPosition.value ? null : p
+  }
+  const montrer = async (p: PositionCiel | null): Promise<void> => {
+    cielCible.value = p
+    if (p && !enGlisse) {
+      enGlisse = true
+      await glisse(true)
+    } else if (!p && enGlisse) {
+      enGlisse = false
+      await glisse(false)
+    }
   }
   suivre(
     e,
-    (ev) => {
-      const p = viser(ev)
-      if (!p) return
-      if (cielCible.value === null) void window.lyra.invoke('ciel:glisse', { actif: true })
-      cielCible.value = p
-    },
-    (ev) => {
+    (ev) => void montrer(viser(ev)),
+    async (ev) => {
       cielAppui.value = false
       const p = ev && actif ? viser(ev) : null
-      if (cielCible.value !== null) void window.lyra.invoke('ciel:glisse', { actif: false })
       cielCible.value = null
-      if (p && p !== cielPosition.value) regler({ position: p, masque: false })
+      try {
+        if (p) await reglerCiel({ position: p, masque: false })
+      } finally {
+        if (enGlisse) {
+          enGlisse = false
+          await glisse(false)
+        }
+      }
     }
   )
 }
 
-/** Appui sur la poignée du bord du ciel : la largeur suit la souris (bornée 200-420), à chaud. */
+/**
+ * Appui sur la poignée du bord du ciel : la largeur suit la souris (bornée 200-420) en direct, par un aperçu léger
+ * (rien n'est écrit) ; elle n'est enregistrée qu'au relâchement. Échap ou perte du focus : retour à la largeur d'origine.
+ */
 export function redimensionnerCiel(e: PointerEvent): void {
   if (e.button !== 0) return
   e.preventDefault()
+  const depart = cielLargeur.value
   let attente: number | undefined
-  let derniere = cielLargeur.value
-  const envoyer = (): void => {
+  let derniere = depart
+  const apercu = (): void => {
     attente = undefined
-    if (derniere !== cielLargeur.value) regler({ largeur: derniere })
+    cielLargeurApercu.value = derniere
+    void window.lyra.invoke('ciel:apercu', { largeur: derniere })
   }
   const largeurPour = (ev: PointerEvent): number =>
     bornerLargeur(cielPosition.value === 'droite' ? window.innerWidth - ev.clientX : ev.clientX)
@@ -92,12 +124,20 @@ export function redimensionnerCiel(e: PointerEvent): void {
     e,
     (ev) => {
       derniere = largeurPour(ev)
-      if (attente === undefined) attente = window.requestAnimationFrame(envoyer)
+      if (attente === undefined) attente = window.requestAnimationFrame(apercu)
     },
-    (ev) => {
+    async (ev) => {
       if (attente !== undefined) window.cancelAnimationFrame(attente)
-      if (ev) derniere = largeurPour(ev)
-      envoyer()
+      attente = undefined
+      try {
+        if (ev) {
+          derniere = largeurPour(ev)
+          if (derniere !== depart) await reglerCiel({ largeur: derniere })
+        }
+      } finally {
+        cielLargeurApercu.value = null
+        await window.lyra.invoke('ciel:apercu', { largeur: null })
+      }
     }
   )
 }
@@ -108,5 +148,5 @@ export function largeurAuClavier(e: KeyboardEvent): void {
   if (!sens) return
   e.preventDefault()
   const pas = (e.shiftKey ? 64 : 16) * (cielPosition.value === 'droite' ? -sens : sens)
-  regler({ largeur: bornerLargeur(cielLargeur.value + pas) })
+  void reglerCiel({ largeur: bornerLargeur(cielLargeur.value + pas) })
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { MOTEURS } from '../../main/palette/engines'
 import type { StatsBoucliers } from '../../shared/ipc'
 import type { Settings } from '../../shared/types'
@@ -27,15 +27,34 @@ export function General() {
   const [s, setS] = useState<Settings | null>(null)
   const [stats, setStats] = useState<StatsBoucliers | null>(null)
   const [maj, setMaj] = useState(false)
+  /** Largeur en cours de réglage au curseur : affichée tout de suite, écrite au plus toutes les 60 ms puis au relâchement. */
+  const [largeur, setLargeur] = useState<number | null>(null)
+  const derniereEcriture = useRef(0)
+  const attente = useRef<number | undefined>(undefined)
 
   useEffect(() => {
     void window.lyra.invoke('settings:get').then(setS)
     void window.lyra.invoke('shields:stats').then(setStats)
     return window.lyra.on('settings:changed', setS)
   }, [])
+  // L'affichage local s'efface quand le réglage enregistré l'a rattrapé.
+  useEffect(() => {
+    if (largeur !== null && s?.ciel.largeur === largeur) setLargeur(null)
+  }, [s, largeur])
   if (!s) return null
 
   const regler = (patch: Record<string, unknown>): void => void window.lyra.invoke('settings:set', patch as Partial<Settings>)
+  const reglerLargeur = (v: number, final: boolean): void => {
+    setLargeur(v)
+    window.clearTimeout(attente.current)
+    const ecrire = (): void => {
+      derniereEcriture.current = Date.now()
+      regler({ ciel: { largeur: v } })
+    }
+    const ecoule = Date.now() - derniereEcriture.current
+    if (final || ecoule >= 60) ecrire()
+    else attente.current = window.setTimeout(ecrire, 60 - ecoule)
+  }
   const mettreAJour = async (): Promise<void> => {
     setMaj(true)
     try {
@@ -80,15 +99,16 @@ export function General() {
             surChange={(revelerAuSurvol) => regler({ ciel: { revelerAuSurvol } })}
           />
         </Ligne>
-        <Ligne titre="Largeur du ciel" aide={`${s.ciel.largeur} px — se règle aussi en tirant son bord`}>
+        <Ligne titre="Largeur du ciel" aide={`${largeur ?? s.ciel.largeur} px — se règle aussi en tirant son bord`}>
           <input
             class="rng"
             type="range"
             min={LARGEUR_MIN}
             max={LARGEUR_MAX}
-            value={s.ciel.largeur}
+            value={largeur ?? s.ciel.largeur}
             aria-label="Largeur du ciel"
-            onInput={(e) => regler({ ciel: { largeur: Number((e.currentTarget as HTMLInputElement).value) } })}
+            onInput={(e) => reglerLargeur(Number((e.currentTarget as HTMLInputElement).value), false)}
+            onChange={(e) => reglerLargeur(Number((e.currentTarget as HTMLInputElement).value), true)}
           />
         </Ligne>
         <Ligne titre="Glisser l'en-tête du ciel vers un bord pour le déplacer">

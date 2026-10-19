@@ -35,7 +35,7 @@ export function installerPalette(deps: DepsPalette): void {
     if (id === 'nouvelle-etoile') tabs.ouvrir('lyra://newtab')
     else if (id === 'fenetre-privee') deps.creerFenetre({ privee: true })
     else if (id === 'reglages') tabs.ouvrir('lyra://settings')
-    else if (id.startsWith('ciel-')) deps.deplacerCiel(id.slice(5) as 'gauche' | 'droite' | 'haut' | 'bas')
+    else if (id === 'ciel-gauche' || id === 'ciel-droite' || id === 'ciel-haut' || id === 'ciel-bas') deps.deplacerCiel(id.slice(5) as 'gauche' | 'droite' | 'haut' | 'bas')
   }
 
   handle('palette:open', (_d, e) => deps.ongletsDe(e.sender).ouvrirPalette())
@@ -48,7 +48,9 @@ export function installerPalette(deps: DepsPalette): void {
       activeId: sky.activeId ?? undefined,
       constellations: sky.constellations,
       historique: historiquePalette(deps, texte),
-      moteurParDefaut: deps.reglages().moteurParDefaut
+      moteurParDefaut: deps.reglages().moteurParDefaut,
+      // Démasqué seulement : masqué, « à gauche » est une vraie commande (elle réaffiche le ciel).
+      positionCiel: deps.reglages().ciel.masque ? undefined : deps.reglages().ciel.position
     })
   })
   handle('palette:go', ({ suggestion, texte, nouvelleEtoile }, e) => {

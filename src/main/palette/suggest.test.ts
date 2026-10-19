@@ -57,6 +57,14 @@ describe('suggerer', () => {
     const r = suggerer('', ctx)
     expect(r.map((s) => s.type)).toEqual(['etoile', 'etoile', ...Array(7).fill('commande')])
   })
+  it('le ciel : commande de la position courante masquée, aide « réglage »', () => {
+    const r = suggerer('>déplacer le ciel', { ...ctx, positionCiel: 'droite' })
+    expect(r.map((s) => s.id)).toEqual(['ciel-gauche', 'ciel-haut', 'ciel-bas'])
+    expect(r.every((s) => s.sousTitre === 'réglage')).toBe(true)
+    // Ciel masqué (positionCiel absent) : toutes les positions restent proposées.
+    expect(suggerer('>déplacer le ciel', ctx)).toHaveLength(4)
+    expect(suggerer('', { ...ctx, positionCiel: 'gauche' }).filter((s) => s.type === 'commande')).toHaveLength(6)
+  })
   it('> déplacer : les quatre positions du ciel', () => {
     const r = suggerer('>déplacer le ciel', ctx)
     expect(r.map((s) => s.id)).toEqual(['ciel-gauche', 'ciel-droite', 'ciel-haut', 'ciel-bas'])

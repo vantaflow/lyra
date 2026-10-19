@@ -17,6 +17,7 @@ describe('validerPatch', () => {
     expect(validerPatch({ ciel: { largeur: 420 } })).toEqual({ ciel: { largeur: 420 } })
     expect(validerPatch({ ciel: { largeur: 199 } })).toEqual({})
     expect(validerPatch({ ciel: { largeur: 421 } })).toEqual({})
+    expect(validerPatch({ ciel: { largeur: 250.5 } })).toEqual({})
     expect(validerPatch({ ciel: { deplacerParGlisser: false } })).toEqual({ ciel: { deplacerParGlisser: false } })
     expect(validerPatch({ ciel: { deplacerParGlisser: 'oui' } })).toEqual({})
   })

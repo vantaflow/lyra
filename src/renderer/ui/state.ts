@@ -58,20 +58,24 @@ export function estTerne(star: Star, etat?: EtatEtoile): boolean {
 export const cielMasque = signal(false)
 /** Le ciel masqué se révèle au survol du rail (sinon : poignée, bouton de la capsule ou ⌘ \ seulement). */
 export const revelerAuSurvol = signal(true)
-/** Le ciel masqué est glissé par-dessus la page : la vue chrome a été élargie par le main. */
+/** Le ciel masqué est glissé par-dessus la page : la vue chrome passe au-dessus de la page. */
 export const cielRevele = signal(false)
 /** La révélation vient du clavier (Entrée sur la poignée) : le ciel prend le focus. */
 export const revelationClavier = signal(false)
 /** Largeur du ciel (réglage) : celle du ciel révélé, rail de 14 px en plus. */
 export const cielLargeur = signal(272)
+/** Largeur en cours de réglage à la poignée (aperçu en direct, avant d'être enregistrée) ; null sinon. */
+export const cielLargeurApercu = signal<number | null>(null)
+/** Largeur affichée : l'aperçu pendant le glisser de la poignée, sinon le réglage. */
+export const cielLargeurAffichee = computed(() => cielLargeurApercu.value ?? cielLargeur.value)
 export type PositionCiel = Settings['ciel']['position']
 /** Position du ciel (réglage) : colonne à gauche ou à droite, bande en haut ou en bas. */
 export const cielPosition = signal<PositionCiel>('gauche')
 /** Glisser l'en-tête du ciel vers un bord pour le déplacer (réglage). */
 export const cielDeplacer = signal(true)
-/** Bord visé pendant le glisser de l'en-tête du ciel (null : pas de glisser en cours). */
 /** Appui sur l'en-tête du ciel en cours (avant même le seuil du glisser) : les zones de déplacement de la fenêtre sont levées. */
 export const cielAppui = signal(false)
+/** Bord visé pendant le glisser de l'en-tête du ciel (null : pas de glisser en cours, ou geste resté sur le ciel). */
 export const cielCible = signal<PositionCiel | null>(null)
 
 /** Demande au main de révéler ou retirer le ciel masqué (la vue chrome change de taille et d'ordre). */

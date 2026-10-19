@@ -1,8 +1,10 @@
 import { Fragment, type Ref } from 'preact'
+import { useEffect, useRef } from 'preact/hooks'
 import type { Star as StarT } from '../../shared/types'
+import { racines, regrouper, reglerCiel } from './cielCommun'
 import { glisserEntete } from './gestes'
 import { Epingle } from './Epingle'
-import { PiedActions, racines } from './Sky'
+import { PiedActions } from './Sky'
 import { cielDeplacer, estTerne, etats, sky, titreEtoile } from './state'
 
 const mac = window.lyra.plateforme === 'darwin'
@@ -82,11 +84,20 @@ interface Props {
 
 /** Le ciel en bande de 56 px (CielHaut.dc.html, CielBas.dc.html) : étoiles en ligne, enfants en petits points reliés. */
 export function Bande({ revele = false, position, refCiel, surEntree, surSortie, surSortieFocus }: Props) {
-  const { stars, constellations } = sky.value
-  const ouvertes = stars.filter((s) => !s.pinned)
-  const epinglees = stars.filter((s) => s.pinned)
-  const connues = new Set(constellations.map((c) => c.id))
-  const sans = ouvertes.filter((s) => !s.constellationId || !connues.has(s.constellationId))
+  const { epinglees, sans, constellations } = regrouper(sky.value)
+  const defilement = useRef<HTMLElement | null>(null)
+  const activeId = sky.value.activeId
+  // L'étoile active reste dans la vue, même quand la bande défile.
+  useEffect(() => {
+    defilement.current?.querySelector<HTMLElement>('.hs.active, .hc.active')?.scrollIntoView({ inline: 'nearest', block: 'nearest' })
+  }, [activeId, sans.length, constellations.length])
+  // Molette verticale = défilement horizontal.
+  const molette = (e: WheelEvent): void => {
+    const el = defilement.current
+    if (!el || el.scrollWidth <= el.clientWidth || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+    e.preventDefault()
+    el.scrollLeft += e.deltaY
+  }
   return (
     <aside
       class={`bande bande-${position}${revele ? ' bande-revele' : ''}`}
@@ -111,28 +122,25 @@ export function Bande({ revele = false, position, refCiel, surEntree, surSortie,
         <Epingle key={s.id} star={s} />
       ))}
       {epinglees.length > 0 && <span class="bande-sep" aria-hidden="true"></span>}
-      <nav class="bande-etoiles" aria-label="Onglets ouverts">
+      <nav class="bande-etoiles" aria-label="Onglets ouverts" ref={defilement} onWheel={molette}>
         <Etoiles groupe={sans} />
-        {constellations.map((c) => {
-          const groupe = ouvertes.filter((s) => s.constellationId === c.id)
-          if (groupe.length === 0) return null
-          return (
-            <Fragment key={c.id}>
-              <span class="hg">{c.name}</span>
-              <Etoiles groupe={groupe} />
-            </Fragment>
-          )
-        })}
-        <button class="sb nouvelle-icone" type="button" aria-label={`Nouvelle étoile (${touche} T)`} onClick={() => void window.lyra.invoke('tabs:open', { url: 'lyra://newtab' })}>
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-            <path d="M12 5v14" />
-            <path d="M5 12h14" />
-          </svg>
-        </button>
+        {constellations.map(({ constellation: c, etoiles: groupe }) => (
+          <Fragment key={c.id}>
+            <span class="hg">{c.name}</span>
+            <Etoiles groupe={groupe} />
+          </Fragment>
+        ))}
       </nav>
+      {/* Hors du défilement : « Nouvelle étoile » reste toujours à portée. */}
+      <button class="sb nouvelle-icone" type="button" aria-label={`Nouvelle étoile (${touche} T)`} onClick={() => void window.lyra.invoke('tabs:open', { url: 'lyra://newtab' })}>
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M12 5v14" />
+          <path d="M5 12h14" />
+        </svg>
+      </button>
       <span class="souple"></span>
       {revele && (
-        <button class="sb" type="button" aria-label="Épingler le ciel" title="Épingler le ciel" onClick={() => void window.lyra.invoke('settings:set', { ciel: { masque: false } } as never)}>
+        <button class="sb" type="button" aria-label="Épingler le ciel" title="Épingler le ciel" onClick={() => void reglerCiel({ masque: false })}>
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M9 3h6l-1 6 4 3v2H6v-2l4-3z" />
             <path d="M12 14v7" />

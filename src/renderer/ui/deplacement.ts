@@ -1,3 +1,4 @@
+import { BANDE, RAIL, bornerLargeur, type CielLayout } from '../../main/window/layout'
 import type { PositionCiel } from './state'
 
 /** Distance (px) à partir de laquelle un appui sur l'en-tête devient un glisser. */
@@ -12,4 +13,38 @@ export function positionDepuisPoint(x: number, y: number, largeur: number, haute
   const v = y / Math.max(1, hauteur) - 0.5
   if (Math.abs(u) >= Math.abs(v)) return u < 0 ? 'gauche' : 'droite'
   return v < 0 ? 'haut' : 'bas'
+}
+
+/** Le point est-il dans la zone que le ciel occupe déjà (colonne, bande, ou rail s'il est masqué) ? */
+export function dansLeCiel(
+  x: number,
+  y: number,
+  taille: { width: number; height: number },
+  ciel: Pick<CielLayout, 'position' | 'largeur' | 'masque'>
+): boolean {
+  const e = ciel.masque ? RAIL : ciel.position === 'haut' || ciel.position === 'bas' ? BANDE : bornerLargeur(ciel.largeur)
+  switch (ciel.position) {
+    case 'gauche':
+      return x < e
+    case 'droite':
+      return x > taille.width - e
+    case 'haut':
+      return y < e
+    default:
+      return y > taille.height - e
+  }
+}
+
+/**
+ * Position visée par un glisser relâché en (x, y) : un point resté sur le ciel courant (clic un peu tremblé) garde la
+ * position courante ; ailleurs, la moitié de fenêtre du bord le plus proche.
+ */
+export function bordVise(
+  x: number,
+  y: number,
+  taille: { width: number; height: number },
+  ciel: Pick<CielLayout, 'position' | 'largeur' | 'masque'>
+): PositionCiel {
+  if (dansLeCiel(x, y, taille, ciel)) return ciel.position
+  return positionDepuisPoint(x, y, taille.width, taille.height)
 }

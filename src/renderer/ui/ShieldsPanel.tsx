@@ -1,20 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import type { EtatBoucliers } from '../../shared/ipc'
 import type { Settings } from '../../shared/types'
-
-/** Position du panneau : collé au pied du ciel, du côté du ciel. */
-export function placement(ciel: Settings['ciel'] | undefined): Record<string, string> {
-  switch (ciel?.position) {
-    case 'droite':
-      return { right: '12px', bottom: '56px' }
-    case 'haut':
-      return { left: '12px', top: '64px' }
-    case 'bas':
-      return { left: '12px', bottom: '64px' }
-    default:
-      return { left: '12px', bottom: '56px' }
-  }
-}
+import { placement } from './placements'
 
 function hote(origine: string): string {
   if (origine === 'file://') return 'fichiers locaux'
@@ -62,7 +49,7 @@ export function ShieldsPanel() {
 
   return (
     <div class="pn-fond" onMouseDown={(e) => e.target === e.currentTarget && fermer()}>
-      <section class="pn-bouclier" role="dialog" aria-label="Panneau des boucliers" style={placement(reglages?.ciel)}>
+      <section class="pn-bouclier" role="dialog" aria-label="Panneau des boucliers" style={{ ...placement(reglages?.ciel), visibility: reglages ? 'visible' : 'hidden' }}>
         <div class="pn-tete">
           <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke={actif ? '#1E7F6C' : '#9A9AB0'} stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 3l7 3v5c0 4.5-3 8.2-7 9.5C8 19.2 5 15.5 5 11V6z" />

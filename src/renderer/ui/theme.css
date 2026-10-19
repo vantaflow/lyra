@@ -1166,12 +1166,7 @@ html.revele #app,
   -webkit-app-region: no-drag;
   cursor: grab;
 }
-.ciel.pos-droite .ciel-entete {
-  padding-right: 2px;
-}
-.win.pos-droite .ciel-entete {
-  padding-right: 150px;
-}
+
 
 /* La bande */
 .bande {
@@ -1230,7 +1225,13 @@ html.revele #app,
   gap: 4px;
   min-width: 0;
   flex: 0 1 auto;
-  overflow: hidden;
+  /* Défilement horizontal (molette, étoile active ramenée dans la vue) ; barre masquée. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.bande-etoiles::-webkit-scrollbar {
+  display: none;
 }
 .hs {
   display: inline-flex;
@@ -1330,10 +1331,6 @@ html.revele #app,
 .bande .boucliers {
   flex: none;
 }
-.bande .sb.replier {
-  width: 34px;
-  height: 34px;
-}
 
 /* Rail horizontal (ciel masqué en haut ou en bas) */
 .rail.rail-haut,
@@ -1385,12 +1382,6 @@ html.revele #app,
 .bande.bande-revele.bande-bas.sortant {
   transform: translateY(100%);
   transition: transform var(--glisse) ease-in;
-}
-.voile.voile-haut {
-  bottom: 0;
-}
-.voile.voile-bas {
-  bottom: 0;
 }
 @keyframes ciel-glisse-droite {
   from {
@@ -1466,4 +1457,10 @@ html.revele #app,
 /* Pendant le glisser, plus aucune zone de déplacement de la fenêtre : elle avalerait le relâchement et annulerait le glisser. */
 .fenetre.appui * {
   -webkit-app-region: no-drag !important;
+}
+
+/* Windows, ciel à droite : les boutons de fenêtre (titleBarOverlay, 32 px) recouvrent le haut du ciel ; son en-tête passe dessous. */
+.win .ciel.pos-droite,
+.win .ciel.ciel-revele.pos-droite {
+  padding-top: 42px;
 }

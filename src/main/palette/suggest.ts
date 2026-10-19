@@ -12,6 +12,8 @@ export interface ContexteSuggestion {
   historique: HistoryEntry[]
   moteurParDefaut: string
   constellations?: Constellation[]
+  /** Position du ciel (démasqué) : sa commande « Déplacer le ciel à … » n'a pas de sens, elle est masquée. */
+  positionCiel?: 'gauche' | 'droite' | 'haut' | 'bas'
 }
 
 export interface Commande {
@@ -24,10 +26,10 @@ export const COMMANDES: Commande[] = [
   { id: 'nouvelle-etoile', titre: 'Nouvelle étoile', aide: '⌘ T' },
   { id: 'fenetre-privee', titre: 'Nouvelle fenêtre privée', aide: '⌘ ⇧ N' },
   { id: 'reglages', titre: 'Réglages', aide: '⌘ ,' },
-  { id: 'ciel-gauche', titre: 'Déplacer le ciel à gauche' },
-  { id: 'ciel-droite', titre: 'Déplacer le ciel à droite' },
-  { id: 'ciel-haut', titre: 'Déplacer le ciel en haut' },
-  { id: 'ciel-bas', titre: 'Déplacer le ciel en bas' }
+  { id: 'ciel-gauche', titre: 'Déplacer le ciel à gauche', aide: 'réglage' },
+  { id: 'ciel-droite', titre: 'Déplacer le ciel à droite', aide: 'réglage' },
+  { id: 'ciel-haut', titre: 'Déplacer le ciel en haut', aide: 'réglage' },
+  { id: 'ciel-bas', titre: 'Déplacer le ciel en bas', aide: 'réglage' }
 ]
 
 const MAX = 12
@@ -110,14 +112,16 @@ function ligneEtoile(s: Star, ctx: ContexteSuggestion): Suggestion {
   }
 }
 
-function lignesCommandes(filtre: string): Suggestion[] {
-  return COMMANDES.filter((c) => !filtre || correspond(filtre, c.titre)).map((c) => ({
-    type: 'commande' as const,
-    id: c.id,
-    titre: c.titre,
-    sousTitre: c.aide,
-    icone: '⌘'
-  }))
+function lignesCommandes(filtre: string, ctx: ContexteSuggestion): Suggestion[] {
+  return COMMANDES.filter((c) => c.id !== `ciel-${ctx.positionCiel}`)
+    .filter((c) => !filtre || correspond(filtre, c.titre))
+    .map((c) => ({
+      type: 'commande' as const,
+      id: c.id,
+      titre: c.titre,
+      sousTitre: c.aide,
+      icone: '⌘'
+    }))
 }
 
 /** Étoile active d'abord, puis l'ordre du ciel. */
@@ -128,8 +132,8 @@ export function suggerer(texte: string, ctx: ContexteSuggestion & { activeId?: s
   const t = texte.trim()
   const etoiles = actives(ctx.etoiles, ctx.activeId)
 
-  if (t === '') return [...etoiles.slice(0, 6).map((s) => ligneEtoile(s, ctx)), ...lignesCommandes('')].slice(0, MAX)
-  if (t.startsWith('>')) return lignesCommandes(t.slice(1).trim()).slice(0, MAX)
+  if (t === '') return [...etoiles.slice(0, 6).map((s) => ligneEtoile(s, ctx)), ...lignesCommandes('', ctx)].slice(0, MAX)
+  if (t.startsWith('>')) return lignesCommandes(t.slice(1).trim(), ctx).slice(0, MAX)
   if (t.startsWith('#')) {
     const filtre = t.slice(1).trim()
     const ids = new Set((ctx.constellations ?? []).filter((c) => !filtre || correspond(filtre, c.name)).map((c) => c.id))
@@ -163,5 +167,5 @@ export function suggerer(texte: string, ctx: ContexteSuggestion & { activeId?: s
   }
   recherche.push(...lignesRecherche(t, ctx).slice(0, saisie.type === 'url' ? 1 : 2))
 
-  return [...ouvertes, ...histo, ...recherche, ...lignesCommandes(t).slice(0, 3)].slice(0, MAX)
+  return [...ouvertes, ...histo, ...recherche, ...lignesCommandes(t, ctx).slice(0, 3)].slice(0, MAX)
 }

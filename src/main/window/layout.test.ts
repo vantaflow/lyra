@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeLayout } from './layout'
+import { BANDE, CAPSULE, FENETRE_MIN, LARGEUR_MAX, RAIL, computeLayout, positionFeux } from './layout'
 
 const taille = { width: 1280, height: 800 }
 const fenetre = { x: 0, y: 0, width: 1280, height: 800 }
@@ -71,5 +71,21 @@ describe('computeLayout', () => {
     expect(l.page.width).toBe(0)
     expect(l.chrome.width).toBe(100)
     expect(l.page.height).toBe(4)
+  })
+})
+
+describe('constantes et feux tricolores', () => {
+  it('épaisseurs exportées', () => {
+    expect([BANDE, RAIL, CAPSULE]).toEqual([56, 14, 46])
+  })
+  it('fenêtre minimale : la plus large colonne laisse 480 px à la page', () => {
+    expect(FENETRE_MIN).toEqual({ width: LARGEUR_MAX + 480, height: 400 })
+    const l = computeLayout({ width: FENETRE_MIN.width, height: FENETRE_MIN.height }, ciel('droite', false, 420), false)
+    expect(l.page.width).toBe(480)
+  })
+  it('feux macOS : centrés sur la bande en haut, à leur place sinon', () => {
+    expect(positionFeux({ position: 'haut', masque: false })).toEqual({ x: 14, y: 22 })
+    expect(positionFeux({ position: 'haut', masque: true })).toEqual({ x: 14, y: 14 })
+    for (const p of ['gauche', 'droite', 'bas'] as const) expect(positionFeux({ position: p, masque: false })).toEqual({ x: 14, y: 14 })
   })
 })

@@ -1,23 +1,12 @@
-import type { Settings, Star as StarT } from '../../shared/types'
 import { Branche } from './Branche'
 import { Epingle } from './Epingle'
 import type { Ref } from 'preact'
+import { racines, regrouper, reglerCiel } from './cielCommun'
 import { glisserEntete, largeurAuClavier, redimensionnerCiel } from './gestes'
-import { boucliers, cielDeplacer, cielLargeur, cielPosition, sky, telechargementActif } from './state'
+import { boucliers, cielDeplacer, cielLargeurAffichee, cielPosition, sky, telechargementActif } from './state'
 
 const mac = window.lyra.plateforme === 'darwin'
 const ouvrirReglages = (): void => void window.lyra.invoke('tabs:open', { url: 'lyra://settings' })
-
-/** Racines d'un groupe : étoiles dont le parent n'est pas dans le groupe. */
-export function racines(groupe: StarT[]): StarT[] {
-  const ids = new Set(groupe.map((s) => s.id))
-  return groupe.filter((s) => !s.parentId || !ids.has(s.parentId))
-}
-
-const masquerCiel = (masque: boolean): void => {
-  const patch: Record<string, unknown> = { ciel: { masque } }
-  void window.lyra.invoke('settings:set', patch as Partial<Settings>)
-}
 
 /** Boucliers, extensions, téléchargements, Ne pas déranger, Réglages : le pied du ciel (colonne ou bande). */
 export function PiedActions({ souple = true }: { souple?: boolean }) {
@@ -89,11 +78,7 @@ interface PropsSky {
 }
 
 export function Sky({ revele = false, refCiel, surEntree, surSortie, surSortieFocus, largeur }: PropsSky = {}) {
-  const { stars, constellations } = sky.value
-  const ouvertes = stars.filter((s) => !s.pinned)
-  const epinglees = stars.filter((s) => s.pinned)
-  const connues = new Set(constellations.map((c) => c.id))
-  const sans = ouvertes.filter((s) => !s.constellationId || !connues.has(s.constellationId))
+  const { epinglees, sans, constellations } = regrouper(sky.value)
   const touche = mac ? '⌘' : 'Ctrl'
 
   return (
@@ -101,7 +86,7 @@ export function Sky({ revele = false, refCiel, surEntree, surSortie, surSortieFo
       class={`${revele ? 'ciel ciel-revele' : 'ciel'} pos-${cielPosition.value}`}
       aria-label={revele ? 'Ciel des onglets (survol)' : 'Ciel des onglets'}
       ref={refCiel}
-      style={{ width: `${largeur ?? cielLargeur.value}px` }}
+      style={{ width: `${largeur ?? cielLargeurAffichee.value}px` }}
       onMouseEnter={surEntree}
       onMouseLeave={surSortie}
       onFocusOut={surSortieFocus}
@@ -114,7 +99,7 @@ export function Sky({ revele = false, refCiel, surEntree, surSortie, surSortieFo
           aria-label="Largeur du ciel"
           aria-valuemin={200}
           aria-valuemax={420}
-          aria-valuenow={cielLargeur.value}
+          aria-valuenow={cielLargeurAffichee.value}
           tabIndex={0}
           onPointerDown={redimensionnerCiel}
           onKeyDown={largeurAuClavier}
@@ -125,17 +110,17 @@ export function Sky({ revele = false, refCiel, surEntree, surSortie, surSortieFo
         <span class="marque-lyra">Lyra</span>
         <span class="souple"></span>
         {revele ? (
-          <button class="sb replier" type="button" aria-label="Épingler le ciel" title="Épingler le ciel" onClick={() => masquerCiel(false)}>
+          <button class="sb replier" type="button" aria-label="Épingler le ciel" title="Épingler le ciel" onClick={() => void reglerCiel({ masque: false })}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M9 3h6l-1 6 4 3v2H6v-2l4-3z" />
               <path d="M12 14v7" />
             </svg>
           </button>
         ) : (
-          <button class="sb replier" type="button" aria-label="Replier le ciel" title={`Replier le ciel (${touche} \\)`} onClick={() => masquerCiel(true)}>
+          <button class="sb replier" type="button" aria-label="Replier le ciel" title={`Replier le ciel (${touche} \\)`} onClick={() => void reglerCiel({ masque: true })}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <rect x="3" y="4" width="18" height="16" rx="3" />
-              <path d="M9 4v16" />
+              <path d={cielPosition.value === 'droite' ? 'M15 4v16' : 'M9 4v16'} />
             </svg>
           </button>
         )}
@@ -162,21 +147,17 @@ export function Sky({ revele = false, refCiel, surEntree, surSortie, surSortieFo
         {racines(sans).map((s) => (
           <Branche key={s.id} star={s} groupe={sans} />
         ))}
-        {constellations.map((c) => {
-          const groupe = ouvertes.filter((s) => s.constellationId === c.id)
-          if (groupe.length === 0) return null
-          return (
-            <div key={c.id}>
-              <div class="grp">
-                <span>{c.name}</span>
-                <span class="grp-n">{groupe.length}</span>
-              </div>
-              {racines(groupe).map((s) => (
-                <Branche key={s.id} star={s} groupe={groupe} />
-              ))}
+        {constellations.map(({ constellation: c, etoiles: groupe }) => (
+          <div key={c.id}>
+            <div class="grp">
+              <span>{c.name}</span>
+              <span class="grp-n">{groupe.length}</span>
             </div>
-          )
-        })}
+            {racines(groupe).map((s) => (
+              <Branche key={s.id} star={s} groupe={groupe} />
+            ))}
+          </div>
+        ))}
         <button class="nouvelle" type="button" onClick={() => void window.lyra.invoke('tabs:open', { url: 'lyra://newtab' })}>
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
             <path d="M12 5v14" />

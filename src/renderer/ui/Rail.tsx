@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'preact/hooks'
 import { Bande } from './Bande'
 import { Sky } from './Sky'
-import { CAPSULE } from '../../main/window/layout'
-import { cielLargeur, cielPosition, reveler, revelerAuSurvol, revelationClavier } from './state'
+import { BANDE, CAPSULE } from '../../main/window/layout'
+import { cielLargeurAffichee, cielPosition, reveler, revelerAuSurvol, revelationClavier } from './state'
 
 const touche = window.lyra.plateforme === 'darwin' ? '⌘' : 'Ctrl'
 
@@ -28,8 +28,8 @@ export function Rail() {
 }
 
 /**
- * Le ciel glissé par-dessus la page. Le main a élargi la vue chrome à sa largeur : tant que la souris est dessus,
- * rien ne bouge ; 300 ms après sa sortie, il glisse hors de vue puis la vue chrome reprend sa taille.
+ * Le ciel glissé par-dessus la page (la vue chrome couvre la fenêtre et passe au-dessus de la page) : tant que la
+ * souris est dessus, rien ne bouge ; 300 ms après sa sortie, il glisse hors de vue puis la vue chrome repasse sous la page.
  */
 export function CielRevele() {
   const minuterie = useRef<number | undefined>(undefined)
@@ -71,11 +71,11 @@ export function CielRevele() {
   return (
     <>
       {/* Zone transparente qui recouvre la page : un clic referme la révélation. */}
-      <div class={`voile voile-${cielPosition.value}`} style={{ top: `${position === 'haut' ? 56 : CAPSULE}px` }} onMouseDown={() => reveler(false)}></div>
+      <div class="voile" style={{ top: `${position === 'haut' ? BANDE : CAPSULE}px` }} onMouseDown={() => reveler(false)}></div>
       {position === 'haut' || position === 'bas' ? (
         <Bande revele position={position} refCiel={ref} {...evts} />
       ) : (
-        <Sky revele refCiel={ref} {...evts} largeur={cielLargeur.value + 14} />
+        <Sky revele refCiel={ref} {...evts} largeur={cielLargeurAffichee.value + 14} />
       )}
     </>
   )

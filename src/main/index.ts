@@ -230,7 +230,7 @@ void app.whenReady().then(async () => {
   handle('layout:get', (_d, event) => {
     const f = manager.deWebContents(event.sender) ?? manager.premiere()
     if (!f) throw new Error('aucune fenêtre')
-    return { ciel: reglages.getSettings().ciel, bounds: f.bounds(), revele: f.estRevele(), ordre: f.ordreVues() }
+    return { ciel: reglages.getSettings().ciel, bounds: f.bounds(), revele: f.estRevele(), glisse: f.estEnGlisse(), ordre: f.ordreVues() }
   })
   handle('ciel:reveler', ({ actif }, event) => {
     // Seule la vue chrome (le ciel lui-même) pilote la révélation.
@@ -241,6 +241,13 @@ void app.whenReady().then(async () => {
   handle('ciel:glisse', ({ actif }, event) => {
     const f = manager.deWebContents(event.sender)
     if (f && f.chrome.webContents === event.sender) f.glisserCiel(actif === true)
+  })
+  handle('ciel:apercu', ({ largeur }, event) => {
+    // Seule la vue chrome règle la largeur en direct ; une valeur invalide est ignorée.
+    const f = manager.deWebContents(event.sender)
+    if (!f || f.chrome.webContents !== event.sender) return
+    if (largeur === null) manager.apercuLargeur(null)
+    else if (typeof largeur === 'number' && Number.isFinite(largeur)) manager.apercuLargeur(largeur)
   })
   handle('settings:get', () => reglages.getSettings())
   handle('settings:set', (patch) => reglages.setSettings(patch))
