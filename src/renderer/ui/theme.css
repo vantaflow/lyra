@@ -1053,25 +1053,33 @@ html.overlay #app {
 .fenetre.mac.masque .capsule {
   padding-left: 72px;
 }
-/* Vue chrome réduite au ciel révélé : fond transparent, la page reste visible autour. */
+/* Ciel révélé : la vue chrome (toute la fenêtre) passe au-dessus de la page ; hors capsule et ciel, elle est transparente. */
 html.revele,
 html.revele body,
-html.revele #app {
+html.revele #app,
+.fenetre.revele,
+.fenetre.revele .page-zone,
+.fenetre.revele .carte,
+.fenetre.revele .page-vide {
   background: transparent;
 }
-.fenetre.revele {
-  background: transparent;
+.fenetre.revele .capsule {
+  background: #fff;
 }
-.fenetre.revele > .rail,
-.fenetre.revele > .page-zone {
-  visibility: hidden;
+.voile {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 46px;
+  bottom: 0;
+  z-index: 20;
+  background: transparent;
 }
 .ciel.ciel-revele {
   position: fixed;
   left: 0;
   top: 0;
   bottom: 0;
-  width: 100%;
   z-index: 30;
   padding: 10px 12px 12px 14px;
   border-radius: 0 12px 12px 0;

@@ -40,14 +40,13 @@ describe('computeLayout', () => {
     expect(computeLayout(taille, ciel('haut', true), false).page).toEqual({ x: 0, y: 14, width: 1280, height: 786 })
     expect(computeLayout(taille, ciel('bas', true), false).chrome).toEqual({ x: 0, y: 786, width: 1280, height: 14 })
   })
-  it('masqué et révélé : le chrome se réduit au ciel (rail compris), la page ne bouge pas', () => {
+  it('masqué et révélé : à gauche le chrome garde la fenêtre entière, la page ne bouge pas', () => {
     const masque = computeLayout(taille, ciel('gauche', true), false)
     const l = computeLayout(taille, ciel('gauche', true), false, true)
-    expect(l.chrome).toEqual({ x: 0, y: 0, width: 286, height: 800 })
+    expect(l.chrome).toEqual(fenetre)
     expect(l.page).toEqual(masque.page)
     expect(l.overlay).toEqual(fenetre)
-    expect(computeLayout(taille, ciel('gauche', true, 300), false, true).chrome.width).toBe(314)
-    expect(computeLayout(taille, ciel('droite', true), false, true).chrome).toEqual({ x: 994, y: 0, width: 286, height: 800 })
+        expect(computeLayout(taille, ciel('droite', true), false, true).chrome).toEqual({ x: 994, y: 0, width: 286, height: 800 })
     expect(computeLayout(taille, ciel('haut', true), false, true).chrome).toEqual({ x: 0, y: 0, width: 1280, height: 70 })
     expect(computeLayout(taille, ciel('bas', true), false, true).chrome).toEqual({ x: 0, y: 730, width: 1280, height: 70 })
   })

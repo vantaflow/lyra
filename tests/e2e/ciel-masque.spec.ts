@@ -30,7 +30,11 @@ test('« Replier le ciel » : page à 14 px, rail visible ; survol → ciel au-d
     l = await layout(fenetre)
     expect(l.revele).toBe(true)
     expect(l.ordre).toEqual(['page', 'chrome', 'overlay'])
-    expect(l.bounds.chrome).toMatchObject({ x: 0, width: 286 })
+    // La vue chrome garde toute la fenêtre : la capsule reste là, et le ciel fait 286 px (272 + rail).
+    expect(l.bounds.chrome).toEqual(l.bounds.overlay)
+    await expect(fenetre.locator('.pilule')).toBeVisible()
+    await expect(fenetre.locator('.capsule')).toBeVisible()
+    expect((await fenetre.locator('.ciel-revele').boundingBox())!.width).toBe(286)
     expect(l.bounds.page.x).toBe(14)
 
     // La souris dessus : rien ne bouge, même après le délai de retrait.
@@ -46,7 +50,14 @@ test('« Replier le ciel » : page à 14 px, rail visible ; survol → ciel au-d
     await expect(fenetre.locator('.ciel-revele')).toHaveCount(0)
     l = await layout(fenetre)
     expect(l.ordre).toEqual(['chrome', 'page', 'overlay'])
-    expect(l.bounds.chrome.width).toBeGreaterThan(286)
+    expect(l.bounds.chrome).toEqual(l.bounds.overlay)
+
+    // Un clic dans la zone transparente (au-dessus de la page) referme la révélation.
+    await fenetre.locator('.rail').dispatchEvent('mouseenter')
+    await expect(fenetre.locator('.voile')).toHaveCount(1)
+    await fenetre.locator('.voile').dispatchEvent('mousedown')
+    await expect.poll(async () => (await layout(fenetre)).revele).toBe(false)
+    await expect(fenetre.locator('.ciel-revele')).toHaveCount(0)
 
     // « Épingler le ciel » = démasquer.
     await fenetre.evaluate(() => window.lyra.invoke('ciel:reveler', { actif: true }))

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'preact/hooks'
 import { Sky } from './Sky'
-import { reveler, revelerAuSurvol } from './state'
+import { cielLargeur, reveler, revelerAuSurvol } from './state'
 
 const touche = window.lyra.plateforme === 'darwin' ? '⌘' : 'Ctrl'
 
@@ -49,5 +49,11 @@ export function CielRevele() {
       window.clearTimeout(minuterie.current)
     }
   }, [])
-  return <Sky revele refCiel={ref} surEntree={arreter} surSortie={programmer} />
+  return (
+    <>
+      {/* Zone transparente qui recouvre la page : un clic referme la révélation. */}
+      <div class="voile" onMouseDown={() => reveler(false)}></div>
+      <Sky revele refCiel={ref} surEntree={arreter} surSortie={programmer} largeur={cielLargeur.value + 14} />
+    </>
+  )
 }

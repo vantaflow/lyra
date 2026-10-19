@@ -26,8 +26,9 @@ export const RAIL = 14
 export const CAPSULE = 46
 
 /**
- * `revele` : le ciel masqué est glissé par-dessus la page (révélation au survol). Seule la vue chrome change :
- * elle s'élargit à la largeur du ciel (rail compris) ; la page garde ses bounds de ciel masqué.
+ * `revele` : le ciel masqué est glissé par-dessus la page (révélation au survol). À gauche, les bounds ne changent
+ * pas (le chrome couvre déjà la fenêtre ; il passe seulement au-dessus de la page) ; ailleurs, le chrome s'élargit
+ * à l'épaisseur du ciel (rail compris) ; la page garde toujours ses bounds de ciel masqué.
  */
 export function computeLayout(
   taille: { width: number; height: number },
@@ -49,9 +50,9 @@ export function computeLayout(
   let page: Rect
   if (ciel.position === 'gauche') {
     // Le chrome couvre toute la fenêtre (ciel ou rail à gauche, capsule au-dessus de la page, qui se pose par-dessus).
-    // Révélé, il se réduit à la largeur du ciel (rail compris) et passe au-dessus de la page.
+    // Révélé, ses bounds ne changent pas : seul son ordre change (au-dessus de la page, zone transparente).
     const haut = Math.min(height, CAPSULE)
-    chrome = revele && ciel.masque ? { x: 0, y: 0, width: Math.min(width, ciel.largeur + RAIL), height } : fenetre
+    chrome = fenetre
     page = { x: epaisseur, y: haut, width: reste, height: height - haut }
   } else if (horizontal) {
     chrome = { x: 0, y: debut ? 0 : reste, width, height: epaisseur }

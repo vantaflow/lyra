@@ -60,6 +60,8 @@ export const cielMasque = signal(false)
 export const revelerAuSurvol = signal(true)
 /** Le ciel masqué est glissé par-dessus la page : la vue chrome a été élargie par le main. */
 export const cielRevele = signal(false)
+/** Largeur du ciel (réglage) : celle du ciel révélé, rail de 14 px en plus. */
+export const cielLargeur = signal(272)
 
 /** Demande au main de révéler ou retirer le ciel masqué (la vue chrome change de taille et d'ordre). */
 export function reveler(actif: boolean): void {
@@ -82,6 +84,7 @@ export async function initialiserEtat(): Promise<void> {
   const appliquer = (r: Settings): void => {
     ternirApresMin.value = r.ciel.ternirApresMin
     cielMasque.value = r.ciel.masque
+    cielLargeur.value = r.ciel.largeur
     revelerAuSurvol.value = r.ciel.revelerAuSurvol
   }
   window.lyra.on('settings:changed', appliquer)
