@@ -37,6 +37,12 @@ describe('fusionner', () => {
     expect(fusionner([a], [a, b])).toEqual([a, b])
     expect(fusionner()).toEqual([])
   })
+  it('linéaire : 40 000 candidats fusionnés en moins de 500 ms', () => {
+    const l = Array.from({ length: 40_000 }, (_, i) => ({ type: 'socks5' as const, hote: `8.${(i >> 16) & 255}.${(i >> 8) & 255}.${i & 255}`, port: 1080 }))
+    const t = performance.now()
+    expect(fusionner(l, l)).toHaveLength(40_000)
+    expect(performance.now() - t).toBeLessThan(500)
+  })
 })
 
 describe('hoteCouvert', () => {

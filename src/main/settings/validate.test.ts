@@ -119,6 +119,10 @@ describe('reseau', () => {
     expect(validerPatch({ reseau: 'x' })).toEqual({})
     expect(validerPatch({ reseau: { sites: 'reddit.com' } })).toEqual({})
   })
+  it('sites tous invalides (entrée non vide) : ignorés, la liste existante n’est pas effacée', () => {
+    expect(validerPatch({ reseau: { sites: [{ hote: 'pas un hôte', origine: 'manuel', date: 1 }, null] } })).toEqual({})
+    expect(validerPatch({ reseau: { auto: false, sites: ['x'] } })).toEqual({ reseau: { auto: false } })
+  })
   it('filtre les sites : hôte sans schéma, origine, date, doublons, max 500', () => {
     const sites = [
       { hote: 'ok.fr', origine: 'manuel', date: 1 },

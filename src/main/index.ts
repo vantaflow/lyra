@@ -27,7 +27,6 @@ import type { TypePermission } from '../shared/types'
 import type { Passerelles } from './passerelles/Passerelles'
 import { creerPasserelles } from './passerelles/electron'
 import { installerPasserellesIpc } from './passerelles/ipc'
-import { hoteValide } from './passerelles/liste'
 
 definirFournisseurLangue(() => app.getLocale())
 app.setPath('userData', paths.userData())
@@ -92,8 +91,8 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
       zoomDe: (origine) => reglagesCourants().sites[origine]?.zoom,
       memoriserZoom: (origine, zoom) => void reglagesStore?.setSettings({ sites: { [origine]: { zoom } } }),
       rechercheUrl: (texte) => urlDeRecherche(moteurParId(reglagesCourants().moteurParDefaut), texte),
-      // Fenêtre privée : pas de détection automatique (rien n'est écrit dans les réglages).
-      passerelles: passerelles?.crochets({ detection: !opts.privee })
+      // Fenêtre privée : ni détection automatique ni proposition d'ajout (rien n'est écrit dans les réglages).
+      passerelles: passerelles?.crochets({ privee: opts.privee === true })
     }
   )
   // Une demande de permission ne survit pas à un changement de route ou à la fermeture de l'overlay.
@@ -287,8 +286,9 @@ void app.whenReady().then(async () => {
   handle('erreur:reessayer', (_d, e) => {
     const p = pageErreur(e.sender)
     if (!p) return
-    // « Aucune passerelle ne répond » : nouvelle recherche ; l'échec suivant l'attendra avant de décider.
-    if (typeErreurPage(e.sender.getURL()) === 'passerelles') void pass.rechercher(true)
+    // Action explicite : lève le délai de grâce ; « Aucune passerelle ne répond » : nouvelle recherche,
+    // que l'échec suivant attendra avant de décider.
+    pass.reessayer(p.url, typeErreurPage(e.sender.getURL()) === 'passerelles')
     p.m.naviguer(p.id, p.url)
   })
   handle('erreur:continuer', (_d, e) => {
@@ -302,7 +302,8 @@ void app.whenReady().then(async () => {
     // Même garde que « continuer » : l'adresse vient de la page d'erreur expéditrice, jamais des données.
     const p = pageErreur(e.sender)
     if (!p) return {}
-    const r = pass.ajouterDepuisErreur(p.url)
+    // Fenêtre privée : jamais d'écriture dans les réglages.
+    const r = pass.ajouterDepuisErreur(p.url, { privee: privees.has(p.m.fenetreId) })
     if (r.erreur) return { erreur: r.erreur }
     if (r.ok) p.m.naviguer(p.id, p.url)
     return {}
@@ -319,7 +320,8 @@ void app.whenReady().then(async () => {
       droite: c.x + d.droite,
       bas: c.y + d.bas,
       hote: hoteLisible(url),
-      basculable: /^https:/i.test(urlOriginale(url)) && hoteValide(hoteLisible(url)),
+      // Fenêtre privée : pas de bascule (elle écrirait dans les réglages).
+      basculable: pass.basculable(urlOriginale(url), privees.has(f.id)),
       contourne: pass.contourne(urlOriginale(url)),
       favori: favoris.existe(urlOriginale(url)),
       zoom: wc?.getZoomFactor() ?? 1

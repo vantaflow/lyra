@@ -58,7 +58,7 @@ function sites(v: unknown): Obj | undefined {
 const MAX_SITES_CONTOURNES = 500
 const port = entier(1, 65535)
 
-/** reseau.sites : tableau d'objets { hote (domaine), origine, date } ; entrées invalides et doublons ignorés. */
+/** reseau.sites : tableau d'objets { hote (domaine), origine, date } ; entrées invalides et doublons ignorés ; `[]` explicite accepté. */
 function sitesContournes(v: unknown): unknown[] | undefined {
   if (!Array.isArray(v)) return undefined
   const sortie: Obj[] = []
@@ -75,7 +75,8 @@ function sitesContournes(v: unknown): unknown[] | undefined {
     vus.add(h)
     sortie.push({ hote: h, origine, date })
   }
-  return sortie
+  // Entrée non vide mais entièrement invalide : ignorée (n'efface jamais la liste existante).
+  return v.length > 0 && sortie.length === 0 ? undefined : sortie
 }
 
 /** reseau.personnelle : { type, hote (domaine ou IPv4), port } ; tout ou rien. */

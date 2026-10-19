@@ -57,16 +57,32 @@ export function lireListe(texte: string, protocole: Candidat['type']): Candidat[
   return sortie
 }
 
+const normaliser = (h: string): string => h.toLowerCase().replace(/\.+$/, '')
+
 export const memeCandidat = (a: Candidat, b: Candidat): boolean => a.type === b.type && a.hote === b.hote && a.port === b.port
 
-/** Fusionne plusieurs listes en conservant l'ordre, sans doublon. */
+/** Fusionne plusieurs listes en conservant l'ordre, sans doublon (clé « type|hôte|port », O(n)). */
 export function fusionner(...listes: Candidat[][]): Candidat[] {
   const sortie: Candidat[] = []
-  for (const l of listes) for (const c of l) if (!sortie.some((x) => memeCandidat(x, c))) sortie.push(c)
+  const vus = new Set<string>()
+  for (const l of listes)
+    for (const c of l) {
+      const cle = `${c.type}|${c.hote}|${c.port}`
+      if (vus.has(cle)) continue
+      vus.add(cle)
+      sortie.push(c)
+    }
   return sortie
 }
 
-const normaliser = (h: string): string => h.toLowerCase().replace(/\.+$/, '')
+/** Suffixes à usage spécial ou local (RFC 6761, 6762, 8375 et usages courants) : jamais de détection automatique. */
+const USAGE_SPECIAL = ['local', 'lan', 'internal', 'corp', 'home.arpa', 'localhost', 'test', 'invalid']
+
+/** Le domaine relève-t-il d'un usage spécial ou local (réseau interne, test) ? */
+export function domaineUsageSpecial(hote: string): boolean {
+  const h = normaliser(hote)
+  return USAGE_SPECIAL.some((s) => h === s || h.endsWith(`.${s}`))
+}
 
 /** L'hôte est-il l'un des sites ou un de leurs sous-domaines ? (casse et point final ignorés) */
 export function hoteCouvert(hote: string, sites: readonly string[]): boolean {

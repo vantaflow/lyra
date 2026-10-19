@@ -35,6 +35,13 @@ async function proxySysteme(): Promise<{ https: string; http: string }> {
   return { https, http }
 }
 
+/**
+ * Téléchargement des listes publiques par la partition système : elles suivent le proxy du réseau
+ * (entreprise, PAC) comme une page ordinaire, jamais un PAC de passerelles.
+ */
+const fetchSysteme = ((entree: string | URL | Request, init?: RequestInit) =>
+  session.fromPartition(PARTITION_SYSTEME).fetch(entree as string, init)) as typeof fetch
+
 export function creerPasserelles(o: {
   reglages: Reglages
   cacheFichier: string
@@ -50,7 +57,7 @@ export function creerPasserelles(o: {
       else reglages.supprimerPersonnelle()
     },
     sessions: o.sessions,
-    charger: () => chargerCandidats({ fetch: globalThis.fetch, cacheFichier: o.cacheFichier, maintenant: new Date() }),
+    charger: () => chargerCandidats({ fetch: fetchSysteme, cacheFichier: o.cacheFichier, maintenant: new Date() }),
     trouver: (c) => trouverPasserelles(c),
     tester: (c) => testerPasserelle(c),
     testerDirect,

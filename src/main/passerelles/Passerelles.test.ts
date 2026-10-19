@@ -45,6 +45,7 @@ function evaluer(s: FausseSession, url: string): string | null {
   return f(url, new URL(url).hostname)
 }
 
+const RETEST = 10 * 60 * 1000
 const site = (hote: string): Reseau['sites'][number] => ({ hote, origine: 'manuel', date: 1 })
 
 function monter(initial: Partial<Reseau> = {}) {
@@ -197,7 +198,7 @@ describe('Passerelles — routage', () => {
     const { p, env } = monter({ sites: [site('a.fr')] })
     p.demarrer()
     await p.rechercher()
-    const m = env.minuteurs.find((x) => !x.annule)!
+    const m = env.minuteurs.find((x) => !x.annule && x.ms === RETEST)!
     env.testOk = false
     m.fn()
     await p.attendre()
@@ -205,8 +206,9 @@ describe('Passerelles — routage', () => {
     expect(env.appels.tester).toEqual([P1, P2, P3])
     expect(env.appels.trouver).toBe(2)
     // Le minuteur est réarmé après le re-test.
-    expect(env.minuteurs.length).toBe(2)
-    expect(env.minuteurs[1].ms).toBe(10 * 60 * 1000)
+    const retests = env.minuteurs.filter((x) => x.ms === RETEST)
+    expect(retests.length).toBe(2)
+    expect(retests[1].annule).toBe(false)
   })
 
   it('ajout manuel : hôte normalisé, http:// refusé sans passerelle personnelle', async () => {
@@ -246,6 +248,8 @@ describe('Passerelles — pool vide', () => {
     p.demarrer()
     await p.rechercher()
     env.trouves = [P2]
+    // Délai de grâce de 10 min après une recherche infructueuse : pas de nouvelle recherche avant.
+    env.maintenant += RETEST
     expect(await p.surEchec(7, 'https://a.fr/', -130)).toEqual({ action: 'recharger' })
     await p.attendre()
     expect(evaluer(env.sessions[1], 'https://a.fr/')).toBe('PROXY 2.2.2.2:8080')
@@ -474,6 +478,8 @@ describe('Passerelles — corrections de relecture', () => {
     await p.attendre()
     expect(reseau().sites).toEqual([])
     expect(env.sessions[0].proxys.at(-1)).toEqual({ mode: 'system' })
+    // Cache négatif de l'hôte (10 min) : on avance l'horloge pour un second essai.
+    env.maintenant += RETEST
     expect(await p.surEchec(6, 'https://panne.fr/', -105)).toEqual({ action: 'recharger' })
     p.surSucces(6, 'https://panne.fr/', 503)
     await p.attendre()
@@ -520,7 +526,7 @@ describe('Passerelles — corrections de relecture', () => {
   it('fenêtre privée : pas de détection (rien n’est écrit), la rotation reste', async () => {
     const { p, env, reseau } = monter()
     p.demarrer()
-    const privee = p.crochets({ detection: false })
+    const privee = p.crochets({ privee: true })
     expect(await privee.surEchec(9, 'https://bloque.fr/', -105)).toMatchObject({ action: 'erreur' })
     privee.surSucces(9, 'https://bloque.fr/', 200)
     expect(env.appels.direct).toBe(0)
@@ -528,7 +534,7 @@ describe('Passerelles — corrections de relecture', () => {
     const m = monter({ sites: [site('a.fr')] })
     m.p.demarrer()
     await m.p.rechercher()
-    expect(await m.p.crochets({ detection: false }).surEchec(9, 'https://a.fr/', -130)).toEqual({ action: 'recharger' })
+    expect(await m.p.crochets({ privee: true }).surEchec(9, 'https://a.fr/', -130)).toEqual({ action: 'recharger' })
   })
 
   it('setProxy en échec : le PAC est réappliqué au changement suivant', async () => {
@@ -550,5 +556,176 @@ describe('Passerelles — corrections de relecture', () => {
     p.retirer('WWW.exemple.fr')
     expect(reseau().sites).toEqual([])
     await p.attendre()
+  })
+})
+
+describe('Passerelles — relecture finale', () => {
+  it('1. fenêtre privée : ni « Passer par une passerelle », ni bascule, ni ajout depuis la page d’erreur', async () => {
+    const { p, reseau } = monter()
+    p.demarrer()
+    const d = await p.crochets({ privee: true }).surEchec(9, 'https://bloque.fr/', -105)
+    expect(new URL((d as { url: string }).url).searchParams.get('passerelle')).toBeNull()
+    expect(new URL(p.urlErreurPour(-105, 'https://bloque.fr/', { privee: true })).searchParams.get('passerelle')).toBeNull()
+    expect(new URL(p.urlErreurPour(-105, 'https://bloque.fr/')).searchParams.get('passerelle')).toBe('1')
+    expect(p.basculable('https://www.bloque.fr/x', true)).toBe(false)
+    expect(p.basculable('https://www.bloque.fr/x', false)).toBe(true)
+    expect(p.basculable('http://bloque.fr/', false)).toBe(false)
+    expect(p.ajouterDepuisErreur('https://bloque.fr/', { privee: true })).toEqual({ ok: false })
+    expect(reseau().sites).toEqual([])
+    await p.attendre()
+  })
+
+  it('2. proxy système relu toutes les 60 s tant qu’un PAC est appliqué, et après un échec proxy hors contournement', async () => {
+    const { p, env, modifier } = monter({ sites: [site('a.fr')] })
+    p.demarrer()
+    await p.rechercher()
+    await p.attendre()
+    const veilles = (): typeof env.minuteurs => env.minuteurs.filter((m) => m.ms === 60_000)
+    expect(veilles().length).toBe(1)
+    env.systeme = { https: 'PROXY corp:8080', http: 'DIRECT' }
+    veilles()[0].fn()
+    await p.attendre()
+    expect(evaluer(env.sessions[0], 'https://b.fr/')).toBe('PROXY corp:8080')
+    // Réarmée après la relecture.
+    expect(veilles().length).toBe(2)
+    expect(veilles()[1].annule).toBe(false)
+    // -130 sur un site non contourné : relecture immédiate.
+    env.systeme = { https: 'PROXY autre:3128', http: 'DIRECT' }
+    expect(await p.surEchec(4, 'https://b.fr/', -130)).toMatchObject({ action: 'erreur' })
+    await p.attendre()
+    expect(evaluer(env.sessions[0], 'https://b.fr/')).toBe('PROXY autre:3128')
+    // Plus de site : la veille s'arrête.
+    modifier({ sites: [] })
+    await p.attendre()
+    expect(veilles().filter((m) => !m.annule && m !== veilles()[0])).toEqual([])
+  })
+
+  it('2. pas de veille du proxy système sans PAC appliqué', async () => {
+    const { p, env } = monter()
+    p.demarrer()
+    await p.surEchec(4, 'https://b.fr/', -130)
+    await p.attendre()
+    expect(env.minuteurs).toEqual([])
+    expect(env.resolutions).toBe(0)
+  })
+
+  it('3. délai de grâce de 10 min après une recherche infructueuse, sauf « Tester maintenant »', async () => {
+    const { p, env } = monter({ sites: [site('a.fr')] })
+    env.trouves = []
+    p.demarrer()
+    await p.rechercher()
+    await p.attendre()
+    expect(env.appels.trouver).toBe(1)
+    env.trouves = [P2]
+    expect(await p.surEchec(7, 'https://a.fr/', -130)).toMatchObject({ action: 'erreur', url: expect.stringContaining('type=passerelles') })
+    await p.rechercher()
+    expect(env.appels.trouver).toBe(1)
+    await p.tester()
+    expect(env.appels.trouver).toBe(2)
+    expect(p.etat().pret).toBe(1)
+  })
+
+  it('3. « Réessayer » lève le délai de grâce', async () => {
+    const { p, env } = monter({ sites: [site('a.fr')] })
+    env.trouves = []
+    p.demarrer()
+    await p.rechercher()
+    env.trouves = [P2]
+    p.reessayer('https://a.fr/', true)
+    await p.attendre()
+    expect(env.appels.trouver).toBe(2)
+    expect(p.etat().pret).toBe(1)
+  })
+
+  it('3. cache négatif par hôte : pas de nouvel essai de détection pendant 10 min', async () => {
+    const { p, env } = monter()
+    p.demarrer()
+    expect(await p.surEchec(5, 'https://panne.fr/', -105)).toEqual({ action: 'recharger' })
+    expect(await p.surEchec(5, 'https://panne.fr/', -105)).toMatchObject({ action: 'erreur' })
+    expect(await p.surEchec(6, 'https://www.panne.fr/', -105)).toMatchObject({ action: 'erreur' })
+    env.maintenant += RETEST
+    expect(await p.surEchec(7, 'https://panne.fr/', -105)).toEqual({ action: 'recharger' })
+    await p.attendre()
+  })
+
+  it('3/8. testerDirect mémorisé 1 min et mutualisé entre détections concurrentes', async () => {
+    const { p, env } = monter()
+    p.demarrer()
+    await Promise.all([p.surEchec(1, 'https://a1.fr/', -105), p.surEchec(2, 'https://a2.fr/', -105)])
+    expect(env.appels.direct).toBe(1)
+    await p.surEchec(3, 'https://a3.fr/', -105)
+    expect(env.appels.direct).toBe(1)
+    env.maintenant += 60_001
+    await p.surEchec(4, 'https://a4.fr/', -105)
+    expect(env.appels.direct).toBe(2)
+    await p.attendre()
+  })
+
+  it('4. essai de détection abandonné par un échec sur une autre adresse : l’hôte d’essai quitte le PAC', async () => {
+    const { p, env } = monter()
+    p.demarrer()
+    expect(await p.surEchec(5, 'https://panne.fr/', -105)).toEqual({ action: 'recharger' })
+    await p.attendre()
+    expect(evaluer(env.sessions[0], 'https://panne.fr/')).toContain('SOCKS5')
+    await p.surEchec(5, 'https://autre.fr/', -324)
+    await p.attendre()
+    expect(env.sessions[0].proxys.at(-1)).toEqual({ mode: 'system' })
+  })
+
+  it('6. closeAllConnections seulement quand un hôte passe en contournement', async () => {
+    const { p, env } = monter({ sites: [site('a.fr'), site('b.fr')] })
+    p.demarrer()
+    await p.rechercher()
+    await p.attendre()
+    const f = (): number => env.sessions[0].fermetures
+    const n0 = f()
+    expect(n0).toBeGreaterThan(0)
+    expect(await p.surEchec(3, 'https://a.fr/', -130)).toEqual({ action: 'recharger' })
+    await p.attendre()
+    expect(f()).toBe(n0)
+    p.retirer('b.fr')
+    await p.attendre()
+    expect(f()).toBe(n0)
+    p.ajouter('c.fr')
+    await p.attendre()
+    expect(f()).toBe(n0 + 1)
+    expect(await p.surEchec(9, 'https://d.fr/', -105)).toEqual({ action: 'recharger' })
+    await p.attendre()
+    expect(f()).toBe(n0 + 2)
+  })
+
+  it('7. détection automatique jamais pour les domaines à usage spécial (ajout explicite possible)', async () => {
+    const { p, env, reseau } = monter()
+    p.demarrer()
+    let cle = 1
+    for (const h of ['nas.local', 'box.lan', 'svc.internal', 'intra.corp', 'r.home.arpa', 'app.localhost', 'x.test', 'y.invalid'])
+      expect(await p.surEchec(cle++, `https://${h}/`, -105)).toMatchObject({ action: 'erreur' })
+    expect(env.appels.direct).toBe(0)
+    expect(new URL(p.urlErreurPour(-105, 'https://y.invalid/')).searchParams.get('passerelle')).toBe('1')
+    expect(p.ajouterDepuisErreur('https://y.invalid/')).toEqual({ ok: true })
+    expect(reseau().sites.map((s) => s.hote)).toEqual(['y.invalid'])
+    await p.attendre()
+  })
+
+  it('11. échec signalé : re-test immédiat des retenues, une fois par minute au plus', async () => {
+    const P4: Candidat = { type: 'socks5', hote: '4.4.4.4', port: 1080 }
+    const { p, env } = monter({ sites: [site('a.fr')] })
+    env.trouves = [P1, P2, P3, P4]
+    p.demarrer()
+    await p.rechercher()
+    await p.attendre()
+    env.appels.tester = []
+    expect(await p.surEchec(3, 'https://a.fr/', -130)).toEqual({ action: 'recharger' })
+    await p.attendre()
+    expect(env.appels.tester).toEqual([P2, P3, P4])
+    p.surSucces(3, 'https://a.fr/')
+    expect(await p.surEchec(3, 'https://a.fr/', -130)).toEqual({ action: 'recharger' })
+    await p.attendre()
+    expect(env.appels.tester).toEqual([P2, P3, P4])
+    env.maintenant += 60_001
+    p.surSucces(3, 'https://a.fr/')
+    expect(await p.surEchec(3, 'https://a.fr/', -130)).toEqual({ action: 'recharger' })
+    await p.attendre()
+    expect(env.appels.tester).toEqual([P2, P3, P4, P4])
   })
 })
