@@ -57,8 +57,20 @@ export function attacherComportements(wc: WebContents, d: DepsComportements): vo
   // abandonnée si une autre navigation a commencé entre-temps.
   const p = d.passerelles
   let generation = 0
+  // http vers un site contourné : arrêt immédiat et page d'explication (jamais le chemin habituel).
+  const refuser = (url: string | null): void => {
+    if (!url) return
+    wc.stop()
+    setImmediate(() => d.erreur(url))
+  }
   wc.on('did-start-navigation', (e) => {
-    if (e.isMainFrame && !e.isSameDocument) generation++
+    if (!e.isMainFrame || e.isSameDocument) return
+    generation++
+    // Une autre adresse met fin à l'essai de détection ou à la rotation suivis.
+    if (p) refuser(p.surDebut(wc.id, e.url))
+  })
+  wc.on('did-redirect-navigation', (e) => {
+    if (p && e.isMainFrame) refuser(p.refusHttp(e.url))
   })
   wc.on('did-fail-load', (_e, code, _desc, urlEchec, principal) => {
     if (!principal || code === -3 || !/^(https?|file):/i.test(urlEchec)) return
@@ -80,7 +92,7 @@ export function attacherComportements(wc: WebContents, d: DepsComportements): vo
       )
   })
   if (p) {
-    wc.on('did-navigate', (_e, url) => p.surSucces(wc.id, url))
+    wc.on('did-navigate', (_e, url, codeHttp) => p.surSucces(wc.id, url, codeHttp))
     const cle = wc.id
     wc.once('destroyed', () => p.oublier(cle))
   }

@@ -102,6 +102,22 @@ describe('genererPac', () => {
     expect(f('https://a.fr/')).toBe(attendu)
     expect((globalThis as Record<string, unknown>).pwned).toBeUndefined()
   })
+  it('repli du proxy système pour les sites non contournés (proxy d’entreprise préservé)', () => {
+    const f = evaluer(genererPac(['reddit.com'], chaine, false, { https: 'PROXY corp:8080', http: 'PROXY corp:3128' }))
+    expect(f('https://reddit.com/')).toBe(attendu)
+    expect(f('https://exemple.fr/')).toBe('PROXY corp:8080')
+    expect(f('http://exemple.fr/')).toBe('PROXY corp:3128')
+    // http d'un site contourné sans personnelle : jamais la passerelle publique, le chemin habituel.
+    expect(f('http://reddit.com/')).toBe('PROXY corp:3128')
+    // localhost, IP privées et schémas non web restent DIRECT.
+    expect(f('https://localhost/')).toBe('DIRECT')
+    expect(f('https://192.168.1.2/')).toBe('DIRECT')
+    expect(f('https://10.0.0.1/')).toBe('DIRECT')
+    expect(f('ftp://exemple.fr/')).toBe('DIRECT')
+    // Forme courte : une seule règle pour les deux schémas.
+    expect(evaluer(genererPac([], [], false, 'PROXY corp:8080'))('http://a.fr/')).toBe('PROXY corp:8080')
+  })
+
 })
 
 describe('pacDataUrl', () => {

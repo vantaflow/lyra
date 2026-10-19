@@ -1,7 +1,7 @@
 /** Pages d'erreur Lyra : lyra://erreur?type=…&url=… (catégorie interne, servie par erreur.html). */
 
-/** `passerelles` : site contourné sans passerelle qui réponde. */
-export type TypeErreur = 'reseau' | 'introuvable' | 'certificat' | 'passerelles'
+/** `passerelles` : site contourné sans passerelle qui réponde ; `http` : site contourné non chiffré refusé. */
+export type TypeErreur = 'reseau' | 'introuvable' | 'certificat' | 'passerelles' | 'http'
 
 const PREFIXE = 'lyra://erreur'
 

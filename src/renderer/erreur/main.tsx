@@ -2,7 +2,7 @@ import { render } from 'preact'
 import '../ui/theme.css'
 import './erreur.css'
 
-type Type = 'reseau' | 'introuvable' | 'certificat' | 'passerelles'
+type Type = 'reseau' | 'introuvable' | 'certificat' | 'passerelles' | 'http'
 
 const TEXTES: Record<Type, { titre: string; texte: string }> = {
   introuvable: {
@@ -17,6 +17,10 @@ const TEXTES: Record<Type, { titre: string; texte: string }> = {
     titre: 'Aucune passerelle ne répond',
     texte: "Ce site passe par une passerelle, mais aucune n'a répondu. Réessayez dans un instant : Lyra en cherche d'autres."
   },
+  http: {
+    titre: "Ce site n'est pas chiffré",
+    texte: "Ce site n'est pas chiffré : les passerelles publiques ne transportent que les sites https."
+  },
   certificat: {
     titre: "Ce site n'est pas sûr",
     texte: "Le certificat de sécurité de ce site n'est pas valide : vos échanges avec lui pourraient être lus ou modifiés. Le plus prudent est de ne pas continuer."
@@ -25,7 +29,7 @@ const TEXTES: Record<Type, { titre: string; texte: string }> = {
 
 const params = new URLSearchParams(location.search)
 const brut = params.get('type')
-const type: Type = brut === 'certificat' || brut === 'introuvable' || brut === 'passerelles' ? brut : 'reseau'
+const type: Type = brut === 'certificat' || brut === 'introuvable' || brut === 'passerelles' || brut === 'http' ? brut : 'reseau'
 /** Site contourné : jamais « Continuer quand même » (le processus principal refuse aussi). */
 const contourne = params.get('contourne') === '1'
 const url = params.get('url') ?? ''

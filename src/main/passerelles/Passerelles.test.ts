@@ -13,13 +13,20 @@ const WARP: PasserellePerso = { type: 'socks5', hote: '127.0.0.1', port: 40000 }
 interface FausseSession extends SessionProxy {
   proxys: { mode?: string; pacScript?: string }[]
   fermetures: number
+  /** Nombre de setProxy à faire échouer. */
+  echecs: number
 }
 
 function fausseSession(): FausseSession {
   const s: FausseSession = {
     proxys: [],
     fermetures: 0,
+    echecs: 0,
     setProxy: async (c) => {
+      if (s.echecs > 0) {
+        s.echecs--
+        throw new Error('setProxy')
+      }
       s.proxys.push(c)
     },
     closeAllConnections: async () => {
@@ -50,7 +57,9 @@ function monter(initial: Partial<Reseau> = {}) {
     minuteurs: [] as { fn: () => void; ms: number; annule: boolean }[],
     sessions: [fausseSession(), fausseSession()],
     etats: 0,
-    maintenant: 1_000_000
+    maintenant: 1_000_000,
+    systeme: { https: 'DIRECT', http: 'DIRECT' },
+    resolutions: 0
   }
   // eslint-disable-next-line prefer-const
   let p: Passerelles
@@ -92,6 +101,10 @@ function monter(initial: Partial<Reseau> = {}) {
       }
     },
     aleatoire: () => 0,
+    proxySysteme: async () => {
+      env.resolutions++
+      return env.systeme
+    },
     surChangement: () => {
       env.etats++
     }
@@ -110,6 +123,7 @@ function monter(initial: Partial<Reseau> = {}) {
 
 const aucuneRequete = (env: ReturnType<typeof monter>['env']): void => {
   expect(env.appels).toEqual({ charger: 0, trouver: 0, tester: [], direct: 0 })
+  expect(env.resolutions).toBe(0)
   for (const s of env.sessions) expect(s.proxys).toEqual([])
 }
 
@@ -400,5 +414,106 @@ describe('Passerelles — certificats', () => {
     expect(url.searchParams.get('passerelle')).toBe('1')
     expect(url.searchParams.get('contourne')).toBeNull()
     expect(new URL(p.urlErreurPour(-102, 'http://b.fr/')).searchParams.get('passerelle')).toBeNull()
+  })
+})
+
+describe('Passerelles — corrections de relecture', () => {
+  it('proxy système préservé : son repli pour les sites non contournés, les passerelles pour les contournés', async () => {
+    const { p, env } = monter({ sites: [site('a.fr')] })
+    env.systeme = { https: 'PROXY corp:8080', http: 'PROXY corp:3128' }
+    p.demarrer()
+    await p.rechercher()
+    await p.attendre()
+    expect(env.resolutions).toBeGreaterThan(0)
+    expect(evaluer(env.sessions[0], 'https://b.fr/')).toBe('PROXY corp:8080')
+    expect(evaluer(env.sessions[0], 'http://b.fr/')).toBe('PROXY corp:3128')
+    expect(evaluer(env.sessions[0], 'https://a.fr/')).toBe('SOCKS5 1.1.1.1:1080; PROXY 2.2.2.2:8080; SOCKS5 3.3.3.3:1080')
+    expect(evaluer(env.sessions[0], 'https://192.168.0.1/')).toBe('DIRECT')
+  })
+
+  it('détection : un succès sur une autre adresse ou une réponse >= 400 n’enregistre rien', async () => {
+    const { p, env, reseau } = monter()
+    p.demarrer()
+    expect(await p.surEchec(5, 'https://panne.fr/', -105)).toEqual({ action: 'recharger' })
+    p.surSucces(5, 'https://ailleurs.fr/', 200)
+    await p.attendre()
+    expect(reseau().sites).toEqual([])
+    expect(env.sessions[0].proxys.at(-1)).toEqual({ mode: 'system' })
+    expect(await p.surEchec(6, 'https://panne.fr/', -105)).toEqual({ action: 'recharger' })
+    p.surSucces(6, 'https://panne.fr/', 503)
+    await p.attendre()
+    expect(reseau().sites).toEqual([])
+    // Redirection vers un sous-domaine couvert : enregistré.
+    expect(await p.surEchec(7, 'https://bloque.fr/', -105)).toEqual({ action: 'recharger' })
+    p.surSucces(7, 'https://m.bloque.fr/accueil', 200)
+    expect(reseau().sites.map((x) => x.hote)).toEqual(['bloque.fr'])
+  })
+
+  it('détection : une navigation vers une autre adresse met fin à l’essai', async () => {
+    const { p, env, reseau } = monter()
+    p.demarrer()
+    expect(await p.surEchec(5, 'https://panne.fr/', -105)).toEqual({ action: 'recharger' })
+    // Le rechargement de l'essai (même adresse) ne l'interrompt pas.
+    expect(p.surDebut(5, 'https://panne.fr/')).toBeNull()
+    expect(p.surDebut(5, 'https://autre.fr/')).toBeNull()
+    await p.attendre()
+    expect(env.sessions[0].proxys.at(-1)).toEqual({ mode: 'system' })
+    p.surSucces(5, 'https://panne.fr/', 200)
+    expect(reseau().sites).toEqual([])
+  })
+
+  it('http:// vers un site contourné sans personnelle prête : page « http » (contourne=1)', async () => {
+    const { p } = monter({ sites: [site('a.fr')] })
+    p.demarrer()
+    await p.rechercher()
+    const u = new URL(p.surDebut(1, 'http://www.a.fr/page')!)
+    expect(u.searchParams.get('type')).toBe('http')
+    expect(u.searchParams.get('contourne')).toBe('1')
+    expect(u.searchParams.get('url')).toBe('http://www.a.fr/page')
+    expect(p.refusHttp('ws://a.fr/x')).not.toBeNull()
+    expect(p.surDebut(1, 'http://b.fr/')).toBeNull()
+    expect(p.surDebut(1, 'https://a.fr/')).toBeNull()
+  })
+
+  it('http:// accepté quand la passerelle personnelle est prête', async () => {
+    const { p } = monter({ sites: [site('a.fr')], personnelle: WARP })
+    p.demarrer()
+    await p.rechercher()
+    expect(p.surDebut(1, 'http://a.fr/')).toBeNull()
+  })
+
+  it('fenêtre privée : pas de détection (rien n’est écrit), la rotation reste', async () => {
+    const { p, env, reseau } = monter()
+    p.demarrer()
+    const privee = p.crochets({ detection: false })
+    expect(await privee.surEchec(9, 'https://bloque.fr/', -105)).toMatchObject({ action: 'erreur' })
+    privee.surSucces(9, 'https://bloque.fr/', 200)
+    expect(env.appels.direct).toBe(0)
+    expect(reseau().sites).toEqual([])
+    const m = monter({ sites: [site('a.fr')] })
+    m.p.demarrer()
+    await m.p.rechercher()
+    expect(await m.p.crochets({ detection: false }).surEchec(9, 'https://a.fr/', -130)).toEqual({ action: 'recharger' })
+  })
+
+  it('setProxy en échec : le PAC est réappliqué au changement suivant', async () => {
+    const { p, env } = monter({ sites: [site('a.fr')] })
+    // Échoue au PAC de repli puis à celui de la recherche.
+    env.sessions[0].echecs = 2
+    p.demarrer()
+    await p.attendre()
+    expect(env.sessions[0].proxys).toEqual([])
+    // Même PAC voulu, rien n'a changé : il est quand même réappliqué.
+    p.surReglages()
+    await p.attendre()
+    expect(evaluer(env.sessions[0], 'https://a.fr/')).toContain('SOCKS5 1.1.1.1:1080')
+  })
+
+  it('retirer normalise « www. » comme ajouter', async () => {
+    const { p, reseau } = monter()
+    p.ajouter('www.exemple.fr')
+    p.retirer('WWW.exemple.fr')
+    expect(reseau().sites).toEqual([])
+    await p.attendre()
   })
 })

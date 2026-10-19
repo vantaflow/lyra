@@ -92,7 +92,8 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
       zoomDe: (origine) => reglagesCourants().sites[origine]?.zoom,
       memoriserZoom: (origine, zoom) => void reglagesStore?.setSettings({ sites: { [origine]: { zoom } } }),
       rechercheUrl: (texte) => urlDeRecherche(moteurParId(reglagesCourants().moteurParDefaut), texte),
-      passerelles
+      // Fenêtre privée : pas de détection automatique (rien n'est écrit dans les réglages).
+      passerelles: passerelles?.crochets({ detection: !opts.privee })
     }
   )
   // Une demande de permission ne survit pas à un changement de route ou à la fermeture de l'overlay.

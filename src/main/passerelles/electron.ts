@@ -24,6 +24,17 @@ async function testerDirect(): Promise<boolean> {
   }
 }
 
+/** Partition jamais modifiée (mode système) : sert à lire le proxy du système ou de l'entreprise. */
+const PARTITION_SYSTEME = 'passerelle-systeme'
+
+/** « PROXY a:b; DIRECT »… ; DIRECT si la résolution échoue. */
+async function proxySysteme(): Promise<{ https: string; http: string }> {
+  const ses = session.fromPartition(PARTITION_SYSTEME)
+  const lire = (u: string): Promise<string> => ses.resolveProxy(u).catch(() => 'DIRECT')
+  const [https, http] = await Promise.all([lire('https://www.gstatic.com/'), lire('http://example.com/')])
+  return { https, http }
+}
+
 export function creerPasserelles(o: {
   reglages: Reglages
   cacheFichier: string
@@ -43,6 +54,7 @@ export function creerPasserelles(o: {
     trouver: (c) => trouverPasserelles(c),
     tester: (c) => testerPasserelle(c),
     testerDirect,
+    proxySysteme,
     maintenant: () => Date.now(),
     planifier: (fn, ms) => {
       const t = setTimeout(fn, ms)

@@ -32,8 +32,12 @@ export type DecisionEchec = { action: 'recharger' } | { action: 'erreur'; url: s
 
 /** Ce que les vues d'étoile appellent (did-fail-load, did-navigate, destruction, pilule). */
 export interface CrochetsPasserelles {
+  /** Début de navigation principale : met fin à l'essai suivi si l'adresse change ; page d'erreur si http refusé. */
+  surDebut(cle: number, url: string): string | null
+  /** Redirection principale : page d'erreur si http refusé. */
+  refusHttp(url: string): string | null
   surEchec(cle: number, url: string, code: number): Promise<DecisionEchec>
-  surSucces(cle: number, url: string): void
+  surSucces(cle: number, url: string, codeHttp?: number): void
   oublier(cle: number): void
   viaPasserelle(url: string): boolean
 }
@@ -55,6 +59,11 @@ export interface DepsPasserelles {
   /** Minuterie ; renvoie la fonction d'annulation. */
   planifier(fn: () => void, ms: number): () => void
   aleatoire?: () => number
+  /**
+   * Proxy système (règle PAC par schéma), lu sur une session jamais modifiée : il reste le chemin des
+   * sites non contournés. Absent : DIRECT.
+   */
+  proxySysteme?(): Promise<{ https: string; http: string }>
   surChangement?(etat: EtatPasserelles): void
 }
 
@@ -99,8 +108,8 @@ export class Passerelles implements CrochetsPasserelles {
   private gen = 0
   private recherche: { gen: number; p: Promise<void> } | undefined
   private chercheGen = -1
-  /** PAC appliqué aux sessions ; null : proxy système (état initial, aucune requête). */
-  private applique: string | null = null
+  /** PAC appliqué aux sessions ; null : proxy système (état initial, aucune requête) ; undefined : inconnu (échec). */
+  private applique: string | null | undefined = null
   private file: Promise<void> = Promise.resolve()
   private annulerRetest: (() => void) | undefined
   /** Hôtes en cours d'essai par la détection automatique (pas encore enregistrés). */
@@ -193,8 +202,41 @@ export class Passerelles implements CrochetsPasserelles {
     return urlErreur('passerelles', url, { contourne: '1' })
   }
 
+  /** Crochets d'une fenêtre ; `detection: false` (fenêtre privée) : rien n'est jamais écrit dans les réglages. */
+  crochets(o: { detection: boolean }): CrochetsPasserelles {
+    return {
+      surDebut: (c, u) => this.surDebut(c, u),
+      refusHttp: (u) => this.refusHttp(u),
+      surEchec: (c, u, code) => this.surEchec(c, u, code, o),
+      surSucces: (c, u, code) => this.surSucces(c, u, code),
+      oublier: (c) => this.oublier(c),
+      viaPasserelle: (u) => this.viaPasserelle(u)
+    }
+  }
+
+  /** Début d'une navigation principale : une autre adresse met fin à l'essai ou à la rotation suivis. */
+  surDebut(cle: number, url: string): string | null {
+    const nav = this.navs.get(cle)
+    if (nav && nav.url !== url) {
+      this.terminer(cle)
+      if (nav.phase === 'detection') this.suivre(this.appliquer())
+    }
+    return this.refusHttp(url)
+  }
+
+  /**
+   * http/ws vers un site contourné : seule une passerelle personnelle prête peut le porter ; sinon page
+   * d'erreur « http » (le PAC l'enverrait par le chemin habituel, c'est-à-dire vers le blocage).
+   */
+  refusHttp(url: string): string | null {
+    const d = decouper(url)
+    if (!d || (d.schema !== 'http' && d.schema !== 'ws') || !this.contourne(url)) return null
+    if (this.poolPerso && this.pool.length > 0) return null
+    return urlErreur('http', url, { contourne: '1' })
+  }
+
   /** Échec de chargement du cadre principal (`did-fail-load`) : recharger ou page d'erreur. Ne lève pas. */
-  async surEchec(cle: number, url: string, code: number): Promise<DecisionEchec> {
+  async surEchec(cle: number, url: string, code: number, o: { detection: boolean } = { detection: true }): Promise<DecisionEchec> {
     const normale = (): DecisionEchec => ({ action: 'erreur', url: this.urlErreurPour(code, url) })
     let nav = this.navs.get(cle)
     if (nav && nav.url !== url) {
@@ -232,7 +274,7 @@ export class Passerelles implements CrochetsPasserelles {
       await this.appliquer()
       return { action: 'recharger' }
     }
-    if (r.passerelles && r.auto && !nav && d.schema === 'https' && estCodeBlocage(code) && hoteValide(d.hote) && !this.contourne(url)) {
+    if (o.detection && r.passerelles && r.auto && !nav && d.schema === 'https' && estCodeBlocage(code) && hoteValide(d.hote) && !this.contourne(url)) {
       if (!(await this.deps.testerDirect().catch(() => false))) return normale()
       await this.assurerPool()
       if (this.pool.length === 0 || this.navs.has(cle)) return normale()
@@ -246,13 +288,22 @@ export class Passerelles implements CrochetsPasserelles {
     return normale()
   }
 
-  /** Chargement réussi du cadre principal (`did-navigate`) : confirme une détection, remet la rotation à zéro. */
-  surSucces(cle: number, _url: string): void {
+  /**
+   * Chargement du cadre principal (`did-navigate`) : confirme une détection seulement si l'adresse chargée
+   * est couverte par l'hôte essayé et que la réponse est < 400 ; remet la rotation à zéro.
+   */
+  surSucces(cle: number, url: string, codeHttp?: number): void {
     const nav = this.navs.get(cle)
     if (!nav) return
     if (nav.phase === 'detection' && nav.hote) {
       const hote = nav.hote
       this.terminer(cle)
+      const d = decouper(url)
+      const reussi = !!d && d.schema === 'https' && hoteCouvert(d.hote, [hote]) && (codeHttp === undefined || codeHttp < 400)
+      if (!reussi) {
+        this.suivre(this.appliquer())
+        return
+      }
       const r = this.deps.reseau()
       if (!hoteCouvert(hote, r.sites.map((s) => s.hote)) && r.sites.length < MAX_SITES) {
         this.deps.ecrireSites([...r.sites, { hote, origine: 'auto', date: this.deps.maintenant() }])
@@ -293,9 +344,11 @@ export class Passerelles implements CrochetsPasserelles {
   }
 
   retirer(saisie: string): EtatPasserelles {
-    const h = String(saisie).trim().toLowerCase().replace(/\.+$/, '')
+    const brut = String(saisie ?? '').trim().toLowerCase().replace(/\.+$/, '')
+    const h = sansWww(brut)
+    const vise = (s: SiteContourne): boolean => s.hote === h || s.hote === brut
     const r = this.deps.reseau()
-    if (r.sites.some((s) => s.hote === h)) this.deps.ecrireSites(r.sites.filter((s) => s.hote !== h))
+    if (r.sites.some(vise)) this.deps.ecrireSites(r.sites.filter((s) => !vise(s)))
     return this.etat()
   }
 
@@ -447,25 +500,29 @@ export class Passerelles implements CrochetsPasserelles {
 
   // — Sessions —
 
-  private pacVoulu(): string | null {
+  private async pacVoulu(): Promise<string | null> {
     const r = this.deps.reseau()
     if (!r.passerelles) return null
     const hotes = [...r.sites.map((s) => s.hote), ...this.essais.keys()]
     if (hotes.length === 0) return null
-    return genererPac(hotes, this.pool, this.poolPerso && this.pool.length > 0)
+    // Proxy système relu avant chaque application (une seule règle par schéma : approximation d'un PAC système).
+    const systeme = this.deps.proxySysteme ? await this.deps.proxySysteme().catch(() => undefined) : undefined
+    return genererPac(hotes, this.pool, this.poolPerso && this.pool.length > 0, systeme ?? 'DIRECT')
   }
 
   /** Applique le PAC voulu (en série) à chaque session puis ferme les connexions ouvertes. */
   private appliquer(): Promise<void> {
     this.file = this.file
       .then(async () => {
-        const voulu = this.pacVoulu()
+        const voulu = await this.pacVoulu()
         if (voulu === this.applique) return
-        this.applique = voulu
+        // Retenu seulement après succès : un échec laisse l'état « inconnu », réappliqué au prochain appel.
+        this.applique = undefined
         for (const s of this.deps.sessions()) {
           await s.setProxy(voulu === null ? { mode: 'system' } : { mode: 'pac_script', pacScript: pacDataUrl(voulu) })
           await s.closeAllConnections()
         }
+        this.applique = voulu
         this.notifier()
       })
       .catch(() => undefined)
