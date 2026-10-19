@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Lyra — nouvel onglet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Manrope,-apple-system,"Segoe UI",system-ui,sans-serif;color:#1C1C2E}
+a{color:#4A48C4}a:hover{color:#2F2D8A}
+.star{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px;border:0;border-radius:8px;background:transparent;color:#C9C9EA;font:13px/1 Manrope,-apple-system,"Segoe UI",system-ui,sans-serif;width:100%;text-align:left;cursor:pointer;box-sizing:border-box;position:relative}
+.star:hover{background:#1F1F42;color:#fff}
+.star.active{background:#262650;color:#fff}
+.star .dot{width:8px;height:8px;border-radius:50%;background:#A8A8D8;flex:none}
+.star.active .dot{background:#F4C56A;box-shadow:0 0 0 3px rgba(244,197,106,.22),0 0 14px rgba(244,197,106,.7)}
+.star.dim{color:#8686B4}.star.dim .dot{background:#4E4E7A}
+.star .t{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.branch{margin-left:12px;padding-left:12px;border-left:1px solid #3B3B70;display:flex;flex-direction:column}
+.branch .star::before{content:"";position:absolute;left:-12px;top:50%;width:10px;height:1px;background:#3B3B70}
+.grp{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#7F7FB0;padding:12px 8px 4px;font-weight:600}
+.sb{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:0;border-radius:9px;background:transparent;color:#B3B3DA;cursor:pointer;padding:0}
+.sb:hover{background:#23234A;color:#fff}
+.pin{width:28px;height:28px;border-radius:50%;border:0;padding:0;display:inline-flex;align-items:center;justify-content:center;font:700 11px Manrope,sans-serif;color:#fff;cursor:pointer}
+.cb{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:#4A4A66;cursor:pointer;padding:0}
+.cb:hover{background:#EEEEF6;color:#1C1C2E}
+.cb[disabled]{color:#B8B8CC;cursor:default}
+kbd{font:600 10.5px/1 Manrope,sans-serif;background:#2E2E5A;color:#B3B3DA;padding:4px 6px;border-radius:5px;letter-spacing:.02em}
+.site{display:flex;flex-direction:column;align-items:center;gap:8px;width:92px;border:0;background:transparent;color:#C9C9EA;font:12.5px Manrope,sans-serif;cursor:pointer;padding:8px 4px;border-radius:12px}
+.site:hover{background:#1B1B3A;color:#fff}
+.site i{width:44px;height:44px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-weight:700;font-size:15px;color:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.04)}
+.chip{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px;border:1px solid #2E2E5C;border-radius:17px;background:#16163A;color:#D9D9F0;font:500 13px Manrope,sans-serif;cursor:pointer}
+.chip:hover{background:#20204A;color:#fff}
+</style>
+</helmet>
+
+<div style="width: 100%; min-height: 100vh; display: flex; background: #E9E9F3; font-size: 14px; line-height: 1.45">
+
+  <aside aria-label="Ciel des onglets" style="width: 272px; flex: none; display: flex; flex-direction: column; gap: 10px; background: #15152E; color: #D9D9F0; padding: 10px 12px 12px; box-sizing: border-box">
+    <div style="display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 2px">
+      <div aria-hidden="true" style="display: flex; gap: 8px; padding-right: 8px">
+        <span style="width: 12px; height: 12px; border-radius: 50%; background: #2E2E55"></span>
+        <span style="width: 12px; height: 12px; border-radius: 50%; background: #2E2E55"></span>
+        <span style="width: 12px; height: 12px; border-radius: 50%; background: #2E2E55"></span>
+      </div>
+      <span style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 21px; color: #F3F3FF; letter-spacing: .01em">Lyra</span>
+      <span style="flex: 1"></span>
+      <button class="sb" type="button" aria-label="Replier le ciel" style="width: 28px; height: 28px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button>
+    </div>
+
+    <button type="button" aria-label="Aller à une adresse, rechercher ou lancer une commande" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px 0 12px; border: 0; border-radius: 10px; background: #222247; color: #9D9DC8; font: 13px Manrope, sans-serif; cursor: pointer; width: 100%; box-sizing: border-box; text-align: left">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
+      <span style="flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis">Aller à, rechercher, commander…</span>
+      <kbd>⌘ L</kbd>
+    </button>
+
+    <div aria-label="Onglets épinglés" style="display: flex; gap: 8px; padding: 2px 6px 0; flex-wrap: wrap">
+      <button class="pin" type="button" aria-label="Messagerie" style="background: #1E7F6C">M</button>
+      <button class="pin" type="button" aria-label="Agenda" style="background: #2D5BD1">A</button>
+      <button class="pin" type="button" aria-label="Kagi" style="background: #D97A2B">K</button>
+      <button class="pin" type="button" aria-label="GitHub" style="background: #3A3A62">G</button>
+      <button class="pin" type="button" aria-label="Musique" style="background: #B5452F">♪</button>
+    </div>
+
+    <nav aria-label="Onglets ouverts" style="flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden">
+      <button class="star active" type="button" style="margin-top: 6px"><span class="dot" aria-hidden="true"></span><span class="t">Nouvelle étoile</span></button>
+
+      <div class="grp"><span>Astronomie</span><span style="letter-spacing: 0; color: #5E5E92">4</span></div>
+      <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Lyra (constellation) — Atlas du ciel</span></button>
+      <div class="branch">
+        <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Véga — Wikipédia</span></button>
+        <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Véga, l'étoile de l'été — vidéo</span></button>
+      </div>
+      <button class="star dim" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Nébuleuse de l'Anneau — Atlas du ciel</span></button>
+
+      <div class="grp"><span>Travail</span><span style="letter-spacing: 0; color: #5E5E92">3</span></div>
+      <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Boîte de réception (3)</span></button>
+      <button class="star" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Pull request #42 — GitHub</span></button>
+      <div class="branch">
+        <button class="star dim" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Exécution CI n° 1842</span></button>
+      </div>
+    </nav>
+
+    <div style="display: flex; align-items: center; gap: 2px; padding-top: 8px; border-top: 1px solid #26264A">
+      <button type="button" aria-label="Boucliers actifs" style="display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px 0 8px; border: 0; border-radius: 9px; background: transparent; color: #5FD3B3; font: 600 12.5px Manrope, sans-serif; cursor: pointer">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 9.5C8 19.2 5 15.5 5 11V6z"/><path d="M9 12l2 2 4-4"/></svg>
+      </button>
+      <span style="flex: 1"></span>
+      <button class="sb" type="button" aria-label="Extensions"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M10 4a2 2 0 0 1 4 0v1h3a1 1 0 0 1 1 1v3h1a2 2 0 0 1 0 4h-1v3a1 1 0 0 1-1 1h-3v-1a2 2 0 0 0-4 0v1H7a1 1 0 0 1-1-1v-3H5a2 2 0 0 1 0-4h1V6a1 1 0 0 1 1-1h3z"/></svg></button>
+      <button class="sb" type="button" aria-label="Téléchargements"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg></button>
+      <button class="sb" type="button" aria-label="Ne pas déranger"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button>
+      <button class="sb" type="button" aria-label="Réglages"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button>
+    </div>
+  </aside>
+
+  <section aria-label="Page active" style="flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 0; box-sizing: border-box; background: #15152E">
+    <div style="flex: 1; display: flex; flex-direction: column; background: #0F0F26; border-radius: 12px 0 0 12px; overflow: hidden; position: relative">
+
+      <!-- Ciel étoilé (décor) -->
+      <svg aria-hidden="true" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice" style="position: absolute; inset: 0; width: 100%; height: 100%; display: block">
+        <g fill="#FFFFFF">
+          <circle cx="62" cy="48" r="1.4" opacity=".7"/><circle cx="140" cy="120" r="1" opacity=".5"/><circle cx="210" cy="40" r="1.8" opacity=".8"/><circle cx="300" cy="90" r="1" opacity=".45"/><circle cx="380" cy="30" r="1.3" opacity=".6"/><circle cx="470" cy="70" r="1" opacity=".4"/><circle cx="560" cy="25" r="1.6" opacity=".7"/><circle cx="640" cy="110" r="1" opacity=".5"/><circle cx="730" cy="50" r="1.2" opacity=".55"/><circle cx="830" cy="95" r="1.9" opacity=".85"/><circle cx="920" cy="35" r="1" opacity=".5"/><circle cx="970" cy="140" r="1.3" opacity=".6"/>
+          <circle cx="40" cy="220" r="1" opacity=".4"/><circle cx="120" cy="300" r="1.5" opacity=".65"/><circle cx="260" cy="250" r="1" opacity=".45"/><circle cx="330" cy="330" r="1.2" opacity=".5"/><circle cx="90" cy="420" r="1.7" opacity=".75"/><circle cx="200" cy="520" r="1" opacity=".4"/><circle cx="420" cy="560" r="1.4" opacity=".6"/><circle cx="540" cy="470" r="1" opacity=".45"/><circle cx="660" cy="540" r="1.6" opacity=".7"/><circle cx="760" cy="440" r="1" opacity=".5"/><circle cx="880" cy="520" r="1.3" opacity=".6"/><circle cx="960" cy="400" r="1" opacity=".45"/><circle cx="700" cy="300" r="1" opacity=".4"/><circle cx="610" cy="200" r="1.2" opacity=".5"/>
+        </g>
+        <g stroke="#5A5AA8" stroke-width="1" fill="none" opacity=".7"><path d="M840 190 L812 250 L858 262 L840 190"/><path d="M812 250 L784 355"/><path d="M858 262 L836 372"/><path d="M784 355 L836 372"/></g>
+        <g fill="#DADAF8"><circle cx="840" cy="190" r="4.5"/><circle cx="812" cy="250" r="2.2"/><circle cx="858" cy="262" r="2.2"/><circle cx="784" cy="355" r="2.6"/><circle cx="836" cy="372" r="2.6"/></g>
+        <text x="852" y="186" fill="#9A9AD0" font-size="12" font-family="Manrope, system-ui, sans-serif">Véga</text>
+      </svg>
+
+      <!-- Capsule -->
+      <div style="position: relative; display: flex; align-items: center; gap: 6px; height: 46px; padding: 0 10px; box-sizing: border-box; flex-wrap: wrap">
+        <button class="cb" type="button" aria-label="Page précédente" style="color: #B3B3DA"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <button class="cb" type="button" aria-label="Page suivante" disabled style="color: #4A4A7A"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+        <span style="flex: 1"></span>
+        <button type="button" aria-label="Nouvel onglet — modifier l'adresse" style="display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 14px; border: 0; border-radius: 16px; background: rgba(255,255,255,.06); color: #8E8EBE; font: 500 13.5px Manrope, sans-serif; cursor: pointer">Nouvel onglet</button>
+        <span style="flex: 1"></span>
+        <button class="cb" type="button" aria-label="Menu de la page" style="color: #B3B3DA"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg></button>
+      </div>
+
+      <!-- Contenu -->
+      <main style="position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 36px; padding: 40px 32px 72px; color: #ECECFA; box-sizing: border-box">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center">
+          <p style="margin: 0; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 48px; line-height: 1.05; color: #F6F6FF">Bonsoir.</p>
+          <p style="margin: 0; color: #9E9EC8; font-size: 15px">Que cherchez-vous ce soir ?</p>
+        </div>
+
+        <form role="search" style="width: 100%; max-width: 680px; display: flex; align-items: center; gap: 12px; height: 58px; padding: 0 10px 0 18px; box-sizing: border-box; background: #1A1A3C; border: 1px solid #30305F; border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,.35)">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#9E9EC8" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
+          <label for="recherche" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Rechercher ou saisir une adresse</label>
+          <input id="recherche" type="text" placeholder="Rechercher ou saisir une adresse" style="flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: #F6F6FF; font: 16px Manrope, sans-serif">
+          <button type="button" aria-label="Moteur de recherche : DuckDuckGo, changer" style="display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 0; border-radius: 10px; background: #2A2A55; color: #C9C9EA; font: 500 12.5px Manrope, sans-serif; cursor: pointer">DuckDuckGo<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+        </form>
+
+        <section aria-label="Vos constellations" style="display: flex; flex-direction: column; align-items: center; gap: 12px">
+          <h2 style="margin: 0; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: #7F7FB0; font-weight: 600">Vos constellations</h2>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center">
+            <button class="chip" type="button"><span style="width: 8px; height: 8px; border-radius: 50%; background: #F4C56A"></span>Astronomie<span style="color: #7F7FB0">4</span></button>
+            <button class="chip" type="button"><span style="width: 8px; height: 8px; border-radius: 50%; background: #5FD3B3"></span>Travail<span style="color: #7F7FB0">3</span></button>
+            <button class="chip" type="button"><span style="width: 8px; height: 8px; border-radius: 50%; background: #7A7AD8"></span>Voyage à Lisbonne<span style="color: #7F7FB0">dormante</span></button>
+            <button class="chip" type="button" style="color: #8E8EBE"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>Nouvelle constellation</button>
+          </div>
+        </section>
+
+        <section aria-label="Sites fréquents" style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+          <h2 style="margin: 0; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: #7F7FB0; font-weight: 600">Sites fréquents</h2>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 820px">
+            <button class="site" type="button"><i style="background: #1E7F6C">M</i>Messagerie</button>
+            <button class="site" type="button"><i style="background: #5452C8">A</i>Atlas du ciel</button>
+            <button class="site" type="button"><i style="background: #3A3A62">G</i>GitHub</button>
+            <button class="site" type="button"><i style="background: #D97A2B">K</i>Kagi</button>
+            <button class="site" type="button"><i style="background: #2D5BD1">W</i>Wikipédia</button>
+            <button class="site" type="button"><i style="background: #B5452F">Y</i>YouTube</button>
+            <button class="site" type="button"><i style="background: #7A3EB1">F</i>Figma</button>
+            <button class="site" type="button"><i style="background: #1F6FB2">L</i>Linear</button>
+          </div>
+        </section>
+      </main>
+
+      <!-- Pied de page -->
+      <div style="position: absolute; left: 20px; right: 20px; bottom: 16px; display: flex; align-items: center; gap: 14px; color: #7F7FB0; font-size: 12.5px; flex-wrap: wrap">
+        <span style="display: inline-flex; align-items: center; gap: 6px; color: #5FD3B3"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 9.5C8 19.2 5 15.5 5 11V6z"/><path d="M9 12l2 2 4-4"/></svg>1 284 éléments bloqués cette semaine</span>
+        <span>Aucune donnée ne quitte cet ordinateur.</span>
+        <span style="flex: 1"></span>
+        <a href="#" style="color: #9E9EC8; text-decoration: none">Historique</a>
+        <a href="#" style="color: #9E9EC8; text-decoration: none">Favoris</a>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

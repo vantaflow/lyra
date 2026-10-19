@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Lyra — ciel en bas</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Manrope,-apple-system,"Segoe UI",system-ui,sans-serif;color:#1C1C2E}
+a{color:#4A48C4}a:hover{color:#2F2D8A}
+.hs{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:#C9C9EA;font:13px/1 Manrope,-apple-system,"Segoe UI",system-ui,sans-serif;max-width:150px;cursor:pointer;white-space:nowrap;flex:none}
+.hs:hover{background:#1F1F42;color:#fff}
+.hs.active{background:#262650;color:#fff}
+.hs .dot{width:8px;height:8px;border-radius:50%;background:#A8A8D8;flex:none}
+.hs.active .dot{background:#F4C56A;box-shadow:0 0 0 3px rgba(244,197,106,.22),0 0 14px rgba(244,197,106,.7)}
+.hs.dim{color:#8686B4;max-width:120px}.hs.dim .dot{background:#4E4E7A}
+.hs .t{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.hc{display:inline-flex;align-items:center;height:34px;border:0;background:transparent;padding:0;cursor:pointer;flex:none}
+.hc i{display:block;width:12px;height:1px;background:#3B3B70}
+.hc b{display:block;width:7px;height:7px;border-radius:50%;background:#A8A8D8}
+.hc:hover b{background:#fff}
+.hg{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#7F7FB0;font-weight:600;padding:0 4px 0 8px;white-space:nowrap;flex:none}
+.sb{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:0;border-radius:9px;background:transparent;color:#B3B3DA;cursor:pointer;padding:0;flex:none}
+.sb:hover{background:#23234A;color:#fff}
+.pin{width:26px;height:26px;border-radius:50%;border:0;padding:0;display:inline-flex;align-items:center;justify-content:center;font:700 11px Manrope,sans-serif;color:#fff;cursor:pointer;flex:none}
+.cb{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:#4A4A66;cursor:pointer;padding:0}
+.cb:hover{background:#EEEEF6;color:#1C1C2E}
+.cb[disabled]{color:#B8B8CC;cursor:default}
+</style>
+</helmet>
+
+<div style="width: 100%; min-height: 100vh; display: flex; flex-direction: column; background: #15152E; font-size: 14px; line-height: 1.45">
+
+  <!-- La page -->
+  <section aria-label="Page active" style="flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 0; box-sizing: border-box">
+    <div style="flex: 1; display: flex; flex-direction: column; background: #FFFFFF; border-radius: 0 0 12px 12px; overflow: hidden">
+      <div style="display: flex; align-items: center; gap: 6px; height: 46px; padding: 0 10px 0 86px; box-sizing: border-box; border-bottom: 1px solid #EEEEF4; flex-wrap: wrap">
+        <button class="cb" type="button" aria-label="Page précédente"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <button class="cb" type="button" aria-label="Page suivante" disabled><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+        <button class="cb" type="button" aria-label="Recharger"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/></svg></button>
+        <span style="flex: 1"></span>
+        <button type="button" aria-label="atlasduciel.fr, connexion sécurisée — modifier l'adresse" style="display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 14px 0 12px; border: 0; border-radius: 16px; background: #F3F3F9; color: #1C1C2E; font: 500 13.5px Manrope, sans-serif; cursor: pointer; max-width: 100%">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#1E7F6C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+          <span>atlasduciel.fr</span><span style="color: #8A8AA6; font-weight: 400">/constellations/lyre</span>
+        </button>
+        <span style="flex: 1"></span>
+        <button class="cb" type="button" aria-label="Ajouter aux favoris"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9-5.3-2.8-5.3 2.8 1.1-5.9L5.5 9.7l5.9-.8z"/></svg></button>
+        <button class="cb" type="button" aria-label="Menu de la page"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg></button>
+      </div>
+      <main style="flex: 1; display: flex; flex-direction: column">
+        <div style="border-bottom: 1px solid #ECECF1">
+          <div style="max-width: 980px; margin: 0 auto; padding: 18px 32px; display: flex; align-items: center; gap: 28px; flex-wrap: wrap">
+            <span style="font-size: 20px; font-weight: 700; letter-spacing: -0.3px">Atlas du ciel</span>
+            <a href="#" style="text-decoration: none; color: #3A3A50">Constellations</a>
+            <a href="#" style="text-decoration: none; color: #3A3A50">Étoiles</a>
+            <a href="#" style="text-decoration: none; color: #3A3A50">Éphémérides</a>
+            <a href="#" style="text-decoration: none; color: #3A3A50">Observer</a>
+          </div>
+        </div>
+        <article style="max-width: 980px; width: 100%; box-sizing: border-box; margin: 0 auto; padding: 36px 32px 56px; display: flex; flex-direction: column; gap: 18px">
+          <p style="margin: 0; color: #6B6B80; font-size: 13px">Constellations · Ciel boréal</p>
+          <h1 style="margin: 0; font-size: 40px; line-height: 1.1; letter-spacing: -0.6px">Lyra, la constellation de la Lyre</h1>
+          <p style="margin: 0; font-size: 17px; color: #3A3A50; max-width: 720px">Petite constellation de l'hémisphère nord, la Lyre se repère grâce à Véga, cinquième étoile la plus brillante du ciel nocturne et sommet du Triangle d'été avec Deneb et Altaïr.</p>
+          <p style="margin: 0; max-width: 720px">Véga (α Lyrae) n'est qu'à 25 années-lumière du Soleil. Elle a servi d'étalon de magnitude pendant plus d'un siècle, et elle sera l'étoile polaire dans environ 12 000 ans, par l'effet de la précession des équinoxes.</p>
+          <p style="margin: 0; max-width: 720px">La constellation abrite aussi la nébuleuse de l'Anneau (M57), visible dans un petit télescope entre les étoiles β et γ Lyrae. Chaque année, autour du 22 avril, l'essaim des Lyrides offre une dizaine de météores par heure.</p>
+        </article>
+      </main>
+    </div>
+  </section>
+
+  <!-- Le ciel, en bande sous la page -->
+  <footer aria-label="Ciel des onglets" style="display: flex; align-items: center; gap: 4px; height: 56px; padding: 0 10px 0 12px; box-sizing: border-box; background: #15152E; color: #D9D9F0; flex-wrap: wrap">
+    <span style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 20px; color: #F3F3FF; padding-right: 6px">Lyra</span>
+    <button class="sb" type="button" aria-label="Aller à, rechercher, commander (⌘ L)" style="background: #222247; color: #9D9DC8"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg></button>
+    <span aria-hidden="true" style="width: 6px"></span>
+    <button class="pin" type="button" aria-label="Messagerie" style="background: #1E7F6C">M</button>
+    <button class="pin" type="button" aria-label="Agenda" style="background: #2D5BD1">A</button>
+    <button class="pin" type="button" aria-label="Kagi" style="background: #D97A2B">K</button>
+    <button class="pin" type="button" aria-label="GitHub" style="background: #3A3A62">G</button>
+    <span aria-hidden="true" style="width: 1px; height: 24px; background: #2E2E55; margin: 0 6px"></span>
+
+    <span class="hg">Astronomie</span>
+    <button class="hs active" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Lyra (constellation)</span></button>
+    <button class="hc" type="button" aria-label="Véga — Wikipédia (onglet lié)"><i aria-hidden="true"></i><b aria-hidden="true"></b></button>
+    <button class="hc" type="button" aria-label="Véga, l'étoile de l'été — vidéo (onglet lié)"><i aria-hidden="true"></i><b aria-hidden="true"></b></button>
+    <button class="hs dim" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Nébuleuse de l'Anneau</span></button>
+
+    <span class="hg">Travail</span>
+    <button class="hs" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Boîte de réception (3)</span></button>
+    <button class="hs" type="button"><span class="dot" aria-hidden="true"></span><span class="t">Pull request #42</span></button>
+    <button class="hc" type="button" aria-label="Exécution CI n° 1842 (onglet lié, dormant)"><i aria-hidden="true"></i><b aria-hidden="true" style="background: #4E4E7A"></b></button>
+
+    <button class="sb" type="button" aria-label="Nouvelle étoile (⌘ T)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+
+    <span style="flex: 1"></span>
+    <button type="button" aria-label="Boucliers : 12 éléments bloqués sur ce site" style="display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px 0 8px; border: 0; border-radius: 9px; background: transparent; color: #5FD3B3; font: 600 12.5px Manrope, sans-serif; cursor: pointer; flex: none">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 9.5C8 19.2 5 15.5 5 11V6z"/><path d="M9 12l2 2 4-4"/></svg>
+      <span>12</span>
+    </button>
+    <button class="sb" type="button" aria-label="Extensions"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M10 4a2 2 0 0 1 4 0v1h3a1 1 0 0 1 1 1v3h1a2 2 0 0 1 0 4h-1v3a1 1 0 0 1-1 1h-3v-1a2 2 0 0 0-4 0v1H7a1 1 0 0 1-1-1v-3H5a2 2 0 0 1 0-4h1V6a1 1 0 0 1 1-1h3z"/></svg></button>
+    <button class="sb" type="button" aria-label="Téléchargements"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg></button>
+    <button class="sb" type="button" aria-label="Ne pas déranger"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button>
+    <button class="sb" type="button" aria-label="Réglages"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

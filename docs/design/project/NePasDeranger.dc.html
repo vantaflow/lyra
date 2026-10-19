@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Lyra — mode Ne pas déranger</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Manrope,-apple-system,"Segoe UI",system-ui,sans-serif;color:#1C1C2E}
+a{color:#4A48C4}a:hover{color:#2F2D8A}
+kbd{font:600 10.5px/1 Manrope,sans-serif;background:#2E2E5A;color:#B3B3DA;padding:4px 6px;border-radius:5px;letter-spacing:.02em}
+</style>
+</helmet>
+
+<div style="width: 100%; min-height: 100vh; display: flex; flex-direction: column; background: #FFFFFF; font-size: 14px; line-height: 1.45; position: relative">
+
+  <!-- Rappel discret du mode (s'efface après quelques secondes, ne laisse que le croissant) -->
+  <div role="status" style="position: absolute; top: 14px; right: 16px; display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px 0 10px; border-radius: 18px; background: rgba(21,21,46,.94); color: #E8E8F4; font-size: 12.5px; box-shadow: 0 10px 30px rgba(10,10,40,.25); z-index: 2">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="#F4C56A" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+    <span style="font-weight: 600">Ne pas déranger</span>
+    <span style="color: #9E9EC8">3 notifications retenues · encore 42 min</span>
+    <kbd>Échap</kbd>
+    <button type="button" aria-label="Quitter le mode Ne pas déranger" style="display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 0; border-radius: 6px; background: transparent; color: #9E9EC8; cursor: pointer; padding: 0"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg></button>
+  </div>
+
+  <!-- Seulement la page : ni ciel, ni capsule -->
+  <main style="flex: 1; display: flex; flex-direction: column">
+    <div style="border-bottom: 1px solid #ECECF1">
+      <div style="max-width: 980px; margin: 0 auto; padding: 18px 32px; display: flex; align-items: center; gap: 28px; flex-wrap: wrap">
+        <span style="font-size: 20px; font-weight: 700; letter-spacing: -0.3px">Atlas du ciel</span>
+        <a href="#" style="text-decoration: none; color: #3A3A50">Constellations</a>
+        <a href="#" style="text-decoration: none; color: #3A3A50">Étoiles</a>
+        <a href="#" style="text-decoration: none; color: #3A3A50">Éphémérides</a>
+        <a href="#" style="text-decoration: none; color: #3A3A50">Observer</a>
+      </div>
+    </div>
+    <article style="max-width: 980px; width: 100%; box-sizing: border-box; margin: 0 auto; padding: 36px 32px 56px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px">
+      <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 18px">
+        <p style="margin: 0; color: #6B6B80; font-size: 13px">Constellations · Ciel boréal</p>
+        <h1 style="margin: 0; font-size: 40px; line-height: 1.1; letter-spacing: -0.6px">Lyra, la constellation de la Lyre</h1>
+        <p style="margin: 0; font-size: 17px; color: #3A3A50">Petite constellation de l'hémisphère nord, la Lyre se repère grâce à Véga, cinquième étoile la plus brillante du ciel nocturne et sommet du Triangle d'été avec Deneb et Altaïr.</p>
+        <p style="margin: 0">Véga (α Lyrae) n'est qu'à 25 années-lumière du Soleil. Elle a servi d'étalon de magnitude pendant plus d'un siècle, et elle sera l'étoile polaire dans environ 12 000 ans, par l'effet de la précession des équinoxes.</p>
+        <p style="margin: 0">La constellation abrite aussi la nébuleuse de l'Anneau (M57), un anneau de gaz expulsé par une étoile en fin de vie, visible dans un petit télescope entre les étoiles β et γ Lyrae. Chaque année, autour du 22 avril, l'essaim des Lyrides offre une dizaine de météores par heure.</p>
+        <h2 style="margin: 12px 0 0; font-size: 22px">Comment la trouver</h2>
+        <p style="margin: 0">En été, levez les yeux vers le zénith en début de nuit : Véga est l'étoile bleue-blanche la plus brillante. Le petit parallélogramme d'étoiles juste en dessous dessine la caisse de l'instrument.</p>
+        <h2 style="margin: 12px 0 0; font-size: 22px">Les Lyrides</h2>
+        <p style="margin: 0">L'essaim est alimenté par les poussières de la comète C/1861 G1 Thatcher. Son radiant se trouve près de Véga, et les observations les plus anciennes remontent à la Chine du IVe siècle avant notre ère.</p>
+      </div>
+      <aside style="display: flex; flex-direction: column; gap: 14px">
+        <div style="border: 1px solid #E6E6EE; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 10px">
+          <svg viewBox="0 0 200 150" width="100%" role="img" aria-label="Tracé de la constellation de la Lyre" style="display: block">
+            <rect width="200" height="150" rx="8" fill="#0F1230"/>
+            <g stroke="#9C9CF0" stroke-width="1.2" fill="none"><path d="M96 28 L84 54 L104 60 L96 28"/><path d="M84 54 L72 100"/><path d="M104 60 L94 108"/><path d="M72 100 L94 108"/></g>
+            <g fill="#FFFFFF"><circle cx="96" cy="28" r="4.2"/><circle cx="84" cy="54" r="2"/><circle cx="104" cy="60" r="2"/><circle cx="72" cy="100" r="2.4"/><circle cx="94" cy="108" r="2.4"/></g>
+            <text x="106" y="26" fill="#DADAF8" font-size="11" font-family="system-ui, sans-serif">Véga</text>
+          </svg>
+          <dl style="margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; font-size: 13px">
+            <dt style="color: #6B6B80">Génitif</dt><dd style="margin: 0">Lyrae</dd>
+            <dt style="color: #6B6B80">Abréviation</dt><dd style="margin: 0">Lyr</dd>
+            <dt style="color: #6B6B80">Étoile principale</dt><dd style="margin: 0">Véga (0,03)</dd>
+            <dt style="color: #6B6B80">Meilleur mois</dt><dd style="margin: 0">Août</dd>
+          </dl>
+        </div>
+        <div style="border: 1px solid #E6E6EE; border-radius: 12px; padding: 16px 18px; font-size: 13px; color: #3A3A50; display: flex; flex-direction: column; gap: 6px">
+          <strong style="color: #1C1C2E">Dans le ciel ce soir</strong>
+          <span>Lever de Véga : 15 h 42 · Passage au méridien : 22 h 10</span>
+          <span>Hauteur maximale : 82° (zénith)</span>
+        </div>
+      </aside>
+    </article>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
