@@ -13,6 +13,8 @@ export interface OptionsMoteur {
   fetch?: typeof fetch
   maintenant?: Date
   majHeures: number
+  /** Délai d'attente par liste, en ms (15 000 par défaut). */
+  timeoutMs?: number
 }
 
 export interface ResultatMoteur {
@@ -31,7 +33,7 @@ export const CONFIG_MOTEUR = {
 const FICHIER_BIN = 'engine.bin'
 const FICHIER_META = 'engine.meta.json'
 
-function lireCache(opts: OptionsMoteur, maintenant: Date): Promise<ResultatMoteur | undefined> {
+function lireCache(opts: OptionsMoteur, maintenant: Date, tolererPerime = false): Promise<ResultatMoteur | undefined> {
   return (async () => {
     try {
       const meta = JSON.parse(await readFile(join(opts.cacheDir, FICHIER_META), 'utf8')) as {
@@ -39,7 +41,7 @@ function lireCache(opts: OptionsMoteur, maintenant: Date): Promise<ResultatMoteu
         engineVersion: number
       }
       const age = maintenant.getTime() - new Date(meta.date).getTime()
-      if (meta.engineVersion !== ENGINE_VERSION || !(age < opts.majHeures * 3600_000)) return undefined
+      if (meta.engineVersion !== ENGINE_VERSION || (!tolererPerime && !(age < opts.majHeures * 3600_000))) return undefined
       const moteur = ElectronBlocker.deserialize(new Uint8Array(await readFile(join(opts.cacheDir, FICHIER_BIN))))
       return { moteur, source: 'cache' as const, date: meta.date }
     } catch (e) {
@@ -70,22 +72,33 @@ function construire(textes: string[], resources?: string): ElectronBlocker {
 async function depuisReseau(opts: OptionsMoteur, f: typeof fetch, maintenant: Date): Promise<ResultatMoteur> {
   const reponses = await Promise.allSettled(
     opts.listesDistantes.map(async (url) => {
-      const r = await f(url)
+      const r = await f(url, { signal: AbortSignal.timeout(opts.timeoutMs ?? 15_000) })
       if (!r.ok) throw new Error(`${url} : HTTP ${r.status}`)
       return r.text()
     })
   )
-  const textes = reponses.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []))
-  if (textes.length === 0) throw new Error('aucune liste téléchargée')
+  const echecs = reponses.filter((r) => r.status === 'rejected')
+  if (echecs.length > 0 || reponses.length === 0) {
+    throw new Error(`${echecs.length}/${reponses.length} liste(s) en échec : ${(echecs[0] as PromiseRejectedResult | undefined)?.reason}`)
+  }
+  const textes = reponses.map((r) => (r as PromiseFulfilledResult<string>).value)
   const moteur = construire(textes, opts.listesEmbarquees?.resources)
   const date = maintenant.toISOString()
   await ecrireCache(opts.cacheDir, moteur, date)
   return { moteur, source: 'reseau', date }
 }
 
-/** Réseau uniquement (jamais le cache), pour la mise à jour périodique. */
-export async function mettreAJour(opts: OptionsMoteur): Promise<ResultatMoteur> {
-  return depuisReseau(opts, opts.fetch ?? fetch, opts.maintenant ?? new Date())
+/**
+ * Réseau uniquement, pour la mise à jour périodique. Si une liste échoue,
+ * le moteur actuel est conservé et le cache n'est pas réécrit.
+ */
+export async function mettreAJour(opts: OptionsMoteur, actuel: ResultatMoteur): Promise<ResultatMoteur> {
+  try {
+    return await depuisReseau(opts, opts.fetch ?? fetch, opts.maintenant ?? new Date())
+  } catch (e) {
+    console.warn('[boucliers] mise à jour échouée, moteur conservé :', e)
+    return actuel
+  }
 }
 
 /** Cache valide, sinon réseau, sinon listes embarquées. */
@@ -97,8 +110,10 @@ export async function construireMoteur(opts: OptionsMoteur): Promise<ResultatMot
     try {
       return await depuisReseau(opts, opts.fetch, maintenant)
     } catch (e) {
-      console.warn('[boucliers] réseau indisponible, listes embarquées :', e)
+      console.warn('[boucliers] réseau indisponible ou incomplet :', e)
     }
+    const perime = await lireCache(opts, maintenant, true)
+    if (perime) return perime
   }
   const emb = opts.listesEmbarquees
   if (!emb) throw new Error('[boucliers] ni cache, ni réseau, ni listes embarquées')

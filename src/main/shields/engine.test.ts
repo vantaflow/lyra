@@ -87,13 +87,50 @@ describe('cache et réseau', () => {
     const r = await construireMoteur({ cacheDir, listesEmbarquees: embarquees, listesDistantes: ['https://liste.test/a.txt'], fetch: faux, majHeures: 6, maintenant })
     expect(r.source).toBe('reseau')
     expect(r.date).toBe(maintenant.toISOString())
-    expect((await mettreAJour({ cacheDir, listesDistantes: ['https://liste.test/a.txt'], fetch: faux, majHeures: 6, maintenant })).source).toBe('reseau')
+    expect((await mettreAJour({ cacheDir, listesDistantes: ['https://liste.test/a.txt'], fetch: faux, majHeures: 6, maintenant }, r)).source).toBe('reseau')
   })
 
   it('échec réseau : repli sur les listes embarquées', async () => {
     const cacheDir = await dossier('lyra-offline-')
     const echec = (async () => { throw new Error('hors ligne') }) as unknown as typeof fetch
     const r = await construireMoteur({ cacheDir, listesEmbarquees: await miniEmb(), listesDistantes: ['https://liste.test/a.txt'], fetch: echec, majHeures: 6 })
+    expect(r.source).toBe('embarque')
+  })
+
+  const urls = ['https://liste.test/a.txt', 'https://liste.test/b.txt']
+  const partiel = (async (u: string | URL | Request) =>
+    String(u).endsWith('b.txt') ? new Response('', { status: 500 }) : new Response(await mini)) as unknown as typeof fetch
+
+  it('une liste sur deux en échec : pas de voie réseau', async () => {
+    const cacheDir = await dossier('lyra-partiel-')
+    const r = await construireMoteur({ cacheDir, listesEmbarquees: await miniEmb(), listesDistantes: urls, fetch: partiel, majHeures: 6 })
+    expect(r.source).toBe('embarque')
+  })
+
+  it('cache périmé + réseau en échec : cache périmé', async () => {
+    const cacheDir = await dossier('lyra-perime-echec-')
+    const embarquees = await miniEmb()
+    await construireMoteur({ cacheDir, listesEmbarquees: embarquees, listesDistantes: [], majHeures: 6, maintenant: new Date(embarquees.date) })
+    const r = await construireMoteur({ cacheDir, listesEmbarquees: embarquees, listesDistantes: urls, fetch: partiel, majHeures: 6, maintenant: new Date('2026-02-01T00:00:00.000Z') })
+    expect(r.source).toBe('cache')
+    expect(r.date).toBe(embarquees.date)
+  })
+
+  it('mettreAJour en échec : moteur actuel conservé, cache intact', async () => {
+    const cacheDir = await dossier('lyra-maj-')
+    const embarquees = await miniEmb()
+    const actuel = await construireMoteur({ cacheDir, listesEmbarquees: embarquees, listesDistantes: [], majHeures: 6, maintenant: new Date(embarquees.date) })
+    const avant = await readFile(join(cacheDir, 'engine.meta.json'), 'utf8')
+    const r = await mettreAJour({ cacheDir, listesDistantes: urls, fetch: partiel, majHeures: 6 }, actuel)
+    expect(r).toBe(actuel)
+    expect(await readFile(join(cacheDir, 'engine.meta.json'), 'utf8')).toBe(avant)
+  })
+
+  it('délai d\'attente par liste', async () => {
+    const cacheDir = await dossier('lyra-timeout-')
+    const muet = ((_u: unknown, init?: RequestInit) =>
+      new Promise((_res, rej) => init?.signal?.addEventListener('abort', () => rej(init.signal?.reason)))) as unknown as typeof fetch
+    const r = await construireMoteur({ cacheDir, listesEmbarquees: await miniEmb(), listesDistantes: urls, fetch: muet, majHeures: 6, timeoutMs: 50 })
     expect(r.source).toBe('embarque')
   })
 })
