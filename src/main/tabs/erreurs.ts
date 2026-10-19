@@ -1,6 +1,7 @@
 /** Pages d'erreur Lyra : lyra://erreur?type=…&url=… (catégorie interne, servie par erreur.html). */
 
-export type TypeErreur = 'reseau' | 'introuvable' | 'certificat'
+/** `passerelles` : site contourné sans passerelle qui réponde. */
+export type TypeErreur = 'reseau' | 'introuvable' | 'certificat' | 'passerelles'
 
 const PREFIXE = 'lyra://erreur'
 
@@ -12,8 +13,16 @@ export function typeErreur(code: number): TypeErreur {
   return INTROUVABLE.has(code) ? 'introuvable' : 'reseau'
 }
 
-export const urlErreur = (type: TypeErreur, url: string): string =>
-  `${PREFIXE}?type=${type}&url=${encodeURIComponent(url)}`
+/**
+ * Adresse de la page d'erreur. `extra` (calculé par le processus principal) : `contourne=1` (site contourné :
+ * jamais « Continuer quand même »), `passerelle=1` (proposer « Passer par une passerelle »).
+ */
+export function urlErreur(type: TypeErreur, url: string, extra: Record<string, string> = {}): string {
+  const suite = Object.entries(extra)
+    .map(([k, v]) => `&${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join('')
+  return `${PREFIXE}?type=${type}&url=${encodeURIComponent(url)}${suite}`
+}
 
 export const estUrlErreur = (url: string): boolean => /^lyra:\/\/erreur(\/|\?|#|$)/i.test(url)
 

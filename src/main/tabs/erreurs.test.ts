@@ -28,4 +28,11 @@ describe('erreurs', () => {
     expect(continuerAutorise('lyra://settings')).toBeNull()
     expect(continuerAutorise('https://a.fr/')).toBeNull()
   })
+
+  it('paramètres supplémentaires et type passerelles', () => {
+    const e = urlErreur('passerelles', 'https://a.fr/x', { contourne: '1' })
+    expect(e).toBe(`lyra://erreur?type=passerelles&url=${encodeURIComponent('https://a.fr/x')}&contourne=1`)
+    expect(urlOriginale(e)).toBe('https://a.fr/x')
+    expect(continuerAutorise(e)).toBeNull()
+  })
 })

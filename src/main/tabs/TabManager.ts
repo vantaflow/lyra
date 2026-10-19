@@ -11,6 +11,7 @@ import { estZoomNormal, palierSuivant } from './zoom'
 import { estUrlErreur, urlOriginale } from './erreurs'
 import { arreter as arreterRechercheWc, rechercher as rechercherWc } from './find'
 import { attacherComportements } from './comportements'
+import type { CrochetsPasserelles } from '../passerelles/Passerelles'
 import type { SkyState } from '../../shared/types'
 import type { AncreMenu, CanalEvenement, DemandePermission, EtatEtoile, Evenements, RouteOverlay, SkyChange } from '../../shared/ipc'
 
@@ -51,6 +52,8 @@ export interface OptionsTabs {
   memoriserZoom?: (origine: string, facteur: number) => void
   /** Adresse de recherche (moteur par défaut) pour un texte sélectionné. */
   rechercheUrl?: (texte: string) => string
+  /** Passerelles (rotation, détection, icône de la pilule). */
+  passerelles?: CrochetsPasserelles
 }
 
 export class TabManager {
@@ -430,6 +433,7 @@ export class TabManager {
         url: urlOriginale(wc.getURL()) || star?.url || '',
         canGoBack: wc.navigationHistory.canGoBack(),
         canGoForward: wc.navigationHistory.canGoForward(),
+        viaPasserelle: this.options.passerelles?.viaPasserelle(wc.getURL()) ?? false,
         ...(estZoomNormal(wc.getZoomFactor()) ? {} : { zoom: wc.getZoomFactor() }),
         ...(this.inactifDepuis.has(id) ? { inactifDepuis: this.inactifDepuis.get(id) } : {}),
         ...(ex.favicon ? { favicon: ex.favicon } : {}),
@@ -437,6 +441,11 @@ export class TabManager {
       }
     }
     return { sky: this.tree.toJSON(), etats }
+  }
+
+  /** Renvoie l'état du ciel au chrome (ex. : passerelles prêtes ou non). */
+  actualiser(): void {
+    this.notifier()
   }
 
   private notifier(): void {
@@ -536,6 +545,8 @@ export class TabManager {
       envoyerAuChrome: (canal, data) => this.envoyerAuChrome(canal, data),
       estActive: () => this.tree.toJSON().activeId === id,
       erreur: (url) => this.vues.get(id) === vue && this.naviguer(id, url),
+      recharger: (url) => this.vues.get(id) === vue && this.naviguer(id, url),
+      passerelles: this.options.passerelles,
       ouvrirLien: (u) => {
         if (categorie === 'web' ? /^https?:/i.test(u) || (EN_TEST && /^file:/i.test(u)) : SCHEMAS_OUVRABLES.test(u)) this.ouvrir(u, { parentId: id })
       }

@@ -37,4 +37,22 @@ describe('réglages', () => {
     const s = r.setSettings({ theme: 42, version: 2, x: 1 } as never)
     expect(s).toEqual(avant)
   })
+
+  it('supprimerPersonnelle retire la clé (fusion ne sait pas supprimer), persiste et notifie', () => {
+    const dossier = mkdtempSync(join(tmpdir(), 'lyra-settings-'))
+    const chemin = join(dossier, 'settings.json')
+    const r = creerReglages(chemin, '/tmp/dl')
+    r.setSettings({ reseau: { personnelle: { type: 'socks5', hote: '127.0.0.1', port: 40000 } } } as never)
+    expect(r.getSettings().reseau.personnelle).toEqual({ type: 'socks5', hote: '127.0.0.1', port: 40000 })
+    // Un patch ne peut pas supprimer : null et undefined sont ignorés.
+    r.setSettings({ reseau: { personnelle: null } } as never)
+    expect(r.getSettings().reseau.personnelle).toBeDefined()
+    const recus: unknown[] = []
+    r.onChanged((s) => recus.push(s.reseau.personnelle))
+    const s = r.supprimerPersonnelle()
+    expect('personnelle' in s.reseau).toBe(false)
+    expect(s.reseau.passerelles).toBe(true)
+    expect(recus).toEqual([undefined])
+    expect('personnelle' in creerReglages(chemin, '/tmp/dl').getSettings().reseau).toBe(false)
+  })
 })

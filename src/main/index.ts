@@ -24,6 +24,10 @@ import { moteurParId, urlDeRecherche } from './palette/engines'
 import type { ActionMenu, AncreMenu } from '../shared/ipc'
 import type { Reglages } from './settings/settings'
 import type { TypePermission } from '../shared/types'
+import type { Passerelles } from './passerelles/Passerelles'
+import { creerPasserelles } from './passerelles/electron'
+import { installerPasserellesIpc } from './passerelles/ipc'
+import { hoteValide } from './passerelles/liste'
 
 definirFournisseurLangue(() => app.getLocale())
 app.setPath('userData', paths.userData())
@@ -40,6 +44,7 @@ const manager = new WindowManager(() => reglagesCourants().ciel)
 const onglets = new Map<number, TabManager>()
 let historique: History | undefined
 let sessionStore: SessionStore | undefined
+let passerelles: Passerelles | undefined
 const privees = new Set<number>()
 
 /** Fenêtres normales : une fenêtre privée ne laisse aucune trace dans la session. */
@@ -86,7 +91,8 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
       surChangement: sauverSession,
       zoomDe: (origine) => reglagesCourants().sites[origine]?.zoom,
       memoriserZoom: (origine, zoom) => void reglagesStore?.setSettings({ sites: { [origine]: { zoom } } }),
-      rechercheUrl: (texte) => urlDeRecherche(moteurParId(reglagesCourants().moteurParDefaut), texte)
+      rechercheUrl: (texte) => urlDeRecherche(moteurParId(reglagesCourants().moteurParDefaut), texte),
+      passerelles
     }
   )
   // Une demande de permission ne survit pas à un changement de route ou à la fermeture de l'overlay.
@@ -105,7 +111,9 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
 app.on('session-created', installerProtocoleLyra)
 
 app.on('certificate-error', (e, _wc, url, _erreur, _certificat, callback) => {
-  // Exception accordée pour la session depuis la page d'erreur (« Continuer quand même »).
+  // Exception accordée pour la session depuis la page d'erreur (« Continuer quand même ») ;
+  // jamais pour un site contourné (une passerelle pourrait intercepter le TLS).
+  if (passerelles?.contourne(url) ?? false) return
   if (exceptionsCertificat.has(hoteDe(url))) {
     e.preventDefault()
     callback(true)
@@ -136,6 +144,15 @@ async function demanderPermission(wc: WebContents, origine: string, types: TypeP
   } finally {
     wc.removeListener('destroyed', abandon)
     wc.removeListener('did-navigate', abandon)
+  }
+}
+
+/** Type d'une page lyra://erreur (paramètre `type`). */
+function typeErreurPage(url: string): string | null {
+  try {
+    return new URL(url).searchParams.get('type')
+  } catch {
+    return null
   }
 }
 
@@ -218,6 +235,24 @@ void app.whenReady().then(async () => {
   handle('settings:get', () => reglages.getSettings())
   handle('settings:set', (patch) => reglages.setSettings(patch))
   installerReglagesIpc(reglages)
+  // Passerelles : rien n'est chargé ni appliqué tant qu'aucun site n'est contourné.
+  const sessionsProxy = [session.defaultSession, session.fromPartition('persist:lyra')]
+  const pass = creerPasserelles({
+    reglages,
+    cacheFichier: join(paths.userData(), 'passerelles.json'),
+    sessions: () => sessionsProxy,
+    surChangement: (etat) => {
+      for (const wc of webContents.getAllWebContents()) {
+        const url = wc.getURL()
+        if (url.startsWith('lyra://') || url.includes('ui.html')) envoyer(wc, 'passerelles:changed', etat)
+      }
+      for (const m of onglets.values()) m.actualiser()
+    }
+  })
+  passerelles = pass
+  installerPasserellesIpc(pass)
+  // Le PAC initial est en place avant toute fenêtre (une étoile restaurée ne part pas en direct).
+  await pass.demarrer()
   if (process.env.LYRA_TEST === '1') {
     handle('test:navigate', async (url) => {
       const m = ongletsCourants()
@@ -250,14 +285,26 @@ void app.whenReady().then(async () => {
   }
   handle('erreur:reessayer', (_d, e) => {
     const p = pageErreur(e.sender)
-    if (p) p.m.naviguer(p.id, p.url)
+    if (!p) return
+    // « Aucune passerelle ne répond » : nouvelle recherche ; l'échec suivant l'attendra avant de décider.
+    if (typeErreurPage(e.sender.getURL()) === 'passerelles') void pass.rechercher(true)
+    p.m.naviguer(p.id, p.url)
   })
   handle('erreur:continuer', (_d, e) => {
     const p = pageErreur(e.sender)
     const url = continuerAutorise(e.sender.getURL())
-    if (!p || !url) return
+    if (!p || !url || pass.contourne(url)) return
     exceptionsCertificat.add(hoteDe(url))
     p.m.naviguer(p.id, url)
+  })
+  handle('erreur:passerelle', (_d, e) => {
+    // Même garde que « continuer » : l'adresse vient de la page d'erreur expéditrice, jamais des données.
+    const p = pageErreur(e.sender)
+    if (!p || !/^https:/i.test(p.url) || !reglages.getSettings().reseau.passerelles) return
+    const hote = new URL(p.url).hostname
+    if (!hoteValide(hote)) return
+    pass.ajouter(hote)
+    p.m.naviguer(p.id, p.url)
   })
   handle('menu:open', (d, e) => {
     const f = manager.deWebContents(e.sender) ?? manager.premiere()

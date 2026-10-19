@@ -6,6 +6,7 @@ import { origineDe } from '../shields/Shields'
 import { installerMenuContextuel } from '../menu/contextMenu'
 import { relayerResultats } from './find'
 import { typeErreur, urlErreur } from './erreurs'
+import type { CrochetsPasserelles } from '../passerelles/Passerelles'
 
 export interface DepsComportements {
   id: string
@@ -19,6 +20,10 @@ export interface DepsComportements {
   erreur(url: string): void
   /** Ouvre l'adresse dans une étoile reliée, si son schéma est permis. */
   ouvrirLien(url: string): void
+  /** Recharge l'adresse dans l'étoile (rotation ou essai de passerelle). */
+  recharger?(url: string): void
+  /** Passerelles : décision après un échec, confirmation après un succès. */
+  passerelles?: CrochetsPasserelles
 }
 
 /** Fenêtres que seule une page a mises en plein écran (pour les rendre à leur état en sortant). */
@@ -48,10 +53,37 @@ export function attacherComportements(wc: WebContents, d: DepsComportements): vo
   wc.on('leave-html-full-screen', () => plein(false))
 
   // Page injoignable : page d'erreur Lyra (la vue change de catégorie, donc elle est recréée).
+  // Avec les passerelles, la décision (rotation, essai de détection, page) est asynchrone : elle est
+  // abandonnée si une autre navigation a commencé entre-temps.
+  const p = d.passerelles
+  let generation = 0
+  wc.on('did-start-navigation', (e) => {
+    if (e.isMainFrame && !e.isSameDocument) generation++
+  })
   wc.on('did-fail-load', (_e, code, _desc, urlEchec, principal) => {
     if (!principal || code === -3 || !/^(https?|file):/i.test(urlEchec)) return
-    setImmediate(() => d.erreur(urlErreur(typeErreur(code), urlEchec)))
+    if (!p || !d.recharger) {
+      setImmediate(() => d.erreur(urlErreur(typeErreur(code), urlEchec)))
+      return
+    }
+    const g = generation
+    const cle = wc.id
+    void p
+      .surEchec(cle, urlEchec, code)
+      .catch(() => ({ action: 'erreur' as const, url: urlErreur(typeErreur(code), urlEchec) }))
+      .then((r) =>
+        setImmediate(() => {
+          if (wc.isDestroyed() || g !== generation) return p.oublier(cle)
+          if (r.action === 'recharger') d.recharger?.(urlEchec)
+          else d.erreur(r.url)
+        })
+      )
   })
+  if (p) {
+    wc.on('did-navigate', (_e, url) => p.surSucces(wc.id, url))
+    const cle = wc.id
+    wc.once('destroyed', () => p.oublier(cle))
+  }
 
   installerMenuContextuel(wc, {
     fenetre: d.fenetre.win,

@@ -1,4 +1,4 @@
-import type { DecisionPermission, DownloadInfo, HistoryEntry, Settings, SkyState, Suggestion, TypePermission } from './types'
+import type { DecisionPermission, DownloadInfo, HistoryEntry, PasserellePerso, Settings, SiteContourne, SkyState, Suggestion, TypePermission } from './types'
 
 export interface RectIpc {
   x: number
@@ -20,6 +20,25 @@ export interface EtatEtoile {
   inactifDepuis?: number
   /** Facteur de zoom de la page ; absent à 100 %. */
   zoom?: number
+  /** La page passe par une passerelle prête (site contourné, https). */
+  viaPasserelle: boolean
+}
+
+/** État des passerelles (`passerelles:etat`, `passerelles:changed`). */
+export interface EtatPasserelles {
+  /** Fonction activée dans les réglages. */
+  actif: boolean
+  auto: boolean
+  sites: SiteContourne[]
+  /** Nombre de passerelles prêtes. */
+  pret: number
+  /** Date (ISO) de la liste publique utilisée ; null si aucune. */
+  dateListe: string | null
+  personnelle?: PasserellePerso
+  /** injoignable : passerelle personnelle en échec ; aucune : aucun candidat ne répond ; liste : liste indisponible. */
+  erreur?: 'injoignable' | 'aucune' | 'liste'
+  /** Une recherche ou un test est en cours. */
+  enCours: boolean
 }
 
 /** État des Boucliers pour l'étoile active d'une fenêtre. */
@@ -148,6 +167,20 @@ export type Requetes = {
   'erreur:reessayer': [{ url: string }, void]
   /** Page d'erreur Lyra : accepte le certificat de l'hôte pour la session puis recharge. */
   'erreur:continuer': [{ url: string }, void]
+  /** Page d'erreur Lyra : ajoute l'hôte de la page (son URL, jamais les données) aux sites contournés puis recharge. */
+  'erreur:passerelle': [{ url: string }, void]
+  'passerelles:etat': [void, EtatPasserelles]
+  /** Ajoute un site (hôte ou adresse https) ; lève une erreur expliquée si la saisie est refusée. */
+  'passerelles:ajouter': [{ hote: string }, EtatPasserelles]
+  'passerelles:retirer': [{ hote: string }, EtatPasserelles]
+  /** Menu ⋯ : ajoute l'hôte, ou retire les sites qui le couvrent. */
+  'passerelles:basculerSite': [{ hote: string }, EtatPasserelles]
+  /** « Tester maintenant » : nouvelle recherche (ou test de la personnelle). */
+  'passerelles:tester': [void, EtatPasserelles]
+  /** Définit (puis teste) ou supprime (null) la passerelle personnelle. */
+  'passerelles:personnelle': [{ config: PasserellePerso | null }, EtatPasserelles]
+  /** Cloudflare WARP : personnelle SOCKS5 127.0.0.1:40000, puis test. */
+  'passerelles:warp': [void, EtatPasserelles]
   /** Test uniquement (LYRA_TEST=1) : charge une URL dans la vue de page. */
   'test:navigate': [string, void]
   'test:endormir': [string, boolean]
@@ -177,6 +210,8 @@ export type Evenements = {
   'find:open': void
   /** Main → chrome : résultat de la recherche (actif : occurrence courante, 1-based). */
   'find:result': { id: string; actif: number; total: number }
+  /** Main → chrome, overlay et pages internes : l'état des passerelles a changé. */
+  'passerelles:changed': EtatPasserelles
 }
 
 export type CanalRequete = keyof Requetes

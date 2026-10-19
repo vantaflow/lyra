@@ -40,6 +40,14 @@ export class JsonStore<T extends object> {
     return this.valeur
   }
 
+  /** Remplace la valeur entière (seul moyen de supprimer une clé : `fusion` n'en retire jamais). */
+  remplacer(fn: (v: T) => T): T {
+    this.valeur = fn(this.valeur)
+    this.ecrire()
+    for (const cb of this.ecouteurs) cb(this.valeur)
+    return this.valeur
+  }
+
   onChange(cb: (v: T) => void): () => void {
     this.ecouteurs.add(cb)
     return () => this.ecouteurs.delete(cb)

@@ -2,7 +2,7 @@ import { render } from 'preact'
 import '../ui/theme.css'
 import './erreur.css'
 
-type Type = 'reseau' | 'introuvable' | 'certificat'
+type Type = 'reseau' | 'introuvable' | 'certificat' | 'passerelles'
 
 const TEXTES: Record<Type, { titre: string; texte: string }> = {
   introuvable: {
@@ -13,6 +13,10 @@ const TEXTES: Record<Type, { titre: string; texte: string }> = {
     titre: 'Connexion impossible',
     texte: "Lyra n'a pas pu joindre ce site. Vérifiez votre connexion, puis réessayez."
   },
+  passerelles: {
+    titre: 'Aucune passerelle ne répond',
+    texte: "Ce site passe par une passerelle, mais aucune n'a répondu. Réessayez dans un instant : Lyra en cherche d'autres."
+  },
   certificat: {
     titre: "Ce site n'est pas sûr",
     texte: "Le certificat de sécurité de ce site n'est pas valide : vos échanges avec lui pourraient être lus ou modifiés. Le plus prudent est de ne pas continuer."
@@ -20,7 +24,10 @@ const TEXTES: Record<Type, { titre: string; texte: string }> = {
 }
 
 const params = new URLSearchParams(location.search)
-const type: Type = params.get('type') === 'certificat' ? 'certificat' : params.get('type') === 'introuvable' ? 'introuvable' : 'reseau'
+const brut = params.get('type')
+const type: Type = brut === 'certificat' || brut === 'introuvable' || brut === 'passerelles' ? brut : 'reseau'
+/** Site contourné : jamais « Continuer quand même » (le processus principal refuse aussi). */
+const contourne = params.get('contourne') === '1'
 const url = params.get('url') ?? ''
 const { titre, texte } = TEXTES[type]
 document.title = titre
@@ -64,7 +71,7 @@ function Erreur() {
           <button class="btn pri" type="button" onClick={() => void window.lyra.invoke('erreur:reessayer', { url })}>
             Réessayer
           </button>
-          {type === 'certificat' && (
+          {type === 'certificat' && !contourne && (
             <button class="btn" type="button" onClick={() => void window.lyra.invoke('erreur:continuer', { url })}>
               Continuer quand même
             </button>
