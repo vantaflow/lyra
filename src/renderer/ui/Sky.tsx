@@ -80,7 +80,7 @@ export function Sky() {
         </button>
       </nav>
 
-      <div class="pied">
+      <div class="pied ciel-pied">
         <button class="boucliers" type="button" aria-label="Boucliers : 0 élément bloqué sur ce site">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 3l7 3v5c0 4.5-3 8.2-7 9.5C8 19.2 5 15.5 5 11V6z" />

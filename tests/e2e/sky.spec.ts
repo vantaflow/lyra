@@ -32,6 +32,22 @@ test('le ciel affiche les étoiles, la capsule la page active', async () => {
   }
 })
 
+test('le ciel et la page prennent toute la hauteur, pied ancré en bas', async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const haut = await fenetre.evaluate(() => window.innerHeight)
+    const pied = await fenetre.locator('.ciel-pied').boundingBox()
+    // Le ciel a 12 px de marge basse (design) : le pied doit y être collé.
+    expect(pied!.y + pied!.height).toBeGreaterThanOrEqual(haut - 12 - 2)
+    const ciel = await fenetre.locator('.ciel').boundingBox()
+    expect(ciel!.y + ciel!.height).toBeGreaterThanOrEqual(haut - 2)
+    const carte = await fenetre.locator('.carte').boundingBox()
+    expect(carte!.y + carte!.height).toBeGreaterThanOrEqual(haut - 2)
+  } finally {
+    await app.close()
+  }
+})
+
 test('la capsule : précédent désactivé, palette émise', async () => {
   const { app, fenetre } = await lancerLyra()
   try {
