@@ -238,6 +238,10 @@ void app.whenReady().then(async () => {
     if (!f || f.chrome.webContents !== event.sender) return false
     return f.reveler(actif === true)
   })
+  handle('ciel:glisse', ({ actif }, event) => {
+    const f = manager.deWebContents(event.sender)
+    if (f && f.chrome.webContents === event.sender) f.glisserCiel(actif === true)
+  })
   handle('settings:get', () => reglages.getSettings())
   handle('settings:set', (patch) => reglages.setSettings(patch))
   installerReglagesIpc(reglages)
@@ -348,7 +352,9 @@ void app.whenReady().then(async () => {
     else if (action === 'historique') m.ouvrir('lyra://history')
     else m.ouvrir('lyra://settings')
   })
-  installerPalette({ ongletsDe, historique: hist, favoris, reglages: () => reglages.getSettings(), creerFenetre })
+  installerPalette({ ongletsDe, historique: hist, favoris, reglages: () => reglages.getSettings(), creerFenetre,
+    deplacerCiel: (position) => void reglages.setSettings({ ciel: { position, masque: false } } as Partial<Settings>)
+  })
   const basculerFavori = (m: TabManager): void => {
     const wc = m.wcActif()
     const url = wc ? urlOriginale(wc.getURL()) : ''

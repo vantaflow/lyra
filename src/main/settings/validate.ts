@@ -99,9 +99,10 @@ const SCHEMA: Schema = {
   moteurChoisi: booleen,
   ciel: {
     position: enumeration('gauche', 'droite', 'haut', 'bas'),
-    largeur: entier(160, 640),
+    largeur: entier(200, 420),
     masque: booleen,
     revelerAuSurvol: booleen,
+    deplacerParGlisser: booleen,
     ternirApresMin: entier(1, 10080),
     endormirApresMin: entier(1, 10080)
   },

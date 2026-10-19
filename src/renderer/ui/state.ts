@@ -64,6 +64,15 @@ export const cielRevele = signal(false)
 export const revelationClavier = signal(false)
 /** Largeur du ciel (réglage) : celle du ciel révélé, rail de 14 px en plus. */
 export const cielLargeur = signal(272)
+export type PositionCiel = Settings['ciel']['position']
+/** Position du ciel (réglage) : colonne à gauche ou à droite, bande en haut ou en bas. */
+export const cielPosition = signal<PositionCiel>('gauche')
+/** Glisser l'en-tête du ciel vers un bord pour le déplacer (réglage). */
+export const cielDeplacer = signal(true)
+/** Bord visé pendant le glisser de l'en-tête du ciel (null : pas de glisser en cours). */
+/** Appui sur l'en-tête du ciel en cours (avant même le seuil du glisser) : les zones de déplacement de la fenêtre sont levées. */
+export const cielAppui = signal(false)
+export const cielCible = signal<PositionCiel | null>(null)
 
 /** Demande au main de révéler ou retirer le ciel masqué (la vue chrome change de taille et d'ordre). */
 export function reveler(actif: boolean): void {
@@ -87,6 +96,8 @@ export async function initialiserEtat(): Promise<void> {
     ternirApresMin.value = r.ciel.ternirApresMin
     cielMasque.value = r.ciel.masque
     cielLargeur.value = r.ciel.largeur
+    cielPosition.value = r.ciel.position
+    cielDeplacer.value = r.ciel.deplacerParGlisser
     revelerAuSurvol.value = r.ciel.revelerAuSurvol
   }
   window.lyra.on('settings:changed', appliquer)

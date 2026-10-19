@@ -25,16 +25,25 @@ export const RAIL = 14
 /** Hauteur de la capsule de navigation (dessinée par la vue chrome au-dessus de la page). */
 export const CAPSULE = 46
 
+/** Bornes de la largeur du ciel (gauche / droite). */
+export const LARGEUR_MIN = 200
+export const LARGEUR_MAX = 420
+
+/** Largeur du ciel ramenée dans les bornes. */
+export const bornerLargeur = (l: number): number => Math.min(LARGEUR_MAX, Math.max(LARGEUR_MIN, Math.round(l)))
+
 /**
- * `revele` : le ciel masqué est glissé par-dessus la page (révélation au survol). À gauche, les bounds ne changent
- * pas (le chrome couvre déjà la fenêtre ; il passe seulement au-dessus de la page) ; ailleurs, le chrome s'élargit
- * à l'épaisseur du ciel (rail compris) ; la page garde toujours ses bounds de ciel masqué.
+ * Le chrome couvre toute la fenêtre quelle que soit la position : il dessine le ciel (colonne ou bande, ou rail en
+ * masqué) et la capsule, la page se pose par-dessus la zone qui lui est réservée. `revele` (ciel masqué glissé par-dessus
+ * la page) ne change donc aucun bounds : seul l'ordre des vues change (chrome au-dessus de la page, zone transparente).
+ * La capsule (46 px) reste en haut de la page dans tous les cas ; à gauche, à droite et en bas elle part du haut de la
+ * fenêtre, en haut elle se place sous la bande du ciel (ou son rail).
  */
 export function computeLayout(
   taille: { width: number; height: number },
   ciel: CielLayout,
   pleinEcran: boolean,
-  revele = false
+  _revele = false
 ): Layout {
   const { width, height } = taille
   const fenetre: Rect = { x: 0, y: 0, width, height }
@@ -42,34 +51,19 @@ export function computeLayout(
 
   const horizontal = ciel.position === 'haut' || ciel.position === 'bas'
   const total = horizontal ? height : width
-  const epaisseur = Math.min(total, ciel.masque ? RAIL : horizontal ? BANDE : ciel.largeur)
+  const epaisseur = Math.min(total, ciel.masque ? RAIL : horizontal ? BANDE : bornerLargeur(ciel.largeur))
   const reste = total - epaisseur
-  const debut = ciel.position === 'gauche' || ciel.position === 'haut'
+  const capsule = Math.min(height, CAPSULE)
 
-  let chrome: Rect
   let page: Rect
-  if (ciel.position === 'gauche') {
-    // Le chrome couvre toute la fenêtre (ciel ou rail à gauche, capsule au-dessus de la page, qui se pose par-dessus).
-    // Révélé, ses bounds ne changent pas : seul son ordre change (au-dessus de la page, zone transparente).
-    const haut = Math.min(height, CAPSULE)
-    chrome = fenetre
-    page = { x: epaisseur, y: haut, width: reste, height: height - haut }
-  } else if (horizontal) {
-    chrome = { x: 0, y: debut ? 0 : reste, width, height: epaisseur }
-    page = { x: 0, y: debut ? epaisseur : 0, width, height: reste }
+  if (ciel.position === 'gauche') page = { x: epaisseur, y: capsule, width: reste, height: height - capsule }
+  else if (ciel.position === 'droite') page = { x: 0, y: capsule, width: reste, height: height - capsule }
+  else if (ciel.position === 'haut') {
+    const y = Math.min(height, epaisseur + CAPSULE)
+    page = { x: 0, y, width, height: height - y }
   } else {
-    chrome = { x: debut ? 0 : reste, y: 0, width: epaisseur, height }
-    page = { x: debut ? epaisseur : 0, y: 0, width: reste, height }
+    const h = Math.max(0, reste - capsule)
+    page = { x: 0, y: capsule, width, height: h }
   }
-  if (revele && ciel.masque && ciel.position !== 'gauche') {
-    // Mêmes bords que le rail, mais à l'épaisseur du ciel : il recouvre la page.
-    if (horizontal) {
-      const h = Math.min(height, BANDE + RAIL)
-      chrome = { x: 0, y: debut ? 0 : height - h, width, height: h }
-    } else {
-      const w = Math.min(width, ciel.largeur + RAIL)
-      chrome = { x: debut ? 0 : width - w, y: 0, width: w, height }
-    }
-  }
-  return { chrome, page, overlay: fenetre }
+  return { chrome: fenetre, page, overlay: fenetre }
 }

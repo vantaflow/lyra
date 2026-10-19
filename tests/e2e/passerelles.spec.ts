@@ -93,7 +93,8 @@ test('le PAC s’applique : un site contourné passe par la passerelle, un autre
     await fenetre.evaluate(() => window.lyra.invoke('passerelles:ajouter', { hote: 'contourne.invalid' }))
     // Site hors liste : DIRECT, la passerelle ne voit rien.
     await fenetre.evaluate(() => window.lyra.invoke('test:navigate', 'https://direct.invalid/')).catch(() => undefined)
-    await expect.poll(() => erreur(app)?.url()).toContain('type=introuvable')
+    // Selon le réseau, le DNS de .invalid échoue en « introuvable » ou en « reseau ».
+    await expect.poll(() => erreur(app)?.url()).toMatch(/type=(introuvable|reseau)/)
     expect(pass.connects.some((c) => c.startsWith('direct.invalid'))).toBe(false)
     // Site contourné : le CONNECT arrive à la passerelle (qui répond 502 : l'hôte n'existe pas).
     await fenetre.evaluate(() => window.lyra.invoke('test:navigate', 'https://contourne.invalid/')).catch(() => undefined)

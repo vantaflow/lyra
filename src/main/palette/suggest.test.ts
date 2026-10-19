@@ -55,7 +55,13 @@ describe('suggerer', () => {
   })
   it('saisie vide : étoiles puis commandes', () => {
     const r = suggerer('', ctx)
-    expect(r.map((s) => s.type)).toEqual(['etoile', 'etoile', 'commande', 'commande', 'commande'])
+    expect(r.map((s) => s.type)).toEqual(['etoile', 'etoile', ...Array(7).fill('commande')])
+  })
+  it('> déplacer : les quatre positions du ciel', () => {
+    const r = suggerer('>déplacer le ciel', ctx)
+    expect(r.map((s) => s.id)).toEqual(['ciel-gauche', 'ciel-droite', 'ciel-haut', 'ciel-bas'])
+    expect(r[1].titre).toBe('Déplacer le ciel à droite')
+    expect(r[2].titre).toBe('Déplacer le ciel en haut')
   })
   it('# filtre par constellation', () => {
     const c = { etoiles: [etoile('1', 'A', 'https://a.fr', { constellationId: 'c1' }), etoile('2', 'B', 'https://b.fr')], historique: [], moteurParDefaut: DEF,

@@ -25,6 +25,8 @@ export interface LyraWindow {
   estRevele(): boolean
   /** Révèle ou retire le ciel masqué ; sans effet si le ciel n'est pas masqué. Renvoie l'état obtenu. */
   reveler(b: boolean): boolean
+  /** Glisser de l'en-tête du ciel en cours : la page est masquée pour laisser voir le bord visé. */
+  glisserCiel(b: boolean): void
   /** Ordre des vues, de la plus basse à la plus haute (pour les tests). */
   ordreVues(): Array<'chrome' | 'page' | 'overlay'>
 }
@@ -75,6 +77,7 @@ export class WindowManager {
     const ecouteursOverlay: Array<(route: RouteOverlay | null) => void> = []
     let pleinEcran = false
     let revele = false
+    let glisse = false
     /** Ordre appliqué la dernière fois (révélé : le chrome passe au-dessus de la page). */
     let ordreRevele = false
 
@@ -102,6 +105,7 @@ export class WindowManager {
       chrome.setVisible(l.chrome.width > 0 && l.chrome.height > 0)
       overlay.setBounds(l.overlay)
       pageView?.setBounds(l.page)
+      pageView?.setVisible(!glisse)
     }
 
     const lw: LyraWindow = {
@@ -116,6 +120,10 @@ export class WindowManager {
         revele = b
         relayout()
         return estRevele()
+      },
+      glisserCiel(b) {
+        glisse = b
+        relayout()
       },
       ordreVues() {
         const ordre = win.contentView.children

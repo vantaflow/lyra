@@ -122,6 +122,8 @@ export type Requetes = {
   ]
   /** Chrome → main : révèle (actif) ou retire le ciel masqué ; renvoie l'état obtenu. */
   'ciel:reveler': [{ actif: boolean }, boolean]
+  /** Chrome → main : un glisser de l'en-tête du ciel commence ou finit (la page se retire le temps du glisser). */
+  'ciel:glisse': [{ actif: boolean }, void]
   'tabs:open': [{ url: string; parentId?: string; actif?: boolean }, string]
   'tabs:close': [{ id: string }, void]
   'tabs:activate': [{ id: string }, void]

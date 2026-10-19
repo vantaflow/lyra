@@ -14,6 +14,8 @@ export interface DepsPalette {
   historique: History
   favoris: Bookmarks
   creerFenetre(opts: { privee?: boolean }): void
+  /** Déplace le ciel (démasqué) à la position donnée. */
+  deplacerCiel(position: 'gauche' | 'droite' | 'haut' | 'bas'): void
 }
 
 /** Favoris puis historique correspondant à la saisie (les favoris sont marqués pour la palette). */
@@ -33,6 +35,7 @@ export function installerPalette(deps: DepsPalette): void {
     if (id === 'nouvelle-etoile') tabs.ouvrir('lyra://newtab')
     else if (id === 'fenetre-privee') deps.creerFenetre({ privee: true })
     else if (id === 'reglages') tabs.ouvrir('lyra://settings')
+    else if (id.startsWith('ciel-')) deps.deplacerCiel(id.slice(5) as 'gauche' | 'droite' | 'haut' | 'bas')
   }
 
   handle('palette:open', (_d, e) => deps.ongletsDe(e.sender).ouvrirPalette())

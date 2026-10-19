@@ -12,6 +12,14 @@ describe('validerPatch', () => {
     })
   })
 
+  it('largeur du ciel : 200 à 420 ; deplacerParGlisser booléen', () => {
+    expect(validerPatch({ ciel: { largeur: 200 } })).toEqual({ ciel: { largeur: 200 } })
+    expect(validerPatch({ ciel: { largeur: 420 } })).toEqual({ ciel: { largeur: 420 } })
+    expect(validerPatch({ ciel: { largeur: 199 } })).toEqual({})
+    expect(validerPatch({ ciel: { largeur: 421 } })).toEqual({})
+    expect(validerPatch({ ciel: { deplacerParGlisser: false } })).toEqual({ ciel: { deplacerParGlisser: false } })
+    expect(validerPatch({ ciel: { deplacerParGlisser: 'oui' } })).toEqual({})
+  })
   it('accepte ciel.masque et ciel.revelerAuSurvol booléens, rejette le reste', () => {
     expect(validerPatch({ ciel: { masque: true, revelerAuSurvol: false } })).toEqual({ ciel: { masque: true, revelerAuSurvol: false } })
     expect(validerPatch({ ciel: { revelerAuSurvol: 'non' } })).toEqual({})

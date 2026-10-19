@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'preact/hooks'
+import { Bande } from './Bande'
 import { Sky } from './Sky'
 import { CAPSULE } from '../../main/window/layout'
-import { cielLargeur, reveler, revelerAuSurvol, revelationClavier } from './state'
+import { cielLargeur, cielPosition, reveler, revelerAuSurvol, revelationClavier } from './state'
 
 const touche = window.lyra.plateforme === 'darwin' ? '⌘' : 'Ctrl'
 
@@ -15,7 +16,7 @@ const mouvementReduit = (): boolean => window.matchMedia('(prefers-reduced-motio
 /** Rail du ciel masqué (14 px) : une poignée or ; le survol du rail ou un clic sur la poignée révèle le ciel. */
 export function Rail() {
   return (
-    <div class="rail" aria-label="Rail du ciel masqué" onMouseEnter={() => revelerAuSurvol.value && reveler(true)}>
+    <div class={`rail rail-${cielPosition.value}`} aria-label="Rail du ciel masqué" onMouseEnter={() => revelerAuSurvol.value && reveler(true)}>
       <button class="poignee" type="button" aria-label={`Afficher le ciel (${touche} \\)`} onClick={(e) => {
           // detail 0 : activation au clavier (Entrée, Espace).
           revelationClavier.value = e.detail === 0
@@ -47,7 +48,7 @@ export function CielRevele() {
   }
   useEffect(() => {
     // Révélé au clavier : le focus entre dans le ciel ; il armera le retrait en en sortant.
-    if (revelationClavier.value) ref.current?.querySelector<HTMLElement>('button.palette')?.focus()
+    if (revelationClavier.value) ref.current?.querySelector<HTMLElement>('button.palette, button.palette-icone')?.focus()
     revelationClavier.value = false
     const echap = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') reveler(false)
@@ -58,16 +59,24 @@ export function CielRevele() {
       window.clearTimeout(minuterie.current)
     }
   }, [])
+  const position = cielPosition.value
+  const evts = {
+    surEntree: arreter,
+    surSortie: programmer,
+    surSortieFocus: (e: FocusEvent): void => {
+      const vers = e.relatedTarget as Node | null
+      if (!(vers && ref.current?.contains(vers)) && !ref.current?.matches(':hover')) programmer()
+    }
+  }
   return (
     <>
       {/* Zone transparente qui recouvre la page : un clic referme la révélation. */}
-      <div class="voile" style={{ top: `${CAPSULE}px` }} onMouseDown={() => reveler(false)}></div>
-      <Sky revele refCiel={ref} surEntree={arreter} surSortie={programmer}
-        surSortieFocus={(e) => {
-          const vers = e.relatedTarget as Node | null
-          if (!(vers && ref.current?.contains(vers)) && !ref.current?.matches(':hover')) programmer()
-        }}
-        largeur={cielLargeur.value + 14} />
+      <div class={`voile voile-${cielPosition.value}`} style={{ top: `${position === 'haut' ? 56 : CAPSULE}px` }} onMouseDown={() => reveler(false)}></div>
+      {position === 'haut' || position === 'bas' ? (
+        <Bande revele position={position} refCiel={ref} {...evts} />
+      ) : (
+        <Sky revele refCiel={ref} {...evts} largeur={cielLargeur.value + 14} />
+      )}
     </>
   )
 }

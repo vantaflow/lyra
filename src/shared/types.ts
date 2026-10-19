@@ -37,6 +37,8 @@ export interface Settings {
     masque: boolean
     /** Ciel masqué : se révèle au survol du rail (sinon seulement par la poignée, le bouton de la capsule ou ⌘ \). */
     revelerAuSurvol: boolean
+    /** Glisser l'en-tête du ciel vers un bord pour le déplacer. */
+    deplacerParGlisser: boolean
     ternirApresMin: number
     endormirApresMin: number
   }

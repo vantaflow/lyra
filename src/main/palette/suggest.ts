@@ -23,7 +23,11 @@ export interface Commande {
 export const COMMANDES: Commande[] = [
   { id: 'nouvelle-etoile', titre: 'Nouvelle étoile', aide: '⌘ T' },
   { id: 'fenetre-privee', titre: 'Nouvelle fenêtre privée', aide: '⌘ ⇧ N' },
-  { id: 'reglages', titre: 'Réglages', aide: '⌘ ,' }
+  { id: 'reglages', titre: 'Réglages', aide: '⌘ ,' },
+  { id: 'ciel-gauche', titre: 'Déplacer le ciel à gauche' },
+  { id: 'ciel-droite', titre: 'Déplacer le ciel à droite' },
+  { id: 'ciel-haut', titre: 'Déplacer le ciel en haut' },
+  { id: 'ciel-bas', titre: 'Déplacer le ciel en bas' }
 ]
 
 const MAX = 12
