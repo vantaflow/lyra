@@ -33,7 +33,8 @@ test('nouvel onglet : la saisie lance une recherche avec le moteur par défaut',
     const n = page(app, 'lyra://newtab')!
     await expect(n.getByText('Vos constellations')).toBeVisible()
     await n.fill('#recherche', 'véga')
-    await n.press('#recherche', 'Enter')
+    // La navigation remplace la cible Playwright : la fin de la frappe peut arriver trop tard.
+    await n.press('#recherche', 'Enter').catch(() => undefined)
     await expect.poll(() => fenetre.evaluate(() => window.lyra.invoke('test:lastNavigation'))).toContain('duckduckgo.com')
   } finally {
     await app.close()
@@ -51,7 +52,11 @@ test('réglages : thème sombre → une page web voit prefers-color-scheme: dark
     await expect.poll(() => fenetre.evaluate(() => window.lyra.invoke('settings:get')).then((s) => s.theme)).toBe('sombre')
     await fenetre.evaluate((u) => window.lyra.invoke('test:navigate', u), FIXTURE)
     await expect.poll(() => page(app, FIXTURE)).toBeDefined()
-    expect(await page(app, FIXTURE)!.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches)).toBe(true)
+    // Playwright émule « light » par défaut : on rend la main au thème réel du navigateur.
+    await page(app, FIXTURE)!.emulateMedia({ colorScheme: null })
+    await expect
+      .poll(() => page(app, FIXTURE)!.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches))
+      .toBe(true)
   } finally {
     await app.close()
   }
