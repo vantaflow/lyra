@@ -4,6 +4,8 @@ import type { Settings } from './types'
 export type Requetes = {
   'settings:get': [void, Settings]
   'settings:set': [Partial<Settings>, Settings]
+  /** Test uniquement (LYRA_TEST=1) : charge une URL dans la vue de page. */
+  'test:navigate': [string, void]
 }
 
 /** Évènements main → renderer : canal → données. */

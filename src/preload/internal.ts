@@ -1,2 +1,4 @@
-// Preload des pages internes lyra:// (newtab, réglages) : API ajoutée aux tâches suivantes.
-void 0
+// Preload des pages internes lyra:// (newtab, réglages) : même API window.lyra que l'interface.
+import { exposerApi } from './api'
+
+exposerApi()

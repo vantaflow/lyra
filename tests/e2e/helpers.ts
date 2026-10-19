@@ -19,7 +19,11 @@ export async function lancerLyra(
   Object.assign(env, extraEnv)
 
   const app = await _electron.launch({ args: ['.'], cwd: racine, env })
-  const fenetre = await app.firstWindow()
+  await app.firstWindow()
+  // Plusieurs vues web : la fenêtre d'interface est celle qui charge ui.html.
+  const estUI = (p: Page): boolean => p.url().includes('ui.html')
+  for (let i = 0; i < 100 && !app.windows().some(estUI); i++) await new Promise((r) => setTimeout(r, 100))
+  const fenetre = app.windows().find(estUI)!
   await fenetre.waitForLoadState('domcontentloaded')
   return { app, fenetre }
 }
