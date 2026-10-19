@@ -30,6 +30,11 @@ import { installerPasserellesIpc } from './passerelles/ipc'
 import { Dnd, type NotificationRetenue } from './dnd/Dnd'
 import { origineDe } from './shields/Shields'
 import type { DureeDnd } from '../shared/ipc'
+import { creerExtensions, type Extensions } from './extensions/Extensions'
+import { creerChargeur } from './extensions/chargeur'
+import { creerRegistre } from './extensions/registre'
+import { installerExtensionsIpc } from './extensions/ipc'
+import { installerFixtures } from './extensions/fixturesTest'
 
 definirFournisseurLangue(() => app.getLocale())
 app.setPath('userData', paths.userData())
@@ -47,6 +52,8 @@ const onglets = new Map<number, TabManager>()
 let historique: History | undefined
 let sessionStore: SessionStore | undefined
 let passerelles: Passerelles | undefined
+/** Extensions (chrome.tabs) : absent tant que le démarrage n'a pas fini de les brancher. */
+let extensionsLyra: Extensions | undefined
 const privees = new Set<number>()
 
 /** Cadres (iframes comprises) d'où viennent les notifications retenues : un clic y est rejoué. */
@@ -152,7 +159,7 @@ function ongletsDe(wc: WebContents): TabManager {
   return m
 }
 
-function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSession): void {
+function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSession): BaseWindow {
   const fenetre = manager.creerFenetre(opts)
   // Une fenêtre privée n'alimente jamais l'historique.
   const h = historique
@@ -174,7 +181,16 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
       passerelles: passerelles?.crochets({ privee: opts.privee === true }),
       surEchap: () => dnd.sortir(fenetre.id),
       basculerDnd: () => basculerDnd(fenetre.id),
-      retenirPopup: (p) => dnd.retenirPopup(fenetre.id, p)
+      retenirPopup: (p) => dnd.retenirPopup(fenetre.id, p),
+      // Jamais d'extensions en fenêtre privée.
+      extensions:
+        opts.privee || !extensionsLyra
+          ? undefined
+          : {
+              ajouter: (wc, win) => extensionsLyra?.addTab(wc, win),
+              retirer: (wc) => extensionsLyra?.removeTab(wc),
+              selectionner: (wc) => extensionsLyra?.selectTab(wc)
+            }
     }
   )
   // Une demande de permission ne survit pas à un changement de route ou à la fermeture de l'overlay.
@@ -189,6 +205,7 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
   })
   if (restauration) tabs.restaurer(restauration)
   else tabs.ouvrir('lyra://newtab')
+  return fenetre.win
 }
 
 app.on('session-created', installerProtocoleLyra)
@@ -432,6 +449,50 @@ void app.whenReady().then(async () => {
   installerPasserellesIpc(pass)
   // Le PAC initial est en place avant toute fenêtre (une étoile restaurée ne part pas en direct).
   await pass.demarrer()
+  // Extensions : branchées et chargées avant la création de la moindre vue (donc de la première fenêtre).
+  const baseExtensions = join(paths.userData(), 'extensions')
+  const sessionLyra = session.fromPartition('persist:lyra')
+  extensionsLyra = creerExtensions({
+    session: sessionLyra,
+    tabs: {
+      ouvrir: (url, o) => {
+        // Les extensions n'ouvrent que des pages web ou leurs propres pages (options, popups) : ni lyra:// ni file://.
+        if (!/^(https?|chrome-extension):/i.test(url)) return undefined
+        const m = (o.fenetreId !== undefined ? onglets.get(o.fenetreId) : undefined) ?? ongletsCourants()
+        const f = m && manager.fenetre(m.fenetreId)
+        if (!m || !f || privees.has(m.fenetreId)) return undefined
+        const wc = m.webContentsDe(m.ouvrir(url, { actif: o.actif }))
+        return wc ? { wc, win: f.win } : undefined
+      },
+      activer: (wc) => {
+        const m = ongletsPossedant(wc)
+        const id = m?.idDe(wc)
+        if (m && id) m.activer(id)
+      },
+      fermer: (wc) => {
+        const m = ongletsPossedant(wc)
+        const id = m?.idDe(wc)
+        if (m && id) m.fermer(id)
+      }
+    },
+    fenetres: {
+      creer: (url) => {
+        const win = creerFenetre()
+        if (url && /^https?:/i.test(url)) onglets.get(win.id)?.ouvrir(url)
+        return win
+      },
+      fermer: (win) => {
+        if (!win.isDestroyed()) win.close()
+      }
+    }
+  })
+  const registreExtensions = creerRegistre(reglages)
+  if (process.env.LYRA_TEST === '1' && process.env.LYRA_EXTENSIONS_FIXTURES) {
+    installerFixtures(process.env.LYRA_EXTENSIONS_FIXTURES, baseExtensions, registreExtensions)
+  }
+  const chargeurExtensions = creerChargeur({ extensions: sessionLyra.extensions, registre: registreExtensions, base: baseExtensions })
+  installerExtensionsIpc(chargeurExtensions)
+  await chargeurExtensions.chargerAuDemarrage()
   if (process.env.LYRA_TEST === '1') {
     handle('test:navigate', async (url) => {
       const m = ongletsCourants()

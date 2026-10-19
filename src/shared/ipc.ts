@@ -1,4 +1,4 @@
-import type { DecisionPermission, DownloadInfo, HistoryEntry, PasserellePerso, Settings, SiteContourne, SkyState, Suggestion, TypePermission } from './types'
+import type { DecisionPermission, DownloadInfo, ExtensionInstallee, HistoryEntry, PasserellePerso, Settings, SiteContourne, SkyState, Suggestion, TypePermission } from './types'
 
 export interface RectIpc {
   x: number
@@ -125,6 +125,12 @@ export interface SkyChange {
 /** Requêtes renderer → main : canal → [données, réponse]. Complétée par les tâches suivantes. */
 export type Requetes = {
   'settings:get': [void, Settings]
+  /** Registre des extensions, avec l'état de chargement de chacune. */
+  'extensions:lister': [void, Array<ExtensionInstallee & { chargee: boolean }>]
+  /** Active ou désactive à chaud ; faux si l'extension est inconnue ou ne se charge pas. */
+  'extensions:activer': [{ id: string; active: boolean }, boolean]
+  /** Retire l'extension, son dossier et son entrée du registre. */
+  'extensions:desinstaller': [{ id: string }, boolean]
   'settings:set': [Partial<Settings>, Settings]
   'layout:get': [
     void,

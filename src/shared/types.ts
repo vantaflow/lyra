@@ -63,6 +63,36 @@ export interface Settings {
     /** Passerelle personnelle ; si présente, utilisée à la place des publiques. */
     personnelle?: PasserellePerso
   }
+  extensions: SettingsExtensions
+}
+
+export type SourceExtension = 'cws' | 'crx' | 'zip' | 'dossier' | 'amo' | 'xpi'
+export type MagasinExtension = 'chrome' | 'edge' | 'firefox' | 'inconnu'
+
+/** Extension du registre (`settings.extensions.installees`). */
+export interface ExtensionInstallee {
+  /** Identifiant Chrome : 32 lettres a-p. */
+  id: string
+  nom: string
+  version: string
+  source: SourceExtension
+  magasin: MagasinExtension
+  /** Dossier chargé, relatif à `userData/extensions/` (ex. « <id>/1.0.0 »). */
+  dossier: string
+  active: boolean
+  /** Date ISO. */
+  installeeLe: string
+  miseAJourLe: string
+  /** Extension Firefox convertie en extension Chrome. */
+  convertie?: boolean
+}
+
+export interface SettingsExtensions {
+  /** Dans l'ordre d'installation (c'est l'ordre de chargement au démarrage). */
+  installees: ExtensionInstallee[]
+  majAuto: boolean
+  /** Date ISO de la dernière vérification des mises à jour. */
+  derniereVerification?: string
 }
 
 export interface SiteContourne {

@@ -1,6 +1,7 @@
 import type { Settings } from '../../shared/types'
 import { fusion } from './store'
 import { hoteValide, octets } from '../passerelles/liste'
+import { validerInstallees } from '../extensions/registre'
 
 export type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K] }
 
@@ -127,6 +128,11 @@ const SCHEMA: Schema = {
     auto: booleen,
     sites: sitesContournes,
     personnelle
+  },
+  extensions: {
+    installees: validerInstallees,
+    majAuto: booleen,
+    derniereVerification: texte(40, /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/)
   }
 }
 

@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Lyra fixture minimale",
+  "version": "1.0.0",
+  "description": "Extension de test : pose un marqueur sur la page.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxjoJlqYUkJepfU81O3lDK+1n5znLTbqsdRXydgQk23FLZbjH0IEb+xkIXBlkgUUvnU54WEYPQu7dqAvxdN3Ownliq9UsyZGFjcvwggFNTxGowWmOpsmKpenvshQpoL7AQAkmPhBtryBX1d5q6up+rprqyRoef0/zxFcmYcrl/9s29Jb31mB1O/squzLsXCt8b4JcLHnOFKDyDX6QaE08jNQmDy0Zz6ccn9iS5GKIuTIX/RzmdZJ03bK69qpK4OYc1YS73DHbHEe4IAWQWHIqaZKWb+fc/vvgSa8xESr5iVlUPBPjUShouxciKVAlYNO9Z1JqMErdYm8tzL3XkHIDGwIDAQAB",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "contenu.js"
+      ],
+      "run_at": "document_start"
+    }
+  ]
+}

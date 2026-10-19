@@ -86,8 +86,9 @@ function urlPremierNiveau(d: OnBeforeRequestListenerDetails | OnHeadersReceivedL
   return url || d.referrer || d.url
 }
 
+/** Pages et ressources des extensions (`chrome-extension://`) et protocole des icônes d'action (`crx://`) : jamais filtrées. */
 const estExtension = (d: { url: string; initiatorOrigin?: string }): boolean =>
-  d.url.startsWith('chrome-extension://') || (d.initiatorOrigin?.startsWith('chrome-extension://') ?? false)
+  /^(chrome-extension|crx):\/\//.test(d.url) || /^(chrome-extension|crx):\/\//.test(d.initiatorOrigin ?? '')
 
 export function creerShields(opts: OptionsShields): Shields {
   let moteur = opts.moteurInitial
