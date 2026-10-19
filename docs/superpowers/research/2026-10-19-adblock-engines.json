@@ -1,0 +1,424 @@
+{
+  "topic": "Bloqueur de publicités intégré (façon Brave Shields) dans une app Electron Windows + macOS compilée depuis macOS sans chaîne native : @ghostery/adblocker-electron versus adblock-rs",
+  "summary": "Recommandation : utiliser @ghostery/adblocker-electron 2.20.1 (avec @ghostery/adblocker et @ghostery/adblocker-electron-preload, tous publiés le 2026-10-09, MPL-2.0, JavaScript pur), car adblock-rs 0.13.3 n'embarque aucun binaire et compile du Rust à chaque installation (postinstall cargo build --release, Neon napi-1, Rust 1.97), ce qui contredit un build macOS sans chaîne native pour Windows et macOS. Côté Electron, enableBlockingInSession enregistre un preload au niveau de la session (registerPreloadScript, donc Electron 35 ou plus en pratique malgré peerDependency >11), branche webRequest.onBeforeRequest et onHeadersReceived et deux ipcMain.handle globaux ; le preload ne travaille que dans la frame principale, injecte styles et scriptlets de façon asynchrone (course possible avec les scripts de la page) et ne gère ni sélecteurs étendus, ni filtrage HTML, ni $removeparam, et le bug ouvert #5347 interdit d'activer le wrapper sur plusieurs sessions. Les fonctions fromPrebuilt* ne chargent aucun engine précompilé : elles appellent fromLists sur raw.githubusercontent.com/ghostery/adblocker/master/.../assets, dont le contenu est figé depuis le 2026-08-14 (PR de mise à jour #5819 ouverte, EasyList du 13 août) et qui omet filters-2025, filters-2026 et filters-general.txt (environ 2 800 règles uBO). La stratégie conseillée est donc de construire le moteur soi-même avec ElectronBlocker.parse puis updateResources, à partir des listes uBO pré-résolues (*.min.txt sur ublockorigin.github.io/uAssets) et d'EasyList/EasyPrivacy, avec le resources.json frais du CDN Ghostery (153 scriptlets dont json-prune, set-constant, trusted-replace-fetch-response, trusted-replace-xhr-response, json-prune-fetch-response), de sérialiser le moteur dans userData (clé ENGINE_VERSION 899 plus révisions des listes), d'embarquer un seed construit au packaging et de rafraîchir toutes les 12 à 24 h par requêtes conditionnelles avec remplacement à chaud du moteur. Le moteur ne vérifie pas requiresTrust : les 398 règles trusted-* des listes s'exécutent quelle que soit la liste d'origine, donc les sources doivent rester des listes de confiance. adblock-rs reste une option future (API Engine, FilterSet, check, urlCosmeticResources, hiddenClassIdSelectors, useResources, modèle de permissions), mais exige d'écrire toute la colle Electron, de convertir les ressources uBO au format Resource et de compiler un .node par OS et architecture ; le dépôt brave/adblock-resources ne contient dans dist/resources.json que 17 ressources propres à Brave et son catalogue s'appelle filter_lists/list_catalog.json (filter_lists/default.json n'existe pas). Les points non mesurés (temps de parse, taille du blob, ordre d'exécution des scriptlets) sont listés en questions ouvertes pour un spike de validation.",
+  "findings": [
+    {
+      "claim": "Versions actuelles (dist-tag latest) : @ghostery/adblocker-electron, @ghostery/adblocker et @ghostery/adblocker-electron-preload valent 2.20.1, publiées le 2026-10-09 ; peerDependency electron '>11' ; dépendances de adblocker-electron : @ghostery/adblocker, @ghostery/adblocker-electron-preload, tldts-experimental ^7.4.10 ; licence MPL-2.0.",
+      "source": "npm view @ghostery/adblocker-electron version dist-tags peerDependencies dependencies license time (idem pour @ghostery/adblocker et @ghostery/adblocker-electron-preload)",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "@cliqz/adblocker-electron et @cliqz/adblocker sont dépréciés et renommés (dernière 1.34.0 le 2024-10-16) ; les @ghostery/* démarrent à 2.0.0 le 2024-10-17.",
+      "source": "npm view @cliqz/adblocker-electron deprecated ; npm view @cliqz/adblocker-electron time ; npm view @ghostery/adblocker-electron time",
+      "verified": true,
+      "importance": "moyenne"
+    },
+    {
+      "claim": "Cadence de maintenance élevée : 29 publications de @ghostery/adblocker-electron depuis 2025-10-01 (dont 20 depuis 2026-01-01) ; adblock-rs : 16 publications depuis 2025-09-01.",
+      "source": "npm view <paquet> time --json filtré avec jq",
+      "verified": true,
+      "importance": "basse"
+    },
+    {
+      "claim": "fromPrebuiltAdsOnly, fromPrebuiltAdsAndTracking et fromPrebuiltFull n'utilisent aucun engine précompilé : ils appellent fromLists(fetch, adsLists | adsAndTrackingLists | fullLists, {}, caching). La JSDoc parle d'un CDN et d'un repli, mais le code ne le fait pas ; c'est identique dans @cliqz/adblocker 1.34.0, @ghostery/adblocker 2.0.0 et 2.9.1. Ces méthodes n'acceptent pas de config (seulement fetch et caching), donc la config par défaut s'applique.",
+      "source": "npm pack @ghostery/adblocker@2.20.1 puis package/dist/esm/engine/engine.js L56-113, fetch.js L38-62, engine.d.ts L93-103 ; fetch.js des versions 1.34.0, 2.0.0 et 2.9.1",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "Les listes et le resources.json sont téléchargés depuis https://raw.githubusercontent.com/ghostery/adblocker/master/packages/adblocker/assets/ (easylist, peter-lowe, ublock-origin/*, ublock-origin/resources.json). adsLists = 12 listes (EasyList, serverlist Peter Lowe, badware, filters 2020 à 2024, filters, quick-fixes, resource-abuse, unbreak) ; adsAndTrackingLists ajoute easyprivacy et privacy ; fullLists ajoute easylist-cookie, annoyances-others et annoyances-cookies. fetchResources(fetch) vise ce même dépôt, pas le CDN Ghostery.",
+      "source": "package/dist/esm/fetch.js L38-76 (@ghostery/adblocker 2.20.1)",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "Les assets GitHub utilisés par fromPrebuilt* et fetchResources sont périmés : dernier commit fusionné touchant packages/adblocker/assets = 2026-08-14T12:47:32Z (7f5784d0, Update local assets #5817), EasyList en version 202608130520 ; la PR bot #5819 Update local assets est ouverte depuis le 2026-08-14 en attente de review (branche réécrite le 2026-10-18). Au 2026-10-19 le retard est d'environ 66 jours.",
+      "source": "https://api.github.com/repos/ghostery/adblocker/commits?path=packages/adblocker/assets/easylist/easylist.txt ; https://github.com/ghostery/adblocker/pull/5819 ; en-tête '! Version: 202608130520' du easylist.txt téléchargé",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "Le workflow assets.yml s'exécute chaque jour à 20:00 UTC (cron) mais se contente d'ouvrir une PR (reviewer remusao) : la fréquence réelle des assets dépend d'un merge manuel (merges observés les 4, 5, 7, 8, 10 et 14 août 2026, puis plus rien).",
+      "source": "https://raw.githubusercontent.com/ghostery/adblocker/master/.github/workflows/assets.yml ; API commits sur packages/adblocker/assets",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "Le preset du paquet 2.20.1 est incomplet : adsLists ne contient que filters-2020 à filters-2024, alors que assets/update.js du dépôt télécharge aussi filters-2025 et filters-2026 (fichiers présents : 168 728 et 74 533 octets) ; ces deux listes ne sont jamais chargées par fromPrebuilt*.",
+      "source": "package/dist/esm/fetch.js L39-52 ; https://raw.githubusercontent.com/ghostery/adblocker/master/packages/adblocker/assets/update.js (FILTER_LISTS) ; curl HTTP 200 sur assets/ublock-origin/filters-2025.txt et filters-2026.txt",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "filters-general.txt d'uBO (701 337 octets, environ 2 811 règles uniques) est absent des presets Ghostery : seulement 8 de ses règles se retrouvent dans l'ensemble des listes du CDN Ghostery. filters.txt d'uBO est un chapeau avec 10 lignes '!#include' (filters-general, filters-2020 à 2026, ubo-link-shorteners, filters-mobile sous '!#if env_mobile') que le moteur Ghostery traite comme des commentaires. ubo-link-shorteners.txt (120 334 octets) manque aussi.",
+      "source": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt (L10819-10834) ; .../filters/filters-general.txt ; liste CDN ublock-filters (lignes 8803-8813) ; comparaison locale sort/comm ; update.js FILTER_LISTS",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "uBO publie des listes pré-résolues *.min.txt sur GitHub Pages : filters.min.txt (1 928 325 octets, 556 594 en gzip) inline filters-general, filters-2020 à 2026, ubo-link-shorteners et filters-mobile (298 lignes '!#if' conservées, aucune '!#include') ; badware.min.txt 152 082, privacy.min.txt 139 692 (inclut resource-abuse), unbreak.min.txt 177 912, quick-fixes.min.txt 83 539 octets ; ETag, Last-Modified 2026-10-18 23:40:43 GMT, Cache-Control max-age=600 ; en-têtes '! Expires: 5 days' et '! Diff-Expires: 317 minutes'. L'assets.json officiel d'uBO pointe vers ublockorigin.github.io/uAssets.",
+      "source": "curl -sIL et téléchargements HTTP 200 sur https://ublockorigin.github.io/uAssets/filters/*.min.txt ; https://raw.githubusercontent.com/gorhill/uBlock/master/assets/assets.json",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "Indications de fréquence dans les listes : EasyList Expires 4 jours, uBO filters 5 jours, privacy 7 jours, unbreak 5 jours, quick-fixes 8 heures, annoyances/cookies 7 jours ; easylist.to renvoie ETag, Last-Modified 2026-10-19 01:33:36 GMT et max-age=7200.",
+      "source": "en-têtes '! Expires' des listes téléchargées ; curl -sIL https://easylist.to/easylist/easylist.txt",
+      "verified": true,
+      "importance": "moyenne"
+    },
+    {
+      "claim": "Le CDN Ghostery sert les listes de façon versionnée : GET https://cdn.ghostery.com/adblocker/resources/<nom>/metadata.json renvoie {name, revisions:[sha256...]} (la dernière révision est la plus récente), puis GET /<nom>/<revision>/list.txt (Cache-Control public, immutable, max-age 1 an). metadata.json est servi en gzip (environ 89 Ko pour easylist), avec ETag (réponse 304 sur If-None-Match) et max-age=3600. Dernières révisions datées du 16 au 18 octobre 2026 (mise à jour quotidienne vers 05:36 GMT). Noms valides : easylist, easyprivacy, easylist-cookie, plowe-0, ublock-filters, ublock-filters-2020 à 2026, ublock-badware, ublock-abuse, ublock-unbreak, ublock-quick-fixes, ublock-privacy, ublock-annoyances-others, ublock-annoyances-cookies, ublock-resources-json, ublock-resources ; pas de filters-general (404). Usage interne au script update.js du dépôt, donc non contractuel pour un tiers.",
+      "source": "https://raw.githubusercontent.com/ghostery/adblocker/master/packages/adblocker/assets/update.js (downloadResource) ; curl sur cdn.ghostery.com (en-têtes, 304, 404 pour ublock-filters-general)",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "Tailles en octets bruts : snapshot GitHub périmé ads 4 193 908 (gzip 1 277 852), ads+tracking 5 885 171 (gzip 1 767 470), full 7 900 622 (gzip 2 338 694), resources.json 183 850 ; version CDN actuelle avec filters-2025 et 2026 : ads 4 601 338 (gzip 1 404 993), ads+tracking 6 299 210 (gzip 1 899 373), full 8 345 485 (gzip 2 481 263). Jeu recommandé uBO min + EasyList + EasyPrivacy : environ 6,2 Mo bruts, 1,94 Mo transférés en gzip, environ 173 000 lignes non commentaire dont 43 400 règles cosmétiques.",
+      "source": "curl -w size_download sur chaque URL ; cat | wc -c et gzip -9 | wc -c en local sans exécuter de code téléchargé",
+      "verified": true,
+      "importance": "moyenne"
+    },
+    {
+      "claim": "resources.json du CDN (2026-10-18) : 153 entrées scriptlets (helpers .fn inclus) et 65 redirects, contre 149 et 63 dans la copie GitHub périmée (manquent mpegdash-prune.js, trusted-edit-inbound-element.js, edit-inbound-element.fn, modify-xhr-response.fn, proxy-tostring.fn). Format : {scriptlets:[{name, aliases, body, dependencies, executionWorld?, requiresTrust?}], redirects:[{name, aliases, body, contentType}]} ; 148 des 153 bodies sont des déclarations 'function nom(...)'.",
+      "source": "jq sur https://cdn.ghostery.com/adblocker/resources/ublock-resources-json/<dernière révision>/list.txt et sur assets/ublock-origin/resources.json",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "Scriptlets uBO modernes demandés : tous présents dans resources.json (CDN et copie GitHub) : json-prune, set-constant (alias set), json-prune-fetch-response, json-prune-xhr-response, trusted-replace-fetch-response (alias trusted-rpfr, requiresTrust), trusted-replace-xhr-response (requiresTrust), trusted-set-constant (alias trusted-set), json-edit*, trusted-json-edit*, jsonl-edit*, prevent-fetch, prevent-xhr, trusted-click-element, trusted-replace-argument, remove-node-text, href-sanitizer, etc. Usage dans le jeu recommandé : environ 10 390 règles +js dont 398 trusted-* ; plus fréquents : set 1 395, aopr 1 267, acs 1 170, nowoif 856, nostif 828, rmnt 799, aeld 675, no-fetch-if 422, json-prune 124.",
+      "source": "jq -r '.scriptlets[]' sur le resources.json ; comptage grep -cF '+js(' sur les listes téléchargées",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "Aucun modèle de confiance dans le moteur Ghostery : requiresTrust et executionWorld sont validés, sérialisés et désérialisés (resources.js) mais jamais lus ailleurs ; getScriptlet() n'en tient pas compte. Toute liste souscrite peut donc déclencher les scriptlets trusted-* (set-cookie, replace-fetch-response, click-element...). Tous les scriptlets, y compris ceux marqués ISOLATED, sont exécutés dans le monde principal de la page via executeJavaScript.",
+      "source": "grep -rn 'requiresTrust|executionWorld|trusted' package/dist/esm (@ghostery/adblocker 2.20.1) ; engine.js L659-694 ; index.js L130-140 de adblocker-electron",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "enableBlockingInSession(session) crée un BlockingContext (WeakMap par session) qui, si config.loadCosmeticFilters, appelle session.registerPreloadScript({type:'frame', filePath: PRELOAD_PATH}) et ipcMain.handle sur '@ghostery/adblocker/inject-cosmetic-filters' et '@ghostery/adblocker/is-mutation-observer-enabled' ; et, si config.loadNetworkFilters, session.webRequest.onHeadersReceived({urls:['<all_urls>']}) et onBeforeRequest({urls:['<all_urls>']}). disable() désinscrit tous les listeners webRequest de la session (onBeforeRequest(null), onHeadersReceived(null)) et retire les handlers IPC. Le module fixe aussi process.env.ELECTRON_DISABLE_SECURITY_WARNINGS='true' à l'import.",
+      "source": "npm pack @ghostery/adblocker-electron@2.20.1 puis package/dist/esm/index.js L14, L40-85, L188-210",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "Electron 35 ou plus est requis pour le cosmétique : @ghostery/adblocker-electron utilise session.registerPreloadScript depuis 2.9.1 (2025-07-03, PR #4982, remplace setPreloads déprécié) et cette API est apparue dans Electron 35.0.0 (2025-03-04) ; la peerDependency reste '>11'. Versions Electron au 2026-10-19 : latest 44.9.0 (2026-10-17), 43.8.0, 42.11.15, beta 45.0.0-beta.5.",
+      "source": "CHANGELOG.md du dépôt ghostery/adblocker (v2.9.1) ; https://www.electronjs.org/blog/electron-35-0 ; https://www.electronjs.org/docs/latest/api/session ; npm view electron dist-tags time",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "Le preload (dist/index.cjs, 9 171 octets, seul require('electron')) n'agit que si window === window.top et hors devtools:// : il appelle ipcRenderer.invoke('@ghostery/adblocker/inject-cosmetic-filters', location.href, msg) au démarrage puis à chaque nouvel id, classe ou href vu par le MutationObserver (debounce 25 ms, max 1 s). Côté main, styles et scripts sont appliqués par event.sender.insertCSS(styles, {cssOrigin:'user'}) et event.sender.executeJavaScript(script, true), donc sur la frame principale seulement : pas de cosmétique ni de scriptlet dans les iframes, et les règles scriptlet ciblant un sous-cadre (parentDomains) ne s'appliquent pas (ancestors non fournis).",
+      "source": "npm pack @ghostery/adblocker-electron-preload@2.20.1 puis package/dist/index.js L212-246 ; package/dist/esm/index.js L100-141 de adblocker-electron",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "Injection asynchrone : le preload fait un ipcRenderer.invoke puis le main exécute executeJavaScript, donc l'ordre par rapport aux scripts de la page n'est pas garanti. Le mainteneur écrit que bloquer les pubs YouTube est 'racy' et qu'un aller-retour vers l'adblocker peut arriver trop tard (issue #2757 ; correctif PR #3162 : injecter sans attendre DOMContentLoaded). Les anciennes versions insérant un noeud script posaient des problèmes de CSP (issues #3819 et #4234) ; depuis 2.0.1 (2024-10-21) le code utilise executeJavaScript.",
+      "source": "https://github.com/ghostery/adblocker/issues/2757 ; CHANGELOG.md v2.0.1 (PR #4278) ; package/dist/index.js du preload",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "Bug ouvert #5347 : enableBlockingInSession sur deux sessions lève 'Attempted to register a second handler for @ghostery/adblocker/inject-cosmetic-filters' (ipcMain.handle est global et le code 2.20.1 l'appelle à chaque enable) ; assigné le 2026-01-15, aucun correctif annoncé ; contournement posté par un utilisateur : CDP Fetch.requestPaused via webContents.debugger.",
+      "source": "https://github.com/ghostery/adblocker/issues/5347 ; package/dist/esm/index.js L55-56",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "Electron n'autorise qu'un seul listener par évènement webRequest ('Only the last attached listener will be used') ; details contient id, url, method, webContentsId, webContents, frame (WebFrameMain ou null), initiatorOrigin, resourceType, referrer, timestamp, uploadData ; la réponse est {cancel?, redirectURL?}. Ghostery construit sourceUrl avec details.referrer (vide avec Referrer-Policy no-referrer, d'où un premier/tiers-partie indéterminé) au lieu de initiatorOrigin.",
+      "source": "https://www.electronjs.org/docs/latest/api/web-request ; package/dist/esm/index.js L18-36",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "Limites du wrapper Electron lues dans le code : les requêtes mainFrame ne sont jamais filtrées (callback({}) si request.isMainFrame()) ; result.rewrite ($removeparam) est calculé par match() mais ignoré par onBeforeRequest ; enableHtmlFiltering est sans effet (aucun appel à getHtmlFilters, pas de filtrage de réponse via webRequest) ; enablePushInjectionsOnNavigationEvents n'est lu que par le wrapper WebExtension ; getCosmeticsFilters est appelé avec getExtendedRules:false et loadExtendedSelectors vaut false par défaut, donc les sélecteurs procéduraux (:has-text, :xpath, :matches-css, :upward, :remove) sont ignorés ; onHeadersReceived n'applique que les $csp des mainFrame et subFrame.",
+      "source": "package/dist/esm/index.js L100-183 (adblocker-electron) ; engine/bucket/cosmetic.js L188 ; grep dans @ghostery/adblocker-webextension 2.20.1",
+      "verified": true,
+      "importance": "moyenne"
+    },
+    {
+      "claim": "Config par défaut de FiltersEngine (config.js 2.20.1) : debug false, enableCompression false, enableHtmlFiltering false, enableInMemoryCache true, enableMutationObserver true, enableOptimizations true, enablePushInjectionsOnNavigationEvents true, guessRequestTypeFromUrl false, integrityCheck true, loadCSPFilters true, loadCosmeticFilters true, loadExceptionFilters true, loadExtendedSelectors false, loadGenericCosmeticsFilters true, loadNetworkFilters true, loadPreprocessors false. La config est sérialisée dans le blob.",
+      "source": "package/dist/esm/config.js L30-47 ; engine.js deserialize L181",
+      "verified": true,
+      "importance": "moyenne"
+    },
+    {
+      "claim": "Cache disque : type Caching = {path, read(path): Promise<Uint8Array>, write(path, buffer): Promise<void>}. fromCached lit le fichier et le désérialise ; en cas d'échec (absent, ENGINE_VERSION différent, checksum faux) il reconstruit via init() puis écrit ; il ne rafraîchit jamais un cache valide et rejette si write échoue. deserialize lève 'serialized engine version mismatch' si ENGINE_VERSION (899 en 2.20.1) diffère. Le blob contient config, resources (scriptlets et redirects), listes, préprocesseurs (exclusions), tous les buckets et metadata ; serialize() renvoie un Uint8Array exact (subarray) et getSerializedSize() est une estimation par excès.",
+      "source": "package/dist/esm/engine/engine.js L25, L56-64, L169-228, L286-352",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "Évènements du moteur (EventEmitter maison : on, once, unsubscribe, emit) : request-allowed, request-blocked, request-redirected, request-whitelisted (request, BlockingResponse), csp-injected (request, csps), html-filtered (htmlSelectors, url), script-injected (script, url), style-injected (style, url), filter-matched ({filter?, exception?}, contexte). L'exemple officiel Electron s'abonne à request-blocked, request-redirected, request-whitelisted, csp-injected, script-injected, style-injected et filter-matched. Request.tabId vaut webContentsId.",
+      "source": "package/dist/esm/engine/engine.d.ts L58-72 ; events.d.ts ; https://raw.githubusercontent.com/ghostery/adblocker/master/packages/adblocker-electron-example/src/index.ts",
+      "verified": true,
+      "importance": "moyenne"
+    },
+    {
+      "claim": "Options réseau non reconnues par le parseur Ghostery 2.20.1 (la règle entière est abandonnée) : popup, method, header, permissions, uritransform, cname, ipaddress, strict1p, strict3p, urlskip. Comptage approximatif sur le jeu recommandé : popup 3 129, urlskip 243, method 56, ipaddress 54, header 53, cname 29, strict1p 24, strict3p 14, uritransform 19, permissions 11. Options supportées : to, from, domain, denyallow (exige un domain), badfilter, important, match-case (regex), 1p/3p, redirect, redirect-rule, csp, ehide/elemhide, shide, ghide, inline-script, inline-font, replace/content, removeparam (non regex) et les types all, image, media, object, other, ping, css, script, frame, xhr, websocket, font, doc.",
+      "source": "package/dist/esm/filters/network.js L597-841 ; grep -E sur les listes téléchargées",
+      "verified": true,
+      "importance": "moyenne"
+    },
+    {
+      "claim": "Règles inexploitables en Electron avec le wrapper actuel (jeu recommandé, 2026-10-19) : sélecteurs procéduraux environ 1 190 (:has-text 837, :upward 171, :remove() 76, :matches-css 40, :xpath 22), filtrage HTML '##^' 400 et $replace 86 ; en revanche environ 10 390 règles +js et 725 règles :style() sont supportées.",
+      "source": "grep -cF sur filters.min, badware.min, privacy.min, unbreak.min, quick-fixes.min, easylist, easyprivacy téléchargés",
+      "verified": true,
+      "importance": "basse"
+    },
+    {
+      "claim": "Les listes uBO utilisent des directives '!#if' (cap_html_filtering 105 et !cap_html_filtering 41, env_mobile 43 et !env_mobile 22, env_firefox 38, ext_ubol 26 et !ext_ubol 10, env_chromium 20, env_safari 16, cap_ipaddress 3, env_mv3). Avec loadPreprocessors=false (défaut) ces lignes sont ignorées et toutes les branches sont actives ; avec loadPreprocessors=true il faut appeler engine.updateEnv(env). La classe Env n'est pas exportée par l'index : passer un Map<string, boolean> (clés EnvKeys : env_chromium, env_mobile, cap_html_filtering, ext_ubol...).",
+      "source": "package/dist/esm/lists.js L203-239 ; preprocessor.js ; engine/bucket/preprocessor.js ; index.d.ts ; comptage grep sur les listes",
+      "verified": true,
+      "importance": "moyenne"
+    },
+    {
+      "claim": "Aucune mesure de performance 2026 trouvée. Seule étude publique : Ghostery/Cliqz, février 2019 (EasyList seule, 38 978 filtres, Node 11.9, Chrome 72) : chargement depuis cache 0,03 ms, 1,8 Mo, médiane 0,007 ms par requête contre 0,041 ms pour Brave ; obsolète (adblock-rust a depuis adopté flatbuffers) et produite par Ghostery. Temps de parse des listes et taille du blob serialize() non mesurés (interdiction d'exécuter du code téléchargé).",
+      "source": "https://dev.to/remusao/adblockers-performance-study-5b47 ; CHANGELOG.md adblock-rs 0.11.0 (Significant runtime memory improvements)",
+      "verified": true,
+      "importance": "moyenne"
+    },
+    {
+      "claim": "adblock-rs 0.13.3 (publié le 2026-08-20) : aucun binaire dans le tarball (69 fichiers, 758 825 octets) ; postinstall = 'npm run build-release' = 'cd js && cargo-cp-artifact -nc index.node -- cargo build --message-format=json-render-diagnostics --release' ; dépendance cargo-cp-artifact ^0.1 ; binding Neon ^0.10.1 avec feature napi-1 (Node-API : pas de rebuild par version d'Electron mais un .node par OS et architecture) ; rust-toolchain.toml channel 1.97 ; crate adblock en edition 2024 ; engine single-thread par défaut. Sans cargo, npm install échoue et require('./index.node') est impossible.",
+      "source": "npm view adblock-rs scripts dependencies ; npm pack adblock-rs@0.13.3 puis package.json, js/Cargo.toml, Cargo.toml, rust-toolchain.toml",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "La CI officielle compile et teste le binding JS (npm ci puis npm run test:js) sur ubuntu-latest, macos-latest et windows-latest : plateformes prises en charge = Linux, macOS, Windows, chacune compilée nativement ; aucune cross-compilation documentée. Le README cite WASM (cible wasm32 compilée en CI) mais le paquet npm n'expose que l'addon natif.",
+      "source": "https://raw.githubusercontent.com/brave/adblock-rust/master/.github/workflows/ci.yml ; README.md du tarball adblock-rs 0.13.3",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "Pas d'alternative npm à jour avec binaires : adblock-rs-wasm 0.1.5 (compte Brave, dernier publish 2022-04-11), adblock-wasm 0.7.1 (tiers, 2022), adblock-rust 9.0.0 (sans rapport, 2022), adblock-rust-wasm 0.1.0 (tiers, 2024). Le fichier de tests de adblock-rs indique qu'il sert de base de non-régression pour une migration vers NAPI-RS, non publiée dans 0.13.3.",
+      "source": "npm view <nom> time description maintainers ; adblock-rs@0.13.3 js/test/bindings.test.mjs (en-tête)",
+      "verified": true,
+      "importance": "moyenne"
+    },
+    {
+      "claim": "API JS adblock-rs : new FilterSet(debug?: boolean) ; filterSet.addFilters(rules: string, parseOptions?: {format?, rule_types?, permissions?}) renvoie {source_index, metadata:{title, homepage, expires, redirect}} (tableau de chaînes déprécié) ; filterSet.intoContentBlocking() (undefined si debug=false) ; new Engine(filterSet) (second argument ignoré) ; engine.check(url, sourceUrl, requestType, method?, debug?) renvoie un booléen, ou avec debug=true un objet {should_block, filter, exception, important, redirect (URL data:), rewritten_url} ; engine.urlCosmeticResources(url) renvoie {hide_selectors, procedural_actions, exceptions, injected_script, generichide} ; engine.hiddenClassIdSelectors(classes, ids, exceptions) renvoie string[] ; engine.serialize() renvoie un ArrayBuffer ; engine.deserialize(ArrayBuffer) ; engine.useResources(Resource[]) ; enableTag/tagExists/clearTags dépréciés ; exports FilterFormat {STANDARD, HOSTS}, RuleTypes {ALL, NETWORK_ONLY, COSMETIC_ONLY}, uBlockResources(webAccessibleDir, redirectResourcesJs, scriptletsJs?).",
+      "source": "adblock-rs@0.13.3 js/index.js, js/src/lib.rs, js/test/bindings.test.mjs, js/example.mjs",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "Pièges adblock-rs : check lève une exception si l'URL est invalide ; une URL non http, https, ws, wss donne is_supported=false (non bloquée) ; une URL source vide ou invalide rend la requête tierce (Ghostery la considère première partie) ; ressources et tags ne sont pas restaurés par deserialize (rappeler useResources) ; deserialize avale les erreurs (let _result =) et le format DAT change souvent (v2 en 0.11.0 à v6 en 0.13.3), donc prévoir sa propre version et un test canari ; deserialize attend un ArrayBuffer exact (pas un Buffer poolé) ; useResources doit recevoir l'ensemble complet à chaque appel (Engine::add_resource supprimé en 0.11.0).",
+      "source": "adblock-rs@0.13.3 src/request.rs L212-241 ; js/src/lib.rs L297-306 ; js/test/bindings.test.mjs L563-629 ; CHANGELOG.md",
+      "verified": true,
+      "importance": "moyenne"
+    },
+    {
+      "claim": "Modèle de permissions adblock-rs : Resource.permission (u8) et ParseOptions.permissions (PermissionMask) ; un scriptlet n'est injectable que si les bits requis par la ressource sont couverts par ceux de la liste ; une ressource à permission non nulle ne sert pas aux redirects. Convention Brave (permission_mask de list_catalog.json) : bit 0 = ressources trusted d'uBlock Origin, bit 1 = ressources réservées aux listes Brave ; 'Brave Default Adblock Filters' a permission_mask 1.",
+      "source": "adblock-rs@0.13.3 src/resources/mod.rs L26-159 ; https://raw.githubusercontent.com/brave/adblock-resources/master/README.md ; filter_lists/list_catalog.json",
+      "verified": true,
+      "importance": "moyenne"
+    },
+    {
+      "claim": "Format Resource attendu par adblock-rs : {name, aliases[], kind: {mime: 'application/javascript' | 'fn/javascript' | 'image/gif' | ...} ou 'template', content: base64, dependencies[], permission?}. Un scriptlet dont le contenu commence par 'function nom(' est appelé par nom('arg1', ...) avec ses dépendances inlinées ; sinon le template {{1}}.. est patché ; un unique argument objet '{...}' est refusé (ScriptletArgObjectSyntaxUnsupported). Les 148 bodies de scriptlets du resources.json de Ghostery étant des déclarations 'function nom(', une conversion est plausible (permission = requiresTrust ? 1 : 0, helpers .fn en 'fn/javascript', redirects en {mime: contentType avant ';'} avec content en base64) mais elle n'a pas été testée.",
+      "source": "adblock-rs@0.13.3 src/resources/mod.rs L131-239 ; src/resources/resource_storage.rs L333-391 ; jq sur le resources.json Ghostery",
+      "verified": true,
+      "importance": "moyenne"
+    },
+    {
+      "claim": "brave/adblock-resources (branche master, 497 commits) : dist/resources.json (596 542 octets) ne contient que 17 ressources JavaScript propres à Brave (async-sugarcoat-*, brave-fix.js, brave-youtube-*, de-amp.js, trusted_types.js, vaft-ublock-origin.js...) et aucun scriptlet ni redirect uBO ; les ressources uBO doivent venir du resource-assembler d'adblock-rust (ancien format, assemble_scriptlet_resources déprécié, nouveau format ES module non supporté) ou d'une conversion maison. package.json dépend de adblock-rs 0.13.3 en devDependency.",
+      "source": "https://raw.githubusercontent.com/brave/adblock-resources/master/dist/resources.json ; index.js ; build.js ; package.json ; adblock-rs src/resources/resource_assembler.rs (commentaire sur assemble_scriptlet_resources)",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "filter_lists/default.json n'existe pas (404 sur master et main). Le dossier filter_lists contient list_catalog.json (75 270 octets, 62 entrées) et manifest.json ; URL exacte : https://raw.githubusercontent.com/brave/adblock-resources/master/filter_lists/list_catalog.json. Entrées par défaut : 'Brave Default Adblock Filters' (uAssets filters, filters-2020 à 2026, filters-general, badware, resource-abuse, unbreak, quick-fixes, ubo-link-shorteners, EasyList, URLhaus, brave-unbreak, brave-specific, brave-social, brave-android-specific, brave-sugarcoat), 'Brave Default Privacy Filters' (EasyPrivacy et uAssets privacy), 'Cookie notice blocker' (default_enabled) ; liste française 'French website ad blocker' = https://filters.adtidy.org/extension/ublock/filters/16.txt.",
+      "source": "curl https://raw.githubusercontent.com/brave/adblock-resources/master/filter_lists/list_catalog.json (HTTP 200) et .../filter_lists/default.json (HTTP 404) ; https://github.com/brave/adblock-resources/tree/master/filter_lists",
+      "verified": true,
+      "importance": "haute"
+    },
+    {
+      "claim": "Options réseau d'adblock-rust 0.13.3 : supporte domain/from, to (analyse seulement), badfilter, important, match-case, 1p/3p, tag (déprécié), redirect/rewrite, redirect-rule, csp, removeparam non regex, generichide/ghide, document/doc, les types, all et method (depuis 0.13.0) ; ne supporte pas denyallow (260 règles dans le jeu), elemhide/specifichide, inline-script, inline-font, replace, header, permissions, popup, cname, ipaddress, urlskip : la règle est rejetée (UnrecognisedOption).",
+      "source": "adblock-rs@0.13.3 src/filters/abstract_network.rs L190-315 ; CHANGELOG.md ; comptage grep sur les listes",
+      "verified": true,
+      "importance": "moyenne"
+    },
+    {
+      "claim": "Electron : net.fetch utilise la session par défaut et la pile réseau Chromium (proxy système) et les gestionnaires webRequest restent actifs, donc les téléchargements de listes peuvent être filtrés par le blocker lui-même ; alternative ses.fetch() sur une session dédiée sans blocker. utilityProcess.fork exige l'évènement ready ; postMessage et process.parentPort sont disponibles. WebPreferences : session prime sur partition ; sandbox vaut true par défaut depuis Electron 20 ; contextIsolation vaut true par défaut.",
+      "source": "https://www.electronjs.org/docs/latest/api/net ; https://www.electronjs.org/docs/latest/api/utility-process ; https://www.electronjs.org/docs/latest/api/structures/web-preferences",
+      "verified": true,
+      "importance": "moyenne"
+    },
+    {
+      "claim": "Licences : @ghostery/* et adblock-rs sont sous MPL-2.0 (copyleft au niveau fichier) ; uAssets est sous GPLv3 ; EasyList et EasyPrivacy renvoient à https://easylist.to/pages/licence.html. Embarquer des listes en seed dans l'installeur implique de respecter ces licences.",
+      "source": "npm view license ; https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/LICENSE ; en-têtes '! Licence:' des listes",
+      "verified": true,
+      "importance": "basse"
+    },
+    {
+      "claim": "Taille d'installation : @ghostery/adblocker 2 638 643 octets dépaquetés (359 fichiers, ESM+CJS+maps), adblocker-electron 87 145, adblocker-electron-preload 114 101, tldts-experimental 2 036 763 ; aucune dépendance native, donc ni rebuild par architecture ni binaire à signer pour Windows et macOS.",
+      "source": "npm view <paquet> dist.unpackedSize dist.fileCount",
+      "verified": true,
+      "importance": "basse"
+    },
+    {
+      "claim": "@ghostery/adblocker-webextension-cosmetics 2.20.1 exporte injectCosmetics(window, enableMutationObserver?, getCosmeticsFilters?: (cb: IBackgroundCallback) => Promise<IMessageFromBackground>) : le transport est injectable (IPC possible) et il gère les sélecteurs étendus via @ghostery/adblocker-extended-selectors, mais il injecte les scripts par un noeud script (soumis à la CSP de la page).",
+      "source": "npm pack @ghostery/adblocker-webextension-cosmetics@2.20.1 puis dist/esm/index.d.ts et index.js L153-223",
+      "verified": true,
+      "importance": "basse"
+    },
+    {
+      "claim": "Le README Ghostery annonce 99 pour cent des filtres EasyList et uBO supportés ; la matrice de compatibilité du wiki date d'avril 2019 (96 pour cent réseau, 99 pour cent cosmétique) et est dépassée par le code lu ci-dessus.",
+      "source": "https://github.com/ghostery/adblocker (README) ; https://github.com/ghostery/adblocker/wiki/Compatibility-Matrix",
+      "verified": true,
+      "importance": "basse"
+    },
+    {
+      "claim": "Cross-compilation d'adblock-rs vers Windows depuis macOS : non vérifiée ; probable besoin de cargo-xwin ou mingw-w64 et d'une bibliothèque node pour le binding Neon, donc contraire à la contrainte 'sans chaîne native' ; build natif par runner conseillé si adopté.",
+      "source": "inférence (aucune source consultée pour Neon 0.10 sous Windows) ; seule la CI native 3 OS est vérifiée",
+      "verified": false,
+      "importance": "moyenne"
+    },
+    {
+      "claim": "Le preload enregistré au niveau session s'applique à toutes les WebContents de la session, y compris l'UI de l'application si elle partage la session ; la requête cosmétique pour une URL file: ou app: pourrait y injecter des règles génériques de masquage. À éviter par une partition dédiée au contenu web et en ignorant les URL non http(s) dans le handler IPC.",
+      "source": "inférence à partir de index.js L51-56 et du preload L215 ; non testé",
+      "verified": false,
+      "importance": "moyenne"
+    },
+    {
+      "claim": "L'ordre d'exécution des scriptlets avant les scripts inline de la page n'est pas garanti avec l'implémentation actuelle ; une injection synchrone (ipcRenderer.sendSync dans un preload maison puis webFrame.executeJavaScript) pourrait la fiabiliser mais n'a pas été testée.",
+      "source": "inférence à partir du code asynchrone lu et des propos du mainteneur (issue #2757)",
+      "verified": false,
+      "importance": "haute"
+    },
+    {
+      "claim": "Sur Windows, un fs.rename vers un fichier ouvert par un antivirus ou l'indexeur peut échouer (EPERM, EBUSY) : prévoir des retries ou copie puis suppression pour l'écriture du cache moteur.",
+      "source": "connaissance générale du comportement de Windows, non testé",
+      "verified": false,
+      "importance": "basse"
+    }
+  ],
+  "versions": [
+    {
+      "package": "@ghostery/adblocker-electron",
+      "version": "2.20.1",
+      "published": "2026-10-09T17:13:29.986Z",
+      "note": "dist-tag latest ; peerDependency electron >11 (réel : 35 ou plus pour le cosmétique) ; MPL-2.0 ; JS pur ESM+CJS"
+    },
+    {
+      "package": "@ghostery/adblocker",
+      "version": "2.20.1",
+      "published": "2026-10-09T17:13:56.984Z",
+      "note": "ENGINE_VERSION 899 ; moteur FiltersEngine, Request, Config, Resources, presets adsLists/adsAndTrackingLists/fullLists"
+    },
+    {
+      "package": "@ghostery/adblocker-electron-preload",
+      "version": "2.20.1",
+      "published": "2026-10-09T17:12:43.359Z",
+      "note": "preload sandbox-compatible de 9 Ko ; frame principale uniquement ; chemin obtenu par require.resolve"
+    },
+    {
+      "package": "@ghostery/adblocker-content",
+      "version": "2.20.1",
+      "published": "2026-10-09T17:13:20.079Z",
+      "note": "DOMMonitor, extractFeaturesFromDOM, autoRemoveScript, injectScript, types IBackgroundCallback et IMessageFromBackground"
+    },
+    {
+      "package": "@ghostery/adblocker-webextension-cosmetics",
+      "version": "2.20.1",
+      "published": "2026-10-09T17:13:04.245Z",
+      "note": "injectCosmetics avec transport injectable ; sélecteurs étendus ; option phase 2"
+    },
+    {
+      "package": "@ghostery/adblocker-extended-selectors",
+      "version": "2.20.1",
+      "published": "2026-10-09T17:12:34.274Z",
+      "note": "évaluation des sélecteurs étendus"
+    },
+    {
+      "package": "tldts-experimental",
+      "version": "7.4.18",
+      "note": "dépendance ^7.4.10 de @ghostery/adblocker et adblocker-electron"
+    },
+    {
+      "package": "@cliqz/adblocker-electron",
+      "version": "1.34.0",
+      "published": "2024-10-16T09:05:42.533Z",
+      "note": "déprécié, renommé en @ghostery/adblocker-electron"
+    },
+    {
+      "package": "adblock-rs",
+      "version": "0.13.3",
+      "published": "2026-08-20T20:24:24.889Z",
+      "note": "Neon ^0.10.1 napi-1, compilation cargo au postinstall, rust-toolchain 1.97, MPL-2.0, aucun binaire précompilé, DAT format v6"
+    },
+    {
+      "package": "adblock-rs-wasm",
+      "version": "0.1.5",
+      "published": "2022-04-11T12:38:54.029Z",
+      "note": "compte Brave mais obsolète depuis 2022 ; à ne pas utiliser"
+    },
+    {
+      "package": "electron",
+      "version": "44.9.0",
+      "published": "2026-10-17T05:50:07.885Z",
+      "note": "latest ; supportés 43.8.0 et 42.11.15 ; beta 45.0.0-beta.5 (2026-10-16) ; 35.0.0 (2025-03-04) introduit session.registerPreloadScript"
+    },
+    {
+      "package": "brave/adblock-resources (dépôt git, branche master, non publié sur npm)",
+      "version": "n/a",
+      "note": "dist/resources.json = 17 ressources Brave ; filter_lists/list_catalog.json = 62 listes ; dépend de adblock-rs 0.13.3"
+    },
+    {
+      "package": "Ghostery CDN ublock-resources-json (révision c8cb1ee914a6...)",
+      "version": "révision du 2026-10-18",
+      "published": "2026-10-18T05:36:05Z",
+      "note": "153 scriptlets (helpers inclus) et 65 redirects ; source de resources.json fraîche"
+    }
+  ],
+  "api_notes": "# Notes d'API pour écrire le code de Lyra\n\nTout ce qui suit est lu dans les tarballs npm (@ghostery/* 2.20.1, adblock-rs 0.13.3), les docs Electron ou des réponses HTTP du 2026-10-19. Les points marqués (à valider) sont des inférences. Rien n'a été exécuté depuis les paquets téléchargés. Fichiers extraits (lecture seule) : /private/tmp/claude-501/-Users-lilou-Projects/def3bec1-9d14-4d36-92f3-4d4114696239/scratchpad/recherche/{ghostery-adblocker,ghostery-adblocker-electron,ghostery-adblocker-electron-preload,ghostery-adblocker-content,ghostery-adblocker-webextension-cosmetics,adblock-rs,brave-resources,brave-adblock-rust-files,ghostery-cdn,ghostery-assets,ghostery-repo-files,uassets}.\n\n## 0. Décision en un tableau\n\n| Critère | @ghostery/adblocker-electron 2.20.1 | adblock-rs 0.13.3 |\n|---|---|---|\n| Chaîne native | aucune (JS pur, ESM+CJS, MPL-2.0) | cargo build --release au postinstall (Neon 0.10 napi-1, Rust 1.97, edition 2024), pas de binaire dans le tarball |\n| Colle Electron | fournie (webRequest, preload, IPC, scriptlets, évènements) | aucune : webRequest, cosmétique, procédural, scriptlets à écrire |\n| Scriptlets uBO | resources.json prêt (CDN Ghostery), pas de modèle de confiance | Resource[] à produire (conversion), permissions natives |\n| Cosmétique | styles + scriptlets, frame principale, pas d'étendu | urlCosmeticResources + hiddenClassIdSelectors + procedural_actions (runtime à écrire) |\n| Cache | serialize/deserialize, ENGINE_VERSION 899, config et resources dans le blob | serialize ArrayBuffer, deserialize silencieux, DAT v6, resources non sérialisées |\n| Options non supportées | popup, method, header, permissions, uritransform, cname, ipaddress, strict1p/3p, urlskip | denyallow, elemhide/specifichide, inline-script/font, replace, header, permissions, popup, cname, ipaddress, urlskip |\n\nWindows et macOS : même code JS ; cache dans app.getPath('userData') (%APPDATA%/Lyra et ~/Library/Application Support/Lyra) ; aucun module natif à signer ni à reconstruire pour les deux architectures.\n\n## 1. Installation\n\n```bash\nnpm install @ghostery/adblocker-electron@~2.20.1\n# deps : @ghostery/adblocker, @ghostery/adblocker-electron-preload, tldts-experimental ; peer : electron\n```\n- Garder ces paquets externes au bundler du main process (sinon require.resolve du preload casse). Si le preload est dans app.asar et pose problème : asarUnpack + chemin app.asar.unpacked (à valider).\n- Electron 35 ou plus pour le cosmétique (registerPreloadScript) ; viser 42 à 44.\n- L'import de @ghostery/adblocker-electron fixe process.env.ELECTRON_DISABLE_SECURITY_WARNINGS='true' (pour réactiver les avertissements en dev : delete process.env.ELECTRON_DISABLE_SECURITY_WARNINGS juste après l'import, avant de créer des fenêtres).\n\n## 2. Types exacts de @ghostery/adblocker-electron 2.20.1\n\n```ts\nimport { FiltersEngine, Request } from '@ghostery/adblocker';\nimport type { IBackgroundCallback } from '@ghostery/adblocker-electron-preload'; // {classes:string[]; hrefs:string[]; ids:string[]; lifecycle:'start'|'dom-update'}\nexport declare function fromElectronDetails(details: Electron.OnHeadersReceivedListenerDetails | Electron.OnBeforeRequestListenerDetails): Request;\nexport declare class BlockingContext { constructor(session: Electron.Session, blocker: ElectronBlocker); enable(): void; disable(): void; }\nexport declare class ElectronBlocker extends FiltersEngine {\n  enableBlockingInSession(session: Electron.Session): BlockingContext;  // idempotent par session\n  disableBlockingInSession(session: Electron.Session): void;            // throw Error si jamais activé\n  isBlockingEnabled(session: Electron.Session): boolean;\n  onIsMutationObserverEnabled: (_: Electron.IpcMainInvokeEvent) => Promise<boolean>;\n  onInjectCosmeticFilters: (event: Electron.IpcMainInvokeEvent, url: string, msg?: IBackgroundCallback) => Promise<void>;\n  onHeadersReceived: (details: Electron.OnHeadersReceivedListenerDetails, callback: (a: Electron.HeadersReceivedResponse) => void) => void;\n  onBeforeRequest: (details: Electron.OnBeforeRequestListenerDetails, callback: (a: Electron.CallbackResponse) => void) => void;\n}\nexport * from '@ghostery/adblocker'; // FiltersEngine, Request, Config, Resources, ENGINE_VERSION, adsLists, adsAndTrackingLists, fullLists, fetchLists, fetchResources, fetchWithRetry, Fetch...\n```\n\nCe que fait enableBlockingInSession (index.js 2.20.1) :\n- si config.loadCosmeticFilters : ses.registerPreloadScript({type:'frame', filePath: PRELOAD_PATH}) ; ipcMain.handle('@ghostery/adblocker/inject-cosmetic-filters', onInjectCosmeticFilters) ; ipcMain.handle('@ghostery/adblocker/is-mutation-observer-enabled', onIsMutationObserverEnabled) (handlers GLOBAUX : bug #5347 au deuxième appel).\n- si config.loadNetworkFilters : ses.webRequest.onHeadersReceived({urls:['<all_urls>']}, ...) et ses.webRequest.onBeforeRequest({urls:['<all_urls>']}, ...).\n- onBeforeRequest : Request.fromRawDetails({_originalRequestDetails: details, requestId: String(id), sourceUrl: referrer, tabId: webContentsId, type: resourceType || 'other', url}) ; si config.guessRequestTypeFromUrl et type 'other' alors guessTypeOfRequest() ; si mainFrame : callback({}) ; sinon match() : redirect => callback({redirectURL: redirect.dataUrl}), match => callback({cancel:true}), sinon callback({}). result.rewrite est ignoré.\n- onHeadersReceived : uniquement mainFrame et subFrame ; getCSPDirectives(request) ; fusionne avec les CSP existantes dans un seul en-tête content-security-policy.\n- Preload (dist/index.cjs) : si window === window.top et pas devtools:// : ipcRenderer.invoke('@ghostery/adblocker/inject-cosmetic-filters', location.href) puis, après DOMContentLoaded, DOMMonitor (si is-mutation-observer-enabled) qui rappelle avec {type:'features', classes, hrefs, ids}. Le main appelle getCosmeticsFilters({domain, hostname, url, classes, hrefs, ids, getBaseRules: premier appel, getInjectionRules: premier appel, getExtendedRules:false, getRulesFromHostname: premier appel, getRulesFromDOM: mises à jour, callerContext:{frameId, processId, lifecycle}}) puis event.sender.insertCSS(styles, {cssOrigin:'user'}) et event.sender.executeJavaScript(script, true) pour chaque scriptlet.\n- Installation dans un WebContentsView : rien à faire par vue. Le preload est lié à la SESSION ; il suffit que la vue utilise cette session (new WebContentsView({webPreferences:{session: webSession, sandbox:true, contextIsolation:true}}) ; session prime sur partition). Enregistrer le preload avant de créer les vues.\n\n## 3. FiltersEngine (@ghostery/adblocker 2.20.1)\n\n```ts\ntype Fetch = (url: string) => Promise<{ text(): Promise<string>; arrayBuffer(): Promise<ArrayBuffer>; json(): Promise<any> }>; // net.fetch / ses.fetch conviennent\ninterface Caching { path: string; read(path: string): Promise<Uint8Array>; write(path: string, buffer: Uint8Array): Promise<void>; }\nclass FilterEngine extends EventEmitter<EngineEventHandlers> {\n  static empty(config?: Partial<Config>): T;\n  static fromLists(fetch: Fetch, urls: string[], config?: Partial<Config>, caching?: Caching): Promise<T>; // fetchResources() codé en dur sur GitHub master (périmé)\n  static fromPrebuiltAdsOnly(fetchImpl?: Fetch, caching?: Caching): Promise<T>;           // = fromLists(adsLists)\n  static fromPrebuiltAdsAndTracking(fetchImpl?: Fetch, caching?: Caching): Promise<T>;    // = fromLists(adsAndTrackingLists)\n  static fromPrebuiltFull(fetchImpl?: Fetch, caching?: Caching): Promise<T>;              // = fromLists(fullLists)\n  static fromTrackerDB(rawJsonDump: any, options?: Partial<Config>): T;\n  static merge(engines: T[], opts?: MergeOptions): T;     // opts.useBinaryMerge, hashFunc\n  static parse(filters: string, options?: Partial<Config>): T;\n  static deserialize(serialized: Uint8Array): T;          // throw si ENGINE_VERSION (899) ou checksum différents\n  serialize(array?: Uint8Array): Uint8Array;  getSerializedSize(): number;\n  updateResources(data: string, checksum: string): boolean;   // data = JSON {scriptlets, redirects} ; false si checksum identique ; throw si JSON invalide\n  updateEnv(env: Env): void;                                  // Env n'est pas exporté : passer new Map([['env_chromium', true]])\n  update(diff: Partial<IListDiff>, env?: Env): boolean;\n  updateFromDiff(diff: {added?: string[]; removed?: string[]; preprocessors?: ...}, env?: Env): boolean; // règles utilisateur à chaud\n  match(request: Request, withMetadata?: boolean): BlockingResponse;\n  matchAll(request: Request): Set<NetworkFilter>;\n  getCSPDirectives(request: Request): string | undefined;\n  getCosmeticsFilters(p: {url:string; hostname:string; domain:string|null|undefined; ancestors?:{domain:string;hostname:string}[]; classes?:string[]; hrefs?:string[]; ids?:string[]; getBaseRules?:boolean; getInjectionRules?:boolean; getExtendedRules?:boolean; getRulesFromDOM?:boolean; getRulesFromHostname?:boolean; hidingStyle?:string; callerContext?:any}): {active:boolean; scripts:string[]; styles:string; extended:{ast:any;id:number;attribute?:string;directive?:any}[]};\n  getHtmlFilters(request: Request): HTMLSelector[];\n  blockScripts(): this; blockImages(): this; blockMedias(): this; blockFrames(): this; blockFonts(): this; blockStyles(): this;\n  readonly config: Config; resources: Resources; lists: Map<string,string>;\n  on / once / unsubscribe / emit  // EventEmitter maison, pas node:events\n}\ninterface BlockingResponse { match: boolean; redirect?: {filename:string; body:string; contentType:string; dataUrl:string}; rewrite?: {url?: string}; exception?: NetworkFilter; filter?: NetworkFilter; metadata?: IPatternLookupResult[] }\n```\nÉvènements (EngineEventHandlers) : 'request-allowed' | 'request-blocked' | 'request-redirected' | 'request-whitelisted' : (request: Request, result: BlockingResponse) ; 'csp-injected' : (request, csps: string) ; 'html-filtered' : (htmlSelectors, url) ; 'script-injected' : (script: string, url: string) ; 'style-injected' : (style: string, url: string) ; 'filter-matched' : ({filter?, exception?}, contexte).\nExemple officiel : blocker.on('request-blocked', (request: Request) => console.log('blocked', request.tabId, request.url)).\n\nRequest : Request.fromRawDetails({requestId?, tabId?, url?, hostname?, domain?, sourceUrl?, sourceHostname?, sourceDomain?, type? (défaut 'main_frame'), _originalRequestDetails?}) ; champs isFirstParty/isThirdParty (faux/vrai selon sourceUrl ; sans source : premier partie), isSupported (faux hors http, https, ws, wss, data), isMainFrame(), guessTypeOfRequest(). Types Electron : mainFrame, subFrame, stylesheet, script, image, font, object, xhr, ping, cspReport, media, webSocket, other.\n\nConfig (défauts) : debug false ; enableCompression false ; enableHtmlFiltering false (sans effet en Electron) ; enableInMemoryCache true ; enableMutationObserver true ; enableOptimizations true ; enablePushInjectionsOnNavigationEvents true (WebExtension seulement) ; guessRequestTypeFromUrl false ; integrityCheck true ; loadCSPFilters true ; loadCosmeticFilters true (false : ni preload ni IPC) ; loadExceptionFilters true ; loadExtendedSelectors false ; loadGenericCosmeticsFilters true ; loadNetworkFilters true (false : pas de webRequest) ; loadPreprocessors false.\n\n## 4. Câblage manuel recommandé (remplace enableBlockingInSession)\n\n```ts\n// main/shields/wire.ts  (à valider à l'exécution)\nimport { ipcMain, type Session } from 'electron';\nimport { createRequire } from 'node:module';             // en CJS : const PRELOAD_PATH = require.resolve('@ghostery/adblocker-electron-preload')\nimport { ElectronBlocker, Request } from '@ghostery/adblocker-electron';\nconst PRELOAD_PATH = createRequire(import.meta.url).resolve('@ghostery/adblocker-electron-preload'); // .../dist/index.cjs\n\nlet current: ElectronBlocker | null = null;                // remplacé à chaud après chaque mise à jour\nconst wired = new Map<Session, string>();\nconst allowlist = new Set<string>();                       // hôtes avec Shields baissés\nlet ipcDone = false;\nconst hostOf = (u: string) => { try { return new URL(u).hostname; } catch { return ''; } };\nconst pageUrl = (d: Electron.OnBeforeRequestListenerDetails) => d.frame?.top?.url || d.webContents?.getURL() || d.initiatorOrigin || d.referrer || '';\n\nexport function setEngine(next: ElectronBlocker) { current = next; /* ré-abonner request-blocked etc. sur next */ }\n\nexport function wireSession(ses: Session) {            // une seule session de contenu web (partition dédiée)\n  if (wired.has(ses)) return;\n  wired.set(ses, ses.registerPreloadScript({ type: 'frame', filePath: PRELOAD_PATH, id: 'lyra-shields' }));\n  ses.webRequest.onBeforeRequest({ urls: ['<all_urls>'] }, (details, cb) => {\n    const b = current;\n    if (!b || details.resourceType === 'mainFrame' || allowlist.has(hostOf(pageUrl(details)))) return cb({});\n    const req = Request.fromRawDetails({ _originalRequestDetails: details, requestId: String(details.id), tabId: details.webContentsId,\n      sourceUrl: details.initiatorOrigin || details.referrer || pageUrl(details), type: (details.resourceType || 'other') as any, url: details.url });\n    const { match, redirect, rewrite } = b.match(req);\n    if (redirect) return cb({ redirectURL: redirect.dataUrl });\n    if (match) return cb({ cancel: true });\n    if (rewrite?.url) return cb({ redirectURL: rewrite.url });   // $removeparam (ignoré par le wrapper officiel)\n    cb({});\n  });\n  ses.webRequest.onHeadersReceived({ urls: ['<all_urls>'] }, (details, cb) => current ? current.onHeadersReceived(details, cb) : cb({}));\n  if (!ipcDone) { ipcDone = true;                               // handlers GLOBAUX : une seule fois\n    ipcMain.handle('@ghostery/adblocker/inject-cosmetic-filters', async (event, url: string, msg?) => {\n      if (!current || !/^https?:\\/\\//i.test(url) || allowlist.has(hostOf(url))) return;\n      return current.onInjectCosmeticFilters(event, url, msg);\n    });\n    ipcMain.handle('@ghostery/adblocker/is-mutation-observer-enabled', (e) => (current ? current.onIsMutationObserverEnabled(e) : false));\n  }\n}\n```\nNotes : un seul listener webRequest par évènement dans Electron (donc pipeline maison si Lyra ajoute HTTPS upgrade, cookies tiers...) ; compteur Shields : blocker.on('request-blocked', (r) => inc(r.tabId)) puis webContents.fromId(r.tabId) ; réinitialiser au did-start-navigation mainFrame.\n\n## 5. Construction, cache, seed, mise à jour\n\nSources (HTTP 200 le 2026-10-19, gzip transféré) :\n- https://ublockorigin.github.io/uAssets/filters/filters.min.txt (1 928 325 o ; 556 594 gz ; inclut filters-general, 2020-2026, link-shorteners, mobile sous !#if)\n- https://ublockorigin.github.io/uAssets/filters/badware.min.txt (51 341 gz) ; privacy.min.txt (37 787 gz, inclut resource-abuse) ; unbreak.min.txt (56 187 gz) ; quick-fixes.min.txt (21 009 gz)\n- EasyList : https://ublockorigin.github.io/uAssets/thirdparties/easylist.txt (775 603 gz) ou https://easylist.to/easylist/easylist.txt ; EasyPrivacy : .../thirdparties/easyprivacy.txt (446 210 gz) ou https://easylist.to/easylist/easyprivacy.txt\n- Options : https://ublockorigin.github.io/uAssets/filters/annoyances.min.txt (304 557 o), annoyances-cookies.txt (377 216 o), privacy-removeparam.txt (180 540 o), lan-block.txt ; FR : https://filters.adtidy.org/extension/ublock/filters/16.txt (205 078 gz) ou https://easylist-downloads.adblockplus.org/liste_fr.txt (431 488 o) ; URLhaus : https://malware-filter.gitlab.io/urlhaus-filter/urlhaus-filter-ag-online.txt (668 034 gz).\n- Resources : GET https://cdn.ghostery.com/adblocker/resources/ublock-resources-json/metadata.json -> {name, revisions:[...]} ; rev = revisions.at(-1) ; GET https://cdn.ghostery.com/adblocker/resources/ublock-resources-json/<rev>/list.txt (JSON, 188 078 o le 2026-10-18) ; checksum = rev. Repli périmé : https://raw.githubusercontent.com/ghostery/adblocker/master/packages/adblocker/assets/ublock-origin/resources.json. Les listes du CDN (ublock-filters...) NE contiennent PAS filters-general : ne pas les utiliser pour uBO.\n- Conditionnel : If-None-Match avec l'ETag (Pages, easylist.to, metadata.json du CDN renvoient ETag ; 304 constaté sur le CDN).\n\nConstruction (worker_threads ou utilityProcess ; n'importer que @ghostery/adblocker, jamais electron) :\n```ts\n// build.worker.ts\nimport { parentPort, workerData } from 'node:worker_threads';\nimport { FiltersEngine } from '@ghostery/adblocker';\nconst { lists, resources, rev, config, env } = workerData; // lists: string[] (textes), resources: string (JSON), env: [string, boolean][]\nconst engine = FiltersEngine.parse(lists.join('\\n'), config);\nengine.updateResources(resources, rev);\nengine.updateEnv(new Map(env) as any);                 // ex. [['env_chromium', true]] ; cap_html_filtering, env_mobile, env_firefox, env_safari, ext_ubol, env_mv3 restent faux\nconst copy = new Uint8Array(engine.serialize());       // copie exacte\nparentPort!.postMessage({ bytes: copy }, [copy.buffer]);\n```\nConfig proposée : { loadPreprocessors: true, loadCosmeticFilters: true, loadNetworkFilters: true, loadExtendedSelectors: false, enableHtmlFiltering: false, enableMutationObserver: true, guessRequestTypeFromUrl: false, enableCompression: false (tester true), integrityCheck: true }.\n\nMain : bytes -> ElectronBlocker.deserialize(bytes) (throw si ENGINE_VERSION/checksum) -> test canari (match d'une URL doubleclick/gpt.js avec sourceUrl tierce doit être true) -> écriture atomique -> setEngine().\nCache : userData/adblock/engine-v${ENGINE_VERSION}-${hashConfig+listes}.bin + state.json {etag/lastModified par URL, rev resources, builtAt, fetchedAt}. Écriture : fichier temporaire puis fs.rename avec retries (Windows). fromCached ne rafraîchit jamais : gérer soi-même la fraîcheur. Une config différente invalide le cache (config embarquée dans le blob).\nSeed : script de packaging (même version de @ghostery/adblocker que l'app, donc même ENGINE_VERSION) qui produit resources/adblock/engine-seed.bin + seed.json ; copié vers userData au premier lancement si pas de cache valide, puis refresh en tâche de fond. Fonctionne hors ligne.\nTéléchargements : session.fromPartition('lyra-adblock-updater') sans blocker et ses.fetch(url, {headers}) (net.fetch passe par la session par défaut et ses webRequest ; proxy système conservé) ; app prête requis.\nCalendrier : démarrage = charger cache/seed immédiatement ; vérification 30 s après le lancement ; puis toutes les 6 h avec seuil effectif 12-24 h (quick-fixes expire en 8 h) ; reprise sur powerMonitor 'resume' et retour en ligne ; backoff exponentiel ; rejeter une liste HTTP non 200, trop petite ou sans en-tête '! Title' ; conserver l'ancien moteur en cas d'échec.\nRègles utilisateur ou exceptions de site à chaud sans reconstruction : engine.updateFromDiff({added:['@@||site.com^$document'...]}) (comportement à valider) ; allowlist applicative recommandée.\n\n## 6. Scriptlets (+js)\n\n- Syntaxe : domaine##+js(nom, arg1, arg2) ; #@#+js() désactive les injections sur le domaine ; noms avec ou sans .js ou alias (set = set-constant, trusted-rpfr = trusted-replace-fetch-response, acs = abort-current-script, aopr, aeld, nowoif, nostif, rmnt, rpnt, aost, nano-sib, no-fetch-if = prevent-fetch, no-xhr-if = prevent-xhr...). Les noms finissant par .fn sont des dépendances seulement.\n- Assemblage (Resources.assembleScript) : var scriptletGlobals ; dépendances ; partage de safeSelf (2.19.0) ; (function nom(...){...})(...[`{{1}}`...`{{10}}`].filter(...).map(decodeURIComponent)) ; 10 arguments max ; les arguments sont échappés pour regex. getScript renvoie undefined (silencieux) si le scriptlet est absent du blob.\n- Présents dans resources.json (CDN 2026-10-18) : json-prune, set-constant, json-prune-fetch-response, json-prune-xhr-response, trusted-replace-fetch-response, trusted-replace-xhr-response, trusted-set-constant, json-edit(-fetch-request/response, -xhr-request/response), trusted-json-edit*, jsonl-edit*, prevent-fetch, prevent-xhr, trusted-prevent-fetch, trusted-click-element, trusted-replace-argument, trusted-replace-node-text, remove-node-text, set-cookie, set-local-storage-item, href-sanitizer, nowebrtc, etc. (153 entrées).\n- requiresTrust (true pour la plupart des trusted-*) et executionWorld ('ISOLATED' pour set-cookie, remove-class, trusted-click-element...) sont stockés mais NON appliqués : tout part en monde principal via executeJavaScript. Mitigation : sources de confiance uniquement, ou retirer les lignes contenant '+js(trusted-' des listes tierces avant parse.\n- Limites : frame principale seulement, injection asynchrone (course), règles de sous-cadre non appliquées, getInjectionRules calculé au premier appel uniquement.\n\n## 7. adblock-rs 0.13.3 (si jamais retenu)\n\n```js\nconst { FilterSet, Engine, FilterFormat, RuleTypes, uBlockResources } = require('adblock-rs'); // require('./index.node') compilé au postinstall\nconst fs = new FilterSet(false);                              // true = infos de debug (raw_line) plus de mémoire\nfs.addFilters(easylistText);                                  // -> { source_index, metadata:{title,homepage,expires,redirect} }\nfs.addFilters(uboText, { permissions: 1 });                   // bit0 = trusted (convention Brave)\nfs.addFilters(hostsText, { format: FilterFormat.HOSTS, rule_types: RuleTypes.NETWORK_ONLY });\nconst engine = new Engine(fs);                                // 2e argument ignoré\nengine.useResources(resourcesArray);                          // ensemble complet à chaque appel\nengine.check(url, sourceUrl, 'script');                       // boolean ; throw si url invalide\nengine.check(url, sourceUrl, 'xmlhttprequest', 'get', true);  // { should_block, filter, exception, important, redirect:'data:...;base64,...', rewritten_url }\nconst c = engine.urlCosmeticResources(pageUrl);               // { hide_selectors[], procedural_actions[] (JSON), exceptions[], injected_script, generichide }\nconst generic = engine.hiddenClassIdSelectors(classes, ids, c.exceptions);  // string[] (si !c.generichide)\nconst ab = engine.serialize();                                // ArrayBuffer\nconst e2 = new Engine(new FilterSet()); e2.deserialize(ab);   // erreurs ignorées ; resources et tags non restaurés -> useResources\n```\nResource JSON : { \"name\":\"1x1.gif\",\"aliases\":[\"1x1-transparent.gif\"],\"kind\":{\"mime\":\"image/gif\"},\"content\":\"<base64>\" } ; scriptlet fonction : { \"name\":\"json-prune.js\",\"kind\":{\"mime\":\"application/javascript\"},\"content\":\"<base64 de 'function jsonPrune(...){...}'>\",\"dependencies\":[\"object-prune.fn\",\"proxy-apply.fn\",\"safe-self.fn\"],\"permission\":0 } ; helper : kind {\"mime\":\"fn/javascript\"} ; permission 1 = trusted.\nConversion Ghostery -> adblock-rs (à tester) : scriptlets.body en base64, dependencies identiques, permission = requiresTrust ? 1 : 0 ; redirects : contentType 'image/gif;base64' => kind {mime:'image/gif'} et content = body (déjà base64), sinon base64(body).\nCôté Electron il faudrait écrire : onBeforeRequest -> check (try/catch, source vide = tierce) ; preload qui collecte classes/ids et runtime des procedural_actions ; main : insertCSS(hide_selectors.join(',') + '{display:none!important}'), executeJavaScript(injected_script) ; cache avec en-tête de version maison.\nBuild : rustup + cargo (Rust 1.97 imposé par rust-toolchain.toml), un .node par OS/arch (macOS arm64 et x64, Windows x64), asarUnpack du .node ; la CI Brave compile nativement sur 3 OS ; cross-compilation Windows depuis macOS non vérifiée.\n\n## 8. brave/adblock-resources\n\n- https://raw.githubusercontent.com/brave/adblock-resources/master/dist/resources.json : 596 542 o, 17 ressources Brave (pas d'uBO).\n- https://raw.githubusercontent.com/brave/adblock-resources/master/filter_lists/list_catalog.json : 62 entrées {title, desc, langs, component_id, base64_public_key, list_text_component, sources:[{url,title,format,support_url}], hidden?, default_enabled?, first_party_protections?, permission_mask?, platforms?} ; manifest.json (563 o). filter_lists/default.json : 404.\n- index.js exporte readResources() et listCatalog ; build.js écrit dist/resources.json ; metadata.json (3 579 o) décrit les ressources.\n\n## 9. APIs Electron utilisées\n\n- session.registerPreloadScript({type:'frame'|'service-worker', filePath (absolu), id?}) -> string ; unregisterPreloadScript(id) ; s'exécute avant les preloads de webPreferences ; introduit en Electron 35.\n- webRequest.onBeforeRequest([filter,] listener|null) : un seul listener par évènement ; details {id,url,method,webContentsId?,webContents?,frame?,initiatorOrigin?,resourceType,referrer,timestamp,uploadData} ; callback({cancel?, redirectURL?}).\n- net.fetch (session par défaut) et ses.fetch (autre session) ; utilityProcess.fork(modulePath, args, {serviceName, session...}) après ready, child.postMessage, process.parentPort.\n\n## 10. Checklist de tests\n\n1. Canari moteur : match de https://securepubads.g.doubleclick.net/tag/js/gpt.js (script, source tierce) = true après deserialize.\n2. Réseau : compter request-blocked par tabId sur 3 sites riches en pubs ; net::ERR_BLOCKED_BY_CLIENT dans DevTools.\n3. Cosmétique : style-injected émis, éléments masqués ; iframe publicitaire (non couverte).\n4. Course scriptlets : règle de test localhost##+js(set-constant, window.__lyra, true) ajoutée via updateFromDiff et page locale dont le premier script inline écrit String(window.__lyra) ; répéter sur YouTube.\n5. Sessions : fenêtre privée (deuxième partition) sans exception #5347 avec le câblage manuel.\n6. MAJ : serveur de test renvoyant 304, 200, 500, liste tronquée ; coupure réseau ; rename sous Windows avec antivirus actif.\n7. Packaging : registerPreloadScript depuis app.asar sur Windows et macOS, seed présent, ENGINE_VERSION identique.",
+  "recommendations": [
+    "Choisir @ghostery/adblocker-electron épinglé en ~2.20.1 avec @ghostery/adblocker et @ghostery/adblocker-electron-preload, les laisser en dépendances externes au bundler du main process pour que require.resolve du preload reste valide, et viser Electron 42 à 44 (minimum 35 pour le cosmétique).",
+    "Ne pas utiliser fromPrebuilt* ni fromLists (resources.json GitHub périmé, filters-2025/2026 et filters-general absents) : construire avec ElectronBlocker.parse(texte, config) puis updateResources(resourcesJson, revisionCDN).",
+    "Jeu de listes de départ (HTTP 200 le 2026-10-19) : filters, badware, privacy, unbreak et quick-fixes en *.min.txt sur https://ublockorigin.github.io/uAssets/filters/, EasyList et EasyPrivacy (miroir https://ublockorigin.github.io/uAssets/thirdparties/ ou https://easylist.to/easylist/), option liste FR https://filters.adtidy.org/extension/ublock/filters/16.txt, annoyances et cookies en option ; resources.json via cdn.ghostery.com/adblocker/resources/ublock-resources-json (metadata.json puis dernière révision) avec seed embarqué en repli.",
+    "Configuration : loadPreprocessors true avec engine.updateEnv(new Map([['env_chromium', true]])) pour que les branches !#if env_mobile, env_firefox, env_safari, ext_ubol et cap_html_filtering soient exclues ; enableHtmlFiltering false ; loadExtendedSelectors false en phase 1 ; enableMutationObserver true.",
+    "Câbler soi-même au lieu d'appeler enableBlockingInSession : un seul ipcMain.handle par canal, listeners webRequest qui déréférencient une variable current (remplacement à chaud), allowlist par site, Request construit avec initiatorOrigin, application de result.rewrite en redirectURL, filtrage des URL non http(s) dans le handler cosmétique ; enregistrer le preload avec session.registerPreloadScript sur la session du contenu web.",
+    "Utiliser une partition dédiée aux WebContentsView (par exemple persist:lyra-web) et une session distincte sans blocker pour télécharger les listes (ses.fetch) afin d'éviter l'auto-blocage et de garder le proxy système ; aucune installation par vue n'est nécessaire puisque le preload est enregistré au niveau session.",
+    "Construire le moteur dans un worker_thread ou un utilityProcess qui n'importe que @ghostery/adblocker (parse, updateResources, updateEnv, serialize), transférer une copie du Uint8Array, désérialiser dans le main avec ElectronBlocker.deserialize et valider par un test canari avant de basculer.",
+    "Cache et seed : fichier userData/adblock/engine-v<ENGINE_VERSION>-<hash config et listes>.bin plus state.json (ETag, Last-Modified, révision resources) ; écriture temporaire puis rename avec retries pour Windows ; seed construit au packaging avec la même version de @ghostery/adblocker et copié au premier lancement ; si deserialize échoue, utiliser le seed puis reconstruire en tâche de fond.",
+    "Calendrier de mise à jour : charger cache ou seed immédiatement au démarrage, vérifier 30 s après le lancement puis toutes les 6 h avec un seuil effectif de 12 à 24 h (quick-fixes expire en 8 h, EasyList en 4 jours, filters en 5 jours) ; requêtes conditionnelles If-None-Match ; reprise au réveil (powerMonitor resume) et au retour en ligne ; backoff exponentiel ; garder l'ancien moteur si la liste est tronquée, non 200 ou sans en-tête Title.",
+    "Sécurité : ne souscrire qu'à des listes de confiance (uBO, EasyList, AdGuard) car requiresTrust n'est pas appliqué ; pour toute liste tierce, retirer les lignes contenant +js(trusted- avant parse ; HTTPS uniquement ; contrôle de taille minimale.",
+    "Phase 2 selon les résultats des tests : preload maison pour les iframes et une injection plus précoce (sendSync puis webFrame.executeJavaScript, à tester), sélecteurs étendus via @ghostery/adblocker-webextension-cosmetics.injectCosmetics avec transport IPC (loadExtendedSelectors true, getExtendedRules true), compteur Shields par page via request-blocked (tabId = webContentsId), gestion des pop-ups via setWindowOpenHandler (3 129 règles popup ignorées).",
+    "Ne pas adopter adblock-rs maintenant ; le reconsidérer si un paquet à binaires précompilés apparaît (migration NAPI-RS évoquée dans ses tests) ou si une mesure montre un besoin ; dans ce cas compiler nativement sur des runners macOS (arm64 et x64) et Windows, dépaqueter le .node de l'asar, convertir le resources.json de Ghostery en Resource[], appliquer permissions=1 aux listes uBO, versionner le blob et re-tester après deserialize.",
+    "Spike de validation avant engagement (1 à 2 jours) : mesurer sur Windows et macOS le temps de parse du jeu recommandé, la taille du blob serialize(), le RSS et le temps de deserialize ; tester l'ordre d'exécution des scriptlets avec une page locale et des sites comme YouTube ; vérifier les iframes, les partitions multiples et registerPreloadScript depuis app.asar.",
+    "Respecter les licences : conserver la notice MPL-2.0, ne pas patcher les fichiers de la bibliothèque sans publier les modifications, documenter la provenance GPLv3 (uAssets) et la licence EasyList si des listes sont embarquées dans l'installeur."
+  ],
+  "risks": [
+    "Dépendance à des URL non contractuelles (cdn.ghostery.com/adblocker/resources, ublockorigin.github.io, easylist.to) : prévoir seed embarqué, repli multi-sources et détection d'anomalie.",
+    "Presets Ghostery périmés et incomplets (assets GitHub figés depuis le 2026-08-14, filters-2025, filters-2026 et filters-general absents) : on peut croire fromPrebuilt* à jour alors qu'il manque environ 2 800 règles uBO et deux mois de mises à jour.",
+    "Efficacité des scriptlets et du cosmétique inférieure à uBO ou Brave : injection asynchrone avec course possible (YouTube), frame principale seulement, aucun sélecteur étendu ni filtrage HTML (environ 1 190 règles procédurales et 486 règles HTML/replace inactives), $removeparam non appliqué par défaut.",
+    "Un seul listener webRequest par évènement et bug #5347 : conflits avec d'autres fonctions de type Shields (upgrade HTTPS, cookies tiers) et avec plusieurs sessions (fenêtres privées) si enableBlockingInSession est utilisé ; un pipeline webRequest maison est nécessaire.",
+    "Pas de modèle de confiance : une liste tierce compromise peut exécuter des scriptlets trusted-* (set-cookie, set-local-storage-item, replace-fetch-response, click-element) sur les sites visités.",
+    "Parse de 6,2 Mo de listes potentiellement bloquant pour le process main (durée non mesurée) et mémoire doublée pendant la bascule ; un changement d'ENGINE_VERSION avec une nouvelle version de la bibliothèque invalide caches et seeds.",
+    "peerDependency electron >11 trompeuse : sous Electron inférieur à 35 le cosmétique échoue (registerPreloadScript absent).",
+    "Auto-blocage des téléchargements de listes si la même session porte le blocker (net.fetch passe par webRequest) et injection du preload dans l'UI de l'app si elle partage la session.",
+    "Faux positifs (sites cassés) sans bascule par site ni modes standard et strict si non développés ; les listes annoyances et cookies augmentent le risque.",
+    "Équipe réduite côté Ghostery : la PR de mise à jour des assets n'est plus fusionnée depuis août 2026 (signal de ralentissement), un seul reviewer demandé.",
+    "Licences : MPL-2.0 (fichiers modifiés à publier) et listes GPLv3 ou CC BY-SA à attribuer lors de l'embarquement.",
+    "adblock-rs : toolchain Rust 1.97 et binaire par OS et architecture, cross-compilation Windows depuis macOS non vérifiée, aucune colle Electron, ressources uBO à convertir, deserialize silencieux, source vide traitée comme tierce, format DAT instable entre versions.",
+    "Un scriptlet référencé par une liste mais absent du resources.json embarqué dans le blob est ignoré silencieusement (getScript renvoie undefined) : garder listes et resources synchronisées dans le même blob."
+  ],
+  "open_questions": [
+    "Temps de parse, taille de serialize() et RSS pour le jeu recommandé sur Windows et macOS (non mesurés).",
+    "Ordre exact d'exécution des scriptlets par rapport aux scripts inline avec executeJavaScript, et gain d'une injection synchrone (sendSync puis webFrame.executeJavaScript).",
+    "Quelles sessions et partitions Lyra utilisera (fenêtres privées, profils) et quelle version minimale d'Electron est visée.",
+    "registerPreloadScript fonctionne-t-il avec un fichier dans app.asar, sinon faut-il asarUnpack et le chemin app.asar.unpacked.",
+    "Stabilité et conditions d'usage du CDN Ghostery pour un tiers (contacter l'équipe ou miroiter les listes sur un CDN propre à Lyra).",
+    "Quelles clés Env fixer exactement pour les directives !#if (env_chromium seul suffit-il).",
+    "Inclure les listes régionales françaises (AdGuard FR n°16, Liste FR) et les listes annoyances et cookies par défaut ou en option.",
+    "Comportement d'Electron pour redirectURL vers une URL data: sur sous-ressources et pour un redirectURL issu de $removeparam sur mainFrame.",
+    "Cross-compilation d'adblock-rs (Neon 0.10) vers Windows depuis macOS : faisable avec cargo-xwin ou mingw, sinon runners natifs.",
+    "Faisabilité de la conversion du resources.json Ghostery vers Resource[] pour adblock-rs (arguments objet non supportés, alias, redirects en base64).",
+    "Faut-il traiter $popup (3 129 règles ignorées) via setWindowOpenHandler et le moteur.",
+    "Exigences exactes de redistribution des listes dans l'installeur (GPLv3 uAssets, licence EasyList) à valider avec le juridique."
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "versions": {
+    "electron": "44.9.0",
+    "chrome": "152.0.7977.167",
+    "node": "24.22.0"
+  },
+  "mem": [
+    {
+      "label": "avant moteur",
+      "rss": "123.5 Mo",
+      "heapUsed": "5.0 Mo",
+      "external": "2.5 Mo",
+      "arrayBuffers": "0.0 Mo"
+    },
+    {
+      "label": "après #1",
+      "rss": "366.5 Mo",
+      "heapUsed": "24.3 Mo",
+      "external": "22.9 Mo",
+      "arrayBuffers": "0.0 Mo"
+    },
+    {
+      "label": "après #2 (#1 libéré)",
+      "rss": "374.2 Mo",
+      "heapUsed": "24.0 Mo",
+      "external": "21.2 Mo",
+      "arrayBuffers": "0.0 Mo"
+    }
+  ],
+  "timings": {
+    "firstCallMs": 847,
+    "secondCallMs": 21
+  },
+  "cacheBytes": 8961133
+}

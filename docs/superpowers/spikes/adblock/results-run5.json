@@ -1,0 +1,65 @@
+{
+  "versions": {
+    "electron": "44.9.0",
+    "chrome": "152.0.7977.167",
+    "node": "24.22.0"
+  },
+  "mem": [
+    {
+      "label": "avant moteur",
+      "rss": "122.1 Mo",
+      "heapUsed": "5.0 Mo",
+      "external": "2.5 Mo",
+      "arrayBuffers": "0.0 Mo"
+    },
+    {
+      "label": "après #1",
+      "rss": "135.7 Mo",
+      "heapUsed": "5.3 Mo",
+      "external": "11.2 Mo",
+      "arrayBuffers": "0.0 Mo"
+    }
+  ],
+  "timings": {
+    "firstCallMs": 50
+  },
+  "cacheBytes": 8961133,
+  "bloque": {
+    "samples": "no-ad 1/213 | no-ad 2/213 | no-ad 3/213 | no-ad 4/213 | no-ad 5/213 | no-ad 6/213 | no-ad 7/213 | no-ad 8/213 | no-ad 9/213 | no-ad 10/213 | no-ad 11/213 | no-ad 12/213 | no-ad 13/213 | no-ad 14/213 | no-ad 15/213 | no-ad 16/213 | no-ad 17/213 | no-ad 18/213 | no-ad 19/213 | no-ad 20/213",
+    "probe": "{\"t\":\"object\",\"keys\":[\"responseContext\",\"playabilityStatus\",\"streamingData\",\"playbackTracking\",\"captions\",\"videoDetails\",\"annotations\",\"playerConfig\",\"storyboards\",\"microformat\",\"cards\",\"trackingParams\",\"messages\",\"endscreen\",\"adPlacements\",\"adBreakHeartbeatParams\",\"frameworkUpdates\"],\"adPlacements\":\"undefined\",\"playerAds\":\"undefined\",\"adSlots\":\"undefined\",\"adModules\":1}",
+    "extra": "{\"href\":\"https://www.youtube.com/watch?v=dQw4w9WgXcQ\",\"windowYtInitialPlayerResponse\":\"data:object\",\"desc\":{\"adPlacements\":\"accessor(get)\",\"playerAds\":\"accessor(get)\",\"adSlots\":\"accessor(get)\"},\"adPlacementKinds\":[],\"ghosteryRanAt\":\"complete@3151ms\",\"domContentLoaded\":\"2568ms\",\"loadEventEnd\":\"3150ms\"}",
+    "fetch": {
+      "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js": {
+        "cors": "ERR Failed to fetch",
+        "noCors": "ERR Failed to fetch"
+      },
+      "https://www.youtube.com/api/stats/ads?x=1": {
+        "cors": "ERR Failed to fetch",
+        "noCors": "ERR Failed to fetch"
+      },
+      "https://static.doubleclick.net/instream/ad_status.js": {
+        "cors": "ERR Failed to fetch",
+        "noCors": "ERR Failed to fetch"
+      },
+      "https://www.youtube.com/favicon.ico (témoin)": {
+        "cors": "OK 200"
+      }
+    },
+    "counts": {
+      "blocked": 10,
+      "redirected": 2,
+      "whitelisted": 0,
+      "allowed": 52,
+      "filterMatched": 70,
+      "scripts": 34,
+      "styles": 1,
+      "csp": 0,
+      "scriptletFails": 3
+    },
+    "seq": {
+      "JGwWNGJdvx8": "AD 1/6 | AD 2/6 | AD 3/6 | AD 4/6 | AD 5/6 | AD 6/6 | AD 1/292 | AD 2/292 | AD 3/292",
+      "kJQP7kiw5Fk": "AD 1/121 | AD 2/121 | AD 3/121 | AD 4/121 | AD 5/121 | AD 6/121 | AD 7/121 | AD 8/121 | AD 9/121",
+      "9bZkp7q19f0": "AD 1/6 | AD 2/6 | AD 3/6 | AD 4/6 | AD 5/6 | AD 6/6 | AD 0/251 | AD 1/251 | AD 3/251"
+    }
+  }
+}
