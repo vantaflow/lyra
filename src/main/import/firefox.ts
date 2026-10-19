@@ -9,7 +9,7 @@
  * Dates Firefox : microsecondes depuis 1970 (`PRTime`).
  */
 import { existsSync, statSync } from 'node:fs'
-import { readFile, readdir } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import { isAbsolute, join, resolve } from 'node:path'
 import { avecCopieur } from './copie'
 import type { Copieur, OptionsCopie } from './copie'
@@ -91,7 +91,14 @@ export function lireIni(contenu: string): Array<{ nom: string; cles: Record<stri
   return sections
 }
 
-/** Verrou de profil : `parent.lock` (Windows) ou `.parentlock` (macOS, Linux), présents tant que Firefox est ouvert. */
+/**
+ * Verrou de profil : `parent.lock` (Windows) ou `.parentlock` (macOS, Linux).
+ *
+ * Limite connue : sur Windows, `parent.lock` est supprimé à la fermeture de Firefox ; sur macOS et Linux, `.parentlock`
+ * peut subsister après la fermeture (l'indicateur fiable y serait le lien symbolique `lock`, absent à l'arrêt ; non
+ * vérifié ici). `ouvert` peut donc y être vrai à tort : c'est un simple indicateur d'affichage, la lecture se fait de
+ * toute façon sur une copie des fichiers.
+ */
 const firefoxOuvert = (chemin: string): boolean => existsSync(join(chemin, 'parent.lock')) || existsSync(join(chemin, '.parentlock'))
 
 /** Profils déclarés dans `profiles.ini` ; liste vide si Firefox n'est pas installé. Ne lève jamais. */
@@ -550,11 +557,4 @@ export async function parcourirHistoriqueFirefox(
   ).catch((e: unknown) => versIndisponible(e))
   if (etat.leve) throw etat.erreur
   return resultat
-}
-
-/** Dossiers de profils présents sans `profiles.ini` exploitable (repli : `Profiles/*`). */
-export async function profilsSansIni(racine: string): Promise<string[]> {
-  const dossier = join(racine, 'Profiles')
-  if (!estDossier(dossier)) return []
-  return (await readdir(dossier, { withFileTypes: true }).catch(() => [])).filter((e) => e.isDirectory()).map((e) => join(dossier, e.name))
 }
