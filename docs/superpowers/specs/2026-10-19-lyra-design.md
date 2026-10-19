@@ -292,6 +292,20 @@ nsis: { oneClick: false, allowToChangeInstallationDirectory: true }
 - Les textes anglais (i18n FR/EN par fichiers JSON, FR source).
 - Les icônes de l'application (`build/icon.png` 1024 : lyre stylisée en constellation sur fond indigo).
 
+### Réponses à la relecture « constructeur » (2026-10-19, tranchées par Claude)
+
+1. **Jalons et priorités.** Jalon A — *noyau livrable* : fenêtre, ciel à gauche (constellations, étoiles, épinglées, dormance), capsule, palette ⌘ L, Boucliers avec blocage YouTube prouvé, `lyra://newtab`, réglages minimaux (moteur, thème, Boucliers), historique/favoris/téléchargements simples, paquets `.dmg` et `.exe`. Jalon B — extensions Chrome puis Firefox. Jalon C — positions du ciel, masqué, Ne pas déranger. Jalon D — réglages complets, règles par site, couleurs et thèmes. Jalon E — import/export. Les trois exigences de l'utilisateur (extensions, YouTube, Windows + macOS) sont les seules obligatoires pour une première version ; D et E peuvent glisser.
+2. **Windows.** La CI exécute typecheck, tests unitaires, build, **e2e Playwright et packaging sur `windows-latest` comme sur `macos-latest`** dès le jalon A ; abstraction des chemins et raccourcis (Ctrl/⌘) dès le scaffold ; test manuel sur le PC Windows de l'utilisateur avant une release.
+3. **Écrans de design.** Les `.dc.html` sont du HTML statique (styles inline + un bloc CSS) : porter fidèlement en Preact (couleurs, dimensions, libellés), sans exigence au pixel ni tests visuels en v1.
+4. **Popups d'extension.** v1 : mécanisme natif d'electron-chrome-extensions (popup dans une `BrowserWindow` ancrée au bouton) ; l'overlay ne sert qu'à la palette et aux boîtes de Lyra. Rendu dans l'overlay = v2, après un spike.
+5. **Périmètre Firefox.** Critère d'acceptation v1 : Dark Reader (xpi) fonctionnel, uBO (xpi) démarre et journalise la redondance, Return YouTube Dislike converti MV2→MV3 ; fixtures de refus : Tree Style Tab. Politique : installer avec avertissement quand des API manquent, refuser seulement quand le manifest exige l'inconvertible (§7.3).
+6. **Boucliers et extensions.** Le filtrage ne s'applique qu'aux requêtes émises par des pages web : les requêtes dont l'initiateur ou l'URL est `chrome-extension://` (et le protocole CRX) sont ignorées par `onBeforeRequest`.
+7. **Listes.** Téléchargement à l'exécution depuis les URL publiées (`ublockorigin.github.io/uAssets/filters/*.txt`, `easylist.to`), jamais une branche `master` ; listes embarquées rafraîchies par `scripts/update-shields-lists.mjs` (lancé à la main avant un `dist`, datées, commitées) ; le téléchargement au premier lancement est l'un des trois usages réseau autorisés par §2 et il est dit dans « Réseau et identité ».
+8. **Mises à jour.** Aucune vérification de version de Lyra en v1 ; « À propos » affiche la version et un lien vers les releases. Les mises à jour d'extensions (6 h) et de listes sont désactivables dans « Réseau et identité ».
+9. **Recherche.** Comme Orion : choix au premier lancement (DuckDuckGo présélectionné ; Kagi, Google, Brave Search, Startpage, Qwant) ; mots-clés d'origine `d`, `k`, `g`, `b`, `s`, `q`, `w` (Wikipédia fr), `yt`.
+10. **Paquet `.lyra`.** Contient réglages, règles par site, ciel, favoris, historique, liste des extensions (sources et IDs, pas les binaires), thèmes ; cookies et sessions seulement si la case est cochée (décochée par défaut) ; **jamais de mots de passe** ; toujours chiffré (AES-256-GCM, clé dérivée par PBKDF2-SHA-256 ≥ 600 000 itérations, Web Crypto).
+11. **Fenêtre privée.** `lyra://` est enregistré sur chaque session, privée comprise ; `lyra://newtab` en privé = variante sans constellations, sans sites fréquents, sans compteurs, bandeau « Fenêtre privée », thème Aurore.
+
 ## 10. Risques et parades
 
 | Risque | Gravité | Parade |
