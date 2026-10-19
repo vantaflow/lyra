@@ -166,7 +166,7 @@ export function lireSessionSnss(octets: Uint8Array): OngletsImportes | Indisponi
     const entete = new DataView(octets.buffer, octets.byteOffset, octets.byteLength)
     if (entete.getUint32(0, true) !== SIGNATURE) return indisponible('Fichier de session non reconnu.')
     const version = entete.getInt32(4, true)
-    if (version === 4 || version === 5 || version === 2) return indisponible('Session chiffrée par le système : onglets illisibles hors du navigateur.')
+    if (version === 4 || version === 5 || version === 2) return indisponible('Session chiffrée par le système : onglets illisibles hors du navigateur.', 'chiffre')
     if (version !== 1 && version !== 3) return indisponible(`Version de session inconnue (${version}).`)
 
     const tabs = new Map<number, Onglet>()
@@ -289,7 +289,7 @@ export function lireSessionSnss(octets: Uint8Array): OngletsImportes | Indisponi
       }
       if (onglets.length) resultat.push({ onglets, groupes: [...utilises.values()] })
     }
-    if (resultat.length === 0) return indisponible('Aucun onglet ouvert trouvé dans la session.')
+    if (resultat.length === 0) return indisponible('Aucun onglet ouvert trouvé dans la session.', 'vide')
     return { fenetres: resultat }
   } catch {
     return indisponible('Fichier de session illisible.')

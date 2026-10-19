@@ -14,6 +14,7 @@
 import { readFile } from 'node:fs/promises'
 import initSqlJs from 'sql.js'
 import type { Database, SqlJsStatic, SqlValue } from 'sql.js'
+import { TAILLE_MAX_BASE, codeErreurFichier, raisonErreurFichier } from './copie'
 import type { FichiersCopies } from './copie'
 import { ErreurImport } from './types'
 
@@ -78,9 +79,34 @@ export class BaseLue {
     return this.lignes(`PRAGMA table_info("${table.replace(/"/g, '""')}")`).map((l) => String(l.name))
   }
 
+  /** Noms des index d'une table (`PRAGMA index_list`). */
+  indexes(table: string): string[] {
+    return this.lignes(`PRAGMA index_list("${table.replace(/"/g, '""')}")`).map((l) => String(l.name))
+  }
+
+  /** La requête se compile-t-elle (tables, colonnes, `INDEXED BY` valides) ? Sans l'exécuter. */
+  valide(sql: string): boolean {
+    try {
+      this.db.prepare(sql).free()
+      return true
+    } catch {
+      return false
+    }
+  }
+
   fermer(): void {
     this.db.close()
   }
+}
+
+/** Échec d'allocation (WebAssembly ou tampon) : mémoire insuffisante plutôt que base « corrompue ». */
+export const estErreurMemoire = (e: unknown): boolean => e instanceof RangeError || /out of memory|allocation failed|OOM|could not allocate/i.test(e instanceof Error ? e.message : String(e))
+
+/** `ErreurImport` lisible pour une erreur survenue pendant la lecture d'une base (`sujet` : « l'historique »). */
+export function erreurLectureBase(e: unknown, sujet: string, messageCorrompu: string): ErreurImport {
+  if (e instanceof ErreurImport) return e
+  if (estErreurMemoire(e)) return new ErreurImport(`Mémoire insuffisante pour lire ${sujet} : fermez d'autres applications ou réduisez-le dans le navigateur, puis réessayez.`, { cause: e, code: 'memoire' })
+  return new ErreurImport(messageCorrompu, { cause: e })
 }
 
 /**
@@ -102,13 +128,19 @@ export async function ouvrirBase(octets: Uint8Array): Promise<BaseLue> {
     return new BaseLue(db)
   } catch (e) {
     db?.close()
+    if (estErreurMemoire(e)) throw new ErreurImport('Mémoire insuffisante pour lire cette base de données.', { cause: e, code: 'memoire' })
     throw new ErreurImport('La base de données est corrompue ou illisible.', { cause: e })
   }
 }
 
 /** Ouvre la copie d'une base, en y intégrant le journal `-wal` copié avec elle s'il existe. */
 export async function ouvrirBaseCopiee(copies: FichiersCopies): Promise<BaseLue> {
-  const base = await readFile(copies.fichier)
+  let base: Buffer
+  try {
+    base = await readFile(copies.fichier)
+  } catch (e) {
+    throw new ErreurImport(raisonErreurFichier(e, 'la base de données'), { cause: e, code: codeErreurFichier(e) })
+  }
   if (!copies.wal) return ouvrirBase(base)
   const wal = await readFile(copies.wal).catch(() => undefined)
   return ouvrirBase(wal ? appliquerWal(base, wal) : base)
@@ -133,8 +165,22 @@ function sommeWal(donnees: Uint8Array, debut: number, fin: number, grandBoutiste
   return [s0, s1]
 }
 
-/** Image de la base avec les transactions validées du WAL appliquées ; la base d'origine si le WAL est inutilisable. */
-export function appliquerWal(base: Uint8Array, wal: Uint8Array): Uint8Array {
+/**
+ * Image de la base avec les transactions validées du WAL appliquées ; la base d'origine si le WAL est inutilisable
+ * (en-tête, sel ou somme de contrôle qui ne correspondent pas). L'allocation est bornée : la taille annoncée par le
+ * WAL ne peut pas dépasser les pages de la base plus le nombre de trames validées (chaque page nouvelle vient d'une
+ * trame), et jamais `limite` octets ; sinon `ErreurImport` (WAL incohérent), jamais de `RangeError`.
+ */
+export function appliquerWal(base: Uint8Array, wal: Uint8Array, limite = TAILLE_MAX_BASE): Uint8Array {
+  try {
+    return appliquerWalBrut(base, wal, limite)
+  } catch (e) {
+    if (e instanceof ErreurImport) throw e
+    throw new ErreurImport('Le journal de la base de données est incohérent.', { cause: e })
+  }
+}
+
+function appliquerWalBrut(base: Uint8Array, wal: Uint8Array, limite: number): Uint8Array {
   if (wal.length < 32 || base.length < 100) return base
   const w = new DataView(wal.buffer, wal.byteOffset, wal.byteLength)
   const magie = w.getUint32(0)
@@ -151,6 +197,7 @@ export function appliquerWal(base: Uint8Array, wal: Uint8Array): Uint8Array {
   const pages = new Map<number, number>() // numéro de page → position des données dans le WAL (transactions validées)
   let enAttente: Array<[number, number]> = []
   let taillePages = 0
+  let tramesValidees = 0
   for (let pos = 32; pos + tailleTrame <= wal.length; pos += tailleTrame) {
     const numero = w.getUint32(pos)
     const apresValidation = w.getUint32(pos + 4)
@@ -161,6 +208,7 @@ export function appliquerWal(base: Uint8Array, wal: Uint8Array): Uint8Array {
     enAttente.push([numero, pos + 24])
     if (apresValidation > 0) {
       for (const [n, p] of enAttente) pages.set(n, p)
+      tramesValidees += enAttente.length
       enAttente = []
       taillePages = apresValidation
     }
@@ -170,7 +218,11 @@ export function appliquerWal(base: Uint8Array, wal: Uint8Array): Uint8Array {
   const b = new DataView(base.buffer, base.byteOffset, base.byteLength)
   const taillePageBase = b.getUint16(16) === 1 ? 65536 : b.getUint16(16)
   if (taillePageBase !== taillePage) return base
-  const nbPages = Math.max(taillePages, Math.floor(base.length / taillePage))
+  const pagesBase = Math.floor(base.length / taillePage)
+  if (taillePages > pagesBase + tramesValidees || taillePages * taillePage > limite) {
+    throw new ErreurImport('Le journal de la base de données est incohérent (taille annoncée impossible).')
+  }
+  const nbPages = Math.max(taillePages, pagesBase)
   const image = new Uint8Array(nbPages * taillePage)
   image.set(base.subarray(0, Math.min(base.length, image.length)))
   for (const [numero, pos] of pages) {

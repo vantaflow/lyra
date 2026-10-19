@@ -245,7 +245,15 @@ type SqlJs = Awaited<ReturnType<typeof initSqlJs>>
 
 export const MAINTENANT_FIXTURES = Date.parse('2026-10-19T12:00:00Z')
 
-export function baseHistorique(SQL: SqlJs, avecVisites = true): Uint8Array {
+/** Index de Chrome sur `urls` et `visits` (le chemin rapide de l'import s'appuie sur `visits_url_index`). */
+const INDEX_CHROME = [
+  'CREATE INDEX urls_url_index ON urls (url)',
+  'CREATE INDEX visits_url_index ON visits (url)',
+  'CREATE INDEX visits_from_index ON visits (from_visit)',
+  'CREATE INDEX visits_time_index ON visits (visit_time)'
+]
+
+export function baseHistorique(SQL: SqlJs, avecVisites = true, avecIndex = true): Uint8Array {
   const db = new SQL.Database()
   db.run(`CREATE TABLE urls(id INTEGER PRIMARY KEY AUTOINCREMENT, url LONGVARCHAR, title LONGVARCHAR, visit_count INTEGER DEFAULT 0 NOT NULL, typed_count INTEGER DEFAULT 0 NOT NULL, last_visit_time INTEGER NOT NULL, hidden INTEGER DEFAULT 0 NOT NULL)`)
   if (avecVisites) {
@@ -286,6 +294,30 @@ export function baseHistorique(SQL: SqlJs, avecVisites = true): Uint8Array {
     ]
     visites.forEach(([url, date, transition], i) => db.run('INSERT INTO visits(id, url, visit_time, from_visit, transition) VALUES (?,?,?,?,?)', [i + 1, url, chromeUs(date), 0, transition]))
   }
+  if (avecIndex) for (const sql of INDEX_CHROME) if (avecVisites || !sql.includes('visits')) db.run(sql)
+  const octets = db.export()
+  db.close()
+  return octets
+}
+
+/** Base synthétique volumineuse au schéma de Chrome (tests de volume), `visitesParUrl` visites récentes par adresse. */
+export function baseHistoriqueVolumineuse(SQL: SqlJs, urls: number, visitesParUrl: number, avecIndex = true): Uint8Array {
+  const db = new SQL.Database()
+  db.run(`CREATE TABLE urls(id INTEGER PRIMARY KEY AUTOINCREMENT, url LONGVARCHAR, title LONGVARCHAR, visit_count INTEGER DEFAULT 0 NOT NULL, typed_count INTEGER DEFAULT 0 NOT NULL, last_visit_time INTEGER NOT NULL, hidden INTEGER DEFAULT 0 NOT NULL)`)
+  db.run(`CREATE TABLE visits(id INTEGER PRIMARY KEY, url INTEGER NOT NULL, visit_time INTEGER NOT NULL, from_visit INTEGER, transition INTEGER DEFAULT 0 NOT NULL, segment_id INTEGER, visit_duration INTEGER DEFAULT 0 NOT NULL)`)
+  const recent = chromeUs('2026-10-01T00:00:00Z')
+  db.run('BEGIN')
+  const u = db.prepare('INSERT INTO urls(id, url, title, visit_count, last_visit_time, hidden) VALUES (?,?,?,?,?,?)')
+  const v = db.prepare('INSERT INTO visits(id, url, visit_time, transition) VALUES (?,?,?,?)')
+  for (let i = 1; i <= urls; i++) {
+    // 1 adresse sur 50 est un sous-cadre (cachée), 1 sur 40 n'est pas http(s)
+    const cachee = i % 50 === 0 ? 1 : 0
+    const url = i % 40 === 0 ? `chrome://page${i}/` : `https://site${i % 997}.example/page/${i}`
+    u.run([i, url, `Page ${i}`, visitesParUrl, recent + i, cachee])
+    for (let k = 0; k < visitesParUrl; k++) v.run([i * visitesParUrl + k, i, recent + i - k * 1000, k === 3 ? 3 : 0])
+  }
+  db.run('COMMIT')
+  if (avecIndex) for (const sql of INDEX_CHROME) db.run(sql)
   const octets = db.export()
   db.close()
   return octets
@@ -302,6 +334,7 @@ export function baseWebData(SQL: SqlJs): Uint8Array {
     ['Wikipédia (fr)', 'w', 'https://fr.wikipedia.org/w/index.php?search={searchTerms}&language={language}', 0, 0, 0, 0],
     ['Blog', 'blog.example.com', 'https://blog.example.com/?s={searchTerms}', 1, 0, 0, 0],
     ['Favoris', '@bookmarks', 'chrome://bookmarks/?q={searchTerms}', 0, 0, 1, 1],
+    ['Assistant', '@assistant', 'https://assistant.example/?q={searchTerms}', 0, 0, 1, 2], // raccourci de départ en https : écarté
     ['Sans terme', 'st', 'https://x.example/', 0, 0, 0, 0],
     ['GitHub', 'gh', 'https://github.com/search?q={searchTerms}&type=repositories', 0, 0, 1, 0]
   ]
@@ -326,10 +359,11 @@ export const IDS_EXTENSIONS = {
   sombre: 'ponmlkjihgfedcbaponmlkjihgfedcba', // magasin, nom en clair
   composant: 'aaaabbbbccccddddeeeeffffgggghhhh', // composant interne : ignoré
   theme: 'iiiijjjjkkkkllllmmmmnnnnoooopppp', // thème : ignoré
-  main: 'mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm', // dépaquetée : ignorée
+  main: 'mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm', // dépaquetée : magasin « inconnu »
   desactivee: 'llllllllllllllllllllllllllllllll', // magasin, désactivée
   sansManifest: 'hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh', // magasin, nom lu dans Extensions/<id>/<version>/manifest.json
-  horsMagasin: 'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk', // installée hors magasin : ignorée
+  horsMagasin: 'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk', // installée hors magasin : magasin « inconnu »
+  preinstallee: 'nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn', // installée par défaut avec le navigateur : ignorée
   edge: 'g'.repeat(32) // magasin Edge Add-ons
 }
 
@@ -391,7 +425,8 @@ export async function genererFixtures(sortie: string): Promise<void> {
         [IDS_EXTENSIONS.main]: { from_webstore: false, location: 4, state: 1, path: 'C:\\dev\\ext', manifest: { name: 'Extension de développement', version: '0.1' } },
         [IDS_EXTENSIONS.desactivee]: { ...store, state: 0, disable_reasons: 1, manifest: { name: 'Désactivée', version: '2.0', update_url: miseAJour } },
         [IDS_EXTENSIONS.sansManifest]: { ...store, path: `${IDS_EXTENSIONS.sansManifest}/0.9_0` },
-        [IDS_EXTENSIONS.horsMagasin]: { from_webstore: false, location: 1, state: 1, manifest: { name: 'Installée à la main', version: '1.0' } }
+        [IDS_EXTENSIONS.horsMagasin]: { from_webstore: false, location: 1, state: 1, manifest: { name: 'Installée à la main', version: '1.0' } },
+        [IDS_EXTENSIONS.preinstallee]: { ...store, was_installed_by_default: true, manifest: { name: 'Préinstallée', version: '1.0', update_url: miseAJour } }
       }
     }
   }))

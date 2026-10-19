@@ -79,6 +79,17 @@
           "name": "Installée à la main",
           "version": "1.0"
         }
+      },
+      "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn": {
+        "from_webstore": true,
+        "location": 1,
+        "state": 1,
+        "was_installed_by_default": true,
+        "manifest": {
+          "name": "Préinstallée",
+          "version": "1.0",
+          "update_url": "https://clients2.google.com/service/update2/crx"
+        }
       }
     }
   }

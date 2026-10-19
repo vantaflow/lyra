@@ -14,7 +14,7 @@
 import { existsSync, lstatSync, readFileSync } from 'node:fs'
 import { readdir } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { NAVIGATEURS_CHROMIUM, NOMS_NAVIGATEURS } from './types'
 import type { NavigateurSource, ProfilDetecte } from './types'
 
@@ -97,6 +97,15 @@ function navigateurOuvert(racine: string): boolean {
 
 const NOM_PROFIL = /^(Default|Profile \d+)$/
 
+/**
+ * Nom de dossier de profil sûr : enfant direct de la racine. Les clés de `info_cache` viennent d'un fichier qui peut
+ * avoir été copié d'ailleurs ; ni `.` ni `..`, ni séparateur, ni lettre de lecteur (`C:`), ni chemin absolu, ni octet nul.
+ */
+export function nomDeProfilSur(nom: string, racine: string): boolean {
+  if (nom === '' || nom === '.' || nom === '..' || /[\\/:\0]/.test(nom)) return false
+  return dirname(resolve(racine, nom)) === resolve(racine)
+}
+
 /** Ordre stable : Default d'abord, puis Profile 1, 2, 10… */
 const ordreProfils = (a: string, b: string): number => a.localeCompare(b, 'en', { numeric: true })
 
@@ -107,7 +116,7 @@ async function profilsChromium(navigateur: NavigateurSource, racine: string): Pr
   const cache = objet(profile?.info_cache)
   const dernier = texte(profile?.last_used) ?? 'Default'
 
-  let dossiers = Object.keys(cache ?? {}).filter((d) => estDossier(join(racine, d)))
+  let dossiers = Object.keys(cache ?? {}).filter((d) => nomDeProfilSur(d, racine) && estDossier(join(racine, d)))
   if (dossiers.length === 0) {
     // Pas de Local State exploitable : repli sur les dossiers connus.
     dossiers = (await readdir(racine, { withFileTypes: true }).catch(() => []))

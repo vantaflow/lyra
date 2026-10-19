@@ -48,19 +48,26 @@ export const ELEMENTS_IMPORT: readonly ElementImport[] = ['favoris', 'historique
 /** Historique : fenêtre importée par défaut (« 92 jours » dans l'interface). */
 export const JOURS_HISTORIQUE_PAR_DEFAUT = 92
 
+/**
+ * Nature d'un échec quand l'interface ou l'appelant peut vouloir réagir autrement qu'en affichant la raison :
+ * - `verrouille` : fichier tenu par le navigateur ouvert (« fermez-le puis réessayez ») ;
+ * - `absent` : fichier absent ; `vide` : session valide sans aucun onglet ; `chiffre` : donnée chiffrée par le système ;
+ * - `volumineux` : au-delà de la taille que Lyra accepte de lire ; `disque-plein` : copie temporaire impossible ;
+ * - `memoire` : mémoire insuffisante ; `annule` : lecture abandonnée par l'appelant (`AbortSignal`).
+ */
+export type CodeErreurImport = 'verrouille' | 'absent' | 'vide' | 'chiffre' | 'volumineux' | 'disque-plein' | 'memoire' | 'annule'
+
 /** Élément illisible : jamais d'exception qui remonte, une raison lisible par l'utilisateur. */
 export interface Indisponible {
   indisponible: true
   raison: string
+  code?: CodeErreurImport
 }
 
-export const indisponible = (raison: string): Indisponible => ({ indisponible: true, raison })
+export const indisponible = (raison: string, code?: CodeErreurImport): Indisponible => (code ? { indisponible: true, raison, code } : { indisponible: true, raison })
 
 export const estIndisponible = (v: unknown): v is Indisponible =>
   typeof v === 'object' && v !== null && (v as Indisponible).indisponible === true && typeof (v as Indisponible).raison === 'string'
-
-/** Nature d'une erreur de lecture quand l'appelant peut vouloir reformuler le message. */
-export type CodeErreurImport = 'verrouille' | 'absent'
 
 /** Erreur de lecture dont le message est destiné à l'utilisateur (`raison`), jamais un crash. */
 export class ErreurImport extends Error {
@@ -183,9 +190,11 @@ export interface ExtensionImportee {
   nom: string
   /**
    * Magasin d'où elle vient. Lyra ne réinstalle depuis le réseau que celles du Chrome Web Store (jalon B) ;
-   * `edge` (Edge Add-ons) et `firefox` (addons.mozilla.org) sont signalées pour l'aperçu.
+   * `edge` (Edge Add-ons) et `firefox` (addons.mozilla.org) sont signalées pour l'aperçu ; `inconnu` : installée hors
+   * magasin (à la main, dépaquetée) — le « 1 inconnue » de l'aperçu. Les extensions préinstallées ou internes du
+   * navigateur ne sont jamais listées.
    */
-  magasin: 'chrome' | 'edge' | 'firefox'
+  magasin: 'chrome' | 'edge' | 'firefox' | 'inconnu'
   /** Activée dans le navigateur source. */
   actif: boolean
 }
@@ -222,7 +231,8 @@ export interface Compteurs {
   onglets?: { fenetres: number; onglets: number; groupes: number }
   /** `moteurs` : moteurs proposés par le navigateur ; `motsCles` : raccourcis créés par l'utilisateur. */
   moteurs?: { moteurs: number; motsCles: number }
-  extensions?: { total: number; chrome: number }
+  /** `chrome` : réinstallables depuis le Chrome Web Store (« 5 sur 6 ») ; `inconnues` : hors magasin (« 1 inconnue »). */
+  extensions?: { total: number; chrome: number; edge: number; inconnues: number }
   reglages?: { total: number }
 }
 
@@ -262,7 +272,9 @@ export function compter(d: DonneesImportees): Compteurs {
     c.moteurs = { moteurs: d.moteurs.length - perso, motsCles: perso }
   }
   if (d.extensions && !estIndisponible(d.extensions)) {
-    c.extensions = { total: d.extensions.length, chrome: d.extensions.filter((e) => e.magasin === 'chrome').length }
+    const liste = d.extensions
+    const dans = (m: ExtensionImportee['magasin']): number => liste.filter((e) => e.magasin === m).length
+    c.extensions = { total: liste.length, chrome: dans('chrome'), edge: dans('edge'), inconnues: dans('inconnu') }
   }
   if (d.reglages && !estIndisponible(d.reglages)) {
     const r = d.reglages
