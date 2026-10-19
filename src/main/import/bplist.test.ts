@@ -130,6 +130,45 @@ describe('bplist corrompu : ErreurImport, jamais de RangeError', () => {
   it('référence cyclique : un tableau qui se contient', () => {
     const octets = Uint8Array.from([...ENTETE, 0xa1, 0, 8, ...queue(1, 0, 10)])
     expect(() => lireBplist(octets)).toThrow(ErreurImport)
+    expect(() => lireBplist(octets)).toThrow(/cyclique/) // refusé tout de suite, sans descendre 200 niveaux
+  })
+
+  it('cycle entre deux conteneurs : A contient B qui contient A', () => {
+    // objet 0 : tableau [1] ; objet 1 : tableau [0]
+    const octets = Uint8Array.from([...ENTETE, 0xa1, 1, 0xa1, 0, 8, 10, ...queue(2, 0, 12)])
+    expect(() => lireBplist(octets)).toThrow(/cyclique/)
+  })
+
+  it('références partagées : 32 000 références vers une chaîne de 32 Ko, décodée une seule fois', () => {
+    const N = 32_000
+    const S = 32 * 1024
+    const be2 = (n: number): number[] => [n >> 8, n & 255]
+    const be4 = (n: number): number[] => [n >>> 24, (n >>> 16) & 255, (n >>> 8) & 255, n & 255]
+    const refs = new Uint8Array(N * 2)
+    for (let i = 0; i < N; i++) refs[2 * i + 1] = 1 // chaque élément référence l'objet 1
+    const tete0 = [0xaf, 0x11, ...be2(N)] // tableau de N éléments
+    const tete1 = [0x5f, 0x11, ...be2(S)] // chaîne ASCII de S octets
+    const off0 = 8
+    const off1 = off0 + tete0.length + refs.length
+    const debutTable = off1 + tete1.length + S
+    const octets = Uint8Array.from([
+      ...ENTETE, ...tete0, ...refs, ...tete1, ...new Uint8Array(S).fill(0x61), ...be4(off0), ...be4(off1), ...queue(2, 0, debutTable, 4, 2)
+    ])
+    const debut = performance.now()
+    // budget de 300 000 octets : la chaîne n'y compte qu'une fois (32 768 + 256 000) ; décodée 32 000 fois, elle pèserait 1 Go
+    const v = lireBplist(octets, 300_000) as string[]
+    expect(performance.now() - debut).toBeLessThan(2000)
+    expect(v).toHaveLength(N)
+    expect(v[0]).toHaveLength(S)
+    expect(v[N - 1]).toBe(v[0])
+    expect(lireBplist(octets)).toHaveLength(N) // budget par défaut
+  })
+
+  it("budget d'octets : message lisible quand le contenu décodé dépasse la limite", () => {
+    const octets = ecrireBplist(['a'.repeat(800), 'b'.repeat(800)])
+    expect(() => lireBplist(octets, 1000)).toThrow(ErreurImport)
+    expect(() => lireBplist(octets, 1000)).toThrow(/trop volumineux/)
+    expect(lireBplist(octets)).toEqual(['a'.repeat(800), 'b'.repeat(800)])
   })
 
   it('octets altérés au hasard : toujours une valeur ou une ErreurImport', () => {

@@ -25,6 +25,8 @@ export class UidPlist {
 export const PROFONDEUR_MAX_PLIST = 200
 /** Nombre maximal de nœuds visités (protège d'un fichier dont les références se partagent pour exploser en taille). */
 const NOEUDS_MAX = 5_000_000
+/** Budget par défaut des octets produits par la lecture d'un plist binaire (voir `lireBplist`). */
+export const BUDGET_OCTETS_PLIST = 64 * 1024 * 1024
 /** Les dates plist comptent en secondes depuis le 1er janvier 2001 UTC. */
 export const EPOQUE_APPLE_MS = Date.UTC(2001, 0, 1)
 
@@ -41,14 +43,40 @@ export const estBplist = (octets: Uint8Array): boolean => octets.length >= 8 && 
 class LecteurBinaire {
   private readonly o: Uint8Array
   private readonly vue: DataView
-  private readonly offsets: number[] = []
+  private readonly budget: number
+  /** Objets déjà décodés, par index : un objet partagé (référencé N fois) n'est décodé et alloué qu'une fois. */
+  private readonly memo = new Map<number, ValeurPlist>()
+  /** Index en cours de décodage : en retrouver un en descendant, c'est un cycle. */
+  private readonly enCours = new Set<number>()
+  private depense = 0
   private noeuds = 0
   private tailleRef = 0
+  private tailleOffset = 0
+  private nbObjets = 0
+  private debutTable = 0
   private finObjets = 0
 
-  constructor(octets: Uint8Array) {
+  constructor(octets: Uint8Array, budget: number) {
     this.o = octets
     this.vue = new DataView(octets.buffer, octets.byteOffset, octets.byteLength)
+    this.budget = budget
+  }
+
+  /** Décompte cumulé des octets produits (chaînes, données, éléments de conteneurs) : refuse au-delà du budget. */
+  private depenser(octets: number): void {
+    this.depense += octets
+    if (this.depense > this.budget) {
+      const limite = this.budget >= 1048576 ? `${Math.round(this.budget / 1048576)} Mo` : `${this.budget} octets`
+      throw corrompu(`contenu décodé trop volumineux, plus de ${limite}`)
+    }
+  }
+
+  /** Offset de l'objet `index`, lu dans la table à la demande (jamais matérialisée) et contrôlé. */
+  private offsetObjet(index: number): number {
+    if (!Number.isInteger(index) || index < 0 || index >= this.nbObjets) throw corrompu("référence d'objet invalide")
+    const off = this.entier(this.debutTable + index * this.tailleOffset, this.tailleOffset)
+    if (off < 8 || off >= this.debutTable) throw corrompu("offset d'objet hors du fichier")
+    return off
   }
 
   /** Entier non signé big-endian de `n` octets (1 à 8) ; au-delà de 2^53 : refusé. */
@@ -73,12 +101,10 @@ class LecteurBinaire {
     const debutTable = this.entier(fin + 24, 8)
     if (nbObjets < 1 || racine >= nbObjets) throw corrompu('objet racine invalide')
     if (debutTable < 9 || debutTable > fin || nbObjets > (fin - debutTable) / tailleOffset) throw corrompu('table des offsets hors du fichier')
+    this.tailleOffset = tailleOffset
+    this.nbObjets = nbObjets
+    this.debutTable = debutTable
     this.finObjets = debutTable
-    for (let i = 0; i < nbObjets; i++) {
-      const off = this.entier(debutTable + i * tailleOffset, tailleOffset)
-      if (off < 8 || off >= debutTable) throw corrompu("offset d'objet hors du fichier")
-      this.offsets.push(off)
-    }
     return this.objet(racine, 0)
   }
 
@@ -97,11 +123,24 @@ class LecteurBinaire {
     if (!Number.isSafeInteger(longueur) || longueur < 0 || debut + longueur > this.finObjets) throw corrompu('objet débordant du fichier')
   }
 
+  /** Valeur de l'objet `index` : mémoïsée (chaque objet est décodé une seule fois), cycles refusés. */
   private objet(index: number, profondeur: number): ValeurPlist {
     if (profondeur > PROFONDEUR_MAX_PLIST) throw corrompu(`imbrication au-delà de ${PROFONDEUR_MAX_PLIST} niveaux`)
+    const pos = this.offsetObjet(index) // valide aussi l'index
+    if (this.memo.has(index)) return this.memo.get(index) as ValeurPlist
+    if (this.enCours.has(index)) throw corrompu('référence cyclique')
     if (++this.noeuds > NOEUDS_MAX) throw corrompu("trop d'objets")
-    if (!Number.isInteger(index) || index < 0 || index >= this.offsets.length) throw corrompu("référence d'objet invalide")
-    const pos = this.offsets[index]
+    this.enCours.add(index)
+    try {
+      const valeur = this.decoder(pos, profondeur)
+      this.memo.set(index, valeur)
+      return valeur
+    } finally {
+      this.enCours.delete(index)
+    }
+  }
+
+  private decoder(pos: number, profondeur: number): ValeurPlist {
     const marqueur = this.o[pos]
     const haut = marqueur >> 4
     const bas = marqueur & 0xf
@@ -135,11 +174,13 @@ class LecteurBinaire {
       case 0x4: {
         const [n, debut] = this.taille(pos, bas)
         this.verifier(debut, n)
+        this.depenser(n)
         return new Uint8Array(this.o.subarray(debut, debut + n)) // copie (un Buffer renverrait une simple vue)
       }
       case 0x5: {
         const [n, debut] = this.taille(pos, bas)
         this.verifier(debut, n)
+        this.depenser(n)
         let s = ''
         for (let i = 0; i < n; i += 8192) s += String.fromCharCode(...this.o.subarray(debut + i, debut + Math.min(n, i + 8192)))
         return s
@@ -147,6 +188,7 @@ class LecteurBinaire {
       case 0x6: {
         const [n, debut] = this.taille(pos, bas)
         this.verifier(debut, n * 2)
+        this.depenser(n * 2)
         let s = ''
         const unites: number[] = []
         for (let i = 0; i < n; i++) {
@@ -166,6 +208,7 @@ class LecteurBinaire {
       case 0xc: {
         const [n, debut] = this.taille(pos, bas)
         this.verifier(debut, n * this.tailleRef)
+        this.depenser(n * 8)
         const liste: ValeurPlist[] = []
         for (let i = 0; i < n; i++) liste.push(this.objet(this.entier(debut + i * this.tailleRef, this.tailleRef), profondeur + 1))
         return liste
@@ -173,6 +216,7 @@ class LecteurBinaire {
       case 0xd: {
         const [n, debut] = this.taille(pos, bas)
         this.verifier(debut, n * this.tailleRef * 2)
+        this.depenser(n * 16)
         const dict: { [cle: string]: ValeurPlist } = Object.create(null) as { [cle: string]: ValeurPlist }
         for (let i = 0; i < n; i++) {
           const cle = this.objet(this.entier(debut + i * this.tailleRef, this.tailleRef), profondeur + 1)
@@ -187,10 +231,13 @@ class LecteurBinaire {
   }
 }
 
-/** Lit un plist binaire `bplist00`. */
-export function lireBplist(octets: Uint8Array): ValeurPlist {
+/**
+ * Lit un plist binaire `bplist00`. `budgetOctets` borne le total des octets produits (chaînes, données, éléments de
+ * tableaux et de dictionnaires) : un fichier hostile ne peut pas gonfler la mémoire du processus principal.
+ */
+export function lireBplist(octets: Uint8Array, budgetOctets = BUDGET_OCTETS_PLIST): ValeurPlist {
   try {
-    return new LecteurBinaire(octets).lire()
+    return new LecteurBinaire(octets, budgetOctets).lire()
   } catch (e) {
     if (e instanceof ErreurImport) throw e
     throw corrompu('lecture impossible', e) // filet de sécurité : jamais de RangeError vers l'appelant
