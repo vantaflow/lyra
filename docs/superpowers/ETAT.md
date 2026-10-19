@@ -1,6 +1,6 @@
 # Lyra — état d'avancement
 
-Dernière mise à jour : 2026-10-19 18:00 (arrêt du PC Windows à 18:30). **Jalon A et cycle 2 terminés** ; jalons C et E en cours en parallèle ; plans de B et D prêts.
+Dernière mise à jour : 2026-10-19 18:10 (arrêt du PC Windows à 18:30). **Jalon A et cycle 2 terminés** ; jalons C et E en cours en parallèle ; plans de B et D prêts.
 
 ## Le projet
 
@@ -44,25 +44,53 @@ Spec docs/superpowers/specs/2026-10-19-lyra-design-cycle2.md, plan docs/superpow
    - glisser l'en-tête vers un bord ;
    - commandes de palette ;
    - vignettes dans les réglages.
-3. 🟡 **Ne pas déranger** (6ffaddb, 966e128) : implémenté, unit 396, e2e 69. Relecture lancée à 17:56. Son verdict est dans `.superpowers/sdd/jalon-c/task-3-review.md` sur le PC Windows ; si elle n'est pas finie, la relancer.
+3. ✅ **Ne pas déranger** (6ffaddb, 966e128, 093e543), approuvé après 2 relectures (unit 402, e2e 69 et 8/8 Ne pas déranger) :
+   - ⌘⇧D, croissant, palette ;
+   - page en plein cadre et rappel en haut à droite ;
+   - notifications retenues puis livrées, popups retenues ;
+   - exception par site, gérée par le modèle, sans interface (celle-ci viendra avec le jalon D).
 4. ⬜ **Fenêtre privée** : partition propre `privee-<id>`, thème Aurore, nouvel onglet privé.
 5. ⬜ **Restes et finition** :
    - cycle 2 : veille du proxy système après échec, `ajouter()` qui lève le délai de grâce, IPC passerelles refusés depuis une fenêtre privée, `historique.spec.ts:33` ;
    - Échap pendant le glisser depuis le ciel révélé ;
    - e2e de l'invite plus strict, et `ciel:apercu` testé hors bornes ;
    - `viser()` avec le rail de 14 px ;
-   - tests réseau instables `passerelles.spec.ts:88/131`.
+   - tests réseau instables `passerelles.spec.ts:88/131` ;
+   - Ne pas déranger :
+     - Shift+clic sur un lien classé popup (`disposition new-window` sans features) : vérifier, et en faire une fenêtre ordinaire ;
+     - garde `!input.isAutoRepeat` sur ⌘⇧D, L, T et F ;
+     - e2e du chemin clavier de ⌘⇧D ;
+     - iframes `about:blank` et `srcdoc` sans surcharge ;
+     - minuterie après une mise en veille ;
+     - zone de la vue chrome qui bloque les clics en haut à droite ;
+     - commentaire de `Dnd.retenirPopup`.
 
 ## Jalon E — branche `jalon-e` (worktree `../lyra.worktrees/jalon-e`, plan `plans/2026-10-19-lyra-jalon-e.md`)
 
 1. ✅ **Détection et lecteurs Chromium** (875efc6..f71f28f) : Chrome, Edge, Brave et Vivaldi, avec `sql.js` (WASM) et une copie sécurisée. Approuvé après 2 relectures.
-2. 🟡 **Lecteurs Firefox, Safari et Orion** (fe0e482..a633fb7), faits par une autre session. La relecture a demandé 3 corrections :
-   - historique Safari et Orion plafonné à 64 Mo au lieu de 1 Gio ;
-   - `bplist` : mémoire à mémoïser ;
-   - `mozlz4` : vecteurs de test.
+2. ✅ **Lecteurs Firefox, Safari et Orion** (fe0e482..4a7e7a2), faits par une autre session puis corrigés. Approuvé après 2 relectures. Ces lecteurs couvrent :
+   - l'historique Safari et Orion, limité à 1 Gio ;
+   - `bplist` : mémoïsation et budget mémoire ;
+   - `mozlz4` : taille bornée et vecteurs LZ4.
+3. ⬜ **Application dans Lyra**. **Plan détaillé prêt** : `plans/2026-10-19-lyra-jalon-e-task3.md` (24ae738), avec la liste de ce qui manque dans Lyra :
+   - `Bookmarks.ajouterLot` ;
+   - `History.importer` dédoublonné ;
+   - `TabTree.creerConstellation` et `ouvrirEndormie` ;
+   - `PALETTE_CONSTELLATIONS`, partagée avec D ;
+   - `Settings.moteursPerso` et `Settings.import` ;
+   - `hoteVersOrigines`.
 
-   Ronde de corrections lancée à 17:54, commit attendu sur `jalon-e`. À relire à la reprise.
-3. ⬜ **Application dans Lyra**. Lecture dans un `utilityProcess` ; brancher `detecterProfilsFirefox/Safari/Orion` et `racineFirefoxParDefaut` dans `detection.ts` ; ajouter `firefox` aux compteurs d'extensions. Correspondance entre les moteurs intégrés de Firefox et ceux de Lyra (`lireMoteurParDefautFirefox`). Les mineurs reportés sont dans le ledger.
+   Mineurs reportés des relectures 1 et 2, à faire dans cette tâche :
+   - code `chiffre` perdu dans `chromium.ts:362/388` ;
+   - lots d'historique **non triés** par date ;
+   - arrondi de `mo()` ;
+   - test de jonction NTFS ;
+   - repli `Extensions/` à marquer `inconnu` ;
+   - `/OOM/i` à remplacer par `\bOOM\b` ;
+   - extensions imposées (`location` 7 et 9) : champ `imposee`, décochables ;
+   - test `bplist` avec références partagées imbriquées ;
+   - `safari.test.ts` : NUL brut à remplacer par `\0`, et LF ;
+   - commentaire `NOEUDS_MAX`.
 4. ⬜ **Exporter** et paquet `.lyra`.
 5. ⬜ **Interface et e2e**. Ne pas promettre « Chrome peut rester ouvert » pour les onglets : le fichier de session est verrouillé sous Windows.
 
