@@ -194,8 +194,21 @@ describe('Dnd : file des notifications', () => {
     dnd.entrer(1, 'arret')
     const a = dnd.retenirNotification(1, notif('a'))!
     dnd.retenirNotification(1, notif('b'))
-    dnd.retirerNotification(1, a)
+    dnd.retirerNotification(1, a, 'https://a.fr')
     expect(dnd.etat(1).notifications).toBe(1)
+    dnd.sortir(1)
+    expect(livrees[0][1].map((n) => n.titre)).toEqual(['b'])
+  })
+
+  it("close() ne retire que les notifications de l'origine de la page", () => {
+    const { dnd, livrees } = creer()
+    dnd.entrer(1, 'arret')
+    const a = dnd.retenirNotification(1, notif('a', 'https://a.fr'))!
+    dnd.retenirNotification(1, notif('b', 'https://b.fr'))
+    // Une page d'une autre origine vise l'identifiant de a : rien ne bouge.
+    expect(dnd.retirerNotification(1, a, 'https://b.fr')).toBe(false)
+    expect(dnd.etat(1).notifications).toBe(2)
+    expect(dnd.retirerNotification(1, a, 'https://a.fr')).toBe(true)
     dnd.sortir(1)
     expect(livrees[0][1].map((n) => n.titre)).toEqual(['b'])
   })

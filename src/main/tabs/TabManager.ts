@@ -10,6 +10,7 @@ import { origineDe } from '../shields/Shields'
 import { estZoomNormal, palierSuivant } from './zoom'
 import { optionsFenetreCachee, prefsPageCachee, testCache } from '../modeTest'
 import { estUrlErreur, urlOriginale } from './erreurs'
+import { estVraiePopup } from './popup'
 import { arreter as arreterRechercheWc, rechercher as rechercherWc } from './find'
 import { attacherComportements } from './comportements'
 import type { CrochetsPasserelles } from '../passerelles/Passerelles'
@@ -57,6 +58,8 @@ export interface OptionsTabs {
   passerelles?: CrochetsPasserelles
   /** Échap dans une page : sort du mode Ne pas déranger s'il est actif. */
   surEchap?: () => void
+  /** ⌘ ⇧ D dans une page (le site ne peut pas l'avaler) : entre dans Ne pas déranger ou en sort. */
+  basculerDnd?: () => void
   /** Ne pas déranger : retient une popup (`window.open` avec features) ; faux si elle doit s'ouvrir normalement. */
   retenirPopup?: (popup: { url: string; origine: string; etoileId: string }) => boolean
 }
@@ -559,6 +562,9 @@ export class TabManager {
       } else if (k === 'f' && !input.shift) {
         _e.preventDefault()
         this.ouvrirRecherche()
+      } else if (k === 'd' && input.shift) {
+        _e.preventDefault()
+        this.options.basculerDnd?.()
       }
     })
     attacherComportements(wc, {
@@ -582,9 +588,11 @@ export class TabManager {
     })
     wc.setWindowOpenHandler((details) => {
       if (categorie === 'web' && interditAuxSites(details.url)) return { action: 'deny' }
-      if (details.features) {
-        // Ne pas déranger : la popup est retenue (comptée, ouverte à la sortie), la page n'en reçoit pas de fenêtre.
-        if (/^(https?|file):/i.test(details.url) && this.options.retenirPopup?.({ url: details.url, origine: origineDe(wc.getURL()), etoileId: id })) return { action: 'deny' }
+      // Vraie popup : disposition « nouvelle fenêtre » ou features de fenêtre. `noopener` / `noreferrer` seuls
+      // (lien ordinaire cliqué par l'utilisateur) ouvrent une étoile comme `target=_blank`.
+      if (estVraiePopup(details)) {
+        // Ne pas déranger : la popup est retenue (comptée ; ouverte à la sortie si elle a une adresse web), la page n'en reçoit pas de fenêtre.
+        if (this.options.retenirPopup?.({ url: details.url, origine: origineDe(wc.getURL()), etoileId: id })) return { action: 'deny' }
         return {
           action: 'allow',
           overrideBrowserWindowOptions: {

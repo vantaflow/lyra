@@ -173,6 +173,7 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
       // Fenêtre privée : ni détection automatique ni proposition d'ajout (rien n'est écrit dans les réglages).
       passerelles: passerelles?.crochets({ privee: opts.privee === true }),
       surEchap: () => dnd.sortir(fenetre.id),
+      basculerDnd: () => basculerDnd(fenetre.id),
       retenirPopup: (p) => dnd.retenirPopup(fenetre.id, p)
     }
   )
@@ -394,16 +395,21 @@ void app.whenReady().then(async () => {
     }
   })
   ipcMain.on('dnd:permission', (e) => {
-    const c = contexteNotification(e)
-    const d = c ? decisionNotifications(c.origine) : undefined
-    e.returnValue = !c ? null : d === 'autoriser' ? 'granted' : d === 'refuser' ? 'denied' : 'default'
+    // Réponse unique, même en cas d'exception : sendSync ne doit jamais rester bloqué dans la page.
+    let r: string | null = null
+    try {
+      const c = contexteNotification(e)
+      const d = c ? decisionNotifications(c.origine) : undefined
+      r = !c ? null : d === 'autoriser' ? 'granted' : d === 'refuser' ? 'denied' : 'default'
+    } finally {
+      e.returnValue = r
+    }
   })
   ipcMain.on('dnd:fermer', (e, id: unknown) => {
+    // Une page ne ferme que ses propres notifications : l'origine vient du cadre expéditeur.
     const m = ongletsPossedant(e.sender)
-    if (m && typeof id === 'number') {
-      dnd.retirerNotification(m.fenetreId, id)
-      cadresNotifications.delete(id)
-    }
+    const origine = origineDe(e.senderFrame?.url ?? '')
+    if (m && origine && typeof id === 'number' && dnd.retirerNotification(m.fenetreId, id, origine)) cadresNotifications.delete(id)
   })
   handle('settings:get', () => reglages.getSettings())
   handle('settings:set', (patch) => reglages.setSettings(patch))

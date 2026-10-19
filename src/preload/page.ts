@@ -58,12 +58,12 @@ if (WEB) {
 // Ne pas déranger : les notifications web passent par le main (file par fenêtre, livrées à la sortie du mode).
 // Sites web ; file:// seulement en test (les e2e naviguent sur des fixtures locales).
 if (WEB || (location.protocol === 'file:' && process.argv.includes('--lyra-test'))) {
-  const nom = '__lyra' + Math.random().toString(36).slice(2)
   const clics: Array<(id: number) => void> = []
   ipcRenderer.on('dnd:clic', (_e, id: number) => {
     for (const cb of clics) cb(id)
   })
-  contextBridge.exposeInMainWorld(nom, {
+  // Le pont est passé en argument de la fonction exécutée dans le monde principal : aucune propriété n'est posée sur `window`.
+  const pont = {
     // Identifiant de la notification retenue, ou null : elle doit s'afficher normalement.
     creer: (titre: string, corps: string, tag: string, silencieuse: boolean): number | null =>
       ipcRenderer.sendSync('dnd:notification', { titre, corps, tag, silencieuse }) ?? null,
@@ -71,6 +71,12 @@ if (WEB || (location.protocol === 'file:' && process.argv.includes('--lyra-test'
     permission: (): string | null => ipcRenderer.sendSync('dnd:permission') ?? null,
     fermer: (id: number): void => ipcRenderer.send('dnd:fermer', id),
     surClic: (cb: (id: number) => void): void => void clics.push(cb)
-  })
-  webFrame.executeJavaScript(`${SURCHARGE_NOTIFICATION}(${JSON.stringify(nom)})`).catch(() => undefined)
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    const func = new Function(`return ${SURCHARGE_NOTIFICATION}`)() as (p: typeof pont) => void
+    contextBridge.executeInMainWorld({ func, args: [pont] })
+  } catch {
+    // sans surcharge, les notifications suivent leur cours normal (mais la vérification de permission les refuse en mode)
+  }
 }

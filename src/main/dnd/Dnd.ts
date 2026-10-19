@@ -149,13 +149,19 @@ export class Dnd {
     return id
   }
 
-  /** La page a fermé sa notification avant la sortie (`close()`) : elle n'est plus livrée. */
-  retirerNotification(fenetre: number, id: number): void {
+  /**
+   * La page a fermé sa notification avant la sortie (`close()`) : elle n'est plus livrée. Une page ne ferme que les
+   * notifications de sa propre origine (les identifiants sont séquentiels : elle pourrait en viser d'autres).
+   * Renvoie vrai si une notification a été retirée.
+   */
+  retirerNotification(fenetre: number, id: number, origine: string): boolean {
     const f = this.fenetres.get(fenetre)
-    if (!f) return
+    if (!f) return false
     const avant = f.notifications.length
-    f.notifications = f.notifications.filter((x) => x.id !== id)
-    if (f.notifications.length !== avant) this.diffuser(fenetre)
+    f.notifications = f.notifications.filter((x) => !(x.id === id && x.origine === origine))
+    if (f.notifications.length === avant) return false
+    this.diffuser(fenetre)
+    return true
   }
 
   /** Retient une popup (`window.open` avec features) ; faux si elle doit s'ouvrir normalement. Une même adresse du même site n'est gardée qu'une fois. */

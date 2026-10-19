@@ -163,6 +163,8 @@ test("notification web : retenue pendant le mode (rien d'affiché), livrée à l
       return { titre: a.title, corps: a.body, instance: a instanceof Notification, permission: Notification.permission, nom: Notification.name }
     })
     expect(resume).toEqual({ titre: 'Première', corps: 'corps A', instance: true, permission: 'granted', nom: 'Notification' })
+    // Le pont vers le main n'est visible d'aucun script de la page : aucune propriété __lyra* sur window.
+    expect(await p.evaluate(() => Object.getOwnPropertyNames(window).filter((k) => k.startsWith('__lyra')))).toEqual([])
     await expect.poll(async () => (await etat(fenetre)).notifications).toBe(2)
     // Rien n'est livré (donc rien d'affiché) pendant le mode ; le rappel compte.
     expect(await livraisons(fenetre)).toEqual([])
@@ -204,6 +206,37 @@ test("popup (window.open avec features) retenue et comptée, ouverte en étoile 
     const nouvelle = apres.sky.stars.find((s) => !avant.sky.stars.some((a) => a.id === s.id))!
     expect(nouvelle.url).toContain('liens.html?popup')
     expect(nouvelle.parentId).toBe(avant.sky.activeId)
+  } finally {
+    await app.close()
+  }
+})
+
+test("noopener n'est pas une popup (étoile normale) ; about:blank avec features est retenue et comptée, sans réouverture", async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const p = await ouvrir(app, fenetre, DND)
+    const avant = await ciel(fenetre)
+    await menu(app, 'ne-pas-deranger')
+    await expect.poll(async () => (await etat(fenetre)).actif).toBe(true)
+
+    // Lien ordinaire (features « noopener » seulement) : s'ouvre en étoile pendant le mode, rien n'est retenu.
+    await p.evaluate(() => void document.getElementById('noopener')!.click())
+    await expect.poll(async () => (await ciel(fenetre)).sky.stars.length).toBe(avant.sky.stars.length + 1)
+    expect((await etat(fenetre)).popups).toBe(0)
+    const etoiles = (await ciel(fenetre)).sky.stars.length
+
+    // Popup vide (motif des pop-under) : retenue et comptée, aucune fenêtre.
+    const fenetres = app.windows().length
+    await p.evaluate(() => void document.getElementById('blank')!.click())
+    await expect.poll(async () => (await etat(fenetre)).popups).toBe(1)
+    expect(app.windows().length).toBe(fenetres)
+
+    // À la sortie : rien à rouvrir (pas d'adresse), aucune étoile de plus.
+    await menu(app, 'ne-pas-deranger')
+    await expect.poll(async () => (await etat(fenetre)).actif).toBe(false)
+    await fenetre.waitForTimeout(500)
+    expect((await ciel(fenetre)).sky.stars.length).toBe(etoiles)
+    expect(app.windows().length).toBe(fenetres)
   } finally {
     await app.close()
   }
