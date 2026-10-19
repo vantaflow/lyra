@@ -1,0 +1,85 @@
+{
+  "extensions": {
+    "settings": {
+      "abcdefghijklmnopabcdefghijklmnop": {
+        "from_webstore": true,
+        "location": 1,
+        "state": 1,
+        "path": "abcdefghijklmnopabcdefghijklmnop/1.2.3_0",
+        "manifest": {
+          "name": "__MSG_extName__",
+          "default_locale": "en",
+          "version": "1.2.3",
+          "update_url": "https://clients2.google.com/service/update2/crx"
+        }
+      },
+      "ponmlkjihgfedcbaponmlkjihgfedcba": {
+        "from_webstore": true,
+        "location": 1,
+        "state": 1,
+        "manifest": {
+          "name": "Lecteur sombre",
+          "version": "4.0",
+          "update_url": "https://clients2.google.com/service/update2/crx"
+        }
+      },
+      "aaaabbbbccccddddeeeeffffgggghhhh": {
+        "from_webstore": false,
+        "location": 5,
+        "state": 1,
+        "manifest": {
+          "name": "Composant interne",
+          "version": "1.0"
+        }
+      },
+      "iiiijjjjkkkkllllmmmmnnnnoooopppp": {
+        "from_webstore": true,
+        "location": 1,
+        "state": 1,
+        "manifest": {
+          "name": "Thème sombre",
+          "theme": {
+            "colors": {}
+          },
+          "version": "1.0"
+        }
+      },
+      "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm": {
+        "from_webstore": false,
+        "location": 4,
+        "state": 1,
+        "path": "C:\\dev\\ext",
+        "manifest": {
+          "name": "Extension de développement",
+          "version": "0.1"
+        }
+      },
+      "llllllllllllllllllllllllllllllll": {
+        "from_webstore": true,
+        "location": 1,
+        "state": 0,
+        "disable_reasons": 1,
+        "manifest": {
+          "name": "Désactivée",
+          "version": "2.0",
+          "update_url": "https://clients2.google.com/service/update2/crx"
+        }
+      },
+      "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh": {
+        "from_webstore": true,
+        "location": 1,
+        "state": 1,
+        "path": "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh/0.9_0"
+      },
+      "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk": {
+        "from_webstore": false,
+        "location": 1,
+        "state": 1,
+        "manifest": {
+          "name": "Installée à la main",
+          "version": "1.0"
+        }
+      }
+    }
+  }
+}

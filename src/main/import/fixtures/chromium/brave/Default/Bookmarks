@@ -1,0 +1,38 @@
+{
+  "roots": {
+    "bookmark_bar": {
+      "type": "folder",
+      "name": "Bookmarks bar",
+      "date_added": "13411699200000000",
+      "children": [
+        {
+          "type": "url",
+          "name": "Brave",
+          "url": "https://brave.com/",
+          "date_added": "13411699200000000",
+          "id": "1",
+          "guid": "g"
+        }
+      ],
+      "id": "1",
+      "guid": "g"
+    },
+    "other": {
+      "type": "folder",
+      "name": "Other bookmarks",
+      "date_added": "13411699200000000",
+      "children": [],
+      "id": "1",
+      "guid": "g"
+    },
+    "synced": {
+      "type": "folder",
+      "name": "Mobile bookmarks",
+      "date_added": "13411699200000000",
+      "children": [],
+      "id": "1",
+      "guid": "g"
+    }
+  },
+  "version": 1
+}
