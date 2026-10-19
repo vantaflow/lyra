@@ -159,8 +159,13 @@ describe('onglets', () => {
     expect((await lire(p, ['onglets'])).donnees.onglets).toEqual({ fenetres: [{ onglets: [{ url: 'https://propre.example/', titre: 'https://propre.example/' }], groupes: [] }] })
     writeFileSync(join(p.chemin, 'sessionstore.jsonlz4'), jsonMozlz4({ windows: [{ tabs: [{ entries: [{ url: 'about:blank' }], index: 1 }] }] }))
     expect((await lire(p, ['onglets'])).donnees.onglets).toMatchObject({ indisponible: true, code: 'vide' })
+    // vraie corruption : en-tête et taille plausibles, bloc LZ4 tronqué (les littéraux annoncés dépassent le fichier)
+    const bon = jsonMozlz4({ windows: [{ tabs: [{ entries: [{ url: 'https://propre.example/' }], index: 1 }] }] })
+    writeFileSync(join(p.chemin, 'sessionstore.jsonlz4'), bon.subarray(0, bon.length - 10))
+    expect((await lire(p, ['onglets'])).donnees.onglets).toMatchObject({ indisponible: true, raison: expect.stringMatching(/décompresser.*corrompu/) })
+    // taille annoncée sans rapport avec le fichier : refusée comme corrompue, pas comme « trop volumineux »
     writeFileSync(join(p.chemin, 'sessionstore.jsonlz4'), 'mozLz40\0corrompu')
-    expect(estIndisponible((await lire(p, ['onglets'])).donnees.onglets)).toBe(true)
+    expect((await lire(p, ['onglets'])).donnees.onglets).toMatchObject({ indisponible: true, raison: expect.stringMatching(/corrompu/) })
   })
 })
 

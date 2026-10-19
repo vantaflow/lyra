@@ -9,13 +9,20 @@ import { ErreurImport } from './types'
 export const MAGIE_MOZLZ4 = 'mozLz40\0'
 /** Plus gros contenu décompressé accepté (une session Firefox pèse quelques Mo, un `search.json` quelques dizaines de Ko). */
 export const TAILLE_MAX_MOZLZ4 = 256 * 1024 * 1024
+/** Rapport maximal sortie/entrée d'un bloc LZ4 : une longueur de correspondance étendue ajoute 255 octets par octet. */
+const RATIO_MAX_LZ4 = 255
 
 export const estMozlz4 = (octets: Uint8Array): boolean => octets.length >= 12 && new TextDecoder('latin1').decode(octets.subarray(0, 8)) === MAGIE_MOZLZ4
 
 /** Décode un bloc LZ4 brut dont on connaît la taille décompressée. */
 export function decoderBlocLz4(src: Uint8Array, tailleSortie: number, sujet = 'le fichier'): Uint8Array {
   const corrompu = (): ErreurImport => new ErreurImport(`Impossible de décompresser ${sujet} : contenu corrompu.`)
-  const out = new Uint8Array(tailleSortie)
+  let out: Uint8Array
+  try {
+    out = new Uint8Array(tailleSortie)
+  } catch (e) {
+    throw new ErreurImport(`Impossible de décompresser ${sujet} : mémoire insuffisante.`, { code: 'memoire', cause: e })
+  }
   let i = 0
   let o = 0
   while (i < src.length) {
@@ -59,6 +66,9 @@ export function decoderBlocLz4(src: Uint8Array, tailleSortie: number, sujet = 'l
 export function decoderMozlz4(octets: Uint8Array, sujet = 'le fichier', tailleMax = TAILLE_MAX_MOZLZ4): Uint8Array {
   if (!estMozlz4(octets)) throw new ErreurImport(`${sujet[0]?.toUpperCase()}${sujet.slice(1)} n'est pas un fichier mozlz4 de Firefox.`)
   const taille = new DataView(octets.buffer, octets.byteOffset, octets.byteLength).getUint32(8, true)
+  // Un bloc LZ4 ne produit jamais plus de ~255 octets par octet compressé : une taille annoncée sans rapport avec la
+  // taille du fichier est une corruption, et ne doit rien allouer.
+  if (taille > RATIO_MAX_LZ4 * (octets.length - 12) + 16) throw new ErreurImport(`Impossible de décompresser ${sujet} : contenu corrompu (taille annoncée incohérente).`)
   if (taille > tailleMax) {
     throw new ErreurImport(`${sujet[0]?.toUpperCase()}${sujet.slice(1)} est trop volumineux une fois décompressé (${Math.round(taille / 1048576)} Mo, maximum ${Math.round(tailleMax / 1048576)} Mo).`, { code: 'volumineux' })
   }
