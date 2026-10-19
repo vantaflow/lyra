@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { mkdtempSync, writeFileSync, readFileSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonStore } from './store'
+import { JsonStore, fusion } from './store'
 
 interface Conf { a: number; b: string; n: { x: number; y: number } }
 const defauts: Conf = { a: 1, b: 'b', n: { x: 1, y: 2 } }
@@ -61,5 +61,18 @@ describe('JsonStore', () => {
       a: (brut as { ancien: number }).ancien
     }))
     expect(s.get().a).toBe(7)
+  })
+})
+
+describe('fusion', () => {
+  it('ignore __proto__, constructor et prototype', () => {
+    const resultat = fusion<Record<string, unknown>>(
+      { a: 1 },
+      JSON.parse('{"__proto__":{"p":1},"constructor":{"x":1},"prototype":{"y":1},"a":2}')
+    )
+    expect(({} as Record<string, unknown>).p).toBeUndefined()
+    expect(resultat.constructor).toBe(Object)
+    expect('prototype' in resultat).toBe(false)
+    expect(resultat.a).toBe(2)
   })
 })
