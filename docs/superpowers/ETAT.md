@@ -1,6 +1,6 @@
 # Lyra — état d'avancement
 
-Dernière mise à jour : 2026-10-20. **Jalons A, C, E et B terminés et fusionnés dans `main`**, cycle 2 fait ; jalon D en cours sur la branche `jalon-d` (session ORION HELP, état dans `etat-jalon-d.md`).
+Dernière mise à jour : 2026-10-20 soir — **EN PAUSE** (décision de l'utilisateur). v1.0.0 publiée (essai) ; jalons A, B, C, E, cycle 2 sur `main` ; jalon D terminé côté tâches, en vague de corrections. Voir « Pause du 2026-10-20 » ci-dessous.
 
 ## Le projet
 
@@ -123,6 +123,22 @@ L'application empaquetée ignore les profils de test : seul un vrai import valid
 ## Jalon D — réglages complets, règles par site, couleurs (en cours)
 
 Branche `jalon-d`, plan réécrit après relecture (`plans/2026-10-19-lyra-jalon-d.md`, 22 tâches + 8b, 9b, 14b). Décisions de l'utilisateur (2026-10-20) : lignes « Scripts » et « Zoom » dans le détail d'une règle par site ; plage d'heures pour « À une heure fixe » ; « Contraste insuffisant ? » corrige automatiquement. Exécuté par la session ORION HELP ; état dans `etat-jalon-d.md`.
+
+## Pause du 2026-10-20 — où reprendre
+
+**Consigne de l'utilisateur (durable)** : on ne livre plus rien avant que tout soit terminé « à 200 % » : chaque bouton fonctionne, aucune erreur ne s'affiche. La v1.0.0 publiée (https://github.com/vantaflow/lyra/releases/tag/v1.0.0) n'était qu'un essai ; aucun autre tag avant la version complète (D compris).
+
+Défauts trouvés par l'utilisateur dans la 1.0.0 (Windows) : sections de réglages vides, options sans effet (thème, « masquer les gênes »), erreur « error parse » en cliquant des options, ciel révélé qui se replie avant « Épingler », rappel Ne pas déranger collé aux boutons de fenêtre.
+
+État de `main` (9b45b13, version 1.0.1 dans package.json, sans tag) : icône partout (6b94850 : .ico, icône de fenêtre, favicon lyra://, À propos) ; ciel révélé `no-drag` + retrait seulement vers la page + 500 ms ; rappel DND décalé de 150 px sous Windows. CI : un premier run Windows rouge (4 e2e Ne pas déranger en délai dépassé) puis **vert à la relance** (run 39438744913) — incident de runner probable, non prouvé.
+
+Branches à reprendre (dans l'ordre) :
+1. `fix-epingler` (641327e, WIP) : `computeLayout` rendu robuste aux limites (x ≥ 0, largeur > 0, mesure invalide → repli, réserve abandonnée si fenêtre étroite) + tests. À faire : squasher les 2 commits de diagnostic (e2bd268 et suivant, annulés par 641327e) et renommer le WIP, vitest + e2e complets, CI sur la branche, puis main.
+2. `fix-reglages` (relue, prête) : sommaire limité aux 8 sections remplies (`sections.ts`, D les réactive), « masquer les gênes » branché (3 listes embarquées, moteur séparé, exceptions `@@` respectées), fréquence des listes à chaud, `messageLisible` (aucun message technique à l'écran), settings.json avec BOM relu + copie `.bak` avant écriture de repli, import réglages/ciel avec BOM, licences citées, contrôles non livrés en « Bientôt ». À faire : `git merge origin/main`, tests complets, push main.
+3. `audit-boutons` (93b33f4, WIP) : audit e2e générique `npx playwright test tests/e2e/audit` (311 contrôles, 54 pages/zones ; rapport `test-results/audit-boutons.json`) + correctifs (étoile active `aria-current`, liens morts du panneau Boucliers, sommaire des pages history/downloads/shields, « Ajouter » de Réseau, fuite d'écouteurs `window-added` corrigée). À faire : test de la barre de recherche (`audit-defauts.spec.ts`, `.findbar` ne doit plus recouvrir ⋯), suites complètes, puis main ; l'audit doit passer sans défaut avant toute livraison.
+4. Jalon D (session ORION HELP) : toutes les tâches faites sur `jalon-d-fusion` ; vague de corrections `jalon-d-vague` (aucun « Bientôt », Strict, nouvel onglet, perfs, fermeture bornée), relecture finale Opus en 3 zones ; puis fusion de main (1-3 ci-dessus) et passage sur main. État : `etat-jalon-d.md` sur sa branche.
+
+Ensuite seulement : audit « tous les boutons » vert sur la version complète, relecture finale Opus de la v1, CI verte macOS + Windows, `@paquet`, vérification à la main (YouTube sans pub, ciel révélé et « Épingler » sous Windows, gestes), puis tag de la version complète.
 
 ## Fin
 
