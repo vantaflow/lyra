@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
+import type { CandidatAmo } from '../../shared/types'
 import { MAX_ARCHIVE } from './archives'
 import { ErreurIntrouvable, hoteAmo } from './reseau'
 
@@ -94,9 +95,15 @@ export function infosDepuisReponse(brut: unknown): InfosAmo {
   return { slug, nom: nom.slice(0, 200), version: v, url: u.toString(), sha256: m[1].toLowerCase(), ...(guid ? { guid } : {}) }
 }
 
+export interface ChoixAmo {
+  choix: CandidatAmo[]
+}
+
 export interface ClientAmo {
-  /** Résout la source en infos de téléchargement ; lève si AMO ne connaît pas l'extension. */
-  resoudre(source: SourceAmo): Promise<InfosAmo>
+  /** Résout la saisie : infos de téléchargement, ou `{ choix }` (candidats) si le nom est ambigu ; lève si AMO ne connaît pas l'extension. */
+  resoudre(source: SourceAmo): Promise<InfosAmo | ChoixAmo>
+  /** Mises à jour : slug exact, aucun repli par recherche (404 : erreur, rien n'est installé). */
+  resoudreStrict(slug: string): Promise<InfosAmo>
   /** Télécharge (ou relit le cache), vérifie le sha256 annoncé, rend les octets du .xpi. */
   telecharger(infos: InfosAmo): Promise<Uint8Array>
 }
@@ -107,7 +114,6 @@ export interface OptionsClientAmo {
   cache: string
 }
 
-const normaliser = (s: string): string => s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
 const sha256 = (octets: Uint8Array): string => createHash('sha256').update(octets).digest('hex')
 const sur = (s: string): string => s.replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 80)
 
@@ -122,11 +128,13 @@ export function creerClientAmo(o: OptionsClientAmo): ClientAmo {
   }
   const detail = (id: string, tolere404: boolean): Promise<unknown> => json(`${BASE_API}/addon/${encodeURIComponent(id)}/?lang=en-US`, tolere404)
 
+  const minuscule = (s: string): string => s.trim().toLowerCase()
+
   /**
-   * Recherche AMO : le résultat doit porter le nom (ou le slug) demandé, exactement puis en préfixe, puis en sous-chaîne.
-   * Un texte quelconque n'installe jamais « le premier résultat » au hasard.
+   * Recherche AMO (saisie manuelle seulement) : un résultat de même nom (casse ignorée) ou de même slug est pris ; sinon
+   * jusqu'à 5 candidats sont rendus pour que l'utilisateur choisisse. Jamais d'installation d'un « premier résultat ».
    */
-  async function chercher(texteLibre: string): Promise<string> {
+  async function chercher(texteLibre: string): Promise<string | CandidatAmo[]> {
     const u = new URL(`${BASE_API}/search/`)
     u.searchParams.set('q', texteLibre)
     u.searchParams.set('app', 'firefox')
@@ -134,18 +142,23 @@ export function creerClientAmo(o: OptionsClientAmo): ClientAmo {
     u.searchParams.set('page_size', '10')
     u.searchParams.set('lang', 'en-US')
     const r = objet(await json(u.toString(), false))
-    const candidats = (Array.isArray(r?.results) ? r.results : [])
+    const candidats: CandidatAmo[] = (Array.isArray(r?.results) ? r.results : [])
       .map((x) => objet(x))
-      .map((x) => ({ slug: texte(x?.slug), nom: texte(x?.name) ?? texte(objet(x?.name)?.['en-US']) ?? '' }))
-      .filter((x): x is { slug: string; nom: string } => x.slug !== undefined && SLUG.test(x.slug))
-    const n = normaliser(texteLibre)
-    const trouve =
-      n === '' ? undefined
-        : candidats.find((c) => normaliser(c.nom) === n || normaliser(c.slug) === n) ??
-          candidats.find((c) => normaliser(c.nom).startsWith(n)) ??
-          candidats.find((c) => normaliser(c.nom).includes(n))
-    if (!trouve) throw new Error(`aucune extension « ${texteLibre.slice(0, 60)} » sur addons.mozilla.org`)
-    return trouve.slug
+      .map((x) => {
+        const auteurs = Array.isArray(x?.authors) ? x.authors.map((a) => texte(objet(a)?.name)).filter(Boolean) : []
+        return { slug: texte(x?.slug) ?? '', nom: texte(x?.name) ?? texte(objet(x?.name)?.['en-US']) ?? '', auteur: auteurs.join(', ') }
+      })
+      .filter((x) => SLUG.test(x.slug))
+    const q = minuscule(texteLibre)
+    const exact = candidats.find((c) => minuscule(c.nom) === q || minuscule(c.slug) === q)
+    if (exact) return exact.slug
+    if (candidats.length === 0) throw new Error(`aucune extension « ${texteLibre.slice(0, 60)} » sur addons.mozilla.org`)
+    return candidats.slice(0, 5).map((c) => ({ ...c, nom: c.nom.slice(0, 100), auteur: c.auteur.slice(0, 100) }))
+  }
+
+  const parRecherche = async (texteLibre: string): Promise<InfosAmo | ChoixAmo> => {
+    const r = await chercher(texteLibre)
+    return typeof r === 'string' ? infosDepuisReponse(await detail(r, false)) : { choix: r }
   }
 
   return {
@@ -159,13 +172,22 @@ export function creerClientAmo(o: OptionsClientAmo): ClientAmo {
               return infosDepuisReponse(await detail(source.slug, true))
             } catch (e) {
               if (!(e instanceof ErreurIntrouvable)) throw e
-              return infosDepuisReponse(await detail(await chercher(source.slug), false))
+              return await parRecherche(source.slug)
             }
           case 'recherche':
-            return infosDepuisReponse(await detail(await chercher(source.texte), false))
+            return await parRecherche(source.texte)
         }
       } catch (e) {
         if (e instanceof ErreurIntrouvable) throw new Error("addons.mozilla.org ne connaît pas cette extension")
+        throw e
+      }
+    },
+
+    async resoudreStrict(slug) {
+      try {
+        return infosDepuisReponse(await detail(slug, true))
+      } catch (e) {
+        if (e instanceof ErreurIntrouvable) throw new Error("cette extension n'est plus disponible sur addons.mozilla.org")
         throw e
       }
     },

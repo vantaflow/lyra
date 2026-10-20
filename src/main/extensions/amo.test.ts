@@ -104,7 +104,7 @@ describe('client AMO', () => {
   it('slug → API v5 addon/<slug>/', async () => {
     const appels: string[] = []
     const c = client({ 'https://addons.mozilla.org/api/v5/addons/addon/darkreader/': () => JSON.stringify(reponse()) }, appels)
-    expect((await c.resoudre({ type: 'slug', slug: 'darkreader' })).version).toBe('4.9.80')
+    expect(((await c.resoudre({ type: 'slug', slug: 'darkreader' })) as { version: string }).version).toBe('4.9.80')
     expect(appels).toEqual(['https://addons.mozilla.org/api/v5/addons/addon/darkreader/?lang=en-US'])
   })
   it('identifiant gecko encodé dans le chemin', async () => {
@@ -113,23 +113,33 @@ describe('client AMO', () => {
     await c.resoudre({ type: 'guid', guid: '{446900e4-71c2-419f-a6a7-df9c091e268b}' })
     expect(appels[0]).toContain('/addon/%7B446900e4-71c2-419f-a6a7-df9c091e268b%7D/')
   })
-  it('slug inconnu : repli sur la recherche (résultat de même nom) ; nom libre : recherche', async () => {
+  it('slug inconnu : repli sur la recherche, pris seulement si le nom ou le slug est identique (casse ignorée)', async () => {
     const appels: string[] = []
     const c = client(
       {
-        'https://addons.mozilla.org/api/v5/addons/addon/dark%20reader/': () => 404,
-        'https://addons.mozilla.org/api/v5/addons/addon/dark-reader/': () => 404,
+        'https://addons.mozilla.org/api/v5/addons/addon/Dark%20Reader/': () => 404,
         'https://addons.mozilla.org/api/v5/addons/search/': () => JSON.stringify({ results: [{ slug: 'dark-mode-x', name: { 'en-US': 'Dark Mode X' } }, { slug: 'darkreader', name: { 'en-US': 'Dark Reader' } }] }),
         'https://addons.mozilla.org/api/v5/addons/addon/darkreader/': () => JSON.stringify(reponse())
       },
       appels
     )
-    expect((await c.resoudre({ type: 'slug', slug: 'dark-reader' })).slug).toBe('darkreader')
-    expect((await c.resoudre({ type: 'recherche', texte: 'dark reader' })).slug).toBe('darkreader')
+    expect(((await c.resoudre({ type: 'recherche', texte: 'dark reader' })) as { slug: string }).slug).toBe('darkreader')
     expect(appels.some((u) => u.includes('/search/?q=dark+reader') && u.includes('app=firefox') && u.includes('type=extension'))).toBe(true)
   })
-  it('la recherche ne prend jamais le premier résultat au hasard : le nom doit correspondre', async () => {
-    const c = client({ 'https://addons.mozilla.org/api/v5/addons/search/': () => JSON.stringify({ results: [{ slug: 'autre-chose', name: { 'en-US': 'Tout autre chose' } }] }) })
+  it('nom ambigu : au plus 5 candidats (nom, slug, auteur), rien n\'est résolu', async () => {
+    const results = Array.from({ length: 8 }, (_, i) => ({ slug: `dark-${i}`, name: { 'en-US': `Dark ${i}` }, authors: [{ name: `Auteur ${i}` }] }))
+    const c = client({ 'https://addons.mozilla.org/api/v5/addons/search/': () => JSON.stringify({ results }) })
+    const r = await c.resoudre({ type: 'recherche', texte: 'dark' })
+    expect(r).toEqual({ choix: results.slice(0, 5).map((x, i) => ({ slug: `dark-${i}`, nom: `Dark ${i}`, auteur: `Auteur ${i}` })) })
+  })
+  it('mise à jour (resoudreStrict) : 404 = erreur « plus disponible », aucune recherche', async () => {
+    const appels: string[] = []
+    const c = client({ 'https://addons.mozilla.org/api/v5/addons/addon/': () => 404, 'https://addons.mozilla.org/api/v5/addons/search/': () => JSON.stringify({ results: [{ slug: 'autre', name: 'x' }] }) }, appels)
+    await expect(c.resoudreStrict('darkreader')).rejects.toThrow(/plus disponible/)
+    expect(appels.some((u) => u.includes('/search/'))).toBe(false)
+  })
+  it('recherche sans aucun résultat : erreur', async () => {
+    const c = client({ 'https://addons.mozilla.org/api/v5/addons/search/': () => JSON.stringify({ results: [] }) })
     await expect(c.resoudre({ type: 'recherche', texte: 'pas une source' })).rejects.toThrow(/aucune extension/)
   })
   it('extension inconnue : message lisible', async () => {

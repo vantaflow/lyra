@@ -4,7 +4,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { strToU8, zipSync } from 'fflate'
-import { creerInstallateurFirefox } from './firefox'
+import { creerInstallateurFirefox, installateurFirefoxParId } from './firefox'
+import { installerParId } from './file'
 import { creerChargeur, type SessionExtensions } from './chargeur'
 import { creerRegistre, type StoreReglages } from './registre'
 import { creerMiseAJour } from './miseAJour'
@@ -242,6 +243,70 @@ describe('installation depuis AMO', () => {
     expect(r).toMatchObject({ etat: 'erreur' })
     expect(registre.lister()).toEqual([])
     expect(readdirSync(base).filter((n) => n !== 'cache')).toEqual([])
+  })
+})
+
+describe('sécurité des identités et des mises à jour', () => {
+  it('nom ambigu : état « choix » avec candidats, rien d\'installé', async () => {
+    const f = (async (u: string | URL | Request) => {
+      const url = String(u)
+      if (url.includes('/search/')) return json({ results: [{ slug: 'a-1', name: 'Dark A', authors: [{ name: 'X' }] }, { slug: 'a-2', name: 'Dark B', authors: [] }] })
+      return new Response('', { status: 404 })
+    }) as typeof fetch
+    const { inst, registre } = monter(f)
+    const r = await inst.installerFirefox('Dark')
+    expect(r).toMatchObject({ etat: 'choix', candidats: [{ slug: 'a-1', nom: 'Dark A', auteur: 'X' }, { slug: 'a-2', nom: 'Dark B', auteur: '' }] })
+    expect(registre.lister()).toEqual([])
+  })
+
+  it('mise à jour : slug disparu d\'AMO (404) = erreur, aucune autre extension installée', async () => {
+    const appels: string[] = []
+    const f = (async (u: string | URL | Request) => { appels.push(String(u)); return new Response('', { status: 404 }) }) as typeof fetch
+    const { inst, registre } = monter(f)
+    expect(await inst.mettreAJourAmo('darkreader')).toMatchObject({ etat: 'erreur', raison: expect.stringMatching(/plus disponible/) })
+    await expect(inst.versionDistanteAmo('darkreader')).rejects.toThrow(/plus disponible/)
+    expect(appels.some((u) => u.includes('/search/'))).toBe(false)
+    expect(registre.lister()).toEqual([])
+  })
+
+  it('deux xpi homonymes sans identifiant gecko : identifiants différents', async () => {
+    const mk = (extra: string): string => {
+      const p = join(tmp, `${extra}.xpi`)
+      writeFileSync(p, zipSync({ 'manifest.json': strToU8(JSON.stringify({ manifest_version: 2, name: 'Homonyme', version: '1.0' })), 'a.js': strToU8(extra) }))
+      return p
+    }
+    const { inst } = monter(faux({ version: '1', xpi: new Uint8Array(), appels: [] }))
+    const r1 = await inst.installerFirefox(mk('un'))
+    const r2 = await inst.installerFirefox(mk('deux'))
+    if (r1.etat !== 'installee' || r2.etat !== 'installee') throw new Error(JSON.stringify([r1, r2]))
+    expect(r1.id).not.toBe(r2.id)
+  })
+
+  it('un .xpi local qui aurait l\'id d\'une extension AMO est refusé (la version AMO reste en place)', async () => {
+    const etat: Etat = { version: '4.9.80', xpi: xpiDarkReader(), appels: [] }
+    const { inst, registre } = monter(faux(etat))
+    const r1 = await inst.installerFirefox('darkreader')
+    if (r1.etat !== 'installee') throw new Error(JSON.stringify(r1))
+    const chemin = join(tmp, 'faux-dr.xpi')
+    writeFileSync(chemin, xpiDarkReader('9.9.9')) // même identifiant gecko
+    const r2 = await inst.installerFirefox(chemin)
+    expect(r2.etat === 'erreur' && r2.raison).toMatch(/remplacerait l'extension Dark Reader installée depuis addons\.mozilla\.org/)
+    expect(registre.trouver(r1.id)).toMatchObject({ source: 'amo', version: '4.9.80' })
+  })
+
+  it('installerParId firefox : appelle vraiment installerFirefox (slug, guid) ; refuse chemin, .xpi et URL hors AMO', async () => {
+    const etat: Etat = { version: '4.9.80', xpi: xpiDarkReader(), appels: [] }
+    const { inst, registre } = monter(faux(etat))
+    const firefox = installateurFirefoxParId(inst)
+    const chrome = async () => ({ etat: 'erreur' as const, raison: 'pas ici' })
+    const r = await installerParId({ id: 'darkreader', nom: 'Dark Reader', magasin: 'firefox' }, { chrome, firefox })
+    expect(r).toMatchObject({ etat: 'installee', nom: 'Dark Reader' })
+    expect(registre.lister()).toHaveLength(1)
+    const avant = etat.appels.length
+    for (const id of ['/tmp/x.xpi', 'C:\\x\\y.xpi', 'https://evil.example/addon/x', 'x.xpi']) {
+      expect(await installerParId({ id, nom: 'X', magasin: 'firefox' }, { chrome, firefox })).toMatchObject({ etat: 'erreur' })
+    }
+    expect(etat.appels.length).toBe(avant)
   })
 })
 

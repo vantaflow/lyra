@@ -313,7 +313,7 @@ export async function convertir(dossier: string, o: OptionsConversion): Promise<
     }
     let html = readFileSync(f, 'utf8')
     const balises = lienEnTete(rel).map((s) => `<script src="${s}"></script>`).join('')
-    if (/<head[^>]*>/i.test(html)) html = html.replace(/<head[^>]*>/i, (x) => x + balises)
+    if (/<head(\s[^>]*)?>/i.test(html)) html = html.replace(/<head(\s[^>]*)?>/i, (x) => x + balises)
     else if (/<html[^>]*>/i.test(html)) html = html.replace(/<html[^>]*>/i, (x) => x + balises)
     else html = balises + html
     writeFileSync(f, html)

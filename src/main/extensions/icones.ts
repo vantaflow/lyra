@@ -17,7 +17,7 @@ export async function svgVersPng(svg: Buffer, taille: number): Promise<Buffer | 
     frame: false,
     transparent: true,
     ...optionsFenetreCachee(),
-    webPreferences: { offscreen: true, sandbox: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false }
+    webPreferences: { partition: 'lyra-icones-svg', offscreen: true, sandbox: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false }
   })
   const garde = setTimeout(() => {
     if (!win.isDestroyed()) win.destroy()

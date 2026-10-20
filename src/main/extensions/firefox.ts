@@ -9,7 +9,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { RapportConversion, ResultatInstallation, SuggestionChrome } from '../../shared/types'
 import { analyserSourceAmo, creerClientAmo, type InfosAmo, type SourceAmo } from './amo'
-import { ErreurArchive, extraireZip } from './archives'
+import { ErreurArchive, extraireZip, idDepuisCle } from './archives'
 import { creerBaseInstallation, DELAI_RESEAU_MS, type DepsInstallateurChrome } from './chrome'
 import { convertir } from './convertisseur'
 import { requeteSure } from './reseau'
@@ -116,7 +116,13 @@ export function creerInstallateurFirefox(d: DepsInstallateurFirefox): Installate
       } catch {
         /* la conversion rapporte « manifest.json illisible » */
       }
-      const cle = cleDepuisGraine(guid ?? `nom:${nomBrut}`)
+      // Sans identifiant gecko : nom + empreinte de l'archive (deux xpi homonymes n'ont pas le même identifiant).
+      const cle = cleDepuisGraine(guid ?? `nom:${nomBrut}:${createHash('sha256').update(xpi).digest('hex')}`)
+      const existante = d.registre.trouver(idDepuisCle(cle))
+      if (existante && o.source === 'xpi' && existante.source !== 'xpi') {
+        const origine = existante.source === 'amo' ? 'addons.mozilla.org' : existante.source === 'cws' ? 'le Chrome Web Store' : `une source « ${existante.source} »`
+        return echec(`ce fichier remplacerait l'extension ${existante.nom} installée depuis ${origine} : désinstalle-la d'abord si c'est voulu`)
+      }
       const { rapport } = await convertir(attente, { enTete: [{ nom: 'browser-polyfill.js', source: d.polyfill }], svgVersPng: d.svgVersPng, cle })
       const suggestion = suggestionChrome(guid, nomBrut)
       if (rapport.refus) {
@@ -132,7 +138,11 @@ export function creerInstallateurFirefox(d: DepsInstallateurFirefox): Installate
   }
 
   async function depuisAmo(source: SourceAmo, forcer: boolean): Promise<ResultatInstallation> {
-    const infos: InfosAmo = await amo.resoudre(source)
+    const r = forcer && source.type === 'slug' ? await amo.resoudreStrict(source.slug) : await amo.resoudre(source)
+    if ('choix' in r) {
+      return { etat: 'choix', raison: `Plusieurs extensions ressemblent à « ${source.type === 'recherche' ? source.texte : source.type === 'slug' ? source.slug : ''} » : choisis-en une.`, candidats: r.choix }
+    }
+    const infos: InfosAmo = r
     const deja = d.registre.lister().find((e) => e.slugAmo === infos.slug)
     if (!forcer && deja && deja.version === infos.version) return { etat: 'installee', id: deja.id, nom: deja.nom, version: deja.version, convertie: true }
     const xpi = await amo.telecharger(infos)
@@ -152,7 +162,19 @@ export function creerInstallateurFirefox(d: DepsInstallateurFirefox): Installate
 
   return {
     installerFirefox,
-    versionDistanteAmo: async (slug) => (await amo.resoudre({ type: 'slug', slug })).version,
+    versionDistanteAmo: async (slug) => (await amo.resoudreStrict(slug)).version,
     mettreAJourAmo: (slug) => depuisAmo({ type: 'slug', slug }, true).catch((e) => echec(`mise à jour impossible : ${message(e)}`))
+  }
+}
+
+/**
+ * Adaptateur pour `installerParId` (import depuis un autre navigateur) : n'accepte qu'un slug ou un identifiant gecko AMO,
+ * jamais un chemin, un .xpi ni une adresse hors AMO (l'identifiant vient d'un profil tiers, donc non fiable).
+ */
+export function installateurFirefoxParId(inst: Pick<InstallateurFirefox, 'installerFirefox'>): (id: string) => Promise<ResultatInstallation> {
+  return async (id) => {
+    const a = analyserSourceAmo(id)
+    if (!a || (a.type !== 'guid' && a.type !== 'slug')) return { etat: 'erreur', raison: `identifiant Firefox invalide : ${id.slice(0, 60)}` }
+    return inst.installerFirefox(a.type === 'guid' ? a.guid : a.slug)
   }
 }

@@ -94,7 +94,15 @@ export type ResultatInstallation =
   | { etat: 'installee'; id: string; nom: string; version: string; convertie?: boolean; rapport?: RapportConversion; suggestionChrome?: SuggestionChrome }
   /** À installer à la main (autre magasin, source inconnue) : `raison` l'explique. */
   | { etat: 'manuel'; raison: string }
+  /** Plusieurs extensions AMO ressemblent à la saisie : rien n'est installé, l'utilisateur choisit (par slug). */
+  | { etat: 'choix'; raison: string; candidats: CandidatAmo[] }
   | { etat: 'erreur'; raison: string; rapport?: RapportConversion; suggestionChrome?: SuggestionChrome }
+
+export interface CandidatAmo {
+  nom: string
+  slug: string
+  auteur: string
+}
 
 /** Rapport d'audit de la conversion d'une extension Firefox en extension Chrome. */
 export interface RapportConversion {
