@@ -76,6 +76,17 @@ export const INDEX: EntreeIndex[] = [
   ligne('boucliers', 'frequence', 'Mettre à jour les listes toutes les', ['fréquence', 'listes', 'jours']),
   ligne('boucliers', 'listes', 'Listes de blocage', ['mise à jour', 'filtres']),
   ligne('boucliers', 'sites', 'Boucliers site par site', ['règles par site', 'désactiver', 'strict', 'exception']),
+  ligne('sites', 'nouvelle', 'Nouvelle règle', ['site', 'ajouter', 'origine', 'hôte', 'motif']),
+  ligne('sites', 'boucliers', 'Boucliers du site', ['strict', 'standard', 'désactivés', 'publicités', 'règle']),
+  ligne('sites', 'scriptlets', 'Scriptlets anti-publicité YouTube', ['youtube', 'publicités', 'scriptlets']),
+  ligne('sites', 'cookies', 'Cookies du site', ['1re partie', 'première partie', 'bloqués', 'session seulement', 'règle']),
+  ligne('sites', 'lectureAuto', 'Lecture automatique des vidéos', ['sans le son', 'bloquer', 'autoriser', 'vidéo', 'site']),
+  ligne('sites', 'notifications', 'Notifications du site', ['demander', 'autoriser', 'refuser', 'permission']),
+  ligne('sites', 'extensions', 'Extensions autorisées sur ce site', ['module', 'site', 'règle']),
+  ligne('sites', 'dnd', 'Ne pas déranger : laisser passer les notifications de ce site', ['exception', 'silence', 'dnd', 'site']),
+  ligne('sites', 'ua', 'Identité du navigateur (user-agent)', ['user-agent', 'firefox', 'safari', 'chrome', 'site']),
+  ligne('sites', 'style', 'Style personnalisé', ['css', 'feuille de style', 'site', 'règle']),
+  ligne('sites', 'scriptsPerso', 'Script personnalisé', ['javascript', 'script', 'site', 'règle']),
   ligne('palette', 'moteur', 'Moteur par défaut', ['recherche', 'google', 'nouvel onglet', 'palette']),
   ligne('palette', 'moteurs', 'Mots-clés de la palette', ['moteur', 'recherche', 'raccourci', 'wikipédia', 'youtube']),
   ligne('palette', 'ajouterMoteur', 'Ajouter un moteur de recherche', ['personnalisé', 'moteur', 'adresse', 'url', 'mot-clé']),
@@ -109,7 +120,13 @@ export const INDEX: EntreeIndex[] = [
 ]
 
 /** Lignes parfois absentes de la page (affichées sous condition) : la recherche saute alors à la ligne qui les commande. */
-export const REPLI_LIGNE: Record<string, string> = { 'couleurs.heure': 'couleurs.passage' }
+export const REPLI_LIGNE: Record<string, string> = {
+  'couleurs.heure': 'couleurs.passage',
+  // Le détail d'une règle n'existe que pour le site choisi : sans site choisi, la recherche saute au bouton « Nouvelle règle ».
+  ...Object.fromEntries(
+    ['boucliers', 'scriptlets', 'cookies', 'lectureAuto', 'notifications', 'extensions', 'dnd', 'ua', 'style', 'scriptsPerso'].map((r) => [`sites.${r}`, 'sites.nouvelle'])
+  )
+}
 
 /** Minuscules sans accents. */
 export const normaliser = (t: string): string => t.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()

@@ -1,0 +1,162 @@
+/* Règles par site : tableau, étiquettes et détail (ParametresSites.dc.html).
+   Étiquettes et ligne choisie : couleurs du design en clair ; en sombre, celles des jetons du thème. */
+.reglages {
+  --etiq-vert-fond: #ddf5ec;
+  --etiq-vert-texte: #146a52;
+  --etiq-rouge-fond: #f3e3e1;
+  --etiq-rouge-texte: #8e2e22;
+  --etiq-violet-fond: #e6e6f7;
+  --etiq-violet-texte: #2f2d8a;
+  --ligne-choisie: #f1f1fa;
+}
+:root[data-mode='sombre'] .reglages {
+  --etiq-vert-fond: var(--succes-fond);
+  --etiq-vert-texte: var(--succes-texte);
+  --etiq-rouge-fond: var(--danger-fond);
+  --etiq-rouge-texte: var(--danger);
+  --etiq-violet-fond: var(--teinte-accent);
+  --etiq-violet-texte: var(--teinte-accent-texte);
+  --ligne-choisie: var(--survol);
+}
+
+.carte-tableau {
+  padding: 0;
+  overflow: auto;
+}
+.tableau-sites {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+}
+.tableau-sites th {
+  text-align: left;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--texte-secondaire);
+  font-weight: 600;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--trait);
+  white-space: nowrap;
+}
+.tableau-sites td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--separateur);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.tableau-sites tbody tr[data-site] {
+  cursor: pointer;
+}
+.tableau-sites tbody tr[data-site]:hover td {
+  background: var(--survol);
+}
+.tableau-sites tr.on td,
+.tableau-sites tr.on:hover td {
+  background: var(--ligne-choisie);
+}
+.tableau-sites .aucune-regle {
+  color: var(--texte-secondaire);
+  white-space: normal;
+}
+.etiq {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.etiq.vert {
+  background: var(--etiq-vert-fond);
+  color: var(--etiq-vert-texte);
+}
+.etiq.rouge {
+  background: var(--etiq-rouge-fond);
+  color: var(--etiq-rouge-texte);
+}
+.etiq.violet {
+  background: var(--etiq-violet-fond);
+  color: var(--etiq-violet-texte);
+}
+.site-regle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--texte);
+  text-decoration: none;
+}
+.site-regle i {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.nouvelle-regle {
+  margin: 0 0 14px;
+}
+.nouvelle-regle .champ {
+  flex: 1 1 280px;
+  min-width: 200px;
+}
+.hint.erreur {
+  color: var(--danger);
+  flex-basis: 100%;
+}
+
+.detail-regle {
+  margin-top: 8px;
+}
+.detail-regle .titre-section {
+  overflow-wrap: anywhere;
+}
+.row.colonne {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.row.colonne .zone-code {
+  min-height: 84px;
+}
+.row .bientot {
+  color: var(--texte-secondaire);
+  font-size: 12.5px;
+}
+.row .modifier {
+  height: 26px;
+  padding: 0 10px;
+}
+.ajouter-script {
+  align-self: flex-start;
+}
+.script-perso {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--trait);
+  border-radius: 9px;
+}
+.script-entete {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.script-entete .champ {
+  flex: 1;
+  min-width: 0;
+}
+.pied-detail {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}

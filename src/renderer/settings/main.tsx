@@ -15,6 +15,7 @@ import { Apparence } from './Apparence'
 import { PaletteSection } from './PaletteSection'
 import { BouclierSection } from './BouclierSection'
 import { Couleurs } from './Couleurs'
+import { Sites } from './Sites'
 import { Raccourcis } from './Raccourcis'
 import { Emplacement } from './Emplacement'
 import { Confidentialite } from './Confidentialite'
@@ -147,7 +148,7 @@ function App() {
         {visibles.length === 0 && <p class="aucun">Aucun réglage trouvé.</p>}
       </nav>
       <main class="contenu">
-        {route !== 'couleurs' && (
+        {route !== 'couleurs' && route !== 'sites' && (
           <div class="entete">
             {route === 'apparence' ? (
               <div class="bloc-titre">
@@ -165,7 +166,7 @@ function App() {
         {route === 'couleurs' && <Couleurs />}
         {route === 'palette' && <PaletteSection />}
         {route === 'boucliers' && <BouclierSection />}
-        {route === 'sites' && <Emplacement description="Boucliers, cookies, zoom et permissions réglés site par site." />}
+        {route === 'sites' && <Sites />}
         {route === 'extensions' && (
           <Emplacement description="Les extensions se gèrent dans leur page." lien={{ href: 'lyra://extensions', libelle: 'Ouvrir les extensions' }} />
         )}
