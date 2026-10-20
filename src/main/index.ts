@@ -31,6 +31,7 @@ import type { DepsOperations } from './export/operations'
 import { processusImport } from './import/processus'
 import { balayerOrphelins } from './import/copie'
 import type { CibleCiel, CiblesImport } from './import/appliquer'
+import { borner } from './session/borner'
 import { SessionStore, type FenetreSession } from './session/SessionStore'
 import { Permissions, type DepsPermissions, type ReponsePermission } from './permissions/Permissions'
 import { Attentes, REFUS } from './permissions/attentes'
@@ -1025,9 +1026,11 @@ void app.whenReady().then(async () => {
     enFermeture = true
     // « Effacer à la fermeture » (Confidentialité), puis « Session seulement » (cookies de ces sites purgés),
     // avant d'attendre les écritures de l'historique.
+    // Bornée : une purge lente ne doit jamais empêcher de quitter (3 s pour les règles de site, 3 s pour le journal).
     void (confidentialite?.aLaFermeture() ?? Promise.resolve())
-      .then(() => Promise.all(sessionsWeb.map((ses) => reglesSites.purger(ses))))
-      .then(() => hist.attendre())
+      .catch((err) => console.error('[fermeture] effacement', err))
+      .then(() => borner(Promise.all(sessionsWeb.map((ses) => reglesSites.purger(ses))), 3000))
+      .then(() => borner(hist.attendre(), 3000))
       .finally(() => app.quit())
   })
   // Les règles par site (jusqu'à 10 000) ont leur évènement `sites:changed` : jamais rediffusées ici.

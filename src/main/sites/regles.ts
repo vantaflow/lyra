@@ -4,6 +4,7 @@
  * Chaque écouteur est enveloppé par `apresBoucliers` (jamais de chrome-extension:// ni de CRX) et passe après les Boucliers.
  */
 import type { Settings } from '../../shared/types'
+import { parLots } from '../session/borner'
 import { apresBoucliers, hubDe, PRIORITE_APRES_BOUCLIERS, type SessionWeb } from '../session/webRequestHub'
 import { ciblesCookies, cookiesVises, ecouteursCookies, MODE_BLOQUES, MODES_PURGE, urlDuCookie, type CookieMin, type ModeCookies } from './cookies'
 import { ecouteurScripts, originesScriptsBloques } from './scripts'
@@ -43,7 +44,8 @@ export function creerReglesSites(deps: DepsRegles) {
   const persistantes = new Set<SessionRegles>()
 
   async function supprimer(ses: SessionRegles, liste: readonly CookieMin[]): Promise<void> {
-    for (const c of liste) await ses.cookies.remove(urlDuCookie(c), c.name).catch((err) => console.error('[sites] cookie non supprimé', err))
+    // Huit à la fois : 10 000 cookies en séquence retarderaient la fermeture.
+    await parLots(liste, 8, (c) => ses.cookies.remove(urlDuCookie(c), c.name).catch((err) => console.error('[sites] cookie non supprimé', err)))
   }
   /** Supprime les cookies des sites dont la règle est l'un des `modes`, puis écrit le magasin. N'échoue jamais. */
   async function purgerModes(ses: SessionRegles, modes: ReadonlySet<ModeCookies>): Promise<void> {
