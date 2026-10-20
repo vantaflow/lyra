@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'preact/hooks'
 import type { StatsBoucliers } from '../../shared/ipc'
-import { Interrupteur, Ligne, Segments, Selecteur, Titre } from './controles'
+import { Ligne, Segments, Selecteur, Titre } from './controles'
 import { useReglages } from './reglages'
 import './sections.css'
 
+const NIVEAUX: { id: 'desactives' | 'standard' | 'strict'; libelle: string }[] = [
+  { id: 'desactives', libelle: 'Désactivés' },
+  { id: 'standard', libelle: 'Standard' },
+  { id: 'strict', libelle: 'Strict' }
+]
 const HEURES = [1, 6, 12, 24].map((h) => ({ id: String(h), libelle: h === 1 ? '1 heure' : `${h} heures` }))
 function dateDeMaj(iso: string): string {
   const d = new Date(iso)
@@ -34,11 +39,8 @@ export function BouclierSection() {
     <>
       <Titre>Boucliers</Titre>
       <div class="card">
-        <Ligne reglage="boucliers.niveau" titre="Niveau de protection" aide="Bloque les publicités et les traqueurs connus">
-          <Segments valeur="standard" options={[{ id: 'standard', libelle: 'Standard' }]} />
-        </Ligne>
-        <Ligne reglage="boucliers.genes" titre="Masquer aussi les gênes" aide="Bientôt : bandeaux de cookies et fenêtres d'invitation">
-          <Interrupteur actif={false} libelle="Masquer les gênes" inerte />
+        <Ligne reglage="boucliers.niveau" titre="Niveau de protection" aide="Niveau des sites sans règle : bloque les publicités et les traqueurs connus ; Strict bloque aussi les scripts tiers inconnus">
+          <Segments valeur={s.boucliers.niveau} options={NIVEAUX} surChange={(niveau) => regler({ boucliers: { niveau } })} />
         </Ligne>
         <Ligne reglage="boucliers.frequence" titre="Mettre à jour les listes toutes les" aide="Les listes de blocage sont relues à cette fréquence">
           <Selecteur

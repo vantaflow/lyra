@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import type { ExtensionInstallee, RegleSite, ScriptPerso } from '../../shared/types'
+import type { ExtensionInstallee, RegleSite, ScriptPerso, Settings } from '../../shared/types'
 import { CLES_UA, CLE_UA_DEFAUT, estCleUa, libelleUa, majeurChrome, type CleUa } from '../../shared/ua-profils'
 import { cleCanonique } from '../../main/settings/sites'
 import { EditeurCode, EditeurScript } from './EditeurScript'
@@ -81,7 +81,7 @@ function Valeur({ c }: { c: Cellule }) {
   )
 }
 
-function Tableau({ sites, cles, choisie, installees }: { sites: Record<string, Regle>; cles: string[]; choisie: string | null; installees: ExtensionInstallee[] }) {
+function Tableau({ sites, cles, choisie, installees, defaut }: { sites: Record<string, Regle>; cles: string[]; choisie: string | null; installees: ExtensionInstallee[]; defaut: Boucliers }) {
   const ouvrir = (cle: string): void => {
     location.hash = encoderRoute(cle)
   }
@@ -103,7 +103,7 @@ function Tableau({ sites, cles, choisie, installees }: { sites: Record<string, R
         <tbody>
           {cles.map((cle) => {
             const propre = sites[cle]
-            const r = effective(sites, cle)
+            const r = effective(sites, cle, defaut)
             const h = (c: Cellule, champ: Parameters<typeof vientDHeritage>[2]): Cellule => heritee(c, vientDHeritage(propre, r, champ))
             const p = pastille(cle)
             return (
@@ -138,12 +138,12 @@ function Tableau({ sites, cles, choisie, installees }: { sites: Record<string, R
 }
 
 /** Détail d'une règle (sans règle enregistrée : ses valeurs par défaut, la première écriture la crée). */
-function Detail({ cle, sites, focus, privee, installees }: { cle: string; sites: Record<string, Regle>; focus: string | null; privee: boolean; installees: ExtensionInstallee[] }) {
+function Detail({ cle, sites, focus, privee, installees, defaut }: { cle: string; sites: Record<string, Regle>; focus: string | null; privee: boolean; installees: ExtensionInstallee[]; defaut: Boucliers }) {
   const regle: Regle = sites[cle] ?? {}
   const existe = Object.hasOwn(sites, cle)
   // `eff` : ce qui s'applique au site (règle propre puis règles plus larges) ; `her` : ce qui s'appliquerait sans la règle propre.
-  const eff = effective(sites, cle)
-  const her = heritage(sites, cle)
+  const eff = effective(sites, cle, defaut)
+  const her = heritage(sites, cle, defaut)
   const herite = (champ: Parameters<typeof vientDHeritage>[2]): boolean => vientDHeritage(regle, eff, champ)
   const style = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
@@ -335,7 +335,7 @@ function Detail({ cle, sites, focus, privee, installees }: { cle: string; sites:
 }
 
 /** Formulaire « Nouvelle règle » : une origine, un hôte ou un motif `*.hôte`. */
-function NouvelleRegle({ existantes, fermer }: { existantes: Record<string, Regle>; fermer: (focus: 'bouton' | 'titre') => void }) {
+function NouvelleRegle({ existantes, defaut, fermer }: { existantes: Record<string, Regle>; defaut: Boucliers; fermer: (focus: 'bouton' | 'titre') => void }) {
   const [saisie, setSaisie] = useState('')
   const [erreur, setErreur] = useState('')
   const champ = useRef<HTMLInputElement>(null)
@@ -348,7 +348,7 @@ function NouvelleRegle({ existantes, fermer }: { existantes: Record<string, Regl
     }
     // Une règle existante n'est pas écrasée : on ouvre son détail.
     // La règle écrite reprend le niveau déjà en vigueur sur le site (un motif `*.` Strict reste Strict).
-    if (!Object.hasOwn(existantes, cle)) await ecrire(cle, regleInitiale(existantes, cle))
+    if (!Object.hasOwn(existantes, cle)) await ecrire(cle, regleInitiale(existantes, cle, defaut))
     fermer('titre')
     location.hash = encoderRoute(cle)
   }
@@ -400,10 +400,15 @@ export function Sites() {
   const [creation, setCreation] = useState(false)
   const [privee, setPrivee] = useState(false)
   const [installees, setInstallees] = useState<ExtensionInstallee[]>([])
+  const [defaut, setDefaut] = useState<Boucliers>('standard')
   useEffect(() => {
     void window.lyra.invoke('sites:lister').then(setSites)
-    void window.lyra.invoke('settings:get').then((s) => setInstallees(s.extensions?.installees ?? []))
-    const arretReglages = window.lyra.on('settings:changed', (s) => setInstallees(s.extensions?.installees ?? []))
+    const lire = (s: Settings): void => {
+      setInstallees(s.extensions?.installees ?? [])
+      setDefaut(s.boucliers?.niveau ?? 'standard')
+    }
+    void window.lyra.invoke('settings:get').then(lire)
+    const arretReglages = window.lyra.on('settings:changed', lire)
     void window.lyra.invoke('fenetre:privee').then(setPrivee, () => setPrivee(true))
     const arret = window.lyra.on('sites:changed', setSites)
     const maj = (): void => setHash(location.hash)
@@ -440,6 +445,7 @@ export function Sites() {
           {creation && (
             <NouvelleRegle
               existantes={sites}
+              defaut={defaut}
               fermer={(focus) => {
                 setCreation(false)
                 // Le champ disparaît : le focus revient au bouton, ou au titre quand la règle vient d'être ouverte.
@@ -448,8 +454,8 @@ export function Sites() {
               }}
             />
           )}
-          <Tableau sites={sites} cles={cles} choisie={cible?.cle ?? null} installees={installees} />
-          {cible && <Detail key={cible.cle} cle={cible.cle} sites={sites} focus={cible.style ? hash : null} privee={privee} installees={installees} />}
+          <Tableau sites={sites} cles={cles} choisie={cible?.cle ?? null} installees={installees} defaut={defaut} />
+          {cible && <Detail key={cible.cle} cle={cible.cle} sites={sites} focus={cible.style ? hash : null} privee={privee} installees={installees} defaut={defaut} />}
         </>
       )}
     </>

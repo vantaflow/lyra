@@ -163,12 +163,12 @@ export function urlDeCle(cle: string): string {
 }
 
 /** Règle effective du site d'une clé, avec (`avec`) ou sans (`sans`) la règle enregistrée de cette clé. */
-export function effective(sites: Record<string, RegleSite>, cle: string): RegleEffective {
-  return resoudre(sites, urlDeCle(cle))
+export function effective(sites: Record<string, RegleSite>, cle: string, defaut: RegleEffective['boucliers'] = 'standard'): RegleEffective {
+  return resoudre(sites, urlDeCle(cle), defaut)
 }
-export function heritage(sites: Record<string, RegleSite>, cle: string): RegleEffective {
+export function heritage(sites: Record<string, RegleSite>, cle: string, defaut: RegleEffective['boucliers'] = 'standard'): RegleEffective {
   const { [cle]: _propre, ...autres } = sites
-  return resoudre(autres, urlDeCle(cle))
+  return resoudre(autres, urlDeCle(cle), defaut)
 }
 
 /** Vrai si le champ vient d'ailleurs que de la règle de la ligne. */
@@ -182,8 +182,8 @@ export const vientDHeritage = (propre: RegleSite | undefined, eff: RegleSite, ch
 export const valeurAEcrire = <T>(choisie: T, parDefaut: T): T | null => (choisie === parDefaut ? null : choisie)
 
 /** Règle écrite à la création : le niveau de Boucliers déjà en vigueur sur le site (un motif `*.` Strict reste Strict). */
-export function regleInitiale(sites: Record<string, RegleSite>, cle: string): RegleSite {
-  return { boucliers: effective(sites, cle).boucliers }
+export function regleInitiale(sites: Record<string, RegleSite>, cle: string, defaut: RegleEffective['boucliers'] = 'standard'): RegleSite {
+  return { boucliers: effective(sites, cle, defaut).boucliers }
 }
 
 /** Saisie du champ « Nouvelle règle » : une URL complète est ramenée à son origine ; le reste est inchangé. */
