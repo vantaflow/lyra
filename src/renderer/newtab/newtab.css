@@ -24,7 +24,7 @@ body,
   gap: 36px;
   padding: 40px 32px 72px;
   box-sizing: border-box;
-  color: var(--nt-texte, #ececfa);
+  color: var(--nt-texte);
   font-size: 14px;
   line-height: 1.45;
 }
@@ -43,10 +43,10 @@ body,
   font-style: italic;
   font-size: 48px;
   line-height: 1.05;
-  color: var(--nt-titre, #f6f6ff);
+  color: var(--nt-titre);
 }
 .salut .sous {
-  color: var(--nt-sous, #9e9ec8);
+  color: var(--nt-sous);
   font-size: 15px;
 }
 .recherche {
@@ -233,11 +233,11 @@ body,
   flex: 1;
 }
 .pied a {
-  color: var(--nt-sous, #9e9ec8);
+  color: var(--nt-sous);
   text-decoration: none;
 }
 .pied a:hover {
-  color: var(--nt-titre, #fff);
+  color: var(--nt-titre);
 }
 
 /* Premier lancement : même langage que le champ (cartes #1A1A3C, rayon 16) */
