@@ -973,14 +973,15 @@ html.overlay #app {
   gap: 8px;
 }
 
-/* ---- Recherche dans la page : barre flottante sur la capsule, à droite de la zone page ---- */
+/* ---- Recherche dans la page : barre flottante sur la capsule, posée à gauche des boutons de droite (favori, recherche, ⋯) ---- */
 .carte {
   position: relative;
 }
 .findbar {
   position: absolute;
   top: 6px;
-  right: 12px;
+  /* Capsule : 10 px de marge + 3 boutons de 32 px + 2 intervalles de 6 px, puis 8 px d'air : jamais sur un bouton. */
+  right: 130px;
   z-index: 5;
   display: flex;
   align-items: center;
@@ -997,7 +998,8 @@ html.overlay #app {
 .win.pos-gauche .findbar,
 .win.pos-bas .findbar,
 .win.masque .findbar {
-  right: 150px;
+  /* Même décalage + les 150 px laissés aux boutons de fenêtre. */
+  right: 270px;
 }
 .findbar input {
   width: 190px;

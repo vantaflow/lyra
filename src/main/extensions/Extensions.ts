@@ -69,6 +69,22 @@ export function creerExtensions(o: OptionsExtensions): Extensions {
       details.incognito = false
     }
   })
+  // La bibliothèque retire une fenêtre de son registre quand sa dernière étoile web part, puis la ré-observe (focus, resized,
+  // closed : jamais retirés) à l'`addTab` suivant. Un aller-retour page web <-> lyra:// dans une même étoile fait donc fuiter
+  // 3 écouteurs sur la fenêtre (MaxListenersExceededWarning) et émet un `windows.onCreated` parasite. On n'annonce
+  // `window-added` qu'une seule fois par fenêtre ; le registre de la bibliothèque, lui, reste à jour.
+  const store = (lib as unknown as { ctx?: { store?: { emit: (e: string | symbol, ...a: unknown[]) => boolean } } }).ctx?.store
+  if (store && typeof store.emit === 'function') {
+    const observees = new WeakSet<object>()
+    const emit = store.emit.bind(store)
+    store.emit = (evenement, ...args) => {
+      if (evenement === 'window-added' && args[0] && typeof args[0] === 'object') {
+        if (observees.has(args[0])) return false
+        observees.add(args[0])
+      }
+      return emit(evenement, ...args)
+    }
+  }
   // Popups d'action : fenêtre native ancrée au bouton (spec §9, réponse 4). Sous `LYRA_TEST`, jamais affichée : la fenêtre
   // existe et charge son HTML (le popup est testable) mais `show()` n'est pas appelé.
   if (testCache()) lib.on('browser-action-popup-created', (popup) => void ((popup as unknown as { show: () => void }).show = () => undefined))

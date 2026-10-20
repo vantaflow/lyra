@@ -1,12 +1,15 @@
+import { EventEmitter } from 'node:events'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const lib = vi.hoisted(() => ({ opts: undefined as Record<string, (...a: unknown[]) => unknown> | undefined, crx: vi.fn(), removeTab: vi.fn(), addTab: vi.fn(), selectTab: vi.fn() }))
+const lib = vi.hoisted(() => ({ store: undefined as import('node:events').EventEmitter | undefined, opts: undefined as Record<string, (...a: unknown[]) => unknown> | undefined, crx: vi.fn(), removeTab: vi.fn(), addTab: vi.fn(), selectTab: vi.fn() }))
 
 vi.mock('electron-chrome-extensions', () => ({
   ElectronChromeExtensions: class {
     static handleCRXProtocol = lib.crx
+    ctx = { store: new EventEmitter() }
     constructor(opts: Record<string, (...a: unknown[]) => unknown>) {
       lib.opts = opts
+      lib.store = this.ctx.store
     }
     addTab = lib.addTab
     removeTab = (wc: unknown) => {
@@ -84,6 +87,18 @@ describe('creerExtensions', () => {
     expect(tabs.fermer).not.toHaveBeenCalled()
     lib.opts!.removeTab(wc, {})
     expect(tabs.fermer).toHaveBeenCalledWith(wc)
+  })
+
+  it("une fenêtre n'est annoncée (window-added) qu'une fois, même quand la bibliothèque la ré-ajoute", async () => {
+    const { win } = await charger()
+    const vu = vi.fn()
+    lib.store!.on('window-added', vu)
+    const autre = { id: 2 }
+    for (let i = 0; i < 20; i++) {
+      lib.store!.emit('window-added', win)
+      lib.store!.emit('window-added', autre)
+    }
+    expect(vu).toHaveBeenCalledTimes(2)
   })
 
   it('refuse un second exemplaire ; les permissions optionnelles sont refusées', async () => {
