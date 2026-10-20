@@ -156,6 +156,90 @@ function moteursPerso(v: unknown): unknown[] | undefined {
   return v.length > 0 && sortie.length === 0 ? undefined : sortie
 }
 
+/** Adresse http(s) de recherche d'un moteur hérité : un seul `%s`, aucun identifiant, analysable. Plus souple que `adresseMoteurValide` (http accepté). */
+export function adresseHeritee(url: string): boolean {
+  if (url.length > 2000 || url.split('%s').length !== 2 || /\s/.test(url)) return false
+  try {
+    const u = new URL(url.replace('%s', 'x'))
+    return (u.protocol === 'https:' || u.protocol === 'http:') && u.username === '' && u.password === '' && u.hostname !== ''
+  } catch {
+    return false
+  }
+}
+
+const sansAccents = (s: string): string => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
+/**
+ * Migration : les moteurs perso d'un fichier relu (v1) que les règles actuelles refuseraient (adresse http, mot-clé trop long ou avec espace,
+ * mot-clé ou identifiant en conflit) sont conservés si leur adresse est http(s) valide ; un mot-clé en conflit devient `<mot>2`, `<mot>3`…
+ * Un avertissement par entrée adaptée ou perdue. Les entrées valides gardent leur rang.
+ */
+export function moteursPersoMigres(v: unknown, avertissements: string[]): unknown[] | undefined {
+  if (!Array.isArray(v)) return undefined
+  const strict = (moteursPerso(v) ?? []) as Obj[]
+  const retenus = new Set(strict.map((m) => `${m.id}\u0000${m.url}`))
+  const ids = new Set<string>([...MOTEURS.map((m) => m.id), ...strict.map((m) => m.id as string)])
+  const motsCles = new Set<string>([...MOTEURS.map((m) => m.motCle.toLowerCase()), ...strict.map((m) => m.motCle as string)])
+  const sortie: Obj[] = []
+  const libre = (base: string, pris: Set<string>): string => {
+    if (!pris.has(base)) return base
+    for (let n = 2; ; n++) {
+      const c = `${base.slice(0, 24 - String(n).length)}${n}`
+      if (!pris.has(c)) return c
+    }
+  }
+  let n = 0
+  for (const e of v) {
+    if (!estObjet(e) || n >= MAX_MOTEURS_PERSO) continue
+    const nom = texte(100)(propre(e, 'nom'))
+    const url = texte(2000)(propre(e, 'url'))
+    const idBrut = texte(64)(propre(e, 'id'))
+    if (idBrut && url && retenus.has(`${idBrut}\u0000${url}`) && strict.some((m) => m.id === idBrut && m.url === url)) {
+      sortie.push(strict.find((m) => m.id === idBrut && m.url === url)!)
+      n++
+      continue
+    }
+    const libelle = nom ?? idBrut ?? 'sans nom'
+    if (!nom || !url || !adresseHeritee(url)) {
+      avertissements.push(`Moteur de recherche « ${libelle} » perdu : adresse absente ou invalide.`)
+      continue
+    }
+    const brutCle = (texte(64)(propre(e, 'motCle')) ?? '').trim().toLowerCase()
+    const base = motCleMoteurValide(brutCle) ? brutCle : sansAccents(nom).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 24) || 'moteur'
+    const motCle = libre(base, motsCles)
+    const id = libre(idBrut ?? `perso-${motCle}`, ids)
+    ids.add(id)
+    motsCles.add(motCle)
+    sortie.push({ id, nom, motCle, url })
+    n++
+    const notes = [!adresseMoteurValide(url) ? 'adresse non https' : '', motCle !== brutCle ? `mot-clé « ${brutCle} » devenu « ${motCle} »` : '', id !== idBrut ? 'identifiant modifié' : ''].filter(Boolean)
+    avertissements.push(`Moteur de recherche « ${nom} » conservé tel quel malgré les règles actuelles${notes.length ? ` (${notes.join(', ')})` : ''}.`)
+  }
+  return v.length > 0 && sortie.length === 0 ? undefined : sortie
+}
+
+/**
+ * Patch d'écriture : un moteur déjà enregistré (identifiant et adresse identiques), hérité d'une version précédente et que les règles actuelles
+ * refuseraient, n'est pas perdu quand une page renvoie la liste complète.
+ */
+export function moteursHerites(brut: unknown, valide: unknown, courants: readonly Obj[]): unknown[] | undefined {
+  const brutM = estObjet(brut) ? brut.moteursPerso : undefined
+  if (!Array.isArray(brutM) || !Array.isArray(valide)) return undefined
+  const gardes = (valide as Obj[]).slice()
+  const ids = new Set(gardes.map((m) => m.id))
+  const motsCles = new Set(gardes.map((m) => m.motCle))
+  const MOTS = new Set(MOTEURS.map((m) => m.motCle))
+  for (const e of brutM) {
+    if (!estObjet(e)) continue
+    const c = courants.find((m) => m.id === e.id && m.url === e.url)
+    if (!c || ids.has(c.id) || motsCles.has(c.motCle) || MOTS.has(c.motCle as string) || !adresseHeritee(c.url as string) || gardes.length >= MAX_MOTEURS_PERSO) continue
+    gardes.push(c)
+    ids.add(c.id)
+    motsCles.add(c.motCle)
+  }
+  return gardes
+}
+
 /** import.extensionsEnAttente : dédoublonnée sur id + magasin (la première gagne), 200 au plus (les dernières gardées). */
 function extensionsEnAttente(v: unknown): unknown[] | undefined {
   if (!Array.isArray(v)) return undefined

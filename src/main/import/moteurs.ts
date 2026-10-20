@@ -3,12 +3,12 @@
  * des mots-clés des moteurs personnalisés (pur, sans Electron). Les mots-clés de Lyra ne sont jamais écrasés.
  */
 import type { MoteurPerso } from '../../shared/types'
+import { adresseMoteurValide, motCleMoteurValide } from '../../shared/moteursPerso'
 import { MOTEURS } from '../palette/engines'
 import { normaliser } from '../palette/suggest'
 import type { Moteur, NavigateurSource } from './types'
 
 const MAX_MOT_CLE = 24
-const ADRESSE_VALIDE = /^https?:\/\/\S*%s\S*$/i
 
 /** Identifiants Firefox / mots-clés Chromium / noms (normalisés) → moteur de Lyra ; ce qui n'est pas ici n'existe pas dans Lyra. */
 const PAR_NOM: Record<string, string> = {
@@ -129,9 +129,9 @@ export function arbitrerMoteurs(e: EntreeMoteurs): ResultatMoteurs {
       }
       continue
     }
-    if (!ADRESSE_VALIDE.test(m.url) || m.url.length > 2000) {
+    if (!adresseMoteurValide(m.url)) {
       r.ignores++
-      r.notes.push(`Moteur « ${m.nom} » ignoré : son adresse n’est pas une recherche web (https avec %s).`)
+      r.notes.push(`Moteur « ${m.nom} » ignoré : son adresse n’est pas acceptée par Lyra (https, un seul %s après le nom d’hôte).`)
       continue
     }
     const deja = adresses.get(cleAdresse(m.url))
@@ -141,8 +141,8 @@ export function arbitrerMoteurs(e: EntreeMoteurs): ResultatMoteurs {
       continue
     }
     const origine = m.motCle.trim()
-    const valide = origine !== '' && origine.length <= MAX_MOT_CLE && /^\S+$/.test(origine)
-    const base = valide ? origine : deriverDuNom(m.nom)
+    const valide = motCleMoteurValide(origine)
+    const base = (valide ? origine : deriverDuNom(m.nom)).toLowerCase()
     const motCle = libre(base)
     if (!valide) r.notes.push(`Mot-clé de « ${m.nom} » vide, trop long ou avec espace : devient \`${motCle}\`.`)
     if (motCle !== base) r.notes.push(`Mot-clé \`${base}\` déjà pris par ${pris.get(normaliser(base))} : devient \`${motCle}\`.`)

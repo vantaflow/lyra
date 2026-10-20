@@ -282,9 +282,10 @@ describe('moteursPerso', () => {
     expect(validerPatch({ moteursPerso: tous }).moteursPerso).toHaveLength(100)
   })
 
-  it('un fichier de réglages relu garde la même validation (http retiré)', () => {
-    const s = validerSettings({ version: 2, moteursPerso: [ok, { ...ok, id: 'h', motCle: 'h', url: 'http://x.fr/?q=%s' }] }, defauts)
-    expect(s.moteursPerso).toEqual([ok])
+  it('un fichier de réglages relu garde un moteur http hérité d’un v1 (une écriture de page, elle, le refuse)', () => {
+    const http = { ...ok, id: 'h', motCle: 'h', url: 'http://x.fr/?q=%s' }
+    expect(validerSettings({ version: 2, moteursPerso: [ok, http] }, defauts).moteursPerso).toEqual([ok, http])
+    expect(validerPatch({ moteursPerso: [ok, http] })).toEqual({ moteursPerso: [ok] })
   })
 
   it('[] explicite accepté ; liste entièrement invalide ignorée', () => {

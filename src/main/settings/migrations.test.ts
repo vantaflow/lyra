@@ -245,3 +245,33 @@ describe('champs inconnus d’une règle de site', () => {
     expect(migrer(settings, reglagesParDefaut('/tmp')).settings.sites).toEqual(settings.sites)
   })
 })
+
+describe('moteurs perso hérités d’un v1', () => {
+  const defauts = reglagesParDefaut('/tmp')
+  const herites = [
+    { id: 'perso-intranet', nom: 'Intranet', motCle: 'in', url: 'http://intranet/?q=%s' },
+    { id: 'perso-wiki', nom: 'Wiki', motCle: 'w', url: 'https://wiki.fr/?q=%s' },
+    { id: 'perso-doc', nom: 'Doc', motCle: 'w', url: 'https://doc.fr/?q=%s' },
+    { id: 'perso-casse', nom: 'Cassé', motCle: 'x', url: 'ftp://nope/%s' }
+  ]
+  it('un moteur http est conservé, un mot-clé en conflit devient <mot>2, une adresse invalide est perdue, avec un avertissement chacun', () => {
+    const { settings, avertissements } = migrer({ ...v1, moteursPerso: herites, moteurParDefaut: 'perso-casse' }, defauts)
+    expect(settings.moteursPerso.map((m) => [m.id, m.motCle])).toEqual([['perso-intranet', 'in'], ['perso-wiki', 'w2'], ['perso-doc', 'w3']])
+    expect(settings.moteursPerso[0].url).toBe('http://intranet/?q=%s')
+    expect(avertissements.filter((a) => a.includes('Intranet'))).toHaveLength(1)
+    expect(avertissements.some((a) => a.includes('Cassé') && a.includes('perdu'))).toBe(true)
+    expect(avertissements.some((a) => a.includes('par défaut') && a.includes('perso-casse'))).toBe(true)
+    // Idempotent : la liste migrée ne change plus.
+    expect(migrer(settings, defauts).settings.moteursPerso).toEqual(settings.moteursPerso)
+  })
+  it('une page qui renvoie la liste complète ne fait pas perdre le moteur http déjà enregistré', () => {
+    const chemin = join(mkdtempSync(join(tmpdir(), 'lyra-mot3-')), 'settings.json')
+    writeFileSync(chemin, JSON.stringify({ ...v1, moteursPerso: [herites[0]] }))
+    const r2 = creerReglages(chemin, '/tmp')
+    const nouveau = { id: 'perso-neuf', nom: 'Neuf', motCle: 'nf', url: 'https://neuf.fr/?q=%s' }
+    r2.setSettings({ moteursPerso: [herites[0], nouveau] })
+    expect(r2.getSettings().moteursPerso.map((m) => m.id)).toEqual(['perso-neuf', 'perso-intranet'])
+    r2.setSettings({ moteursPerso: [nouveau] })
+    expect(r2.getSettings().moteursPerso.map((m) => m.id)).toEqual(['perso-neuf'])
+  })
+})

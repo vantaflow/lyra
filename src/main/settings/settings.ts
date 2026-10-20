@@ -2,7 +2,7 @@ import type { Settings } from '../../shared/types'
 import { reglagesParDefaut } from './defaults'
 import { JsonStore, conserverCopieCorrompue, fusion } from './store'
 import { migrer } from './migrations'
-import { validerPatch } from './validate'
+import { moteursHerites, validerPatch } from './validate'
 import { accueilImporteConsomme } from './accueil-importe'
 
 export interface Reglages {
@@ -35,7 +35,13 @@ export function creerReglages(chemin: string, dossierTelechargements: string, de
   }, delaiEcritureMs)
   return {
     getSettings: () => store.get(),
-    setSettings: (patch) => store.set(validerPatch(patch) as Partial<Settings>),
+    setSettings: (patch) => {
+      const valide = validerPatch(patch) as Record<string, unknown>
+      // Une page renvoie la liste complète des moteurs : ceux hérités d'une version précédente ne sont pas perdus.
+      const herites = moteursHerites(patch, valide.moteursPerso, store.get().moteursPerso as unknown as Array<Record<string, unknown>>)
+      if (herites) valide.moteursPerso = herites
+      return store.set(valide as Partial<Settings>)
+    },
     supprimerPersonnelle: () =>
       store.remplacer((s) => {
         const { personnelle: _retiree, ...reseau } = s.reseau

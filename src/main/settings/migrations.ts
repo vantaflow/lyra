@@ -2,8 +2,9 @@
 import type { Settings } from '../../shared/types'
 import { reglagesParDefaut } from './defaults'
 import { fusion } from './store'
-import { champsInconnusDesSites, clesRejetees, inconnus, largeurRamenee, validerPatch } from './validate'
+import { champsInconnusDesSites, clesRejetees, inconnus, largeurRamenee, moteursPersoMigres, validerPatch } from './validate'
 import { estObjet } from './validate-d'
+import { MOTEURS } from '../palette/engines'
 
 export const VERSION_COURANTE = 2
 
@@ -26,8 +27,15 @@ export function migrer(brut: unknown, defauts: Settings = reglagesParDefaut(''))
     avertissements.push(`Réglages écrits par une version plus récente (${brut.version}) : les champs inconnus sont conservés.`)
   }
   const valide = validerPatch(largeurRamenee(brut)) as Record<string, unknown>
+  // Moteurs perso hérités d'un v1 : conservés (adaptés) plutôt que perdus ; leurs avertissements remplacent « Réglage invalide ignoré : moteursPerso ».
+  const moteurs = moteursPersoMigres(brut.moteursPerso, avertissements)
+  if (moteurs !== undefined) valide.moteursPerso = moteurs
   for (const cle of clesRejetees(brut, valide)) avertissements.push(`Réglage invalide ignoré : ${cle}`)
   const base = fusion(defauts, valide)
+  const choisi = base.moteurParDefaut
+  if (typeof choisi === 'string' && choisi !== defauts.moteurParDefaut && !MOTEURS.some((m) => m.id === choisi) && !base.moteursPerso.some((m) => m.id === choisi)) {
+    avertissements.push(`Le moteur de recherche par défaut « ${choisi} » n'existe plus : il est à choisir de nouveau.`)
+  }
   const settings = fusion(fusion<Record<string, unknown>>(inconnus(brut), base), { version: VERSION_COURANTE }) as unknown as Settings
   // Champs inconnus d'une règle de site (version plus récente) : gardés, la règle reste valide pour le reste.
   const horsSchema = champsInconnusDesSites(brut)

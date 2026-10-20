@@ -51,7 +51,7 @@ describe('arbitrerMoteurs : mots-clés', () => {
 
   it('conflit entre deux importés : le second est renommé, le premier garde le sien', () => {
     const r = arbitrerMoteurs({ ...base, moteurs: [perso('Doc', 'x'), perso('Autre', 'X')] })
-    expect(r.aAjouter.map((m) => m.motCle)).toEqual(['x', 'X-ff'])
+    expect(r.aAjouter.map((m) => m.motCle)).toEqual(['x', 'x-ff'])
   })
 
   it('réservés : d k g b s q w yt, insensible à la casse et aux accents', () => {
@@ -107,10 +107,11 @@ describe('arbitrerMoteurs : moteurs', () => {
     expect(r.aAjouter).toEqual([])
   })
 
-  it('adresse non https ou sans %s : ignorée', () => {
+  it('adresse non https ou sans %s (ou avec %s dans l’hôte) : ignorée', () => {
     const r = arbitrerMoteurs({ ...base, moteurs: [perso('A', 'a1', 'http://a.example/?q=%s'), perso('B', 'b1', 'ftp://b.example/%s'), perso('C', 'c1', 'https://c.example/')] })
-    expect(r.aAjouter.map((m) => m.motCle)).toEqual(['a1'])
-    expect(r.ignores).toBe(2)
+    // Mêmes règles que le validateur des réglages : un moteur qu'il refuserait est « ignoré », jamais « ajouté ».
+    expect(r.aAjouter).toEqual([])
+    expect(r.ignores).toBe(3)
   })
 
   it('moteur par défaut : Chromium (parDefaut) et Firefox (intégré)', () => {
