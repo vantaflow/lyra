@@ -18,7 +18,7 @@ export function installerPasserellesIpc(p: Passerelles, estPrivee: (wc: WebConte
   }
   handle('passerelles:etat', () => p.etat())
   handle('passerelles:ajouter', (d, e) => modifier(e.sender, () => p.ajouter(texte(d?.hote))))
-  handle('passerelles:retirer', (d) => p.retirer(texte(d?.hote)))
+  handle('passerelles:retirer', (d, e) => modifier(e.sender, () => p.retirer(texte(d?.hote))))
   handle('passerelles:basculerSite', (d, e) => modifier(e.sender, () => p.basculerSite(texte(d?.hote))))
   handle('passerelles:tester', () => p.tester())
   handle('passerelles:personnelle', (d) => {
