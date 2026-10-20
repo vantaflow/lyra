@@ -1,6 +1,7 @@
-import { app, BaseWindow, ipcMain, powerMonitor, Notification as NotificationSysteme, webContents, type WebContents, type WebFrameMain, protocol, session, type Session } from 'electron'
+import { app, BaseWindow, dialog, ipcMain, powerMonitor, Notification as NotificationSysteme, webContents, type WebContents, type WebFrameMain, protocol, session, type Session } from 'electron'
+import { readFileSync } from 'node:fs'
 import { WindowManager } from './window/WindowManager'
-import type { Settings, SkyState } from '../shared/types'
+import type { ExtensionEnAttente, Settings, SkyState } from '../shared/types'
 import { join } from 'node:path'
 import * as paths from './paths'
 import { definirFournisseurLangue } from '../shared/i18n'
@@ -15,6 +16,7 @@ import { History } from './history/History'
 import { Bookmarks } from './bookmarks/Bookmarks'
 import { Downloads } from './downloads/Downloads'
 import { installerReglagesIpc } from './settings/ipc'
+import { patchPage } from './settings/import'
 import { installerImportIpc } from './import/ipc'
 import { installerExportIpc } from './export/ipc'
 import { enTest } from './modeTest'
@@ -45,12 +47,25 @@ import { resoudre } from './settings/sites'
 import { Dnd, type NotificationRetenue } from './dnd/Dnd'
 import { origineDe, type Shields } from './shields/Shields'
 import type { DureeDnd } from '../shared/ipc'
+import { creerExtensions, type Extensions } from './extensions/Extensions'
+import { creerChargeur } from './extensions/chargeur'
+import { creerRegistre, migrerSourceUbo } from './extensions/registre'
+import { installerExtensionsIpc } from './extensions/ipc'
+import { creerInstallateurChrome } from './extensions/chrome'
+import { creerMiseAJour } from './extensions/miseAJour'
+import { creerInstallateurFirefox } from './extensions/firefox'
+import { svgVersPng } from './extensions/icones'
+import { appliquerStubs, type ShimsStubs } from './extensions/stubs'
+import { collecterStubs, creerJournal, enregistrerMessageConsole, lireRapportConversion } from './extensions/journal'
+import { installerFixtures } from './extensions/fixturesTest'
 
 definirFournisseurLangue(() => app.getLocale())
 app.setPath('userData', paths.userData())
 
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'lyra', privileges: { standard: true, secure: true, supportFetchAPI: true, codeCache: true } }
+  { scheme: 'lyra', privileges: { standard: true, secure: true, supportFetchAPI: true, codeCache: true } },
+  // Icônes d'action des extensions (<browser-action-list>) ; electron-chrome-extensions l'enregistre aussi, mais un second appel remplace le premier.
+  { scheme: 'crx', privileges: { bypassCSP: true } }
 ])
 
 let reglagesCourants: () => Settings = () => {
@@ -62,6 +77,8 @@ const onglets = new Map<number, TabManager>()
 let historique: History | undefined
 let sessionStore: SessionStore | undefined
 let passerelles: Passerelles | undefined
+/** Extensions (chrome.tabs) : absent tant que le démarrage n'a pas fini de les brancher. */
+let extensionsLyra: Extensions | undefined
 const privees = new Set<number>()
 /** Équipe une session privée (UA, permissions, téléchargements, Boucliers, passerelles) ; fourni au démarrage : une fenêtre privée ouverte avant attend, jamais de repli sur la session persistante. */
 let fournirEquipementPrive: (equiper: (ses: Session) => Promise<void>) => void = () => undefined
@@ -176,7 +193,7 @@ function ongletsDe(wc: WebContents): TabManager {
   return m
 }
 
-function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSession): void {
+function creerFenetre(opts: { privee?: boolean; urlInitiale?: string } = {}, restauration?: FenetreSession): BaseWindow {
   const fenetre = manager.creerFenetre(opts)
   // Fenêtre privée : session mémoire à elle (cookies, cache, stockage jetés à la fermeture).
   // Toujours créée, jamais de repli sur `persist:lyra` : la première navigation attend l'équipement (démarrage compris).
@@ -206,7 +223,16 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
       surEchap: () => dnd.sortir(fenetre.id),
       basculerDnd: () => basculerDnd(fenetre.id),
       retenirPopup: (p) => dnd.retenirPopup(fenetre.id, p),
-      couleurFavicon: (wc, url) => (reglagesCourants().couleurs.cielTeinteParSite ? couleurFaviconEnCache(wc, url) : Promise.resolve(null))
+      couleurFavicon: (wc, url) => (reglagesCourants().couleurs.cielTeinteParSite ? couleurFaviconEnCache(wc, url) : Promise.resolve(null)),
+      // Jamais d'extensions en fenêtre privée.
+      extensions:
+        opts.privee || !extensionsLyra
+          ? undefined
+          : {
+              ajouter: (wc, win) => extensionsLyra?.addTab(wc, win),
+              retirer: (wc) => extensionsLyra?.removeTab(wc),
+              selectionner: (wc) => extensionsLyra?.selectTab(wc)
+            }
     }
   )
   // Une demande de permission ne survit pas à un changement de route ou à la fermeture de l'overlay.
@@ -230,7 +256,8 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
     void equipement.catch(echecEquipement)
   }
   // Une session privée est équipée (PAC compris) avant la première navigation : aucune requête ne part sans passerelle.
-  else void equipement.then(() => !fenetre.win.isDestroyed() && tabs.ouvrir('lyra://newtab')).catch(echecEquipement)
+  else void equipement.then(() => !fenetre.win.isDestroyed() && tabs.ouvrir(opts.urlInitiale ?? 'lyra://newtab')).catch(echecEquipement)
+  return fenetre.win
 }
 
 /** Fermeture d'une fenêtre privée : plus rien ne subsiste de sa session. */
@@ -392,6 +419,7 @@ void app.whenReady().then(async () => {
   handle('downloads:reveal', ({ id }) => telechargements.afficherDansDossier(id))
   handle('downloads:clear', () => telechargements.effacerListe())
   handle('downloads:panel', (_d, e) => ongletsDe(e.sender).ouvrirOverlay('downloads'))
+  handle('extensions:panel', (_d, e) => ongletsDe(e.sender).ouvrirOverlay('extensions'))
   handle('layout:get', (_d, event) => {
     const f = manager.deWebContents(event.sender) ?? manager.premiere()
     if (!f) throw new Error('aucune fenêtre')
@@ -496,7 +524,7 @@ void app.whenReady().then(async () => {
     if (m && origine && typeof id === 'number' && dnd.retirerNotification(m.fenetreId, id, origine)) cadresNotifications.delete(id)
   })
   handle('settings:get', () => reglages.getSettings())
-  handle('settings:set', (patch) => reglages.setSettings(patch))
+  handle('settings:set', (patch, e) => reglages.setSettings(patchPage(patch, { privee: estPrivee(e.sender) })))
   installerReglagesIpc(reglages)
   installerTheme({ reglages, estPrivee })
   // Importation depuis un autre navigateur : les onglets importés vont toujours dans une fenêtre NORMALE.
@@ -571,6 +599,175 @@ void app.whenReady().then(async () => {
   installerSites({ reglages, estPrivee })
   // Le PAC initial est en place avant toute fenêtre (une étoile restaurée ne part pas en direct).
   await pass.demarrer()
+  // Extensions : branchées et chargées avant la création de la moindre vue (donc de la première fenêtre).
+  const baseExtensions = join(paths.userData(), 'extensions')
+  const sessionLyra = session.fromPartition('persist:lyra')
+  extensionsLyra = creerExtensions({
+    session: sessionLyra,
+    sessionUI: session.defaultSession,
+    tabs: {
+      ouvrir: (url, o) => {
+        // Les extensions n'ouvrent que des pages web ou leurs propres pages (options, popups) : ni lyra:// ni file://.
+        if (!/^(https?|chrome-extension):/i.test(url)) return undefined
+        const m = (o.fenetreId !== undefined ? onglets.get(o.fenetreId) : undefined) ?? ongletsCourants()
+        const f = m && manager.fenetre(m.fenetreId)
+        if (!m || !f || privees.has(m.fenetreId)) return undefined
+        const wc = m.webContentsDe(m.ouvrir(url, { actif: o.actif }))
+        return wc ? { wc, win: f.win } : undefined
+      },
+      activer: (wc) => {
+        const m = ongletsPossedant(wc)
+        const id = m?.idDe(wc)
+        if (m && id) m.activer(id)
+      },
+      fermer: (wc) => {
+        const m = ongletsPossedant(wc)
+        const id = m?.idDe(wc)
+        if (m && id) m.fermer(id)
+      }
+    },
+    fenetres: {
+      creer: (url) => {
+        // L'adresse demandée remplace l'étoile « nouvel onglet » de départ (pas d'étoile en trop).
+        return creerFenetre({ urlInitiale: url && /^https?:/i.test(url) ? url : undefined })
+      },
+      fermer: (win) => {
+        if (!win.isDestroyed()) win.close()
+      }
+    }
+  })
+  const registreExtensions = creerRegistre(reglages)
+  if (enTest() && process.env.LYRA_EXTENSIONS_FIXTURES) {
+    installerFixtures(process.env.LYRA_EXTENSIONS_FIXTURES, baseExtensions, registreExtensions)
+  }
+  // uBlock Origin d'avant la source « ubo » (enregistré en « zip », reconnu à son nom) : migré avant tout chargement.
+  migrerSourceUbo(registreExtensions)
+  // Polyfill WebExtensions embarqué (webextension-polyfill 0.12.0, copié dans resources/extensions) : même convention que les listes des Boucliers.
+  const dossierShims = join(app.isPackaged ? join(process.resourcesPath, 'resources') : join(app.getAppPath(), 'resources'), 'extensions')
+  const polyfillExtensions = join(dossierShims, 'browser-polyfill.js')
+  const shimsExtensions: ShimsStubs = { head: join(dossierShims, 'shim-head.js'), post: join(dossierShims, 'shim-post.js') }
+  // Journal de compatibilité : chargement (API manquantes, redondance), console des pages d'extension, comptage des API stubées.
+  const journalExtensions = creerJournal({ dossier: join(baseExtensions, 'journal') })
+  const pagesExtension = (): Electron.WebContents[] => webContents.getAllWebContents().filter((w) => w.getURL().startsWith('chrome-extension://'))
+  app.on('web-contents-created', (_e, wc) => {
+    wc.once('destroyed', () => journalExtensions.oublierPage(wc.id))
+    wc.on('console-message', (d) => enregistrerMessageConsole(journalExtensions, wc.getURL() || d.sourceId, d.level, d.message))
+  })
+  const releveStubs = setInterval(() => void collecterStubs({ journal: journalExtensions, pages: pagesExtension }), 5000)
+  releveStubs.unref()
+  app.on('will-quit', () => clearInterval(releveStubs))
+  const lireJson = (chemin: string): Record<string, unknown> | undefined => {
+    try {
+      return JSON.parse(readFileSync(chemin, 'utf8')) as Record<string, unknown>
+    } catch {
+      return undefined
+    }
+  }
+  const chargeurExtensions = creerChargeur({
+    extensions: sessionLyra.extensions,
+    // Comme Chrome : les étoiles qui montrent une page de l'extension se ferment avant son retrait (sous Windows, retirer
+    // une extension dont une page est ouverte bloque le processus principal).
+    avantRetrait: async (idElectron) => {
+      const pages = webContents.getAllWebContents().filter((w) => !w.isDestroyed() && w.getURL().startsWith(`chrome-extension://${idElectron}/`))
+      await Promise.all(
+        pages.map((wc) => {
+          const m = ongletsPossedant(wc)
+          const idEtoile = m?.idDe(wc)
+          if (!m || !idEtoile) return undefined
+          const fermee = new Promise<void>((r) => {
+            wc.once('destroyed', () => r())
+            setTimeout(r, 1000).unref()
+          })
+          m.fermer(idEtoile)
+          return fermee
+        })
+      )
+    },
+    registre: registreExtensions,
+    base: baseExtensions,
+    // Extensions déjà installées avant la tâche 4 : stubs posés au premier chargement (marqueur manquant).
+    avantChargement: (_e, dossier) => {
+      const m = lireJson(join(dossier, 'manifest.json'))
+      if (m) appliquerStubs(dossier, m, shimsExtensions)
+    },
+    apresChargement: (e, dossier) => {
+      const manifest = lireJson(join(dossier, 'manifest.json'))
+      if (!manifest) return
+      const autres = registreExtensions
+        .lister()
+        .filter((x) => x.id !== e.id && x.active)
+        .flatMap((x) => {
+          const mx = lireJson(join(baseExtensions, x.dossier, 'manifest.json'))
+          return mx ? [{ nom: x.nom, manifest: mx }] : []
+        })
+      // Rapport de conversion : seulement pour les sources Firefox, validé (taille, forme).
+      const lu = e.source === 'amo' || e.source === 'xpi' ? lireRapportConversion(join(dossier, 'lyra-conversion.json')) : {}
+      journalExtensions.enregistrerChargement(e.id, { manifest, autres, ...(lu.rapport ? { conversion: lu.rapport } : {}) })
+      if (lu.avertissement) journalExtensions.avertissement(e.id, lu.avertissement)
+    }
+  })
+  const installateurChrome = creerInstallateurChrome({ base: baseExtensions, registre: registreExtensions, chargeur: chargeurExtensions, shims: shimsExtensions })
+  const installateurFirefox = creerInstallateurFirefox({ base: baseExtensions, registre: registreExtensions, chargeur: chargeurExtensions, polyfill: polyfillExtensions, shims: shimsExtensions, svgVersPng })
+  const miseAJourExtensions = creerMiseAJour({
+    registre: registreExtensions,
+    reglages,
+    versionDistanteAmo: installateurFirefox.versionDistanteAmo,
+    mettreAJourAmo: installateurFirefox.mettreAJourAmo,
+    versionDistanteCws: installateurChrome.versionDistanteCws,
+    mettreAJourCws: installateurChrome.mettreAJourCws,
+    derniereVersionUbo: installateurChrome.derniereVersionUbo,
+    installerUbo: installateurChrome.installerUbo,
+    delaiDemarrageMs: 15_000
+  })
+  installerExtensionsIpc({
+    chargeur: chargeurExtensions,
+    installateur: installateurChrome,
+    firefox: installateurFirefox,
+    miseAJour: miseAJourExtensions,
+    journal: journalExtensions,
+    pagesExtension,
+    modeTest: enTest(),
+    diffuser: (canal, data) => {
+      // Jamais vers une fenêtre privée (la progression d'un import ne la concerne pas).
+      for (const wc of webContents.getAllWebContents()) {
+        const url = wc.isDestroyed() ? '' : wc.getURL()
+        if ((url.startsWith('lyra://') || url.includes('ui.html')) && !estPrivee(wc)) envoyer(wc, canal, data)
+      }
+    },
+    // E2e : installateurs simulés (aucun accès réseau) — « b… » échoue, le reste s'installe.
+    installateursFileTest:
+      enTest() && process.env.LYRA_FILE_SIMULEE === '1'
+        ? {
+            chrome: async (id) => (id.startsWith('b') ? { etat: 'erreur', raison: 'Hors ligne (simulé).' } : { etat: 'installee', id, nom: `Simulée ${id.slice(0, 4)}`, version: '1.0' }),
+            firefox: async (id) => ({ etat: 'installee', id, nom: `Simulée ${id}`, version: '1.0' })
+          }
+        : undefined,
+    // Chrome, overlay ou étoile (lyra://extensions comprise) : la fenêtre privée est reconnue dans les trois cas.
+    estPrivee,
+    // File d'import du jalon E : `settings.import.extensionsEnAttente`, lue et réécrite par le processus principal seul
+    // (une page ne peut pas l'écrire : `patchPage`). Les tableaux sont remplacés, pas fusionnés.
+    lireFile: () => reglages.getSettings().import.extensionsEnAttente,
+    ecrireFile: (restantes) => void reglages.setSettings({ import: { extensionsEnAttente: restantes as ExtensionEnAttente[] } } as Partial<Settings>),
+    lireManifest: (e) => lireJson(join(baseExtensions, e.dossier, 'manifest.json')),
+    ouvrirEtoile: (wc, url) => (ongletsPossedant(wc) ?? ongletsDe(wc)).ouvrir(url),
+    ecrireRegleSite: (origine, id, active) => void reglages.setSettings({ sites: { [origine]: { extensions: { [id]: active } } } }),
+    choisir: async (wc, quoi) => {
+      // En mode test, pas de dialogue natif : le test fournit le chemin.
+      if (enTest() && process.env.LYRA_CHOIX_EXTENSION) return process.env.LYRA_CHOIX_EXTENSION
+      const f = manager.deWebContents(wc)
+      // macOS accepte un fichier ou un dossier dans le même dialogue ; ailleurs, deux dialogues distincts.
+      const options: Electron.OpenDialogOptions =
+        quoi === 'dossier'
+          ? { title: "Choisir le dossier de l'extension", properties: ['openDirectory'] }
+          : { title: "Choisir une extension (.crx, .zip, .xpi ou dossier)", properties: process.platform === 'darwin' ? ['openFile', 'openDirectory'] : ['openFile'], filters: [{ name: 'Extensions', extensions: ['crx', 'zip', 'xpi'] }] }
+      const r = f ? await dialog.showOpenDialog(f.win, options) : await dialog.showOpenDialog(options)
+      return r.canceled ? undefined : r.filePaths[0]
+    }
+  })
+  await chargeurExtensions.chargerAuDemarrage()
+  // Mises à jour : jamais sous test (pas de réseau inattendu), et seulement si le réglage est actif.
+  if (!enTest()) miseAJourExtensions.demarrer()
+  app.on('will-quit', () => miseAJourExtensions.arreter())
   if (enTest()) {
     handle('test:navigate', async (url) => {
       const m = ongletsCourants()
@@ -579,6 +776,11 @@ void app.whenReady().then(async () => {
     })
     handle('test:endormir', (id) => ongletsCourants()?.endormir(id) ?? false)
     handle('test:livraisons', () => livraisonsTest)
+    // Pose (si fournie) puis rend la vraie file d'import des réglages (validée comme n'importe quel réglage).
+    handle('test:fileImport', (liste) => {
+      if (Array.isArray(liste)) reglages.setSettings({ import: { extensionsEnAttente: liste } } as Partial<Settings>)
+      return reglages.getSettings().import.extensionsEnAttente
+    })
   }
   handle('tabs:open', (d, e) => ongletsDe(e.sender).ouvrir(d.url, { parentId: d.parentId, actif: d.actif }))
   handle('tabs:close', (d, e) => ongletsDe(e.sender).fermer(d.id))
@@ -652,7 +854,7 @@ void app.whenReady().then(async () => {
     }
     m.ancrerMenu(ancre)
   })
-  const ACTIONS: ActionMenu[] = ['nouvelle-etoile', 'nouvelle-fenetre', 'fenetre-privee', 'favori', 'recherche', 'imprimer', 'devtools', 'historique', 'reglages']
+  const ACTIONS: ActionMenu[] = ['nouvelle-etoile', 'nouvelle-fenetre', 'fenetre-privee', 'favori', 'recherche', 'imprimer', 'devtools', 'historique', 'extensions', 'reglages']
   handle('menu:action', ({ action }, e) => {
     if (!ACTIONS.includes(action)) return
     const m = ongletsDe(e.sender)
@@ -665,6 +867,7 @@ void app.whenReady().then(async () => {
     else if (action === 'imprimer') m.imprimer()
     else if (action === 'devtools') m.outilsDeveloppement()
     else if (action === 'historique') m.ouvrir('lyra://history')
+    else if (action === 'extensions') m.ouvrir('lyra://extensions')
     else m.ouvrir('lyra://settings')
   })
   installerPalette({ ongletsDe, historique: hist, favoris, reglages: () => reglages.getSettings(), creerFenetre,

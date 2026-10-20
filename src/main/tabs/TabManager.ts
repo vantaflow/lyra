@@ -1,4 +1,4 @@
-import { WebContentsView, session, type Session, type WebContents } from 'electron'
+import { WebContentsView, session, type BaseWindow, type Session, type WebContents } from 'electron'
 import type { LyraWindow } from '../window/WindowManager'
 import { PRELOAD_INTERNAL, PRELOAD_PAGE } from '../preloads'
 import { envoyer } from '../ipc'
@@ -72,6 +72,12 @@ export interface OptionsTabs {
   couleurFavicon?: (wc: WebContents, url: string) => Promise<string | null>
   /** `Settings.raccourcis` courant (commande → accélérateur, vide = défaut) : les raccourcis de page suivent les réglages. */
   raccourcis?: () => Record<string, string>
+  /** Extensions : suivi des étoiles web (chrome.tabs) ; absent pour une fenêtre privée (jamais d'extensions). */
+  extensions?: {
+    ajouter(wc: WebContents, win: BaseWindow): void
+    retirer(wc: WebContents): void
+    selectionner(wc: WebContents): void
+  }
 }
 
 export class TabManager {
@@ -95,7 +101,7 @@ export class TabManager {
     fenetre.win.on('closed', () => {
       clearTimeout(this.minuteur)
       for (const t of this.minuteursSommeil.values()) clearTimeout(t)
-      for (const v of this.vues.values()) if (!v.webContents.isDestroyed()) v.webContents.close()
+      for (const v of this.vues.values()) this.fermerVue(v)
       this.vues.clear()
     })
   }
@@ -150,7 +156,7 @@ export class TabManager {
     this.minuteursSommeil.delete(id)
     if (vue) {
       this.fenetre.win.contentView.removeChildView(vue)
-      if (!vue.webContents.isDestroyed()) vue.webContents.close()
+      this.fermerVue(vue)
     }
     if (this.tree.toJSON().stars.length === 0) {
       this.fenetre.setPageView(null)
@@ -172,7 +178,22 @@ export class TabManager {
     if (precedent && precedent !== id) this.armer(precedent)
     this.fenetre.setPageView(vue)
     vue.webContents.focus()
+    this.options.extensions?.selectionner(vue.webContents)
     this.notifier()
+  }
+
+  /** Ferme la page d'une vue : les extensions cessent d'abord de la suivre (le webContents doit encore exister). */
+  private fermerVue(vue: WebContentsView): void {
+    const wc = vue.webContents
+    if (wc.isDestroyed()) return
+    this.options.extensions?.retirer(wc)
+    wc.close()
+  }
+
+  /** WebContents d'une étoile, s'il existe (étoile éveillée). */
+  webContentsDe(id: string): WebContents | undefined {
+    const wc = this.vues.get(id)?.webContents
+    return wc && !wc.isDestroyed() ? wc : undefined
   }
 
   naviguer(id: string, url: string): void {
@@ -197,7 +218,7 @@ export class TabManager {
       this.fenetre.setPageView(vue)
       vue.webContents.focus()
     }
-    if (!ancienne.webContents.isDestroyed()) ancienne.webContents.close()
+    this.fermerVue(ancienne)
     this.notifier()
     return vue
   }
@@ -331,7 +352,7 @@ export class TabManager {
     this.vues.delete(id)
     this.extras.delete(id)
     this.fenetre.win.contentView.removeChildView(vue)
-    wc.close()
+    this.fermerVue(vue)
     this.notifier()
     return true
   }
@@ -541,6 +562,8 @@ export class TabManager {
       }
     })
     const wc = vue.webContents
+    // Les extensions suivent les pages web de cette fenêtre (chrome.tabs) ; jamais les pages lyra://.
+    if (!interne) this.options.extensions?.ajouter(wc, this.fenetre.win)
     // Navigation lancée par la page : jamais d'un site vers lyra:// ; une page interne qui ouvre un site
     // passe par naviguer(), qui recrée la vue avec le preload web (window.lyra n'est jamais exposé à un site).
     const garde = (e: { url: string; preventDefault(): void }, relancer: boolean): void => {

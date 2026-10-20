@@ -162,4 +162,59 @@ describe('paquet .lyra', () => {
     const z = unzipSync(await dechiffrer(await creerPaquet(sources(), PHRASE), PHRASE))
     expect(z['manifest.json']).toBeDefined()
   })
+
+  describe('extensions installées', () => {
+    const inst = (id: string, nom: string, source: 'cws' | 'amo' | 'crx' | 'zip' | 'dossier' | 'xpi', magasin: 'chrome' | 'firefox' | 'inconnu', active = true) => ({
+      id, nom, version: '1.2.3', source, magasin, dossier: `${id}/1.2.3`, active, installeeLe: '2026-10-19T10:00:00.000Z', miseAJourLe: '2026-10-19T10:00:00.000Z'
+    })
+    const avecInstallees = (): SourcesPaquet => {
+      const s = sources()
+      s.reglages.extensions.installees = [
+        inst('b'.repeat(32), 'Catalogue Chrome', 'cws', 'chrome'),
+        inst('dark-reader', 'Dark Reader', 'amo', 'firefox', false),
+        inst('c'.repeat(32), 'Locale', 'dossier', 'inconnu')
+      ]
+      return s
+    }
+
+    it('extensions.json liste id, nom, magasin, source, version, active ; jamais le dossier ni les binaires', async () => {
+      const z = unzipSync(await construireZip(avecInstallees()))
+      const j = JSON.parse(new TextDecoder().decode(z['extensions.json']))
+      expect(j.installees).toEqual([
+        { id: 'b'.repeat(32), nom: 'Catalogue Chrome', magasin: 'chrome', source: 'cws', version: '1.2.3', active: true },
+        { id: 'dark-reader', nom: 'Dark Reader', magasin: 'firefox', source: 'amo', version: '1.2.3', active: false },
+        { id: 'c'.repeat(32), nom: 'Locale', magasin: 'inconnu', source: 'dossier', version: '1.2.3', active: true }
+      ])
+      expect(j.enAttente).toEqual([{ id: 'a'.repeat(32), nom: 'Ext', magasin: 'chrome', actif: true }])
+      expect(new TextDecoder().decode(z['reglages.json'])).not.toContain(`${'b'.repeat(32)}/1.2.3`)
+      expect(new TextDecoder().decode(z['extensions.json'])).not.toContain('1.2.3/')
+      expect(JSON.parse(new TextDecoder().decode(z['manifest.json'])).comptes.extensions).toBe(4)
+    })
+
+    it('à la lecture, les extensions de catalogue vont dans la file (jamais installées), les locales sont signalées', async () => {
+      const c = await lirePaquet(await creerPaquet(avecInstallees(), PHRASE), PHRASE)
+      expect(c.extensions).toEqual([
+        { id: 'a'.repeat(32), nom: 'Ext', magasin: 'chrome', actif: true },
+        { id: 'b'.repeat(32), nom: 'Catalogue Chrome', magasin: 'chrome', actif: true },
+        { id: 'dark-reader', nom: 'Dark Reader', magasin: 'firefox', actif: false }
+      ])
+      expect(c.avertissements.join(' ')).toMatch(/Locale.*(non réinstallable|à la main)/)
+      expect(c.reglages.extensions).toEqual({ majAuto: true })
+    })
+
+    it('un ancien paquet (extensions.json en tableau) se lit toujours', async () => {
+      const z = unzipSync(await construireZip(sources()))
+      z['extensions.json'] = new TextEncoder().encode(JSON.stringify([{ id: 'a'.repeat(32), nom: 'Ext', magasin: 'chrome', actif: true }]))
+      const { zipSync } = await import('fflate')
+      const c = await lirePaquet(await chiffrer(zipSync(z), PHRASE), PHRASE)
+      expect(c.extensions).toEqual([{ id: 'a'.repeat(32), nom: 'Ext', magasin: 'chrome', actif: true }])
+    })
+
+    it('une entrée de catalogue sans doublon avec la file (même id et magasin)', async () => {
+      const s = avecInstallees()
+      s.reglages.import.extensionsEnAttente = [{ id: 'b'.repeat(32), nom: 'Catalogue Chrome', magasin: 'chrome', actif: true, source: 'chrome', date: 1 }]
+      const c = await lirePaquet(await creerPaquet(s, PHRASE), PHRASE)
+      expect(c.extensions.filter((e) => e.id === 'b'.repeat(32))).toHaveLength(1)
+    })
+  })
 })

@@ -51,14 +51,15 @@ describe('migrer', () => {
 
   it('moteursPerso, import et extensions (B/E) traversent la migration', () => {
     const moteurs = [{ id: 'm1', nom: 'Wiki', motCle: 'w', url: 'https://w.fr/?q=%s' }]
-    const extensions = { installees: [{ id: 'a'.repeat(32), nom: 'X' }], majAuto: true, derniereVerification: 12 }
+    const installee = { id: 'a'.repeat(32), nom: 'X', version: '1.0.0', source: 'zip', magasin: 'chrome', dossier: `${'a'.repeat(32)}/1.0.0`, active: true, installeeLe: '2026-10-19T10:00:00.000Z', miseAJourLe: '2026-10-19T10:00:00.000Z' }
+    const extensions = { installees: [installee], majAuto: true, derniereVerification: '2026-10-19T10:00:00.000Z' }
     const imp = { extensionsEnAttente: [], reglagesEnAttente: { pageAccueil: 'https://a.fr' } }
     const { settings } = migrer({ ...v1, moteursPerso: moteurs, extensions, import: imp, sites: { 'https://a.fr': { zoom: 1.5, extensions: { ['b'.repeat(32)]: false } } } }, defauts) as { settings: Record<string, any> }
     expect(settings.moteursPerso).toEqual(moteurs)
     expect(settings.extensions).toEqual(extensions)
     expect(settings.import).toEqual(imp)
-    // `sites[…].extensions` (jalon B) est retiré par le valideur de sites tant que B n'apporte pas le sien.
-    expect((settings.sites as Record<string, any>)['https://a.fr']).toEqual({ zoom: 1.5 })
+    // `sites[…].extensions` (jalon B) : validé par `reglesExtensions` dans le valideur de sites, il traverse la migration.
+    expect((settings.sites as Record<string, any>)['https://a.fr']).toEqual({ zoom: 1.5, extensions: { ['b'.repeat(32)]: false } })
   })
 
   it('est idempotente', () => {
@@ -89,7 +90,8 @@ describe('persistance', () => {
     expect(disque.version).toBe(2)
     expect(disque.theme).toBe('clair')
     expect(disque.futur).toEqual({ a: 1 })
-    expect(disque.extensions).toEqual({ majAuto: false })
+    // `extensions` est connu depuis le jalon B : le registre absent prend son défaut, `majAuto` est conservé.
+    expect(disque.extensions).toEqual({ installees: [], majAuto: false })
   })
 
   it('un fichier JSON invalide donne les défauts, un avertissement et une copie .corrompu', () => {

@@ -4,6 +4,7 @@ import { hoteValide, octets } from '../passerelles/liste'
 import { SCHEMA_D, booleen, champsRegleSiteD, entier, enumeration, estObjet, pixels, propre, texte, type Obj, type Schema } from './validate-d'
 import { migrer } from './migrations'
 import { cleCanonique } from './sites'
+import { validerInstallees } from '../extensions/registre'
 
 export type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K] }
 
@@ -22,7 +23,22 @@ function permissions(v: unknown): Obj | undefined {
   return Object.keys(sortie).length > 0 ? sortie : undefined
 }
 
-/** sites : { clé (origine, hôte nu ou motif `*.hôte`, voir `cleDe`): { boucliers?, permissions?, zoom?, exceptionDnd?, + champs de D } } ; champs et entrées invalides ignorés. */
+const MAX_REGLES_EXTENSIONS = 100
+/** Règle par site des extensions : { identifiant (32 lettres a-p) : booléen } ; entrées invalides ignorées. */
+function reglesExtensions(v: unknown): Obj | undefined {
+  if (!estObjet(v)) return undefined
+  const sortie: Obj = {}
+  let n = 0
+  for (const [id, actif] of Object.entries(v)) {
+    if (n >= MAX_REGLES_EXTENSIONS) break
+    if (!/^[a-p]{32}$/.test(id) || typeof actif !== 'boolean') continue
+    sortie[id] = actif
+    n++
+  }
+  return Object.keys(sortie).length > 0 ? sortie : undefined
+}
+
+/** sites : { clé (origine, hôte nu ou motif `*.hôte`, voir `cleDe`): { boucliers?, permissions?, zoom?, exceptionDnd?, extensions?, + champs de D } } ; champs et entrées invalides ignorés. */
 function sites(v: unknown): Obj | undefined {
   if (!estObjet(v)) return undefined
   const sortie: Obj = {}
@@ -40,6 +56,8 @@ function sites(v: unknown): Obj | undefined {
     // Absent par défaut ; false annule une exception déjà accordée.
     const exceptionDnd = booleen(propre(regle, 'exceptionDnd'))
     if (exceptionDnd !== undefined) champs.exceptionDnd = exceptionDnd
+    const ext = reglesExtensions(propre(regle, 'extensions'))
+    if (ext) champs.extensions = ext
     if (Object.keys(champs).length === 0) continue
     // Deux clés qui se confondent (casse, port par défaut, point final) : la dernière écrite gagne.
     if (cle in sortie) delete sortie[cle]
@@ -166,6 +184,11 @@ const SCHEMA: Schema = {
     auto: booleen,
     sites: sitesContournes,
     personnelle
+  },
+  extensions: {
+    installees: validerInstallees,
+    majAuto: booleen,
+    derniereVerification: texte(40, /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/)
   },
   ...SCHEMA_D
 }

@@ -17,6 +17,7 @@ export function reglagesParDefaut(dossierTelechargements: string): Settings {
     moteursPerso: [],
     import: { extensionsEnAttente: [], reglagesEnAttente: {} },
     reseau: { passerelles: true, auto: true, sites: [] },
+    extensions: { installees: [], majAuto: true },
     ...reglagesParDefautD()
   }
 }

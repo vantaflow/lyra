@@ -183,7 +183,7 @@ test('le menu ⋯ de la capsule s’ouvre sous le bouton et agit', async () => {
     await fenetre.getByRole('button', { name: 'Menu de la page' }).click()
     await expect.poll(() => overlay(app) !== undefined).toBe(true)
     const o = overlay(app)!
-    await expect(o.getByRole('menuitem')).toHaveCount(12)
+    await expect(o.getByRole('menuitem')).toHaveCount(13)
     await expect(o.getByRole('menuitem', { name: /Règles pour/ })).toBeVisible()
     await o.getByRole('button', { name: 'Zoom avant' }).click()
     await expect(o.getByRole('button', { name: 'Revenir à 100 %' })).toHaveText('110 %')

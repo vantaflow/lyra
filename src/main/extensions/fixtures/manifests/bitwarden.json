@@ -1,0 +1,32 @@
+{
+  "manifest_version": 2,
+  "name": "Bitwarden Password Manager",
+  "short_name": "Bitwarden",
+  "version": "2024.6.2",
+  "description": "A secure and free password manager for all of your devices.",
+  "browser_specific_settings": { "gecko": { "id": "{446900e4-71c2-419f-a6a7-df9c091e268b}", "strict_min_version": "102.0" } },
+  "icons": { "16": "images/icon16.png", "48": "images/icon48.png", "128": "images/icon128.png" },
+  "content_security_policy": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
+  "background": { "page": "background.html", "persistent": true },
+  "browser_action": {
+    "browser_style": false,
+    "default_icon": { "19": "images/icon19.png", "38": "images/icon38.png" },
+    "default_title": "Bitwarden",
+    "default_popup": "popup/index.html"
+  },
+  "sidebar_action": { "default_title": "Bitwarden", "default_panel": "popup/index.html?uilocation=sidebar", "default_icon": "images/icon19.png", "open_at_install": false, "browser_style": false },
+  "commands": {
+    "_execute_browser_action": { "suggested_key": { "default": "Alt+Shift+Y" }, "description": "Open the extension popup" },
+    "_execute_sidebar_action": { "suggested_key": { "default": "Alt+Shift+S" } },
+    "autofill_login": { "suggested_key": { "default": "Ctrl+Shift+L" }, "description": "Auto-fill the last used login for the current website" },
+    "generate_password": { "suggested_key": { "default": "Ctrl+Shift+9" }, "description": "Generate and copy a new random password to the clipboard" },
+    "lock_vault": { "description": "Lock the vault" }
+  },
+  "content_scripts": [
+    { "all_frames": true, "js": ["content/trigger-autofill-script-injection.js"], "matches": ["http://*/*", "https://*/*", "file:///*"], "run_at": "document_start" },
+    { "all_frames": true, "js": ["content/bootstrap-autofill.js"], "matches": ["http://*/*", "https://*/*", "file:///*"], "run_at": "document_start" }
+  ],
+  "permissions": ["<all_urls>", "*://*/*", "tabs", "contextMenus", "storage", "unlimitedStorage", "clipboardRead", "clipboardWrite", "idle", "webRequest", "webRequestBlocking", "webNavigation", "alarms", "notifications", "nativeMessaging", "browserSettings", "privacy", "downloads"],
+  "optional_permissions": ["nativeMessaging", "internal:emailAutofill"],
+  "web_accessible_resources": ["content/fido2/page-script.js", "notification/bar.html", "images/icon38.png"]
+}

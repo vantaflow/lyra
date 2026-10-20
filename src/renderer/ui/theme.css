@@ -1665,3 +1665,50 @@ html.dnd #app {
 .dnd-croissant:hover {
   background: #23234a;
 }
+
+/* ---- Panneau des extensions (Panneaux.dc.html, « Extensions — depuis le pied du ciel ») ---- */
+.pn-ext {
+  position: absolute;
+  width: min(360px, calc(100vw - 24px));
+  box-sizing: border-box;
+  background: var(--capsule-fond);
+  color: var(--texte);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(20, 20, 46, 0.18);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pn-ext-rangee {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px 8px;
+  min-height: 34px;
+  border-bottom: 1px solid var(--separateur);
+}
+.pn-ext-rangee browser-action-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  --browser-action-hover-bg: var(--survol-menu);
+}
+.pn-ext-rangee browser-action-list::part(action) {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background-size: 20px;
+}
+.pn-ext-rangee a {
+  font-size: 12.5px;
+  text-decoration: none;
+  color: var(--lien);
+}
+.pn-ext-rangee a:hover {
+  color: var(--teinte-accent-texte);
+}
+.pn-ext-vide {
+  color: var(--texte-secondaire);
+  font-size: 12.5px;
+}

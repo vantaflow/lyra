@@ -4,6 +4,15 @@ import { reglagesParDefaut } from './defaults'
 
 const defauts = reglagesParDefaut('/dl')
 
+describe('validerPatch : règle par site des extensions', () => {
+  const id = 'a'.repeat(32)
+  it('garde les booléens des identifiants valides, ignore le reste', () => {
+    expect(validerPatch({ sites: { 'https://yt.com': { extensions: { [id]: false, ['b'.repeat(32)]: true, nimporte: false, [`c`.repeat(32)]: 'non' } } } })).toEqual({
+      sites: { 'https://yt.com': { extensions: { [id]: false, ['b'.repeat(32)]: true } } }
+    })
+  })
+})
+
 describe('validerPatch', () => {
   it('garde les valeurs valides', () => {
     expect(validerPatch({ theme: 'sombre', ciel: { position: 'haut', largeur: 300 } })).toEqual({

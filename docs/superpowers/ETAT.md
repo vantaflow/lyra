@@ -1,6 +1,6 @@
 # Lyra — état d'avancement
 
-Dernière mise à jour : 2026-10-19 18:10 (arrêt du PC Windows à 18:30). **Jalon A et cycle 2 terminés** ; jalons C et E en cours en parallèle ; plans de B et D prêts.
+Dernière mise à jour : 2026-10-20. **Jalons A, C, E et B terminés et fusionnés dans `main`**, cycle 2 fait ; jalon D en cours sur la branche `jalon-d` (session ORION HELP, état dans `etat-jalon-d.md`).
 
 ## Le projet
 
@@ -81,18 +81,32 @@ Reste, à reprendre plus tard :
 
 Reste, à reprendre :
 - avant une release : un import réel dans l'application installée (l'application empaquetée ignore les profils de test) ; chien de garde du lecteur (aucun message pendant N minutes → arrêt) ; case « cookies » du paquet dans l'interface ;
-- à la fusion avec le jalon B : `patchPage` doit aussi retirer `import`, le paquet doit lister `extensions.installees` en plus de la file, renommer l'un des deux `EntreeImport`, régénérer `package-lock.json` (B ajoute `fflate` 0.8.3, E 0.8.2 : garder 0.8.3) ;
 - options d'import non proposées dans l'interface : une fenêtre par fenêtre importée, « faire de X le moteur par défaut », extensions imposées ;
 - mineurs détaillés dans le ledger SDD du jalon E (copie : `docs/superpowers/ledgers/jalon-e.md`).
 
-## Jalons B et D — plans prêts, rédigés par une session d'appoint
+## Jalon B — extensions Chrome et Firefox (fait, fusionné dans `main` le 2026-10-20)
 
-- **B — extensions Chrome et Firefox** : branche `jalon-b` (67dde31), `plans/2026-10-19-lyra-jalon-b.md`, 6 tâches. À relire, puis lancer.
-- **D — réglages complets, règles par site, couleurs** : branche `jalon-d` (94be3a2), `plans/2026-10-19-lyra-jalon-d.md`, 6 tâches. À relire, puis lancer après C, car il dépend des réglages de C.
+Plan `plans/2026-10-19-lyra-jalon-b.md`, état détaillé `etat-jalon-b.md`. Six tâches, chacune relue :
+1. noyau, registre et chargeur (`session.extensions`, `electron-chrome-extensions`) ;
+2. installation Chrome (Chrome Web Store, crx signé CRX3 vérifié, zip, dossier ; mises à jour faites par Lyra) ;
+3. Firefox (addons.mozilla.org, xpi) et convertisseur (MV3 converti, MV2 reste MV2, icônes SVG → PNG) ;
+4. stubs MV2 et journal de compatibilité ;
+5. page `lyra://extensions` et panneau d'icônes au pied du ciel (design `Extensions.dc.html` ; bouton « Dossier… » hors macOS gardé à la demande de l'utilisateur) ;
+6. file d'import (branchée sur `Settings.import.extensionsEnAttente` du jalon E), mise à jour automatique, finition.
+
+Relecture finale (Opus) puis corrections : fenêtre privée sans aucune action d'extension, registre écrit seulement par le processus principal, verrou par extension, provenance (catalogue ≠ local), `crx://` réservé à l'interface, file lue et réécrite par le processus principal (« Installer quand même » n'installe que l'extension confirmée), `import` non inscriptible par une page ni par un fichier de réglages, `sites` refusé depuis une fenêtre privée, paquet `.lyra` avec `extensions.installees` (catalogue → file de réinstallation, jamais d'installation silencieuse). Les pages ouvertes d'une extension se ferment avant son retrait (comme Chrome). Vérifié : vitest 1160, Playwright 114, `@reseau` 5/5 (Dark Reader CWS et AMO, uBO, YouTube sans pub), `@paquet` 2/2, CI verte macOS et Windows.
+
+Limites assumées (dites dans l'interface) : la règle par site des extensions est enregistrée mais Electron ne retire pas les scripts ; permissions optionnelles refusées ; `declarativeNetRequest` partiel.
+
+Reste, à reprendre : source `ubo` dans le registre (un zip local nommé « uBlock Origin » peut remplacer uBO, sur choix de l'utilisateur) ; mineurs M5-M15 de la relecture finale (doublons de code, extraire le démarrage des extensions d'`index.ts`, résidus `.attente-`/`.tmp-`, `chrome.tabs.update` hors `will-navigate`, conflit de raccourcis) ; `settings:export` exporte le registre et `settings:import` n'a pas de garde en fenêtre privée.
+
+## Jalon D — réglages complets, règles par site, couleurs (en cours)
+
+Branche `jalon-d`, plan réécrit après relecture (`plans/2026-10-19-lyra-jalon-d.md`, 22 tâches + 8b, 9b, 14b). Décisions de l'utilisateur (2026-10-20) : lignes « Scripts » et « Zoom » dans le détail d'une règle par site ; plage d'heures pour « À une heure fixe » ; « Contraste insuffisant ? » corrige automatiquement. Exécuté par la session ORION HELP ; état dans `etat-jalon-d.md`.
 
 ## Fin
 
-1. Fusionner `jalon-e`, `jalon-b` et `jalon-d` dans `main`.
+1. Fusionner `jalon-d` dans `main` (E et B y sont).
 2. Faire la relecture finale de la v1 (Opus).
 3. Obtenir une CI verte sur macOS et Windows.
 4. Produire les paquets `.dmg` et `.exe`.

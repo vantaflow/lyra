@@ -1,6 +1,7 @@
-html,
-body,
-#app {
+/* Plus spécifique que theme.css : l'ordre des feuilles dans la page construite dépend du découpage en blocs. */
+:root,
+:root body,
+:root #app {
   background: var(--page);
   color: var(--texte);
 }
