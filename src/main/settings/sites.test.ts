@@ -125,6 +125,15 @@ describe('clés canoniques', () => {
     expect(cleCanonique('http://a.com:8080')).toBe('http://a.com:8080')
     expect(cleCanonique('https://a.com.')).toBe('https://a.com')
     expect(cleCanonique('*.A.com.')).toBe('*.a.com')
+    // Nom international : la clé est le punycode que voit la page (`new URL(...).hostname`), point final compris.
+    expect(cleCanonique('münchen.de')).toBe('xn--mnchen-3ya.de')
+    expect(cleCanonique('MÜNCHEN.de.')).toBe('xn--mnchen-3ya.de')
+    expect(cleCanonique('*.bücher.example')).toBe('*.xn--bcher-kva.example')
+    expect(cleCanonique('https://münchen.de')).toBe('https://xn--mnchen-3ya.de')
+    expect(cleCanonique('münchen.de#x')).toBeNull()
+    expect(cleCanonique('xn--mnchen-3ya.de')).toBe('xn--mnchen-3ya.de')
+    // La règle saisie en Unicode s'applique à la page (dont l'URL est en punycode).
+    expect(resoudre({ [cleCanonique('münchen.de')!]: { zoom: 1.5 } }, 'https://münchen.de/x').zoom).toBe(1.5)
     expect(cleCanonique('https://-a')).toBeNull()
     expect(cleCanonique('https://.a')).toBeNull()
   })

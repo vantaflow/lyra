@@ -13,8 +13,16 @@ export type RegleEffective = Omit<RegleSite, 'boucliers'> & { boucliers: 'desact
 const HOTE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/
 const LONGUEUR_MAX = 300
 
-/** Hôte en minuscules, sans point final. */
-const normaliserHote = (h: string): string => h.toLowerCase().replace(/\.$/, '')
+/** Hôte en minuscules, sans point final, en ASCII : un nom international (`münchen.de`) devient son punycode (`xn--mnchen-3ya.de`), celui des URL des pages. */
+function normaliserHote(h: string): string {
+  const bas = h.toLowerCase().replace(/\.$/, '')
+  if (!/[^\x00-\x7f]/.test(bas) || !/^[^\s/?#@\\:%]+$/.test(bas)) return bas
+  try {
+    return new URL(`http://${bas}`).hostname.replace(/\.$/, '')
+  } catch {
+    return bas
+  }
+}
 
 /** Origine canonique (`new URL().origin`, port par défaut retiré, sans point final) ; `null` si ce n'en est pas une. */
 function origineCanonique(e: string): string | null {
