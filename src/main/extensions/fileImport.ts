@@ -103,7 +103,8 @@ function lue(brut: unknown): EntreeFileExtensions | undefined {
 /**
  * File d'import traitée par le processus principal seul : la file vient des réglages (jamais de la page), les entrées
  * restantes sont réécrites telles quelles (tous leurs champs), celles que l'import a ajoutées entre-temps sont conservées.
- * `confirmees` (clés `magasin:id`) vient de la page : seule décision de l'utilisateur qu'elle transmet.
+ * `confirmees` (clés `magasin:id`) vient de la page : seule décision de l'utilisateur qu'elle transmet ; fourni, il limite le
+ * traitement à ces entrées.
  */
 export async function traiterFile(deps: DepsTraiterFile, confirmees: unknown): Promise<ResultatFile> {
   const brut = deps.lire()
@@ -115,9 +116,11 @@ export async function traiterFile(deps: DepsTraiterFile, confirmees: unknown): P
     if (e) entrees.push(e)
   }
   const cles = new Set(Array.isArray(confirmees) ? confirmees.filter((c): c is string => typeof c === 'string').slice(0, MAX_FILE) : [])
+  // Avec `confirmees`, seules les entrées confirmées sont traitées : confirmer une imposée n'installe pas le reste de la file.
+  const cible = Array.isArray(confirmees) ? entrees.filter((e) => cles.has(cleEntree(e))) : entrees
   const { installateurs, desactiver, surProgression, journal } = deps
-  const r = await consommerFile(entrees, { installateurs, desactiver, surProgression, journal, confirmees: cles })
-  const traitees = new Set(entrees.map(cleEntree))
+  const r = await consommerFile(cible, { installateurs, desactiver, surProgression, journal, confirmees: cles })
+  const traitees = new Set(cible.map(cleEntree))
   const restantes = new Set(r.restantes.map(cleEntree))
   const courante = deps.lire()
   const finale = (Array.isArray(courante) ? courante : []).filter((b) => {

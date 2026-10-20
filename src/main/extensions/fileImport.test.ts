@@ -126,6 +126,16 @@ describe('traiterFile (la file est lue et réécrite par le processus principal)
     expect(m.courante()).toEqual([])
   })
 
+  it("confirmer une imposée n'installe qu'elle : le reste de la file attend « Tout réinstaller »", async () => {
+    const a = type('a')
+    const d = type('d', { imposee: true })
+    const m = montage([a, d])
+    const r = await traiterFile(m.deps, ['chrome:' + id('d')])
+    expect(m.installer.mock.calls.map((c) => c[0])).toEqual([id('d')])
+    expect(r.resultats.map((x) => x.entree.id)).toEqual([id('d')])
+    expect(m.courante()).toEqual([a])
+  })
+
   it('entrées invalides ignorées (champs manquants, magasin inconnu, identifiant trop long)', async () => {
     const m = montage([null, 'x', { id: 3, nom: 'N', magasin: 'chrome' }, type('a', { magasin: 'opera' }), type('a', { id: 'x'.repeat(201) }), type('a')])
     const r = await traiterFile(m.deps, undefined)

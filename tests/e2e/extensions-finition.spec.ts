@@ -145,9 +145,12 @@ test("file d'import : 5 entrées (une erreur, une imposée, une Edge), progressi
 
     // L'imposée n'est installée que sur choix explicite : un identifiant seul ne confirme rien, « Installer quand même » oui.
     const sansCle = await fenetre.evaluate((i) => window.lyra.invoke('extensions:consommerFile', { confirmees: [i] }), id('d'))
-    expect(sansCle.resultats.find((x) => x.entree.nom === 'Delta imposée')!.etat).toBe('a-confirmer')
+    expect(sansCle.resultats).toEqual([])
+    expect(await fenetre.evaluate(() => window.lyra.invoke('test:fileImport'))).toEqual([entrees[1], entrees[3]])
+    // « Installer quand même » n'installe que l'imposée : Bravo reste en attente (carte « Tout réinstaller » toujours là).
     await p.getByRole('button', { name: 'Installer quand même Delta imposée' }).click()
-    await expect(carte.getByText('1 sur 2 réinstallées, 1 en erreur')).toBeVisible()
+    await expect(carte.getByText('1 sur 1 réinstallées')).toBeVisible()
+    await expect(p.getByRole('region', { name: 'Extensions importées en attente' }).getByText('Bravo (erreur)')).toBeVisible()
     expect(await fenetre.evaluate(() => window.lyra.invoke('test:fileImport'))).toEqual([entrees[1]])
   } finally {
     await app.close()

@@ -333,7 +333,7 @@ function Page({ privee }: { privee: boolean | undefined }) {
         </div>
       </div>
 
-      {enAttente.length > 0 && !progressionFile && !(resultatFile && resultatFile.resultats.length > 0) && (
+      {enAttente.length > 0 && !progressionFile && (
         <div class="card" role="region" aria-label="Extensions importées en attente">
           <div class="row">
             <strong>
@@ -382,11 +382,6 @@ function Page({ privee }: { privee: boolean | undefined }) {
                 </span>
                 {r.raison && <span class="hint">{r.raison}</span>}
               </div>
-              {r.etat === 'a-confirmer' && (
-                <button class="btn" type="button" disabled={occupe || bloque} aria-label={`Installer quand même ${r.entree.nom}`} onClick={() => void confirmerImposee(r.entree)}>
-                  Installer quand même
-                </button>
-              )}
             </div>
           ))}
         </div>

@@ -44,7 +44,7 @@ beforeEach(() => handlers.clear())
 describe('extensions:consommerFile', () => {
   it('ne se fie pas à la page : les entrées envoyées sont ignorées, la file vient des réglages', async () => {
     const m = monter([entree('a')])
-    const r = await m.appeler({ entrees: [entree('z')], confirmees: [] })
+    const r = await m.appeler({ entrees: [entree('z')] } as never)
     expect(m.installerChrome.mock.calls.map((c) => c[0])).toEqual([id('a')])
     expect(r.resultats).toHaveLength(1)
     expect(m.courante()).toEqual([])
