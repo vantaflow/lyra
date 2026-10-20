@@ -63,6 +63,10 @@ La page `lyra://extensions` (menu ⋯, palette ou « Gérer » dans le panneau d
 
 Prévus ensuite : réglages complets et règles par site (D).
 
+## Versions
+
+- **1.0.1** : ciel masqué, « Épingler le ciel » s'atteint sans que le ciel révélé se retire (plus aucune zone de déplacement de la fenêtre sous lui, retrait seulement quand la souris part vers la page, délai de 500 ms) ; Windows, le rappel Ne pas déranger se tient à l'écart des boutons de la fenêtre.
+
 ## Développement
 
 ```sh

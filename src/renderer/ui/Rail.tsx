@@ -3,11 +3,11 @@ import { Bande } from './Bande'
 import { Sky } from './Sky'
 import { BANDE, CAPSULE } from '../../main/window/layout'
 import { cielLargeurAffichee, cielPosition, reveler, revelerAuSurvol, revelationClavier } from './state'
+import { DELAI_RETRAIT_MS, sortieVersPage } from './retrait'
 
 const touche = window.lyra.plateforme === 'darwin' ? '⌘' : 'Ctrl'
 
-/** Délai entre la sortie de la souris et le retrait du ciel révélé. */
-export const DELAI_RETRAIT_MS = 300
+export { DELAI_RETRAIT_MS }
 /** Durée de l'animation de glissement (theme.css : --glisse). */
 const GLISSE_MS = 180
 
@@ -29,13 +29,16 @@ export function Rail() {
 
 /**
  * Le ciel glissé par-dessus la page (la vue chrome couvre la fenêtre et passe au-dessus de la page) : tant que la
- * souris est dessus, rien ne bouge ; 300 ms après sa sortie, il glisse hors de vue puis la vue chrome repasse sous la page.
+ * souris est dessus, rien ne bouge ; 500 ms après son départ vers la page, il glisse hors de vue puis la vue chrome
+ * repasse sous la page. Une sortie par le bord de la fenêtre (ou vers une zone non cliente) ne le retire pas : la
+ * souris qui revient sur la page (le voile) le retire alors.
  */
 export function CielRevele() {
   const minuterie = useRef<number | undefined>(undefined)
   const ref = useRef<HTMLElement | null>(null)
   const arreter = (): void => {
     window.clearTimeout(minuterie.current)
+    minuterie.current = undefined
     ref.current?.classList.remove('sortant')
   }
   const programmer = (): void => {
@@ -60,9 +63,19 @@ export function CielRevele() {
     }
   }, [])
   const position = cielPosition.value
+  /** La souris est-elle (ou part-elle) du côté de la page ? */
+  const versPage = (e: MouseEvent): boolean => {
+    const el = ref.current
+    if (!el) return false
+    // Boîte de mise en page (offset*, élément fixe) : sans la translation du glissement d'entrée.
+    const boite = { x: el.offsetLeft, y: el.offsetTop, largeur: el.offsetWidth, hauteur: el.offsetHeight }
+    return sortieVersPage(position, boite, { x: e.clientX, y: e.clientY }, { largeur: window.innerWidth, hauteur: window.innerHeight })
+  }
   const evts = {
     surEntree: arreter,
-    surSortie: programmer,
+    surSortie: (e: MouseEvent): void => {
+      if (versPage(e)) programmer()
+    },
     surSortieFocus: (e: FocusEvent): void => {
       const vers = e.relatedTarget as Node | null
       if (!(vers && ref.current?.contains(vers)) && !ref.current?.matches(':hover')) programmer()
@@ -70,8 +83,14 @@ export function CielRevele() {
   }
   return (
     <>
-      {/* Zone transparente qui recouvre la page : un clic referme la révélation. */}
-      <div class="voile" style={{ top: `${position === 'haut' ? BANDE : CAPSULE}px` }} onMouseDown={() => reveler(false)}></div>
+      {/* Zone transparente qui recouvre la page : un clic referme la révélation ; la souris qui y bouge, revenue
+          d'ailleurs que du ciel (bord de la fenêtre), arme le retrait. */}
+      <div
+        class="voile"
+        style={{ top: `${position === 'haut' ? BANDE : CAPSULE}px` }}
+        onMouseDown={() => reveler(false)}
+        onMouseMove={(e) => minuterie.current === undefined && versPage(e) && programmer()}
+      ></div>
       {position === 'haut' || position === 'bas' ? (
         <Bande revele position={position} refCiel={ref} {...evts} />
       ) : (

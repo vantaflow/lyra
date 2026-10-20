@@ -70,7 +70,8 @@ interface PropsSky {
   revele?: boolean
   refCiel?: Ref<HTMLElement>
   surEntree?: () => void
-  surSortie?: () => void
+  /** La souris quitte le ciel (le point de sortie dit si elle part vers la page). */
+  surSortie?: (e: MouseEvent) => void
   /** Le focus quitte le ciel (clavier). */
   surSortieFocus?: (e: FocusEvent) => void
   /** Largeur imposée (ciel révélé : largeur du ciel + rail). */

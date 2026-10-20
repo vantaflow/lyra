@@ -1,7 +1,7 @@
 import { app, BaseWindow, WebContentsView, type WebContents } from 'electron'
 import { join } from 'node:path'
 import { PRELOAD_UI } from '../preloads'
-import { FENETRE_MIN, bornerLargeur, computeLayout, positionFeux, type DndLayout, type Layout } from './layout'
+import { BOUTONS_FENETRE, FENETRE_MIN, bornerLargeur, computeLayout, positionFeux, type DndLayout, type Layout } from './layout'
 import type { Settings } from '../../shared/types'
 import type { RouteOverlay } from '../../shared/ipc'
 import { envoyer } from '../ipc'
@@ -97,7 +97,7 @@ export class WindowManager {
         ? { titleBarStyle: 'hidden' as const, trafficLightPosition: positionFeux(this.lireCiel()) }
         : {}),
       ...(process.platform === 'win32'
-        ? { titleBarStyle: 'hidden' as const, titleBarOverlay: { color: '#00000000', symbolColor: '#888888', height: 32 } }
+        ? { titleBarStyle: 'hidden' as const, titleBarOverlay: { color: '#00000000', symbolColor: '#888888', height: BOUTONS_FENETRE.hauteur } }
         : {})
     })
     const chrome = creerVueUI()
@@ -123,7 +123,9 @@ export class WindowManager {
     const estRevele = (): boolean => revele && this.lireCiel().masque && !pleinEcran && !dnd
     const bounds = (): Layout => {
       const { width, height } = win.getContentBounds()
-      return computeLayout({ width, height }, this.lireCiel(), pleinEcran, estRevele(), dnd)
+      // Windows : les boutons de fenêtre (titleBarOverlay) occupent le coin haut droit.
+      const boutons = process.platform === 'win32' ? BOUTONS_FENETRE.largeur : 0
+      return computeLayout({ width, height }, this.lireCiel(), pleinEcran, estRevele(), dnd, boutons)
     }
     /** Chrome sous la page ; au-dessus pendant la révélation. L'overlay reste toujours tout en haut. */
     const ordonner = (): void => {

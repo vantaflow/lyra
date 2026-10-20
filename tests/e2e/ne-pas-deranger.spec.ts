@@ -42,8 +42,9 @@ test('⌘ ⇧ D (menu) : page plein cadre, ni ciel ni capsule, rappel conforme, 
     const l = await layout(fenetre)
     expect(l.bounds.page).toEqual({ x: 0, y: 0, ...t })
     expect(l.ordre).toEqual(['page', 'chrome', 'overlay'])
-    // La vue chrome ne couvre plus que le coin haut droit.
-    expect(l.bounds.chrome.x + l.bounds.chrome.width).toBe(t.width)
+    // La vue chrome ne couvre plus que le coin haut droit ; sous Windows, à gauche des boutons de fenêtre (150 px
+    // réservés, comme la capsule) : le bouton pour quitter le mode n'est jamais près de « Fermer ».
+    expect(l.bounds.chrome.x + l.bounds.chrome.width).toBe(t.width - (process.platform === 'win32' ? 150 : 0))
     expect(l.bounds.chrome.y).toBe(0)
     expect(l.bounds.chrome.width).toBeLessThan(t.width)
     await expect(fenetre.locator('.ciel')).toHaveCount(0)

@@ -35,6 +35,12 @@ export const DND_RAPPEL_REPLI = 720
 /** Hauteur de la zone (pastille + ombre). */
 export const DND_HAUTEUR = DND_CROISSANT.height
 
+/**
+ * Boutons de fenêtre de Windows (titleBarOverlay, 32 px de haut, 3 × 46 px) : largeur réservée en haut à droite, la
+ * même que celle que la capsule leur laisse (`padding-right: 150px`).
+ */
+export const BOUTONS_FENETRE = { largeur: 150, hauteur: 32 }
+
 /** Largeur de la vue chrome pour un rappel dont la pastille mesure `largeur` px. */
 export const largeurRappel = (largeur?: number): number =>
   largeur === undefined ? DND_RAPPEL_REPLI : Math.ceil(largeur) + DND_PASTILLE.droite + DND_PASTILLE.ombre
@@ -72,7 +78,8 @@ export function positionFeux(ciel: Pick<CielLayout, 'position' | 'masque'>): { x
  * Le chrome couvre toute la fenêtre quelle que soit la position : il dessine le ciel (colonne ou bande, ou rail en
  * masqué) et la capsule, la page se pose par-dessus la zone qui lui est réservée. `revele` (ciel masqué glissé par-dessus
  * la page) ne change donc aucun bounds : seul l'ordre des vues change (chrome au-dessus de la page, zone transparente).
- * En Ne pas déranger (`dnd`), la page est plein cadre et le chrome se réduit à la zone du rappel.
+ * En Ne pas déranger (`dnd`), la page est plein cadre et le chrome se réduit à la zone du rappel, à gauche des
+ * boutons de fenêtre (`boutons` : largeur qu'ils occupent en haut à droite, 0 sous macOS où le design est gardé).
  * La capsule (46 px) reste en haut de la page dans tous les cas ; à gauche, à droite et en bas elle part du haut de la
  * fenêtre, en haut elle se place sous la bande du ciel (ou son rail).
  */
@@ -81,17 +88,20 @@ export function computeLayout(
   ciel: CielLayout,
   pleinEcran: boolean,
   _revele = false,
-  dnd: DndLayout | null = null
+  dnd: DndLayout | null = null,
+  boutons = 0
 ): Layout {
   const { width, height } = taille
   const fenetre: Rect = { x: 0, y: 0, width, height }
   if (pleinEcran) return { chrome: { x: 0, y: 0, width: 0, height: 0 }, page: fenetre, overlay: fenetre }
   if (dnd) {
-    // Ni ciel ni capsule : la page occupe tout, la vue chrome se réduit au rappel / croissant (haut droite).
+    // Ni ciel ni capsule : la page occupe tout, la vue chrome se réduit au rappel / croissant (haut droite), sans
+    // jamais toucher les boutons de fenêtre (Windows) : le bouton « quitter » du rappel n'est pas près de « Fermer ».
     const z = dnd.rappel ? { width: largeurRappel(dnd.largeur), height: DND_HAUTEUR } : DND_CROISSANT
-    const w = Math.min(width, z.width)
+    const dispo = Math.max(0, width - boutons)
+    const w = Math.min(dispo, z.width)
     const h = Math.min(height, z.height)
-    return { chrome: { x: width - w, y: 0, width: w, height: h }, page: fenetre, overlay: fenetre }
+    return { chrome: { x: dispo - w, y: 0, width: w, height: h }, page: fenetre, overlay: fenetre }
   }
 
   const horizontal = ciel.position === 'haut' || ciel.position === 'bas'

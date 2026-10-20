@@ -1109,6 +1109,15 @@ html.revele #app,
   transform: translateX(-100%);
   transition: transform var(--glisse) ease-in;
 }
+/* Ciel révélé (colonne ou bande) : aucune zone de déplacement de la fenêtre, pas même par-dessus la capsule (Electron
+   additionne les zones de tout le document, sans tenir compte de l'empilement). Ces zones sont non clientes (Windows :
+   HTCAPTION) : la souris y quitterait le ciel, qui se retirerait avant d'atteindre « Épingler le ciel ». */
+.ciel.ciel-revele,
+.ciel.ciel-revele *,
+.bande.bande-revele,
+.bande.bande-revele * {
+  -webkit-app-region: no-drag;
+}
 @keyframes ciel-glisse {
   from {
     transform: translateX(-100%);
