@@ -40,8 +40,7 @@ import { creerMiseAJour } from './extensions/miseAJour'
 import { creerInstallateurFirefox } from './extensions/firefox'
 import { svgVersPng } from './extensions/icones'
 import { appliquerStubs, type ShimsStubs } from './extensions/stubs'
-import { collecterStubs, creerJournal, enregistrerMessageConsole } from './extensions/journal'
-import type { RapportConversion } from '../shared/types'
+import { collecterStubs, creerJournal, enregistrerMessageConsole, lireRapportConversion } from './extensions/journal'
 import { installerFixtures } from './extensions/fixturesTest'
 
 definirFournisseurLangue(() => app.getLocale())
@@ -547,6 +546,7 @@ void app.whenReady().then(async () => {
   const journalExtensions = creerJournal({ dossier: join(baseExtensions, 'journal') })
   const pagesExtension = (): Electron.WebContents[] => webContents.getAllWebContents().filter((w) => w.getURL().startsWith('chrome-extension://'))
   app.on('web-contents-created', (_e, wc) => {
+    wc.once('destroyed', () => journalExtensions.oublierPage(wc.id))
     wc.on('console-message', (d) => enregistrerMessageConsole(journalExtensions, wc.getURL() || d.sourceId, d.level, d.message))
   })
   const releveStubs = setInterval(() => void collecterStubs({ journal: journalExtensions, pages: pagesExtension }), 5000)
@@ -578,8 +578,10 @@ void app.whenReady().then(async () => {
           const mx = lireJson(join(baseExtensions, x.dossier, 'manifest.json'))
           return mx ? [{ nom: x.nom, manifest: mx }] : []
         })
-      const conversion = lireJson(join(dossier, 'lyra-conversion.json')) as RapportConversion | undefined
-      journalExtensions.enregistrerChargement(e.id, { manifest, autres, ...(conversion ? { conversion } : {}) })
+      // Rapport de conversion : seulement pour les sources Firefox, validé (taille, forme).
+      const lu = e.source === 'amo' || e.source === 'xpi' ? lireRapportConversion(join(dossier, 'lyra-conversion.json')) : {}
+      journalExtensions.enregistrerChargement(e.id, { manifest, autres, ...(lu.rapport ? { conversion: lu.rapport } : {}) })
+      if (lu.avertissement) journalExtensions.avertissement(e.id, lu.avertissement)
     }
   })
   const installateurChrome = creerInstallateurChrome({ base: baseExtensions, registre: registreExtensions, chargeur: chargeurExtensions, shims: shimsExtensions })

@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import vm from 'node:vm'
-import { appliquerStubs, FICHIER_HEAD, FICHIER_POST, MARQUEUR_STUBS } from './stubs'
+import { appliquerStubs, FICHIER_HEAD, FICHIER_POST, MARQUEUR_STUBS, VERSION_STUBS } from './stubs'
 
 const RES = resolve(__dirname, '../../../resources/extensions')
 const shims = { head: join(RES, 'shim-head.js'), post: join(RES, 'shim-post.js') }
@@ -157,6 +157,27 @@ describe('appliquerStubs', () => {
     const avant = [lire(join(d, 'manifest.json')), lire(join(d, 'popup.html'))]
     expect(appliquerStubs(d, { ...mv2 }, shims)).toEqual({ applique: false, raison: 'deja-applique' })
     expect([lire(join(d, 'manifest.json')), lire(join(d, 'popup.html'))]).toEqual(avant)
+  })
+
+  it('shims déjà présents sans marqueur : rien n’est réinséré', () => {
+    const m = { ...mv2, background: { scripts: [FICHIER_HEAD, 'browser-polyfill.js', FICHIER_POST, 'bg.js'] } }
+    const d = extension(m, { ...fichiers, 'popup.html': `<html><head><script src="/${FICHIER_HEAD}"></script></head></html>` })
+    appliquerStubs(d, m, shims)
+    expect(JSON.parse(lire(join(d, 'manifest.json'))).background.scripts).toEqual([FICHIER_HEAD, 'browser-polyfill.js', FICHIER_POST, 'bg.js'])
+    expect(lire(join(d, 'popup.html')).split(FICHIER_HEAD)).toHaveLength(2)
+  })
+
+  it('marqueur d’une autre version : fichiers recopiés, insertions inchangées ; même version : rien', () => {
+    const d = extension(mv2, fichiers)
+    appliquerStubs(d, { ...mv2 }, shims)
+    const manifeste = lire(join(d, 'manifest.json'))
+    writeFileSync(join(d, MARQUEUR_STUBS), JSON.stringify({ version: 0 }))
+    writeFileSync(join(d, FICHIER_HEAD), '// ancien')
+    expect(appliquerStubs(d, { ...mv2 }, shims)).toMatchObject({ applique: true, raison: 'mis-a-jour' })
+    expect(lire(join(d, FICHIER_HEAD))).toBe(lire(shims.head))
+    expect(lire(join(d, 'manifest.json'))).toBe(manifeste)
+    expect(JSON.parse(lire(join(d, MARQUEUR_STUBS))).version).toBe(VERSION_STUBS)
+    expect(appliquerStubs(d, { ...mv2 }, shims).raison).toBe('deja-applique')
   })
 
   it('MV3 : aucun stub, aucun fichier', () => {

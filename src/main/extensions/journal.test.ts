@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, writeFileSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { apiManquantes, collecterStubs, conflitsRaccourcis, creerJournal, enregistrerMessageConsole, NOTE_BOUCLIERS, redondanceBoucliers } from './journal'
+import { lireRapportConversion, validerRapportConversion, apiManquantes, collecterStubs, conflitsRaccourcis, creerJournal, enregistrerMessageConsole, NOTE_BOUCLIERS, redondanceBoucliers } from './journal'
 
 const ID = 'a'.repeat(32)
 const ID2 = 'b'.repeat(32)
@@ -127,5 +127,83 @@ describe('collecte', () => {
     enregistrerMessageConsole(j, `chrome-extension://${ID}/bg.html`, 'info', 'bonjour')
     enregistrerMessageConsole(j, 'https://x.org/', 'error', 'autre')
     expect(j.lire(ID)!.avertissementsChargement).toEqual(['erreur : Uncaught TypeError'])
+  })
+})
+
+describe('collecte robuste', () => {
+  const url = `chrome-extension://${ID}/bg.html`
+  it("une page qui ne répond jamais n'empêche pas l'IPC de rendre la main ; pas de nouvelle collecte tant que la première n'est pas finie", async () => {
+    const { j } = nouveau()
+    let appels = 0
+    const muette = { id: 9001, getURL: () => url, isDestroyed: () => false, executeJavaScript: () => { appels++; return new Promise<unknown>(() => {}) } }
+    const t0 = Date.now()
+    await collecterStubs({ journal: j, pages: () => [muette], delaiMs: 50 }, ID)
+    expect(Date.now() - t0).toBeLessThan(1000)
+    await collecterStubs({ journal: j, pages: () => [muette], delaiMs: 50 }, ID)
+    expect(appels).toBe(1)
+    expect(j.lire(ID)).toBeUndefined()
+  })
+
+  it('une réponse de 1 Mo est rejetée avant JSON.parse', async () => {
+    const { j } = nouveau()
+    const gros = { id: 9002, getURL: () => url, isDestroyed: () => false, executeJavaScript: async () => JSON.stringify({ a: 'x'.repeat(1024 * 1024) }) }
+    await collecterStubs({ journal: j, pages: () => [gros] }, ID)
+    expect(j.lire(ID)).toBeUndefined()
+  })
+
+  it('le verrou est levé une fois la page répondue (collecte suivante possible)', async () => {
+    const { j } = nouveau()
+    let n = 0
+    const p = { id: 9003, getURL: () => url, isDestroyed: () => false, executeJavaScript: async () => JSON.stringify({ 'a.b': ++n }) }
+    await collecterStubs({ journal: j, pages: () => [p] }, ID)
+    await collecterStubs({ journal: j, pages: () => [p] }, ID)
+    expect(j.lire(ID)!.apiStubees).toEqual({ 'a.b': 2 })
+  })
+
+  it('au plus 200 clés valides retenues dans le relevé ; oublierPage efface le relevé', () => {
+    const { j } = nouveau()
+    const releve: Record<string, number> = {}
+    for (let i = 0; i < 300; i++) releve[`api.k${i}`] = 1
+    j.releverStubs(ID, 7, releve)
+    expect(Object.keys(j.lire(ID)!.apiStubees)).toHaveLength(200)
+    j.oublierPage(7)
+    j.releverStubs(ID, 7, { 'api.k0': 1 })
+    expect(j.lire(ID)!.apiStubees['api.k0']).toBe(2) // relevé oublié : la page repart de son total
+  })
+})
+
+describe('rapport de conversion', () => {
+  const bon = { cles_retirees: ['a'], permissions_retirees: [], transformations: ['t'], avertissements: [], refus: 'non' }
+  it('forme validée : tableaux de chaînes bornés et refus chaîne bornée', () => {
+    expect(validerRapportConversion(bon)).toEqual(bon)
+    expect(validerRapportConversion({ ...bon, cles_retirees: [1] })).toBeUndefined()
+    expect(validerRapportConversion({ ...bon, transformations: 'x' })).toBeUndefined()
+    expect(validerRapportConversion({ ...bon, avertissements: Array(101).fill('a') })).toBeUndefined()
+    expect(validerRapportConversion({ ...bon, avertissements: ['x'.repeat(501)] })).toBeUndefined()
+    expect(validerRapportConversion({ ...bon, refus: 5 })).toBeUndefined()
+    expect(validerRapportConversion({ cles_retirees: [] })).toBeUndefined()
+    expect(validerRapportConversion(null)).toBeUndefined()
+  })
+  it('lecture : absent = rien ; trop gros, invalide ou illisible = ignoré avec avertissement', () => {
+    const { dossier } = nouveau()
+    require('node:fs').mkdirSync(dossier, { recursive: true })
+    const f = join(dossier, 'r.json')
+    expect(lireRapportConversion(f)).toEqual({})
+    writeFileSync(f, JSON.stringify(bon))
+    expect(lireRapportConversion(f).rapport).toEqual(bon)
+    writeFileSync(f, JSON.stringify({ ...bon, transformations: ['x'.repeat(70_000)] }))
+    expect(lireRapportConversion(f)).toMatchObject({ avertissement: expect.stringContaining('volumineux') })
+    writeFileSync(f, JSON.stringify({ cles_retirees: 3 }))
+    expect(lireRapportConversion(f)).toMatchObject({ avertissement: expect.stringContaining('invalide') })
+    writeFileSync(f, '{pas json')
+    expect(lireRapportConversion(f).avertissement).toBeDefined()
+  })
+  it('un rapport invalide déjà présent dans le fichier du journal est écarté à la relecture', () => {
+    const { dossier, j } = nouveau()
+    j.avertissement(ID, 'x')
+    const f = join(dossier, `${ID}.json`)
+    const o = JSON.parse(readFileSync(f, 'utf8'))
+    writeFileSync(f, JSON.stringify({ ...o, conversion: { cles_retirees: 'pirate' } }))
+    expect(creerJournal({ dossier }).lire(ID)!.conversion).toBeUndefined()
   })
 })

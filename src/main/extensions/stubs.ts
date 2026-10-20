@@ -10,6 +10,8 @@ import { join, resolve, sep } from 'node:path'
 export const MARQUEUR_STUBS = 'lyra-stubs.json'
 export const FICHIER_HEAD = 'lyra-shim-head.js'
 export const FICHIER_POST = 'lyra-shim-post.js'
+/** Version des shims : un marqueur d'une autre version fait recopier les fichiers (les insertions ne sont pas refaites). */
+export const VERSION_STUBS = 1
 
 export interface ShimsStubs {
   /** Chemin de `shim-head.js`. */
@@ -67,7 +69,21 @@ function patcherHtml(html: string): string {
  */
 export function appliquerStubs(dossier: string, manifest: Record<string, unknown>, shims: ShimsStubs): ResultatStubs {
   if (manifest.manifest_version !== 2) return { applique: false, raison: 'mv3' }
-  if (existsSync(join(dossier, MARQUEUR_STUBS))) return { applique: false, raison: 'deja-applique' }
+  const marqueur = join(dossier, MARQUEUR_STUBS)
+  if (existsSync(marqueur)) {
+    let version: unknown
+    try {
+      version = (JSON.parse(readFileSync(marqueur, 'utf8')) as { version?: unknown }).version
+    } catch {
+      version = undefined
+    }
+    if (version === VERSION_STUBS) return { applique: false, raison: 'deja-applique' }
+    // Autre version des shims : fichiers recopiés, insertions déjà faites.
+    copyFileSync(shims.head, join(dossier, FICHIER_HEAD))
+    copyFileSync(shims.post, join(dossier, FICHIER_POST))
+    writeFileSync(marqueur, JSON.stringify({ version: VERSION_STUBS }))
+    return { applique: true, raison: 'mis-a-jour' }
+  }
   copyFileSync(shims.head, join(dossier, FICHIER_HEAD))
   copyFileSync(shims.post, join(dossier, FICHIER_POST))
 
@@ -75,13 +91,16 @@ export function appliquerStubs(dossier: string, manifest: Record<string, unknown
   const bg = objet(manifest.background)
   if (bg && Array.isArray(bg.scripts) && bg.scripts.some((s) => typeof s === 'string')) {
     const liste = (bg.scripts as unknown[]).filter((s): s is string => typeof s === 'string')
-    const i = liste.findIndex((s) => EST_POLYFILL.test(sansBarre(s)))
+    const dejaLa = liste.some((x) => sansBarre(x) === FICHIER_HEAD)
+    const i = dejaLa ? -2 : liste.findIndex((s) => EST_POLYFILL.test(sansBarre(s)))
     // head en tête de tout ; post juste après le polyfill, sinon juste après head.
-    liste.splice(i < 0 ? 0 : i, 0, FICHIER_HEAD)
-    liste.splice(i < 0 ? 1 : i + 2, 0, FICHIER_POST)
-    bg.scripts = liste
-    scripts = true
-    writeFileSync(join(dossier, 'manifest.json'), JSON.stringify(manifest, null, 2))
+    if (!dejaLa) {
+      liste.splice(i < 0 ? 0 : i, 0, FICHIER_HEAD)
+      liste.splice(i < 0 ? 1 : i + 2, 0, FICHIER_POST)
+      bg.scripts = liste
+      scripts = true
+      writeFileSync(join(dossier, 'manifest.json'), JSON.stringify(manifest, null, 2))
+    }
   }
 
   const racine = resolve(dossier)
@@ -89,9 +108,11 @@ export function appliquerStubs(dossier: string, manifest: Record<string, unknown
   for (const rel of pagesExtension(manifest)) {
     const abs = resolve(racine, rel)
     if (!abs.startsWith(racine + sep) || !existsSync(abs)) continue
-    writeFileSync(abs, patcherHtml(readFileSync(abs, 'utf8')))
+    const html = readFileSync(abs, 'utf8')
+    if (html.includes(FICHIER_HEAD)) continue
+    writeFileSync(abs, patcherHtml(html))
     pages.push(rel)
   }
-  writeFileSync(join(dossier, MARQUEUR_STUBS), JSON.stringify({ version: 1, scripts, pages }))
+  writeFileSync(join(dossier, MARQUEUR_STUBS), JSON.stringify({ version: VERSION_STUBS, scripts, pages }))
   return { applique: true, scripts, pages }
 }

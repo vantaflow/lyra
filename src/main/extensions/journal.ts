@@ -7,7 +7,7 @@
  * demande du journal (IPC `extensions:journal`) et toutes les quelques secondes. Chaque page garde son dernier relevé :
  * seule la différence est ajoutée (un compteur qui baisse = page rechargée, on ajoute son nouveau total).
  */
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { JournalExtension, RapportConversion } from '../../shared/types'
 import { ID_EXTENSION } from './registre'
@@ -67,6 +67,38 @@ export function conflitsRaccourcis(manifest: Record<string, unknown>, autres: Ar
   return sortie.sort()
 }
 
+const MAX_LISTE = 100
+const MAX_TEXTE = 500
+export const MAX_RAPPORT = 64 * 1024
+
+const listeTextes = (v: unknown): string[] | undefined =>
+  Array.isArray(v) && v.length <= MAX_LISTE && v.every((x) => typeof x === 'string' && x.length <= MAX_TEXTE) ? (v as string[]) : undefined
+
+/** Forme d'un rapport de conversion : tableaux de chaînes bornés (cles_retirees, permissions_retirees, transformations, avertissements) et `refus` chaîne bornée. Undefined sinon. */
+export function validerRapportConversion(v: unknown): RapportConversion | undefined {
+  const o = objet(v)
+  if (!o) return undefined
+  const cles = listeTextes(o.cles_retirees)
+  const perms = listeTextes(o.permissions_retirees)
+  const transf = listeTextes(o.transformations)
+  const avert = listeTextes(o.avertissements)
+  if (!cles || !perms || !transf || !avert) return undefined
+  if (o.refus !== undefined && (typeof o.refus !== 'string' || o.refus.length > MAX_TEXTE)) return undefined
+  return { cles_retirees: cles, permissions_retirees: perms, transformations: transf, avertissements: avert, ...(typeof o.refus === 'string' ? { refus: o.refus } : {}) }
+}
+
+/** Lit `lyra-conversion.json` (≤ 64 Ko, forme validée) ; `avertissement` si le fichier existe mais est refusé. */
+export function lireRapportConversion(chemin: string): { rapport?: RapportConversion; avertissement?: string } {
+  if (!existsSync(chemin)) return {}
+  try {
+    if (statSync(chemin).size > MAX_RAPPORT) return { avertissement: 'rapport de conversion ignoré : fichier trop volumineux' }
+    const rapport = validerRapportConversion(JSON.parse(readFileSync(chemin, 'utf8')))
+    return rapport ? { rapport } : { avertissement: 'rapport de conversion ignoré : forme invalide' }
+  } catch {
+    return { avertissement: 'rapport de conversion ignoré : illisible' }
+  }
+}
+
 const vide = (): JournalExtension => ({ avertissementsChargement: [], apiStubees: {}, apiManquantes: [], conflitsRaccourcis: [], redondanceBoucliers: false })
 
 function nettoyer(v: unknown): JournalExtension {
@@ -75,7 +107,7 @@ function nettoyer(v: unknown): JournalExtension {
   const stubs: Record<string, number> = {}
   for (const [k, n] of Object.entries(objet(o.apiStubees) ?? {})) if (typeof n === 'number' && Number.isFinite(n) && n >= 0 && Object.keys(stubs).length < MAX_API) stubs[k] = Math.floor(n)
   const rb = o.redondanceBoucliers === true
-  const conv = objet(o.conversion)
+  const conv = validerRapportConversion(o.conversion)
   return {
     avertissementsChargement: textes(o.avertissementsChargement).slice(0, MAX_AVERTISSEMENTS),
     apiStubees: stubs,
@@ -83,7 +115,7 @@ function nettoyer(v: unknown): JournalExtension {
     conflitsRaccourcis: textes(o.conflitsRaccourcis).slice(0, MAX_API),
     redondanceBoucliers: rb,
     ...(rb ? { noteBoucliers: NOTE_BOUCLIERS } : {}),
-    ...(conv ? { conversion: conv as unknown as RapportConversion } : {})
+    ...(conv ? { conversion: conv } : {})
   }
 }
 
@@ -91,6 +123,8 @@ export interface Journal {
   /** Calcul fait au chargement : API manquantes, redondance, raccourcis en conflit, rapport de conversion ; l'historique des appels est gardé. */
   enregistrerChargement(id: string, o: { manifest: Record<string, unknown>; autres?: Array<{ nom: string; manifest: Record<string, unknown> }>; conversion?: RapportConversion }): void
   avertissement(id: string, texte: string): void
+  /** Oublie le relevé précédent d'une page (page détruite). */
+  oublierPage(page: number): void
   /** `releve` = compteurs courants d'une page (clé = identifiant de la page) ; seule la différence avec le relevé précédent est ajoutée. */
   releverStubs(id: string, page: number, releve: Record<string, number>): void
   lire(id: string): JournalExtension | undefined
@@ -158,8 +192,11 @@ export function creerJournal(o: { dossier: string }): Journal {
       const avant = releves.get(cle) ?? {}
       const j = charger(id)
       let change = false
+      const retenu: Record<string, number> = {}
       for (const [api, n] of Object.entries(releve)) {
         if (typeof n !== 'number' || !Number.isFinite(n) || n < 0 || !/^[\w.$-]{1,120}$/.test(api)) continue
+        if (Object.keys(retenu).length >= MAX_API) break
+        retenu[api] = n
         const prec = avant[api] ?? 0
         const delta = n >= prec ? n - prec : n
         if (delta === 0) continue
@@ -167,7 +204,7 @@ export function creerJournal(o: { dossier: string }): Journal {
         j.apiStubees[api] = (j.apiStubees[api] ?? 0) + Math.floor(delta)
         change = true
       }
-      releves.set(cle, { ...releve })
+      releves.set(cle, retenu)
       if (change) sauver(id, j)
     },
     lire(id) {
@@ -175,6 +212,9 @@ export function creerJournal(o: { dossier: string }): Journal {
       if (!cache.has(id) && !existsSync(fichier(id))) return undefined
       const j = charger(id)
       return { ...j, avertissementsChargement: [...j.avertissementsChargement], apiStubees: { ...j.apiStubees } }
+    },
+    oublierPage(page) {
+      for (const k of [...releves.keys()]) if (k.endsWith(`:${page}`)) releves.delete(k)
     },
     supprimer(id) {
       if (!valide(id)) return
@@ -198,23 +238,39 @@ export interface PageExtension {
 export interface OptionsCollecte {
   journal: Journal
   pages: () => PageExtension[]
+  /** Délai maximal par page, en ms (2000 par défaut) ; au-delà, le résultat est ignoré. */
+  delaiMs?: number
 }
 
 const HOTE_EXTENSION = /^chrome-extension:\/\/([a-p]{32})\//
+const MAX_RELEVE = 16 * 1024
+/** Pages dont un relevé est en cours : pas de nouvelle collecte tant que le précédent n'est pas terminé (même s'il a expiré). */
+const enCours = new Set<number>()
 
-/** Lit le compteur `__lyraStubs` de chaque page d'extension et l'ajoute au journal. Ne lève jamais. */
+/** Lit le compteur `__lyraStubs` de chaque page d'extension et l'ajoute au journal. Ne lève jamais, ne dépasse pas `delaiMs`. */
 export async function collecterStubs(o: OptionsCollecte, seulement?: string): Promise<void> {
+  const delai = o.delaiMs ?? 2000
   await Promise.all(
     o.pages().map(async (p) => {
-      if (p.isDestroyed()) return
+      if (p.isDestroyed() || enCours.has(p.id)) return
       const m = HOTE_EXTENSION.exec(p.getURL())
       if (!m || (seulement && m[1] !== seulement)) return
+      enCours.add(p.id)
+      let minuteur: NodeJS.Timeout | undefined
       try {
-        const brut = await p.executeJavaScript('JSON.stringify(globalThis.__lyraStubs || null)')
-        const releve = typeof brut === 'string' ? (JSON.parse(brut) as Record<string, number> | null) : null
-        if (releve && typeof releve === 'object') o.journal.releverStubs(m[1], p.id, releve)
+        const lecture = Promise.resolve(p.executeJavaScript('JSON.stringify(globalThis.__lyraStubs || null)'))
+        lecture.then(
+          () => enCours.delete(p.id),
+          () => enCours.delete(p.id)
+        )
+        const brut = await Promise.race([lecture, new Promise<undefined>((ok) => { minuteur = setTimeout(() => ok(undefined), delai) })])
+        if (typeof brut !== 'string' || brut.length > MAX_RELEVE) return
+        const releve = JSON.parse(brut) as Record<string, number> | null
+        if (releve && typeof releve === 'object' && !Array.isArray(releve)) o.journal.releverStubs(m[1], p.id, releve)
       } catch {
         /* page en cours de chargement ou détruite */
+      } finally {
+        if (minuteur) clearTimeout(minuteur)
       }
     })
   )
