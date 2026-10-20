@@ -12,6 +12,7 @@ import { lireProfilOrion } from './orion'
 import { lireProfilSafari } from './safari'
 import { ErreurImport, estIndisponible, indisponible } from './types'
 import type { Compteurs, ElementImport, ExtensionImportee, Indisponible, ProfilDetecte, Visite } from './types'
+import { messageLisible } from '../../shared/messageTechnique'
 
 /** Taille des lots d'historique envoyés au main. */
 export const TAILLE_LOT = 2000
@@ -80,7 +81,7 @@ export const LECTEURS_REELS: Lecteurs = {
 /** `ErreurImport` ne traverse pas `postMessage` : toute erreur devient un `Indisponible` lisible. */
 export function versIndisponible(e: unknown): Indisponible {
   if (e instanceof ErreurImport) return indisponible(e.raison, e.code)
-  return indisponible(`Lecture impossible : ${e instanceof Error ? e.message : String(e)}`)
+  return indisponible(`Lecture impossible : ${messageLisible(e, 'fichier illisible ou d’un format inattendu')}.`)
 }
 
 const annule = (): Indisponible => indisponible('Lecture annulée.', 'annule')

@@ -17,6 +17,7 @@ import { ENTETE_CSV, TAILLE_LOT_CSV, ligneCsv, lotsDepuisCsv } from './csv'
 import { arbreDepuisFavoris, exporterFavorisHtml, lireFavorisHtml } from './netscape'
 import { creerPaquet, lirePaquet } from './paquet'
 import type { CodeErreurImportFichier, DemandeImportFichier, ReponseImportFichier } from './types'
+import { messageLisible } from '../../shared/messageTechnique'
 
 export interface DepsOperations {
   version: string
@@ -186,7 +187,7 @@ export async function importerFichier(d: DemandeImportFichier, cibles: CiblesImp
         try {
           ciel = cielDepuisJson(await readFile(d.chemin!, 'utf8'))
         } catch (e) {
-          return echec('invalide', e instanceof SyntaxError ? 'Ce fichier n’est pas un ciel exporté par Lyra.' : (e as Error).message)
+          return echec('invalide', e instanceof SyntaxError ? 'Ce fichier n’est pas un ciel exporté par Lyra.' : messageLisible(e, 'Ce fichier n’est pas un ciel exporté par Lyra.'))
         }
         return sortie(await appliquer({ ...base, donnees: { onglets: cielVersOnglets(ciel) } }, cibles, options))
       }

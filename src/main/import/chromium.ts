@@ -32,6 +32,7 @@ import type {
   ReglagesImportes,
   Visite
 } from './types'
+import { messageLisible } from '../../shared/messageTechnique'
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Options et résultat
@@ -539,7 +540,7 @@ async function lireReglages(c: Contexte): Promise<ReglagesImportes> {
 // Point d'entrée
 
 function raison(e: unknown): string {
-  return e instanceof ErreurImport ? e.raison : `Lecture impossible : ${e instanceof Error ? e.message : String(e)}`
+  return e instanceof ErreurImport ? e.raison : `Lecture impossible : ${messageLisible(e, 'fichier illisible ou d’un format inattendu')}.`
 }
 
 /** Une erreur quelconque devient un `Indisponible` lisible, avec son code éventuel. */

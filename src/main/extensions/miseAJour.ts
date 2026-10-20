@@ -6,6 +6,7 @@
  */
 import type { ResultatInstallation } from '../../shared/types'
 import type { Registre, StoreReglages } from './registre'
+import { messageLisible } from '../../shared/messageTechnique'
 
 export const INTERVALLE_MAJ_MS = 6 * 3600_000
 
@@ -79,7 +80,7 @@ export function creerMiseAJour(o: OptionsMiseAJour): MiseAJour {
         if (r.etat === 'installee') misesAJour.push({ id: r.id, nom: r.nom, de: e.version, vers: r.version })
         else echec(`${e.nom} : ${r.etat === 'erreur' ? r.raison : 'installation manuelle requise'}`)
       } catch (err) {
-        echec(`${e.nom} : ${err instanceof Error ? err.message : String(err)}`)
+        echec(`${e.nom} : ${messageLisible(err, 'mise à jour impossible (détail dans le journal)')}`)
       }
     }
 
@@ -92,7 +93,7 @@ export function creerMiseAJour(o: OptionsMiseAJour): MiseAJour {
           if (r.etat === 'installee') misesAJour.push({ id: r.id, nom: r.nom, de: e.version, vers: r.version })
           else echec(`${e.nom} : ${r.etat === 'erreur' ? r.raison : 'installation manuelle requise'}`)
         } catch (err) {
-          echec(`${e.nom} : ${err instanceof Error ? err.message : String(err)}`)
+          echec(`${e.nom} : ${messageLisible(err, 'mise à jour impossible (détail dans le journal)')}`)
         }
       }
     }
@@ -106,7 +107,7 @@ export function creerMiseAJour(o: OptionsMiseAJour): MiseAJour {
           if (r.etat === 'installee') misesAJour.push({ id: r.id, nom: r.nom, de: e.version, vers: r.version })
           else echec(`${e.nom} : ${r.etat === 'erreur' ? r.raison : 'installation manuelle requise'}`)
         } catch (err) {
-          echec(`${e.nom} : ${err instanceof Error ? err.message : String(err)}`)
+          echec(`${e.nom} : ${messageLisible(err, 'mise à jour impossible (détail dans le journal)')}`)
         }
       }
     }

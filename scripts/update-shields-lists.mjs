@@ -12,6 +12,10 @@ const listes = [
   { nom: 'EasyList', url: 'https://easylist.to/easylist/easylist.txt', fichier: 'easylist.txt' },
   { nom: 'EasyPrivacy', url: 'https://easylist.to/easylist/easyprivacy.txt', fichier: 'easyprivacy.txt' },
   { nom: 'Peter Lowe', url: 'https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblockplus&showintro=0&mimetype=plaintext', fichier: 'peter-lowe.txt' },
+  // Gênes (option « Masquer aussi les gênes ») : moteur à part, consulté seulement si l'option est active.
+  { nom: 'uBO annoyances-cookies', url: `${ubo}annoyances-cookies.txt`, fichier: 'genes-ubo-cookies.txt', categorie: 'genes' },
+  { nom: 'uBO annoyances-others', url: `${ubo}annoyances-others.txt`, fichier: 'genes-ubo-autres.txt', categorie: 'genes' },
+  { nom: 'EasyList Cookie', url: 'https://secure.fanboy.co.nz/fanboy-cookiemonster.txt', fichier: 'genes-easylist-cookie.txt', categorie: 'genes' },
   // Faute d'URL publiée stable, resources.json vient du dépôt Ghostery (à réévaluer).
   { nom: 'Scriptlets uBO (resources.json)', url: 'https://raw.githubusercontent.com/ghostery/adblocker/master/packages/adblocker/assets/ublock-origin/resources.json', fichier: 'resources.json' }
 ]

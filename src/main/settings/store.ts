@@ -5,6 +5,12 @@ function estObjet(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
 }
 
+/** Codes d'un fichier tenu un instant par un autre processus (Windows). */
+const VERROUS = new Set(['EPERM', 'EBUSY', 'EACCES'])
+const ESSAIS_RENOMMAGE = 4
+/** Pause synchrone courte (l'écriture des réglages est synchrone). */
+const attendre = (ms: number): void => void Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+
 const CLES_INTERDITES = new Set(['__proto__', 'constructor', 'prototype'])
 
 export function fusion<T>(base: T, patch: unknown): T {
@@ -55,7 +61,8 @@ export class JsonStore<T extends object> {
 
   private lire(): T {
     try {
-      const brut: unknown = JSON.parse(readFileSync(this.chemin, 'utf8'))
+      // Un fichier réenregistré par le Bloc-notes de Windows commence par un BOM : JSON.parse le refuserait.
+      const brut: unknown = JSON.parse(readFileSync(this.chemin, 'utf8').replace(/^\uFEFF/, ''))
       if (this.migrer) return this.migrer(brut)
       return fusion(this.defauts, brut)
     } catch {
@@ -63,15 +70,34 @@ export class JsonStore<T extends object> {
     }
   }
 
+  /**
+   * Écriture atomique (.tmp puis renommage). Sous Windows, un antivirus ou l'indexeur qui ouvre le fichier un instant
+   * fait échouer le renommage (EPERM, EBUSY, EACCES) : on réessaie, puis on écrit directement. Si rien ne passe, la
+   * valeur reste appliquée en mémoire (les écouteurs sont prévenus) et l'erreur part au journal.
+   */
   private ecrire(): void {
     const tmp = `${this.chemin}.tmp`
+    const contenu = JSON.stringify(this.valeur, null, 2)
     try {
       mkdirSync(dirname(this.chemin), { recursive: true })
-      writeFileSync(tmp, JSON.stringify(this.valeur, null, 2))
-      renameSync(tmp, this.chemin)
+      writeFileSync(tmp, contenu)
+      for (let essai = 0; ; essai++) {
+        try {
+          renameSync(tmp, this.chemin)
+          return
+        } catch (e) {
+          if (!VERROUS.has((e as NodeJS.ErrnoException).code ?? '') || essai >= ESSAIS_RENOMMAGE) throw e
+          attendre(15 * (essai + 1))
+        }
+      }
     } catch (e) {
       rmSync(tmp, { force: true })
-      throw e
+      try {
+        writeFileSync(this.chemin, contenu)
+        console.warn(`[réglages] renommage impossible, écriture directe de ${this.chemin} :`, e)
+      } catch (e2) {
+        console.warn(`[réglages] ${this.chemin} non écrit (valeur gardée en mémoire) :`, e2)
+      }
     }
   }
 }

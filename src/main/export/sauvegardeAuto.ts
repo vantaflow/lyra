@@ -13,6 +13,7 @@ import { JsonStore } from '../settings/store'
 import { ErreurPaquet, deriverCle, exporterCle, importerCle, verifierPhrase } from './chiffrement'
 import { creerPaquetAvecCle, type SourcesPaquet } from './paquet'
 import { GARDER, Planificateur, aSupprimer, nomSauvegarde, type Horloge } from './planificateur'
+import { messageLisible } from '../../shared/messageTechnique'
 
 /** Coffre du système (Electron `safeStorage`). */
 export interface Coffre {
@@ -64,7 +65,7 @@ const migrer = (brut: unknown): Config => {
   }
 }
 
-const message = (e: unknown): string => (e instanceof Error ? e.message : String(e))
+const message = (e: unknown): string => messageLisible(e, 'La sauvegarde a échoué (détail dans le journal).')
 
 export class SauvegardeAuto {
   private config: JsonStore<Config>

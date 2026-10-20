@@ -146,3 +146,29 @@ describe('cache et réseau', () => {
     expect(r.source).toBe('embarque')
   })
 })
+
+describe('listes des gênes (bandeaux de cookies)', () => {
+  it('sont embarquées à part des listes de base, avec leurs adresses de mise à jour', () => {
+    expect(emb.genes?.textes.length).toBe(3)
+    expect(emb.genes?.urls.some((u) => u.includes('annoyances-cookies'))).toBe(true)
+    expect(emb.urls?.some((u) => u.includes('annoyances'))).toBe(false)
+  })
+
+  it('moteur des gênes : cache distinct, masque un bandeau de cookies connu', async () => {
+    const cache = await dossier('lyra-cache-genes-')
+    const genes = await construireMoteur({
+      cacheDir: cache,
+      listesEmbarquees: { textes: emb.genes!.textes, resources: emb.resources, date: emb.date },
+      listesDistantes: [],
+      majHeures: 6,
+      nomCache: 'engine-genes',
+      maintenant: new Date(emb.date)
+    })
+    expect(genes.source).toBe('embarque')
+    const base = await construireMoteur({ cacheDir: cache, listesEmbarquees: emb, listesDistantes: [], majHeures: 6, maintenant: new Date(emb.date) })
+    // Le cache du moteur de base n'est pas celui des gênes.
+    expect(base.source).toBe('embarque')
+    const c = genes.moteur.getCosmeticsFilters({ url: 'https://exemple.fr/', hostname: 'exemple.fr', domain: 'exemple.fr', getBaseRules: true, getInjectionRules: false, getExtendedRules: false, getRulesFromHostname: true, getRulesFromDOM: false })
+    expect(c.styles.length).toBeGreaterThan(0)
+  }, 60_000)
+})

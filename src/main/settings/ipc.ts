@@ -4,9 +4,9 @@ import { readFile, writeFile } from 'node:fs/promises'
 import type { Settings } from '../../shared/types'
 import { handle } from '../ipc'
 import type { Reglages } from './settings'
-import { patchImporte } from './import'
+import { importerReglages } from './import'
 
-const TAILLE_MAX_IMPORT = 1_000_000
+const MESSAGE_EXPORT_IMPOSSIBLE = 'Impossible d’écrire le fichier de réglages à cet endroit.'
 
 const THEMES: Record<Settings['theme'], 'system' | 'light' | 'dark'> = { systeme: 'system', clair: 'light', sombre: 'dark' }
 
@@ -33,19 +33,18 @@ export function installerReglagesIpc(reglages: Reglages): void {
       filters: [{ name: 'JSON', extensions: ['json'] }]
     })
     if (r.canceled || !r.filePath) return false
-    await writeFile(r.filePath, JSON.stringify(reglages.getSettings(), null, 2), 'utf8')
-    return true
+    try {
+      await writeFile(r.filePath, JSON.stringify(reglages.getSettings(), null, 2), 'utf8')
+      return true
+    } catch (e) {
+      console.warn('[réglages] export impossible :', e)
+      return { erreur: MESSAGE_EXPORT_IMPOSSIBLE }
+    }
   })
 
   handle('settings:import', async () => {
     const r = await dialog.showOpenDialog({ filters: [{ name: 'JSON', extensions: ['json'] }], properties: ['openFile'] })
     if (r.canceled || r.filePaths.length === 0) return null
-    try {
-      const brut = await readFile(r.filePaths[0], 'utf8')
-      if (brut.length > TAILLE_MAX_IMPORT) return null
-      return reglages.setSettings(patchImporte(JSON.parse(brut)))
-    } catch {
-      return null
-    }
+    return importerReglages(reglages, () => readFile(r.filePaths[0], 'utf8'))
   })
 }

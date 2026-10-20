@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'preact/hooks'
 import type { CandidatAmo, InfoExtension, JournalExtension, ProgressionFile, ResultatFile, ResultatInstallation, Settings } from '../../shared/types'
 import './extensions.css'
 import { depuis, ETAT_FILE, etatTexte, hoteDe, LIMITES, lignesJournal, origineTexte, porteeTexte, resumeFile, sitesExclus } from './texte'
+import { messageErreur } from '../ui/messageErreur'
 
 /** Couleurs des pastilles du design (Extensions.dc.html), attribuées d'après l'identifiant. */
 const COULEURS = ['#B5452F', '#3A3A46', '#2D5BD1', '#1F6FB2', '#1E7F6C', '#8A8AA6']
@@ -236,7 +237,7 @@ function Page({ privee }: { privee: boolean | undefined }) {
       }
       await rafraichir()
     } catch (e) {
-      setRetour({ texte: e instanceof Error ? e.message : String(e) })
+      setRetour({ texte: messageErreur(e, 'L’opération a échoué. Réessayez.') })
     } finally {
       setOccupe(false)
     }
@@ -248,7 +249,7 @@ function Page({ privee }: { privee: boolean | undefined }) {
       setResultatFile(await window.lyra.invoke('extensions:consommerFile', { confirmees: [`${e.magasin}:${e.id}`] }))
       await rafraichir()
     } catch (err) {
-      setRetour({ texte: err instanceof Error ? err.message : String(err) })
+      setRetour({ texte: messageErreur(err, 'L’opération a échoué. Réessayez.') })
     } finally {
       setOccupe(false)
     }
@@ -260,7 +261,7 @@ function Page({ privee }: { privee: boolean | undefined }) {
       setResultatFile(await window.lyra.invoke('extensions:consommerFile'))
       await rafraichir()
     } catch (err) {
-      setRetour({ texte: err instanceof Error ? err.message : String(err) })
+      setRetour({ texte: messageErreur(err, 'L’opération a échoué. Réessayez.') })
     } finally {
       setOccupe(false)
     }

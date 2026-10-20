@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { patchImporte, patchPage } from './import'
+import { describe, it, expect, vi } from 'vitest'
+import { MESSAGE_IMPORT_INVALIDE, importerReglages, patchImporte, patchPage } from './import'
 
 describe('patchImporte', () => {
   const oui = (): boolean => true
@@ -61,3 +61,23 @@ describe('patchPage (settings:set depuis une page)', () => {
   })
 })
 
+
+describe('importerReglages (bouton « Importer » des réglages)', () => {
+  const faux = () => {
+    const appels: unknown[] = []
+    return { appels, setSettings: (p: unknown) => (appels.push(p), { theme: 'sombre' } as never) }
+  }
+  it('fichier enregistré par le Bloc-notes de Windows (BOM UTF-8) : importé', async () => {
+    const r = faux()
+    const res = await importerReglages(r, async () => '﻿{"theme":"sombre"}')
+    expect(r.appels).toEqual([{ theme: 'sombre' }])
+    expect(res).toEqual({ theme: 'sombre' })
+  })
+  it('fichier non JSON : phrase lisible, jamais l’erreur de JSON.parse', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const res = await importerReglages(faux(), async () => '<html>pas du json')
+    expect(res).toEqual({ erreur: MESSAGE_IMPORT_INVALIDE })
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+  })
+})

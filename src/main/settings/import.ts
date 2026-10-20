@@ -54,3 +54,19 @@ export function patchImporte(brut: unknown, estRepertoire: (chemin: string) => b
   }
   return retirerRegistreExtensions(patch) as Partial<Settings>
 }
+
+const TAILLE_MAX_IMPORT = 1_000_000
+
+export const MESSAGE_IMPORT_INVALIDE = 'Ce fichier n’est pas un fichier de réglages de Lyra valide.'
+
+/** Importe un fichier de réglages : tout fichier illisible, trop gros ou non JSON donne une phrase lisible (détail au journal). */
+export async function importerReglages(reglages: { setSettings(patch: Partial<Settings>): Settings }, lire: () => Promise<string>): Promise<Settings | { erreur: string }> {
+  try {
+    const brut = await lire()
+    if (brut.length > TAILLE_MAX_IMPORT) return { erreur: 'Ce fichier est trop volumineux pour être un fichier de réglages.' }
+    return reglages.setSettings(patchImporte(JSON.parse(brut.replace(/^\uFEFF/, ''))))
+  } catch (e) {
+    console.warn('[réglages] import impossible :', e)
+    return { erreur: MESSAGE_IMPORT_INVALIDE }
+  }
+}

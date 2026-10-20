@@ -12,6 +12,7 @@ import { copierDossier, extraireZip, idDepuisCle, verifierCrx3, MAX_ARCHIVE, Err
 import type { Chargeur } from './chargeur'
 import { appliquerStubs, type ShimsStubs } from './stubs'
 import { dossierAbsolu, dossierRelatifValide, ID_EXTENSION, type Registre } from './registre'
+import { messageLisible } from '../../shared/messageTechnique'
 
 export { DELAI_RESEAU_MS }
 
@@ -410,11 +411,11 @@ export function creerInstallateurChrome(d: DepsInstallateurChrome): Installateur
           })
       }
     } catch (e) {
-      return echec(e instanceof ErreurArchive ? e.message : `installation impossible : ${message(e)}`)
+      return echec(e instanceof ErreurArchive ? e.message : `installation impossible : ${messageLisible(e, 'réponse inattendue ou paquet illisible (détail dans le journal)')}`)
     }
   }
 
-  return { installerChrome, installerUbo: (miseAJour) => installerUbo(miseAJour === true).catch((e) => echec(`installation impossible : ${message(e)}`)), derniereVersionUbo: async () => (await releaseUbo()).version,
+  return { installerChrome, installerUbo: (miseAJour) => installerUbo(miseAJour === true).catch((e) => echec(`installation impossible : ${messageLisible(e, 'réponse inattendue ou paquet illisible (détail dans le journal)')}`)), derniereVersionUbo: async () => (await releaseUbo()).version,
     versionDistanteCws,
     mettreAJourCws: (id) => installerCws(id, true).catch((e) => echec(`mise à jour impossible : ${message(e)}`))
   }

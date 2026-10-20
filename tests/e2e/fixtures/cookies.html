@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><title>Cookies</title></head>
+<body>
+  <p id="resultat"></p>
+  <script>
+    // Script de bandeau de cookies : connu des listes « gênes » seulement (EasyList Cookie : /cookielaw.js).
+    fetch('https://lyra-test.invalid/js/cookielaw.js')
+      .then((r) => 'OK ' + r.status)
+      .catch((e) => 'ERR ' + e.message)
+      .then((t) => (document.getElementById('resultat').textContent = t))
+  </script>
+</body>
+</html>

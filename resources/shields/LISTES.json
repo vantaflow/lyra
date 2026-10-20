@@ -82,6 +82,24 @@
       "fichier": "peter-lowe.txt"
     },
     {
+      "nom": "uBO annoyances-cookies",
+      "url": "https://ublockorigin.github.io/uAssets/filters/annoyances-cookies.txt",
+      "fichier": "genes-ubo-cookies.txt",
+      "categorie": "genes"
+    },
+    {
+      "nom": "uBO annoyances-others",
+      "url": "https://ublockorigin.github.io/uAssets/filters/annoyances-others.txt",
+      "fichier": "genes-ubo-autres.txt",
+      "categorie": "genes"
+    },
+    {
+      "nom": "EasyList Cookie",
+      "url": "https://secure.fanboy.co.nz/fanboy-cookiemonster.txt",
+      "fichier": "genes-easylist-cookie.txt",
+      "categorie": "genes"
+    },
+    {
       "nom": "Scriptlets uBO (resources.json)",
       "url": "https://raw.githubusercontent.com/ghostery/adblocker/master/packages/adblocker/assets/ublock-origin/resources.json",
       "fichier": "resources.json"

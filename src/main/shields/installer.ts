@@ -44,8 +44,14 @@ export function nomScriptlet(code: string): string {
 export async function demarrerBoucliers(deps: DepsBoucliers): Promise<Shields> {
   const dossier = app.isPackaged ? dossierListesEmbarquees() : join(app.getAppPath(), 'resources/shields')
   const listes = await chargerListesEmbarquees(dossier)
-  const majHeures = deps.reglages.getSettings().boucliers.majHeures
+  let majHeures = deps.reglages.getSettings().boucliers.majHeures
   const options: OptionsMoteur = { cacheDir: deps.cacheDir, listesEmbarquees: listes, listesDistantes: listes.urls ?? [], majHeures }
+  // Moteur des gênes : construit à la première activation de l'option (cache ou listes embarquées), jamais avant.
+  const optionsGenes: OptionsMoteur | undefined = listes.genes
+    ? { cacheDir: deps.cacheDir, listesEmbarquees: { textes: listes.genes.textes, resources: listes.resources, date: listes.date }, listesDistantes: listes.genes.urls, majHeures, nomCache: 'engine-genes' }
+    : undefined
+  let genes: ResultatMoteur | undefined
+  let genesEnCours: Promise<void> | undefined
   // Pas de réseau au démarrage : cache (même périmé) ou listes embarquées, en moins d'une seconde.
   let actuel: ResultatMoteur = await construireMoteur(options)
 
@@ -66,6 +72,19 @@ export async function demarrerBoucliers(deps: DepsBoucliers): Promise<Shields> {
     }
   })
   for (const ses of deps.sessions) shields.attacher(ses)
+
+  const assurerGenes = (): Promise<void> => {
+    if (genes || !optionsGenes || deps.reglages.getSettings().boucliers.genes !== true) return Promise.resolve()
+    genesEnCours ??= construireMoteur(optionsGenes)
+      .then((r) => {
+        genes = r
+        shields.remplacerMoteurGenes(r.moteur)
+      })
+      .catch((e: unknown) => console.warn('[boucliers] listes des gênes illisibles :', e))
+      .finally(() => (genesEnCours = undefined))
+    return genesEnCours
+  }
+  void assurerGenes()
 
   const etat = (tm: TabManager): EtatBoucliers => {
     const wc = tm.wcActif()
@@ -143,18 +162,44 @@ export async function demarrerBoucliers(deps: DepsBoucliers): Promise<Shields> {
   })
 
   // --- Mise à jour des listes : 30 s après le démarrage, puis toutes les majHeures (hors tests). ---
-  const maj = async (): Promise<void> => {
+  /** Vrai si les listes ont été relues ; faux si le réseau a échoué (moteur conservé). */
+  const maj = async (): Promise<boolean> => {
     const nouveau = await mettreAJour({ ...options, fetch }, actuel)
-    if (nouveau !== actuel) {
+    const ok = nouveau !== actuel
+    if (ok) {
       actuel = nouveau
       shields.remplacerMoteur(nouveau.moteur)
     }
+    if (genes && optionsGenes) {
+      const g = await mettreAJour({ ...optionsGenes, fetch }, genes)
+      if (g !== genes) {
+        genes = g
+        shields.remplacerMoteurGenes(g.moteur)
+      }
+    }
+    return ok
   }
-  const majGardee = creerMajGardee(async () => (await maj(), stats()), { delaiMs: 60_000 })
+  const majGardee = creerMajGardee(async (): Promise<StatsBoucliers | { echec: true; date: string }> => ((await maj()) ? stats() : { echec: true, date: actuel.date }), { delaiMs: 60_000 })
   handle('shields:update', () => majGardee())
+  let minuterie: NodeJS.Timeout | undefined
+  const planifier = (): void => {
+    if (minuterie) clearInterval(minuterie)
+    minuterie = setInterval(() => void maj(), majHeures * 3600_000)
+    minuterie.unref()
+  }
   if (!enTest()) {
     setTimeout(() => void maj(), DELAI_PREMIERE_MAJ).unref()
-    setInterval(() => void maj(), majHeures * 3600_000).unref()
+    planifier()
   }
+  // Réglages appliqués à chaud : option des gênes (moteur construit à la demande) et fréquence de mise à jour.
+  deps.reglages.onChanged((s) => {
+    void assurerGenes()
+    if (s.boucliers.majHeures !== majHeures) {
+      majHeures = s.boucliers.majHeures
+      options.majHeures = majHeures
+      if (optionsGenes) optionsGenes.majHeures = majHeures
+      if (!enTest()) planifier()
+    }
+  })
   return shields
 }

@@ -23,6 +23,7 @@ export function ShieldsPanel() {
     void window.lyra.invoke('shields:get').then(setEtat)
     void window.lyra.invoke('settings:get').then(setReglages)
     const off = window.lyra.on('shields:changed', setEtat)
+    const offReglages = window.lyra.on('settings:changed', setReglages)
     const touche = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
         e.preventDefault()
@@ -32,6 +33,7 @@ export function ShieldsPanel() {
     document.addEventListener('keydown', touche)
     return () => {
       off()
+      offReglages()
       document.removeEventListener('keydown', touche)
     }
   }, [])
@@ -41,6 +43,12 @@ export function ShieldsPanel() {
     if (!etat?.origine || etat.privee) return
     setEtat({ ...etat, actif })
     void window.lyra.invoke('shields:toggleSite', { origine: etat.origine, actif })
+  }
+
+  const basculerGenes = (genes: boolean): void => {
+    if (!reglages) return
+    setReglages({ ...reglages, boucliers: { ...reglages.boucliers, genes } })
+    void window.lyra.invoke('settings:set', { boucliers: { genes } } as Partial<Settings>).then(setReglages, (e: unknown) => console.warn('[boucliers] réglage des gênes :', e))
   }
 
   const interne = etat !== null && etat.origine === ''
@@ -99,14 +107,23 @@ export function ShieldsPanel() {
               <button type="button" class={actif ? 'on' : ''} aria-pressed={actif} disabled={interne} onClick={() => basculer(true)}>
                 Standard
               </button>
-              <button type="button" disabled title="Bientôt">
+              <button type="button" disabled title="Bientôt" aria-label="Strict (bientôt)">
                 Strict
               </button>
             </span>
           </div>
           <div class="pn-ligne">
             <span>Bannières de cookies et gênes</span>
-            <button class={`tg ${reglages?.boucliers.genes ? 'on' : 'off'}`} type="button" role="switch" aria-checked={reglages?.boucliers.genes ?? false} aria-label="Gênes" disabled title="Bientôt">
+            <button
+              class={`tg ${reglages?.boucliers.genes ? 'on' : 'off'}`}
+              type="button"
+              role="switch"
+              aria-checked={reglages?.boucliers.genes ?? false}
+              aria-label="Gênes"
+              disabled={reglages === null}
+              title="S'applique aux pages ouvertes ensuite"
+              onClick={() => basculerGenes(!(reglages?.boucliers.genes ?? false))}
+            >
               <i></i>
             </button>
           </div>
@@ -127,11 +144,13 @@ export function ShieldsPanel() {
         </details>
 
         <div class="pn-liens">
-          <a href="#" onClick={(e) => e.preventDefault()}>Règles de ce site</a>
+          {/* Pages pas encore livrées (jalon D) : visibles comme dans le design, mais inertes et signalées. */}
+          <a aria-disabled="true" title="Bientôt">Règles de ce site</a>
           <span aria-hidden="true">·</span>
-          <a href="#" onClick={(e) => e.preventDefault()}>Statistiques</a>
+          <a aria-disabled="true" title="Bientôt">Statistiques</a>
           <span aria-hidden="true">·</span>
-          <a href="#" onClick={(e) => e.preventDefault()}>Signaler un site cassé</a>
+          <a aria-disabled="true" title="Bientôt">Signaler un site cassé</a>
+          <em class="pn-bientot">bientôt</em>
         </div>
       </section>
     </div>
