@@ -67,6 +67,12 @@ test('lyra://extensions : en-tête, cartes, installation par fichier, interrupte
       await ligne.getByRole('button', { name: 'Options' }).click()
       await expect.poll(() => app.windows().some((w) => /^chrome-extension:\/\/[a-p]{32}\/options\.html$/.test(w.url()))).toBe(true)
     })
+    // Retour sur l'étoile lyra://extensions (l'étoile des options est passée devant ; une vue cachée ne peint plus sous Windows).
+    await fenetre.evaluate(async () => {
+      const { sky } = await window.lyra.invoke('sky:get')
+      const etoile = sky.stars.find((s) => s.url.startsWith('lyra://extensions'))
+      if (etoile) await window.lyra.invoke('tabs:activate', { id: etoile.id })
+    })
 
     repere("// Interrupteur : l'extension")
     // Interrupteur : l'extension est désactivée dans le registre.
