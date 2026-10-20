@@ -8,7 +8,7 @@ import type { Settings } from '../../shared/types'
 import type { EtatBoucliers, StatsBoucliers } from '../../shared/ipc'
 import { handle } from '../ipc'
 import { enTest } from '../modeTest'
-import { cleCanonique, desactiverBoucliers, reactiverBoucliers } from '../settings/sites'
+import { cleCanonique, desactiverBoucliers, reactiverBoucliers, resoudre } from '../settings/sites'
 import type { Reglages } from '../settings/settings'
 import type { TabManager } from '../tabs/TabManager'
 import { construireMoteur, mettreAJour, type OptionsMoteur, type ResultatMoteur } from './engine'
@@ -148,10 +148,27 @@ export async function demarrerBoucliers(deps: DepsBoucliers): Promise<Shields> {
     } else {
       deps.reglages.setSettings({ sites: { [cle]: desactiverBoucliers(sites, origine, niveau).ecrire } } as Partial<Settings>)
     }
-    const wc = tm.wcActif()
-    // La page est rechargée pour appliquer le changement (réseau et scriptlets).
-    if (wc && origineDe(wc.getURL()) === origine) wc.reload()
-    tm.envoyerAuChrome('shields:changed', etat(tm))
+    // Le rechargement de la page et la diffusion de l'état se font au changement de réglage (ci-dessous).
+  })
+  handle('shields:ouvrir-stats', (_d, e) => {
+    const tm = deps.ongletsDe(e.sender)
+    tm.fermerOverlay()
+    tm.ouvrir('lyra://shields')
+  })
+
+  // Le niveau effectif de la page active a changé (panneau, règles par site, niveau par défaut) : la page est rechargée pour
+  // appliquer le changement (réseau et scriptlets) et l'interface relit l'état.
+  let precedent = deps.reglages.getSettings()
+  deps.reglages.onChanged((s) => {
+    const avant = precedent
+    precedent = s
+    if (s.sites === avant.sites && s.boucliers.niveau === avant.boucliers.niveau) return
+    for (const tm of deps.onglets()) {
+      const wc = tm.wcActif()
+      const origine = origineDe(wc?.getURL() ?? '')
+      if (wc && origine !== '' && resoudre(avant.sites, origine, avant.boucliers.niveau).boucliers !== resoudre(s.sites, origine, s.boucliers.niveau).boucliers) wc.reload()
+      tm.envoyerAuChrome('shields:changed', etat(tm))
+    }
   })
 
   // --- Mise à jour des listes : 30 s après le démarrage, puis toutes les majHeures (hors tests). ---
@@ -177,7 +194,10 @@ export async function demarrerBoucliers(deps: DepsBoucliers): Promise<Shields> {
     })
     periodique.regler(majHeures)
     // Changement de fréquence dans les réglages : appliqué tout de suite, sans redémarrage.
-    deps.reglages.onChanged((s) => periodique.regler(s.boucliers.majHeures))
+    deps.reglages.onChanged((s) => {
+      options.majHeures = s.boucliers.majHeures
+      periodique.regler(s.boucliers.majHeures)
+    })
   }
   return shields
 }

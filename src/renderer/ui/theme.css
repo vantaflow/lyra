@@ -760,6 +760,9 @@ html.overlay #app {
   gap: 10px;
   text-align: center;
 }
+.pn-compteurs.pn-un {
+  grid-template-columns: minmax(0, 1fr);
+}
 .pn-compteurs > div {
   background: var(--pilule);
   border-radius: 10px;

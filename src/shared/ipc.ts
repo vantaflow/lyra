@@ -267,6 +267,8 @@ export type Requetes = {
   'sky:get': [void, SkyChange]
   'shields:get': [void, EtatBoucliers]
   'shields:toggleSite': [{ origine: string; actif: boolean }, void]
+  /** Panneau des Boucliers : ferme l'overlay et ouvre lyra://shields. */
+  'shields:ouvrir-stats': [void, void]
   /** Règles par site (clé : origine, hôte nu ou motif `*.hôte`, enregistrée sous forme canonique ; un champ à `null` est retiré). Écriture refusée en fenêtre privée. */
   'sites:lister': [void, Record<string, RegleSite>]
   'sites:ecrire': [{ cle: string; regle: { [C in keyof RegleSite]?: RegleSite[C] | null } }, void]

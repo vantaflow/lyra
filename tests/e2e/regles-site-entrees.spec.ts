@@ -192,3 +192,27 @@ test('deux fenêtres : une page de Lyra de la fenêtre 2 ouvre les règles du si
     autre.close()
   }
 })
+
+test('panneau des Boucliers : niveau par site, sous-titre, scripts tiers, Statistiques, pas de « Signaler »', async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    await ouvrirSite(fenetre)
+    await fenetre.locator('.boucliers').click()
+    await expect.poll(() => overlayDe(app)).toBeDefined()
+    const overlay = overlayDe(app)!
+    await expect(overlay.locator('.pn-bouclier')).toBeVisible()
+    await expect(overlay.locator('.pn-sous').first()).toHaveText('Boucliers actifs — règle standard')
+    await expect(overlay.getByText('Signaler un site cassé')).toHaveCount(0)
+    await expect(overlay.getByText('traqueurs')).toHaveCount(0)
+    await overlay.getByRole('button', { name: 'Strict' }).click()
+    await expect.poll(async () => (await fenetre.evaluate(() => window.lyra.invoke('sites:lister')))[BASE]?.boucliers).toBe('strict')
+    await expect(overlay.locator('.pn-sous').first()).toHaveText('Boucliers actifs — règle strict')
+    await expect(overlay.getByText('bloqués', { exact: true })).toBeVisible()
+    await overlay.getByRole('button', { name: 'Désactivés' }).click()
+    await expect.poll(async () => (await fenetre.evaluate(() => window.lyra.invoke('sites:lister')))[BASE]).toMatchObject({ boucliers: 'desactives', bouclierAvant: 'strict' })
+    await overlay.locator('.pn-liens a', { hasText: 'Statistiques' }).click()
+    await expect.poll(() => urls(fenetre)).toContain('lyra://shields')
+  } finally {
+    await app.close()
+  }
+})

@@ -12,12 +12,20 @@ function hote(origine: string): string {
   }
 }
 
+type Niveau = EtatBoucliers['niveau']
+const NIVEAUX: { id: Niveau; libelle: string }[] = [
+  { id: 'desactives', libelle: 'Désactivés' },
+  { id: 'standard', libelle: 'Standard' },
+  { id: 'strict', libelle: 'Strict' }
+]
+
 const sansSchema = (url: string): string => url.replace(/^[a-z]+:\/\//i, '')
 
 /** Panneau des Boucliers (fidèle à docs/design/project/Panneaux.dc.html, section Boucliers). */
 export function ShieldsPanel() {
   const [etat, setEtat] = useState<EtatBoucliers | null>(null)
   const [reglages, setReglages] = useState<Settings | null>(null)
+  const [erreur, setErreur] = useState('')
 
   useEffect(() => {
     void window.lyra.invoke('shields:get').then(setEtat)
@@ -39,14 +47,25 @@ export function ShieldsPanel() {
   const fermer = (): void => void window.lyra.invoke('overlay:close')
   const basculer = (actif: boolean): void => {
     if (!etat?.origine || etat.privee) return
-    setEtat({ ...etat, actif })
-    void window.lyra.invoke('shields:toggleSite', { origine: etat.origine, actif })
+    setEtat({ ...etat, actif, niveau: actif ? (etat.niveau === 'desactives' ? 'standard' : etat.niveau) : 'desactives' })
+    setErreur('')
+    window.lyra.invoke('shields:toggleSite', { origine: etat.origine, actif }).catch(() => setErreur("Le réglage n'a pas pu être enregistré."))
   }
 
   const interne = etat !== null && etat.origine === ''
   const siteWeb = /^https?:/.test(etat?.origine ?? '')
   const actif = etat?.actif ?? false
+  const niveau = etat?.niveau ?? 'standard'
   const n = etat?.bloques ?? 0
+  const lectureSeule = !siteWeb || etat === null || etat.privee === true
+  // Même écriture que « Boucliers du site » des règles par site : le niveau Strict est mémorisé pour la réactivation.
+  const regler = (v: Niveau): void => {
+    if (!etat || lectureSeule || v === niveau) return
+    setEtat({ ...etat, niveau: v, actif: v !== 'desactives' })
+    const regle = v === 'desactives' ? { boucliers: v, ...(niveau === 'strict' ? { bouclierAvant: 'strict' as const } : {}) } : { boucliers: v, bouclierAvant: null }
+    window.lyra.invoke('sites:ecrire', { cle: etat.origine, regle }).catch(() => setErreur("Le niveau n'a pas pu être enregistré."))
+  }
+  const sousTitre = interne ? 'Rien à bloquer ici' : actif ? `Boucliers actifs — règle ${niveau}` : 'Boucliers désactivés sur ce site'
 
   return (
     <div class="pn-fond" onMouseDown={(e) => e.target === e.currentTarget && fermer()}>
@@ -58,8 +77,7 @@ export function ShieldsPanel() {
           </svg>
           <div class="pn-site">
             <div class="pn-nom">{interne ? 'Page de Lyra' : hote(etat?.origine ?? '')}</div>
-            <div class="pn-sous">{interne ? 'Rien à bloquer ici' : actif ? 'Boucliers actifs — règle standard' : 'Boucliers désactivés sur ce site'}
-            {etat?.privee && !interne && <div class="pn-sous">Indisponible en fenêtre privée</div>}</div>
+            <div class="pn-sous">{sousTitre}</div>
           </div>
           <button
             class={`tg ${actif ? 'on' : 'off'}`}
@@ -68,25 +86,16 @@ export function ShieldsPanel() {
             aria-checked={actif}
             aria-label="Boucliers pour ce site"
             disabled={interne || etat === null || etat.privee === true}
-            title={etat?.privee ? 'Indisponible en fenêtre privée' : undefined}
             onClick={() => basculer(!actif)}
           >
             <i></i>
           </button>
         </div>
 
-        <div class="pn-compteurs">
+        <div class="pn-compteurs pn-un">
           <div>
             <div class="pn-n">{n}</div>
             <div class="pn-l">{n > 1 ? 'éléments bloqués' : 'élément bloqué'}</div>
-          </div>
-          <div>
-            <div class="pn-n">0</div>
-            <div class="pn-l">traqueurs</div>
-          </div>
-          <div>
-            <div class="pn-n">0</div>
-            <div class="pn-l">scripts retirés</div>
           </div>
         </div>
 
@@ -94,27 +103,23 @@ export function ShieldsPanel() {
           <div class="pn-ligne">
             <span>Niveau</span>
             <span class="pn-seg" role="group" aria-label="Niveau des boucliers">
-              <button type="button" class={!actif ? 'on' : ''} aria-pressed={!actif} disabled={interne} onClick={() => basculer(false)}>
-                Désactivés
-              </button>
-              <button type="button" class={actif ? 'on' : ''} aria-pressed={actif} disabled={interne} onClick={() => basculer(true)}>
-                Standard
-              </button>
-              <button type="button" disabled title="Bientôt">
-                Strict
-              </button>
+              {NIVEAUX.map((o) => (
+                <button key={o.id} type="button" class={niveau === o.id && !interne ? 'on' : ''} aria-pressed={niveau === o.id && !interne} disabled={lectureSeule} onClick={() => regler(o.id)}>
+                  {o.libelle}
+                </button>
+              ))}
             </span>
           </div>
           <div class="pn-ligne">
-            <span>Bannières de cookies et gênes</span>
-            <button class={`tg ${reglages?.boucliers.genes ? 'on' : 'off'}`} type="button" role="switch" aria-checked={reglages?.boucliers.genes ?? false} aria-label="Gênes" disabled title="Bientôt">
-              <i></i>
-            </button>
-          </div>
-          <div class="pn-ligne">
             <span>Scripts tiers inconnus</span>
-            <span class="pn-sous">autorisés</span>
+            <span class="pn-sous">{niveau === 'strict' && actif ? 'bloqués' : 'autorisés'}</span>
           </div>
+          {etat?.privee && !interne && <div class="pn-sous" role="note">Lecture seule : les règles par site ne peuvent pas être modifiées depuis une fenêtre privée.</div>}
+          {erreur && (
+            <div class="pn-sous" role="alert">
+              {erreur}
+            </div>
+          )}
         </div>
 
         <details class="pn-details">
@@ -139,9 +144,15 @@ export function ShieldsPanel() {
             Règles de ce site
           </a>
           <span aria-hidden="true">·</span>
-          <a href="#" onClick={(e) => e.preventDefault()}>Statistiques</a>
-          <span aria-hidden="true">·</span>
-          <a href="#" onClick={(e) => e.preventDefault()}>Signaler un site cassé</a>
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault()
+              window.lyra.invoke('shields:ouvrir-stats').catch(() => setErreur("Les statistiques n'ont pas pu être ouvertes."))
+            }}
+          >
+            Statistiques
+          </a>
         </div>
       </section>
     </div>
