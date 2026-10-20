@@ -199,14 +199,22 @@ describe('favoris', () => {
       f.cibles,
       OPTIONS
     )
-    expect(f.favoris.map((x) => x.url)).toEqual(['ftp://files.example/x', 'HTTPS://ok.example/ok'])
+    expect(f.favoris.map((x) => x.url)).toEqual(['ftp://files.example/x', 'https://ok.example/ok'])
     expect(r.favoris).toMatchObject({ etat: 'partiel', ajoutes: 2, ignores: 5 })
   })
 
-  it('normalisation minimale : fragment vide et / final d’un chemin vide ; jamais plus', async () => {
+  it('normalisation WHATWG : https://a.fr et https://a.fr/ sont le même favori, fragment vide retiré, / final jamais retiré', async () => {
     const f = faux()
     await appliquer(entree({ favoris: { barre: [lien('a', 'https://a.fr/#'), lien('a2', 'https://a.fr'), lien('x', 'https://a.fr/x'), lien('x2', 'https://a.fr/x/')], autres: [] } }), f.cibles, OPTIONS)
-    expect(f.favoris.map((x) => x.url)).toEqual(['https://a.fr', 'https://a.fr/x', 'https://a.fr/x/'])
+    expect(f.favoris.map((x) => x.url)).toEqual(['https://a.fr/', 'https://a.fr/x', 'https://a.fr/x/'])
+  })
+
+  it('présent face à un favori natif https://a.fr/ , avec ou sans slash ; adresse non analysable ignorée', async () => {
+    const f = faux()
+    f.favoris.push({ url: 'https://a.fr/', title: 'natif' })
+    const r = await appliquer(entree({ favoris: { barre: [lien('a', 'https://a.fr/'), lien('b', 'https://a.fr'), lien('c', 'http://')], autres: [] } }), f.cibles, OPTIONS)
+    expect(r.favoris).toMatchObject({ ajoutes: 0, presents: 2, ignores: 1 })
+    expect(f.favoris).toHaveLength(1)
   })
 
   it('un « / » dans un titre de dossier ne crée pas de niveau', async () => {

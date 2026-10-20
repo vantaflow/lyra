@@ -111,9 +111,16 @@ const etoileOuvrable = (url: string): boolean => /^https?:/i.test(url) || (proce
 
 const raisonDe = (e: unknown): string => (e as { raison?: unknown })?.raison?.toString() ?? (e instanceof Error ? e.message : String(e))
 
-/** Suppression minimale : fragment vide, puis `/` final d'un chemin vide ; `https://a.fr/x` et `https://a.fr/x/` restent distincts. */
-export function normaliserUrlFavori(url: string): string {
-  return url.replace(/#$/, '').replace(/^([a-z][a-z0-9+.-]*:\/\/[^/?#]+)\/(?=$|[?#])/i, '$1')
+/**
+ * Sérialisation WHATWG (celle des favoris natifs de Lyra : `https://a.fr` -> `https://a.fr/`), après retrait d'un
+ * fragment vide ; le `/` final n'est jamais retiré. `null` si l'adresse n'est pas analysable.
+ */
+export function normaliserUrlFavori(url: string): string | null {
+  try {
+    return new URL(url.trim().replace(/#$/, '')).href
+  } catch {
+    return null
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -227,7 +234,8 @@ function appliquerFavoris(f: FavorisImportes, source: NavigateurSource, cible: C
         parcourir(n.enfants, `${dossier} / ${titre}`)
       } else if (FAVORI_OUVRABLE.test(n.url)) {
         const url = normaliserUrlFavori(n.url)
-        items.push({ url, title: n.titre.trim() || url, dossier, date: n.date })
+        if (url === null) ignores++
+        else items.push({ url, title: n.titre.trim() || url, dossier, date: n.date })
       } else ignores++
     }
   }
