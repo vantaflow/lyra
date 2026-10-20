@@ -406,9 +406,15 @@ void app.whenReady().then(async () => {
   })
   // Surcharge de window.Notification (preload page) : appels synchrones, l'origine vient du cadre expéditeur.
   const decisionNotifications = (origine: string): string | undefined => reglages.getSettings().sites[origine]?.permissions?.notifications
+  // Iframe about:blank / srcdoc : elle hérite de l'origine du cadre qui l'a créée (le parent le plus proche qui a une adresse).
+  const urlEffective = (cadre?: WebFrameMain | null): string => {
+    let c = cadre
+    while (c && /^about:/i.test(c.url)) c = c.parent
+    return c?.url ?? ''
+  }
   const contexteNotification = (e: { sender: WebContents; senderFrame?: WebFrameMain | null }): { m: TabManager; origine: string } | undefined => {
     const m = ongletsPossedant(e.sender)
-    const origine = origineDe(e.senderFrame?.url ?? '')
+    const origine = origineDe(urlEffective(e.senderFrame))
     return m && origine && dnd.retient(m.fenetreId, origine) ? { m, origine } : undefined
   }
   const court = (v: unknown, max: number): string => (typeof v === 'string' ? v.slice(0, max) : '')
@@ -451,7 +457,7 @@ void app.whenReady().then(async () => {
   ipcMain.on('dnd:fermer', (e, id: unknown) => {
     // Une page ne ferme que ses propres notifications : l'origine vient du cadre expéditeur.
     const m = ongletsPossedant(e.sender)
-    const origine = origineDe(e.senderFrame?.url ?? '')
+    const origine = origineDe(urlEffective(e.senderFrame))
     if (m && origine && typeof id === 'number' && dnd.retirerNotification(m.fenetreId, id, origine)) cadresNotifications.delete(id)
   })
   handle('settings:get', () => reglages.getSettings())

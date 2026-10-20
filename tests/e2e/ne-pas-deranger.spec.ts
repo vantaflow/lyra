@@ -322,3 +322,29 @@ test('⌘ ⇧ D au clavier (page au premier plan) : entre puis sort, sans passer
     await app.close()
   }
 })
+
+test('notification depuis une iframe srcdoc : surcharge posée et retenue, origine héritée du site', async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { sites: { 'file://': { permissions: { notifications: 'autoriser' } } } }))
+    const p = await ouvrir(app, fenetre, DND)
+    await menu(app, 'ne-pas-deranger')
+    await expect.poll(async () => (await etat(fenetre)).actif).toBe(true)
+    // Le srcdoc finit de charger (sa surcharge est posée par son propre preload).
+    await expect.poll(() => p.frames().some((f) => f.url() === 'about:srcdoc')).toBe(true)
+    const natif = await p.evaluate(() => {
+      const w = (document.getElementById('doc') as HTMLIFrameElement).contentWindow as unknown as { Notification: new (t: string) => object }
+      new w.Notification('depuis srcdoc')
+      // La surcharge remplace le constructeur natif.
+      return Function.prototype.toString.call(w.Notification).includes('[native code]')
+    })
+    expect(natif).toBe(false)
+    await expect.poll(async () => (await etat(fenetre)).notifications).toBe(1)
+    expect(await livraisons(fenetre)).toEqual([])
+    await menu(app, 'ne-pas-deranger')
+    await expect.poll(async () => (await livraisons(fenetre)).length).toBe(1)
+    expect((await livraisons(fenetre))[0]).toMatchObject({ titre: 'depuis srcdoc', origine: 'file://' })
+  } finally {
+    await app.close()
+  }
+})
