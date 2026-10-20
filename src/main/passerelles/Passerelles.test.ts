@@ -662,6 +662,15 @@ describe('Passerelles — relecture finale', () => {
     await p.attendre()
   })
 
+  it('2. pacApplique : après un ajout, résolue seulement quand le PAC est en place sur toutes les sessions', async () => {
+    const { p, env } = monter()
+    p.demarrer()
+    p.ajouter('a.fr')
+    await p.pacApplique()
+    for (const s of env.sessions) expect(evaluer(s, 'https://a.fr/')).not.toBe('DIRECT')
+    await p.attendre()
+  })
+
   it('2. la veille du proxy système est réarmée après un échec de setProxy', async () => {
     const { p, env } = monter({ sites: [site('a.fr')] })
     // Deux applications au démarrage (PAC initial, puis fin de la recherche) : les deux échouent.

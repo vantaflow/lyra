@@ -193,6 +193,14 @@ export class Passerelles implements CrochetsPasserelles {
     await this.file
   }
 
+  /**
+   * Résolue quand le PAC voulu est appliqué à toutes les sessions (connexions ouvertes fermées). Un ajout suivi
+   * aussitôt d'un rechargement l'attend : sinon la fermeture des connexions interrompt la navigation (-3, ignoré).
+   */
+  pacApplique(): Promise<void> {
+    return this.file
+  }
+
   arreter(): void {
     this.annulerRetest?.()
     this.annulerRetest = undefined

@@ -519,14 +519,18 @@ void app.whenReady().then(async () => {
     exceptionsCertificat.add(hoteDe(url))
     p.m.naviguer(p.id, url)
   })
-  handle('erreur:passerelle', (_d, e) => {
+  handle('erreur:passerelle', async (_d, e) => {
     // Même garde que « continuer » : l'adresse vient de la page d'erreur expéditrice, jamais des données.
     const p = pageErreur(e.sender)
     if (!p) return {}
     // Fenêtre privée : jamais d'écriture dans les réglages.
     const r = pass.ajouterDepuisErreur(p.url, { privee: privees.has(p.m.fenetreId) })
     if (r.erreur) return { erreur: r.erreur }
-    if (r.ok) p.m.naviguer(p.id, p.url)
+    if (r.ok) {
+      // Le PAC doit être en place avant de recharger : sa mise en service ferme les connexions et interromprait la navigation.
+      await pass.pacApplique()
+      p.m.naviguer(p.id, p.url)
+    }
     return {}
   })
   handle('menu:open', (d, e) => {
