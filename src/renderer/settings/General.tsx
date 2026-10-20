@@ -18,15 +18,6 @@ export function General() {
           <Selecteur libelle="Langue" valeur={s.langue} options={LANGUES} surChange={(langue) => regler({ langue })} />
         </Ligne>
       </div>
-
-      <Titre>Confidentialité</Titre>
-      <div class="card">
-        <Ligne reglage="general.historique" titre="Historique de navigation" aide="Supprime toutes les pages visitées">
-          <button class="btn" type="button" onClick={() => void window.lyra.invoke('history:clear')}>
-            Effacer l'historique
-          </button>
-        </Ligne>
-      </div>
     </>
   )
 }

@@ -41,6 +41,7 @@ describe('routeDepuisHash', () => {
     expect(routeDepuisHash('', 'history')).toBe('historique')
     expect(routeDepuisHash('', 'bookmarks')).toBe('favoris')
     expect(routeDepuisHash('', 'downloads')).toBe('telechargements')
+    expect(routeDepuisHash('', 'shields')).toBe('boucliers')
     expect(SECTIONS.some((s) => s.id === 'historique' || s.id === 'favoris')).toBe(false)
   })
   it('retombe sur Général pour une route inconnue', () => {

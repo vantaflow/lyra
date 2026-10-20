@@ -36,8 +36,8 @@ export const SECTIONS: SectionReglages[] = [
 /** Routes valides qui ne figurent pas au sommaire (absentes du design) : lyra://history, lyra://bookmarks restent ouverts. */
 const ROUTES_HORS_SOMMAIRE = ['historique', 'favoris']
 
-/** Hôtes lyra:// qui ouvrent directement une section (lyra://history → #/historique). */
-export const SECTION_DE_L_HOTE: Record<string, string> = { history: 'historique', bookmarks: 'favoris', downloads: 'telechargements' }
+/** Hôtes lyra:// qui ouvrent directement une section (lyra://history → #/historique, lyra://shields → #/boucliers). */
+export const SECTION_DE_L_HOTE: Record<string, string> = { history: 'historique', bookmarks: 'favoris', downloads: 'telechargements', shields: 'boucliers' }
 
 /** Route courante : le hash (`#/historique`) prime, sinon l'hôte lyra://, sinon « general » (aussi pour une route inconnue). */
 export function routeDepuisHash(hash: string, hote: string): string {
