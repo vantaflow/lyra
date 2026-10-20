@@ -15,25 +15,27 @@ import {
 } from './gestes'
 
 const tout: ReglagesGestes = { defilementHorizontal: true, clicMolette: true, molettePlusCmdZoom: true }
-const m = (o: Partial<Molette> = {}): Molette => ({ dx: 0, dy: 0, ctrl: false, meta: false, shift: false, alt: false, ...o })
+const m = (o: Partial<Molette> = {}): Molette => ({ dx: 0, dy: 0, ctrl: false, meta: false, shift: false, alt: false, bord: true, ...o })
 const lin = 'linux' as const
 
 describe('validerMolette', () => {
   it('accepte des deltas finis et des modificateurs booléens', () => {
-    expect(validerMolette({ dx: -30, dy: 2.5, ctrl: false, meta: true, shift: false, alt: false })).toEqual({ dx: -30, dy: 2.5, ctrl: false, meta: true, shift: false, alt: false })
+    expect(validerMolette({ dx: -30, dy: 2.5, ctrl: false, meta: true, shift: false, alt: false, bord: true })).toEqual({ dx: -30, dy: 2.5, ctrl: false, meta: true, shift: false, alt: false, bord: true })
   })
   it('refuse ce qui n’est pas un objet, un nombre fini, un booléen', () => {
-    for (const v of [null, undefined, 3, 'x', [], { dx: 'a', dy: 0, ctrl: false, meta: false, shift: false, alt: false }]) expect(validerMolette(v)).toBeNull()
-    expect(validerMolette({ dx: NaN, dy: 0, ctrl: false, meta: false, shift: false, alt: false })).toBeNull()
-    expect(validerMolette({ dx: 0, dy: Infinity, ctrl: false, meta: false, shift: false, alt: false })).toBeNull()
-    expect(validerMolette({ dx: 0, dy: 0, ctrl: 1, meta: false, shift: false, alt: false })).toBeNull()
-    expect(validerMolette({ dx: 0, dy: 0, ctrl: false, meta: false, shift: false })).toBeNull()
+    for (const v of [null, undefined, 3, 'x', [], { dx: 'a', dy: 0, ctrl: false, meta: false, shift: false, alt: false, bord: true }]) expect(validerMolette(v)).toBeNull()
+    expect(validerMolette({ dx: NaN, dy: 0, ctrl: false, meta: false, shift: false, alt: false, bord: true })).toBeNull()
+    expect(validerMolette({ dx: 0, dy: Infinity, ctrl: false, meta: false, shift: false, alt: false, bord: true })).toBeNull()
+    expect(validerMolette({ dx: 0, dy: 0, ctrl: 1, meta: false, shift: false, alt: false, bord: true })).toBeNull()
+    expect(validerMolette({ dx: 0, dy: 0, ctrl: false, meta: false, shift: false, bord: true })).toBeNull()
+    expect(validerMolette({ dx: 0, dy: 0, ctrl: false, meta: false, shift: false, alt: false })).toBeNull()
+    expect(validerMolette({ dx: 0, dy: 0, ctrl: false, meta: false, shift: false, alt: false, bord: 'oui' })).toBeNull()
   })
   it('borne les deltas démesurés', () => {
-    expect(validerMolette({ dx: 1e9, dy: -1e9, ctrl: false, meta: false, shift: false, alt: false })).toMatchObject({ dx: 5000, dy: -5000 })
+    expect(validerMolette({ dx: 1e9, dy: -1e9, ctrl: false, meta: false, shift: false, alt: false, bord: true })).toMatchObject({ dx: 5000, dy: -5000 })
   })
   it('ignore les champs en trop (aucune donnée de page)', () => {
-    expect(Object.keys(validerMolette({ dx: 1, dy: 1, ctrl: false, meta: false, shift: false, alt: false, url: 'https://x.fr', titre: 'x' })!).sort()).toEqual(['alt', 'ctrl', 'dx', 'dy', 'meta', 'shift'])
+    expect(Object.keys(validerMolette({ dx: 1, dy: 1, ctrl: false, meta: false, shift: false, alt: false, bord: true, url: 'https://x.fr', titre: 'x' })!).sort()).toEqual(['alt', 'bord', 'ctrl', 'dx', 'dy', 'meta', 'shift'])
   })
 })
 
@@ -80,6 +82,10 @@ describe('défilement horizontal : précédent / suivant', () => {
     expect(decisionMolette(e, m({ dx: 300, dy: 200 }), 1000, tout, lin)).toBeNull()
     expect(decisionMolette(e, m({ dx: 300, dy: 100 }), 1010, tout, lin)).toBe('suivant')
   })
+  it('« nettement horizontal » : |dx| strictement plus du double de |dy|', () => {
+    expect(decisionMolette(etatMolette(), m({ dx: 400, dy: 200 }), 1000, tout, lin)).toBeNull()
+    expect(decisionMolette(etatMolette(), m({ dx: 401, dy: 200 }), 1000, tout, lin)).toBe('suivant')
+  })
   it('ignore Maj, Alt et les défilements verticaux purs', () => {
     expect(decisionMolette(etatMolette(), m({ dx: 300, shift: true }), 1000, tout, lin)).toBeNull()
     expect(decisionMolette(etatMolette(), m({ dx: 300, alt: true }), 1000, tout, lin)).toBeNull()
@@ -96,6 +102,38 @@ describe('défilement horizontal : précédent / suivant', () => {
     decisionMolette(e, m({ dx: 100 }), 1000, tout, lin)
     expect(decisionMolette(e, m({ dx: 100 }), 1010, { ...tout, defilementHorizontal: false }, lin)).toBeNull()
     expect(decisionMolette(e, m({ dx: 100 }), 1020, tout, lin)).toBeNull()
+  })
+})
+
+describe('navigation par débordement (zone défilable sous la molette)', () => {
+  it('pas au bord (carrousel, tableau large, carte encore défilable) : jamais de navigation, même cumulé au-delà du seuil', () => {
+    const e = etatMolette()
+    let t = 1000
+    for (let i = 0; i < 40; i++) expect(decisionMolette(e, m({ dx: -50, bord: false }), (t += 16), tout, lin)).toBeNull()
+  })
+  it('au bord : navigue (comportement inchangé)', () => {
+    expect(decisionMolette(etatMolette(), m({ dx: -300, bord: true }), 1000, tout, lin)).toBe('precedent')
+  })
+  it('une zone qui défile puis arrive au bout dans le même geste ne fait pas reculer la page', () => {
+    const e = etatMolette()
+    let t = 1000
+    for (let i = 0; i < 5; i++) decisionMolette(e, m({ dx: -50, bord: false }), (t += 16), tout, lin)
+    // le carrousel est au bout : les deltas suivants sont « au bord », mais le geste a déjà défilé la page
+    for (let i = 0; i < 20; i++) expect(decisionMolette(e, m({ dx: -50, bord: true }), (t += 16), tout, lin)).toBeNull()
+  })
+  it('après une pause, un nouveau geste au bord navigue', () => {
+    const e = etatMolette()
+    decisionMolette(e, m({ dx: -50, bord: false }), 1000, tout, lin)
+    expect(decisionMolette(e, m({ dx: -300, bord: true }), 1000 + OUBLI_MS + 1, tout, lin)).toBe('precedent')
+  })
+  it('un cumul entamé au bord est annulé dès que la page se met à défiler', () => {
+    const e = etatMolette()
+    expect(decisionMolette(e, m({ dx: -100, bord: true }), 1000, tout, lin)).toBeNull()
+    expect(decisionMolette(e, m({ dx: -100, bord: false }), 1010, tout, lin)).toBeNull()
+    expect(decisionMolette(e, m({ dx: -100, bord: true }), 1020, tout, lin)).toBeNull()
+  })
+  it('sans effet sur le zoom : ⌘ / Ctrl + molette zoome même avec bord faux', () => {
+    expect(decisionMolette(etatMolette(), m({ dy: -SEUIL_ZOOM, ctrl: true, bord: false }), 1000, tout, lin)).toBe('zoom-plus')
   })
 })
 
@@ -159,11 +197,11 @@ describe('swipe (macOS)', () => {
 })
 
 describe('canal IPC « gestes:molette »', () => {
-  function monter(o: { reglages?: ReglagesGestes; possede?: boolean; active?: boolean; principal?: boolean } = {}) {
+  function monter(o: { reglages?: ReglagesGestes; possede?: boolean; active?: boolean; principal?: boolean; url?: string } = {}) {
     const journal: string[] = []
     let ecouteur: ((e: unknown, brut: unknown) => void) | undefined
     const ipcMain = { on: (canal: string, cb: (e: unknown, brut: unknown) => void) => void (canal === 'gestes:molette' && (ecouteur = cb)) }
-    const wc = { id: 1, mainFrame: { id: 'principal' }, once: () => undefined }
+    const wc = { id: 1, mainFrame: { id: 'principal' }, once: () => undefined, getURL: () => o.url ?? 'https://exemple.fr/page' }
     const tabs = {
       idDe: () => 'e1',
       idActif: () => (o.active === false ? 'autre' : 'e1'),
@@ -207,11 +245,20 @@ describe('canal IPC « gestes:molette »', () => {
     b.envoyer(bon({ dx: -300 }))
     expect(b.journal).toEqual([])
   })
+  it('refuse une page de Lyra (lyra://) ou locale : pages web seulement', () => {
+    for (const url of ['lyra://settings', 'lyra://newtab', 'file:///tmp/x.html']) {
+      const { envoyer, journal } = monter({ url })
+      envoyer(bon({ dx: -300 }))
+      envoyer(bon({ dy: -100, ctrl: true }))
+      expect(journal).toEqual([])
+    }
+  })
   it('refuse une charge invalide', () => {
     const { envoyer, journal } = monter()
     envoyer({ dx: 'x' })
     envoyer(null)
-    envoyer({ dx: NaN, dy: 0, ctrl: false, meta: false, shift: false, alt: false })
+    envoyer({ dx: NaN, dy: 0, ctrl: false, meta: false, shift: false, alt: false, bord: true })
+    envoyer({ dx: -300, dy: 0, ctrl: false, meta: false, shift: false, alt: false })
     expect(journal).toEqual([])
   })
   it('respecte les interrupteurs courants (relus à chaque message)', () => {

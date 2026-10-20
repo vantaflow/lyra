@@ -116,7 +116,9 @@ export function attacherComportements(wc: WebContents, d: DepsComportements): vo
 export function suivreClicMolette(wc: WebContents, maintenant: () => number = Date.now): () => number {
   let dernier = -Infinity
   wc.on('input-event', (_e, ev) => {
-    if ((ev.type === 'mouseDown' || ev.type === 'mouseUp') && (ev as { button?: string }).button === 'middle') dernier = maintenant()
+    if (ev.type !== 'mouseDown' && ev.type !== 'mouseUp') return
+    // Un autre bouton (⌘ / Ctrl + clic) efface le souvenir : sa disposition `background-tab` n'est pas un clic molette.
+    dernier = (ev as { button?: string }).button === 'middle' ? maintenant() : -Infinity
   })
   return () => dernier
 }

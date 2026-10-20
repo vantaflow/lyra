@@ -90,9 +90,12 @@ if (WEB || HERITE || (location.protocol === 'file:' && TEST)) {
 
 // Gestes de molette (Réglages > Gestes) : relais minimal vers le main, cadre principal seulement (jamais les iframes).
 // Défilement horizontal (précédent / suivant) et molette avec ⌘ / Ctrl (zoom) : rien d'autre n'est relayé. Écouteur passif, donc ni
-// défilement ni zoom natifs touchés ; deltas cumulés et envoyés au plus toutes les 40 ms ; seuls deltas et modificateurs partent.
+// défilement ni zoom natifs touchés ; deltas cumulés et envoyés au plus toutes les 40 ms. Seuls partent les deltas, les modificateurs
+// et un booléen « au bord » (aucune zone sous la molette ne peut encore défiler dans ce sens : navigation par débordement, comme
+// Chrome) ; rien de la page. Un geste que la page a pris pour elle (preventDefault) n'est pas relayé.
+import { auBord, type MesureDefilement } from '../shared/defilement'
 if (WEB && window === window.top) {
-  type Charge = { dx: number; dy: number; ctrl: boolean; meta: boolean; shift: boolean; alt: boolean }
+  type Charge = { dx: number; dy: number; ctrl: boolean; meta: boolean; shift: boolean; alt: boolean; bord: boolean }
   let attente: Charge | null = null
   let dernierEnvoi = 0
   let minuteur: ReturnType<typeof setTimeout> | undefined
@@ -103,22 +106,46 @@ if (WEB && window === window.top) {
     ipcRenderer.send('gestes:molette', attente)
     attente = null
   }
+  const mesurer = (el: Element, racine = false): MesureDefilement => {
+    const st = getComputedStyle(el)
+    return { overflowX: st.overflowX, scrollLeft: el.scrollLeft, scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, rtl: st.direction === 'rtl', racine }
+  }
+  /** Zones de la cible vers le document (shadow DOM compris), puis le document lui-même. */
+  const zones = (e: WheelEvent): MesureDefilement[] => {
+    const racine = document.documentElement
+    const corps = document.body
+    const res: MesureDefilement[] = []
+    for (const n of e.composedPath()) {
+      if (n instanceof Element && n !== racine && n !== corps) res.push(mesurer(n))
+    }
+    // Le document défile avec l'overflow du corps quand `<html>` ne pose pas le sien (propagation de la fenêtre).
+    const fenetre = racine && corps && getComputedStyle(racine).overflowX === 'visible' ? corps : racine
+    if (racine && fenetre) res.push({ ...mesurer(racine, true), overflowX: getComputedStyle(fenetre).overflowX, scrollLeft: (document.scrollingElement ?? racine).scrollLeft })
+    return res
+  }
   window.addEventListener(
     'wheel',
     (e) => {
       const zoom = e.ctrlKey || e.metaKey
       if (!zoom && Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return
       const k = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 800 : 1
-      if (attente && (attente.ctrl !== e.ctrlKey || attente.meta !== e.metaKey || attente.shift !== e.shiftKey || attente.alt !== e.altKey)) {
-        clearTimeout(minuteur)
-        envoyer()
-      }
-      attente ??= { dx: 0, dy: 0, ctrl: e.ctrlKey, meta: e.metaKey, shift: e.shiftKey, alt: e.altKey }
-      attente.dx += e.deltaX * k
-      attente.dy += e.deltaY * k
-      const reste = 40 - (Date.now() - dernierEnvoi)
-      if (reste <= 0) envoyer()
-      else minuteur ??= setTimeout(envoyer, reste)
+      const [dx, dy, ctrl, meta, shift, alt] = [e.deltaX * k, e.deltaY * k, e.ctrlKey, e.metaKey, e.shiftKey, e.altKey]
+      // Mesuré tout de suite (le défilement n'a pas encore eu lieu) ; seul un défilement horizontal sans modificateur en a besoin.
+      const bord = zoom || shift || alt || dx === 0 ? true : auBord(zones(e), dx)
+      setTimeout(() => {
+        if (e.defaultPrevented) return
+        if (attente && (attente.ctrl !== ctrl || attente.meta !== meta || attente.shift !== shift || attente.alt !== alt)) {
+          clearTimeout(minuteur)
+          envoyer()
+        }
+        attente ??= { dx: 0, dy: 0, ctrl, meta, shift, alt, bord: true }
+        attente.dx += dx
+        attente.dy += dy
+        attente.bord &&= bord
+        const reste = 40 - (Date.now() - dernierEnvoi)
+        if (reste <= 0) envoyer()
+        else minuteur ??= setTimeout(envoyer, reste)
+      }, 0)
     },
     { passive: true }
   )

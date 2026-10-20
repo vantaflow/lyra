@@ -18,6 +18,11 @@ export interface Molette {
   meta: boolean
   shift: boolean
   alt: boolean
+  /**
+   * Navigation par débordement : vrai si, au-dessus de la cible, aucune zone (ancêtres, document) ne peut encore défiler
+   * horizontalement dans ce sens (mesuré par le preload ; seul ce booléen part de la page). Sans objet pour le zoom.
+   */
+  bord: boolean
 }
 
 export type Geste = 'precedent' | 'suivant' | 'zoom-plus' | 'zoom-moins'
@@ -31,11 +36,13 @@ export const OUBLI_MS = 250
 /** Défilement vertical cumulé (pixels) pour un palier de zoom ; au plus un palier toutes les `PAS_ZOOM_MS`. */
 export const SEUIL_ZOOM = 40
 export const PAS_ZOOM_MS = 120
-/** Le défilement doit être nettement horizontal : |dx| au moins le double de |dy|. */
+/** Le défilement doit être nettement horizontal : |dx| strictement plus du double de |dy|. */
 const RATIO_HORIZONTAL = 2
 const BORNE_DELTA = 5000
 
 export interface EtatMolette {
+  /** Une zone de la page a défilé pendant ce geste : pas de navigation avant le calme (un carrousel qui arrive au bout ne fait pas reculer la page). */
+  pageDefile: boolean
   cumulX: number
   dernierX: number
   verrouJusqua: number
@@ -44,18 +51,18 @@ export interface EtatMolette {
   dernierPalier: number
 }
 
-export const etatMolette = (): EtatMolette => ({ cumulX: 0, dernierX: -Infinity, verrouJusqua: -Infinity, cumulZoom: 0, dernierZoomEvt: -Infinity, dernierPalier: -Infinity })
+export const etatMolette = (): EtatMolette => ({ pageDefile: false, cumulX: 0, dernierX: -Infinity, verrouJusqua: -Infinity, cumulZoom: 0, dernierZoomEvt: -Infinity, dernierPalier: -Infinity })
 
 const nombre = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 const borne = (v: number): number => Math.max(-BORNE_DELTA, Math.min(BORNE_DELTA, v))
 
-/** Charge du canal : exactement des deltas et des modificateurs, rien d'autre (les champs en trop sont jetés). */
+/** Charge du canal : exactement des deltas, des modificateurs et le booléen « au bord », rien d'autre (les champs en trop sont jetés). */
 export function validerMolette(brut: unknown): Molette | null {
   if (typeof brut !== 'object' || brut === null || Array.isArray(brut)) return null
   const o = brut as Record<string, unknown>
   if (!nombre(o.dx) || !nombre(o.dy)) return null
-  if (typeof o.ctrl !== 'boolean' || typeof o.meta !== 'boolean' || typeof o.shift !== 'boolean' || typeof o.alt !== 'boolean') return null
-  return { dx: borne(o.dx), dy: borne(o.dy), ctrl: o.ctrl, meta: o.meta, shift: o.shift, alt: o.alt }
+  if (typeof o.ctrl !== 'boolean' || typeof o.meta !== 'boolean' || typeof o.shift !== 'boolean' || typeof o.alt !== 'boolean' || typeof o.bord !== 'boolean') return null
+  return { dx: borne(o.dx), dy: borne(o.dy), ctrl: o.ctrl, meta: o.meta, shift: o.shift, alt: o.alt, bord: o.bord }
 }
 
 /**
@@ -77,13 +84,20 @@ export function decisionMolette(etat: EtatMolette, m: Molette, maintenant: numbe
     return geste
   }
   etat.cumulZoom = 0
-  const horizontal = m.dx !== 0 && !m.shift && !m.alt && Math.abs(m.dx) >= RATIO_HORIZONTAL * Math.abs(m.dy)
+  const horizontal = m.dx !== 0 && !m.shift && !m.alt && Math.abs(m.dx) > RATIO_HORIZONTAL * Math.abs(m.dy)
   if (!horizontal || !r.defilementHorizontal || plateforme === 'darwin') {
     etat.cumulX = 0
     return null
   }
   const calme = maintenant - etat.dernierX > OUBLI_MS
   etat.dernierX = maintenant
+  if (calme) etat.pageDefile = false
+  if (!m.bord) etat.pageDefile = true
+  if (etat.pageDefile) {
+    // La page (carrousel, tableau large, carte…) défile encore, ou vient de défiler dans ce geste : aucune navigation avant le calme.
+    etat.cumulX = 0
+    return null
+  }
   if (maintenant < etat.verrouJusqua) {
     // Inertie du pavé ou rebond : le verrou se prolonge tant que le défilement continue.
     if (!calme) etat.verrouJusqua = Math.max(etat.verrouJusqua, maintenant + OUBLI_MS)
@@ -139,6 +153,8 @@ export function installerGestesMolette(ipcMain: Pick<IpcMain, 'on'>, d: DepsGest
     const wc = e.sender
     // Cadre principal d'une étoile seulement : ni iframe, ni interface, ni popup.
     if (e.senderFrame && e.senderFrame !== wc.mainFrame) return
+    // Pages web seulement : jamais lyra:// (le preload n'y relaie rien, et le main ne l'accepterait pas non plus).
+    if (!/^https?:/i.test(e.senderFrame?.url ?? wc.getURL())) return
     const tabs = d.possede(wc)
     const id = tabs?.idDe(wc)
     if (!tabs || !id || tabs.idActif() !== id) return

@@ -52,3 +52,22 @@ describe('clic molette sur un lien', () => {
     expect(clicMoletteRefuse(o('foreground-tab', 1000, 1100, false))).toBe(false)
   })
 })
+
+describe('suivi du clic molette (comportements)', () => {
+  it('un clic du milieu est mémorisé ; ⌘ / Ctrl + clic (bouton gauche) efface le souvenir', async () => {
+    const { EventEmitter } = await import('node:events')
+    const { suivreClicMolette } = await import('./comportements')
+    const wc = new EventEmitter()
+    let t = 5000
+    const dernier = suivreClicMolette(wc as never, () => t)
+    expect(dernier()).toBe(-Infinity)
+    wc.emit('input-event', {}, { type: 'mouseUp', button: 'middle' })
+    expect(dernier()).toBe(5000)
+    t = 5200
+    wc.emit('input-event', {}, { type: 'mouseDown', button: 'left' })
+    expect(dernier()).toBe(-Infinity)
+    wc.emit('input-event', {}, { type: 'mouseWheel' })
+    wc.emit('input-event', {}, { type: 'mouseDown', button: 'middle' })
+    expect(dernier()).toBe(5200)
+  })
+})

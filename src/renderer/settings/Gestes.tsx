@@ -11,7 +11,7 @@ export function Gestes() {
     <>
       <Titre>Navigation</Titre>
       <div class="card">
-        <Ligne reglage="gestes.defilementHorizontal" titre="Page précédente ou suivante en défilant horizontalement" aide="Balayage horizontal sur le pavé tactile ou la molette inclinée ; sur macOS, balayage à trois doigts">
+        <Ligne reglage="gestes.defilementHorizontal" titre="Page précédente ou suivante en défilant horizontalement" aide="Quand la page ne défile plus de ce côté : balayage horizontal du pavé tactile ou molette inclinée ; sur macOS, balayage à trois doigts">
           <Interrupteur actif={g.defilementHorizontal} libelle="Défilement horizontal : précédent et suivant" surChange={(defilementHorizontal) => regler({ gestes: { defilementHorizontal } })} />
         </Ligne>
         <Ligne reglage="gestes.clicMolette" titre="Ouvrir un lien dans une nouvelle étoile d'un clic molette" aide="L'étoile s'ouvre en arrière-plan, reliée à la page d'origine">

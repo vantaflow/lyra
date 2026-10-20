@@ -119,7 +119,8 @@ export class TabManager {
     fenetre.win.on('swipe', (_e, direction) => {
       const geste = decisionSwipe(direction, this.options.gestes?.(), swipe, Date.now())
       const id = this.idActif()
-      if (!geste || !id) return
+      // Pages web seulement : jamais sur une page de Lyra (lyra://).
+      if (!geste || !id || this.categories.get(id) !== 'web') return
       if (geste === 'precedent') this.precedent(id)
       else this.suivant(id)
     })
@@ -746,9 +747,9 @@ export class TabManager {
     const dernierClicMolette = suivreClicMolette(wc)
     wc.setWindowOpenHandler((details) => {
       if (categorie === 'web' && interditAuxSites(details.url)) return { action: 'deny' }
-      // Réglages > Gestes : clic molette coupé, le lien ne s'ouvre pas (⌘ / Ctrl + clic, lui, n'en dépend pas).
+      // Réglages > Gestes : clic molette coupé, le lien ne s'ouvre pas (⌘ / Ctrl + clic, lui, n'en dépend pas ; pages de Lyra non concernées).
       const gestes = this.options.gestes?.()
-      if (gestes && clicMoletteRefuse({ disposition: details.disposition, dernierClicMolette: dernierClicMolette(), maintenant: Date.now(), clicMolette: gestes.clicMolette })) return { action: 'deny' }
+      if (categorie === 'web' && gestes && clicMoletteRefuse({ disposition: details.disposition, dernierClicMolette: dernierClicMolette(), maintenant: Date.now(), clicMolette: gestes.clicMolette })) return { action: 'deny' }
       // Vraie popup : disposition « nouvelle fenêtre » ou features de fenêtre. `noopener` / `noreferrer` seuls
       // (lien ordinaire cliqué par l'utilisateur) ouvrent une étoile comme `target=_blank`.
       if (estVraiePopup(details)) {
