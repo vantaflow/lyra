@@ -247,8 +247,8 @@ export type Requetes = {
   'settings:import': [void, Settings | null]
   /** Boîte de dialogue : lit un thème JSON `{ nom, couleurs }` et l'applique comme « Mes couleurs » ; null si annulé, `erreur` si invalide. */
   'themes:importer': [void, { nom: string } | { erreur: string } | null]
-  /** Boîte de dialogue : enregistre « Mes couleurs » en JSON `{ nom, couleurs }` ; vrai si le fichier est écrit. */
-  'themes:exporter': [void, boolean]
+  /** Boîte de dialogue : enregistre « Mes couleurs » en JSON `{ nom, couleurs }` ; vrai si le fichier est écrit, `erreur` si l'écriture échoue. */
+  'themes:exporter': [void, boolean | { erreur: string }]
   /** Chrome → main : ouvre le panneau des Boucliers dans l'overlay. */
   'shields:open': [void, void]
   /** Overlay → main : referme l'overlay (Échap, clic à côté). */

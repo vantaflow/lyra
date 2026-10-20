@@ -58,7 +58,11 @@ export function installerReglagesIpc(reglages: Reglages): void {
   handle('themes:exporter', async () => {
     const r = await dialog.showSaveDialog({ defaultPath: 'mes-couleurs.json', filters: [{ name: 'JSON', extensions: ['json'] }] })
     if (r.canceled || !r.filePath) return false
-    await writeFile(r.filePath, contenuExport(reglages.getSettings().couleurs.personnalisees), 'utf8')
+    try {
+      await writeFile(r.filePath, contenuExport(reglages.getSettings().couleurs.personnalisees), 'utf8')
+    } catch {
+      return { erreur: "Le fichier n'a pas pu être écrit." }
+    }
     return true
   })
 }

@@ -87,6 +87,8 @@ export interface ReglagesCouleurs {
   /** « À une heure fixe » : fin de la plage sombre (retour au clair), `HH:MM`. Début = fin : toujours sombre. */
   heureClair: string
   personnalisees: CouleursTheme | null
+  /** Thème prêt dont « Mes couleurs » est la copie de départ (« modifié » se mesure par rapport à lui). */
+  depart: NomTheme
   cielTeinteParSite: boolean
   couleurParConstellation: boolean
   prefersColorScheme: boolean

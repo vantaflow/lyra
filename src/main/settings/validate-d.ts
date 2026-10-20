@@ -145,6 +145,7 @@ export const SCHEMA_D: Schema = {
     heureSombre: texte(5, HEURE_VALIDE),
     heureClair: texte(5, HEURE_VALIDE),
     personnalisees,
+    depart: nomTheme,
     cielTeinteParSite: booleen,
     couleurParConstellation: booleen,
     prefersColorScheme: booleen

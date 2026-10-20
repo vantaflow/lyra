@@ -1,6 +1,6 @@
 // Modèle pur de l'écran « Couleurs et thèmes » : « Mes couleurs » modifié, copie d'un thème avant édition, segments « Passer en sombre ».
 import { THEMES } from '../../shared/themes'
-import { COULEURS_INDIGO_NUIT, type CleCouleur, type CouleursTheme, type ReglagesCouleurs } from '../../shared/types-reglages'
+import { COULEURS_INDIGO_NUIT, type CleCouleur, type CouleursTheme, type NomTheme, type ReglagesCouleurs } from '../../shared/types-reglages'
 import type { Settings } from '../../shared/types'
 
 export type ModeCouleur = 'clair' | 'sombre'
@@ -10,19 +10,26 @@ export function couleursAffichees(c: Pick<ReglagesCouleurs, 'actif' | 'personnal
   return c.actif === 'mes-couleurs' ? (c.personnalisees ?? COULEURS_INDIGO_NUIT) : THEMES[c.actif].couleurs
 }
 
-/** « Mes couleurs » est « modifié » dès qu'une valeur diffère de sa valeur de départ (Indigo nuit). */
-export function estModifie(personnalisees: CouleursTheme | null): boolean {
-  if (!personnalisees) return false
-  return (Object.keys(COULEURS_INDIGO_NUIT) as CleCouleur[]).some(
-    (k) => personnalisees[k].clair.toUpperCase() !== COULEURS_INDIGO_NUIT[k].clair.toUpperCase() || personnalisees[k].sombre.toUpperCase() !== COULEURS_INDIGO_NUIT[k].sombre.toUpperCase()
-  )
+const memes = (a: CouleursTheme, b: CouleursTheme): boolean =>
+  (Object.keys(COULEURS_INDIGO_NUIT) as CleCouleur[]).every((k) => a[k].clair.toUpperCase() === b[k].clair.toUpperCase() && a[k].sombre.toUpperCase() === b[k].sombre.toUpperCase())
+
+/** « Mes couleurs » est « modifié » dès qu'une valeur diffère de celle du thème de départ (`couleurs.depart`). */
+export function estModifie(personnalisees: CouleursTheme | null, depart: NomTheme): boolean {
+  return personnalisees !== null && !memes(personnalisees, THEMES[depart].couleurs)
 }
 
-/** Réglage à écrire quand on change une couleur : copie du thème affiché dans « Mes couleurs » (le thème prêt reste intact). */
-export function modifierCouleur(c: Pick<ReglagesCouleurs, 'actif' | 'personnalisees'>, cle: CleCouleur, mode: ModeCouleur, hex: string): { actif: 'mes-couleurs'; personnalisees: CouleursTheme } {
+type EtatCouleurs = Pick<ReglagesCouleurs, 'actif' | 'personnalisees' | 'depart'>
+
+/** Réglage à écrire quand on change une couleur : copie du thème affiché dans « Mes couleurs » (le thème prêt reste intact), qui en devient le départ. */
+export function modifierCouleur(c: EtatCouleurs, cle: CleCouleur, mode: ModeCouleur, hex: string): { actif: 'mes-couleurs'; personnalisees: CouleursTheme; depart: NomTheme } {
   const copie = structuredClone(couleursAffichees(c)) as CouleursTheme
   copie[cle][mode] = hex.toUpperCase()
-  return { actif: 'mes-couleurs', personnalisees: copie }
+  return { actif: 'mes-couleurs', personnalisees: copie, depart: c.actif === 'mes-couleurs' ? c.depart : c.actif }
+}
+
+/** Vrai si la première édition depuis un thème prêt remplacerait une personnalisation de « Mes couleurs » différente de ce thème. */
+export function ecraseraPersonnalisation(c: EtatCouleurs): boolean {
+  return c.actif !== 'mes-couleurs' && c.personnalisees !== null && !memes(c.personnalisees, couleursAffichees(c))
 }
 
 /** `#RRGGBB` ou `RRGGBB` (espaces tolérés) → `#RRGGBB` en majuscules ; sinon null. */
@@ -31,9 +38,10 @@ export function hexValide(texte: string): string | null {
   return m ? `#${m[1].toUpperCase()}` : null
 }
 
-/** Aperçu d'une vignette de thème (en clair) : ciel, fond des pages, texte. */
-export function apercuTheme(c: CouleursTheme): { ciel: string; page: string; texte: string } {
-  return { ciel: c['ciel-fond'].clair, page: c['pages-fond'].clair, texte: c['capsule-texte'].clair }
+/** Aperçu d'une vignette de thème (en clair) : ciel, fond des pages, texte. Le design montre une page #FFFFFF pour Indigo nuit et Mes couleurs. */
+export function apercuTheme(nom: NomTheme, c: CouleursTheme): { ciel: string; page: string; texte: string } {
+  const blanc = nom === 'indigo-nuit' || nom === 'mes-couleurs'
+  return { ciel: c['ciel-fond'].clair, page: blanc ? '#FFFFFF' : c['pages-fond'].clair, texte: c['capsule-texte'].clair }
 }
 
 export type Passage = ReglagesCouleurs['passage']

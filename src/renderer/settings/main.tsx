@@ -139,10 +139,12 @@ function App() {
         {visibles.length === 0 && <p class="aucun">Aucun réglage trouvé.</p>}
       </nav>
       <main class="contenu">
-        <div class="entete">
-          <h1 data-reglage={route} tabIndex={-1}>{titre}</h1>
-          {(route === 'general' || route === 'apparence') && <ActionsReglages />}
-        </div>
+        {route !== 'couleurs' && (
+          <div class="entete">
+            <h1 data-reglage={route} tabIndex={-1}>{titre}</h1>
+            {(route === 'general' || route === 'apparence') && <ActionsReglages />}
+          </div>
+        )}
         {route === 'general' && <General />}
         {route === 'apparence' && <Apparence />}
         {route === 'couleurs' && <Couleurs />}

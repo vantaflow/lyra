@@ -6,11 +6,26 @@
   flex-wrap: wrap;
   margin: 0 0 18px;
 }
-.couleurs-entete .sous-titre {
+.couleurs-entete .bloc-titre {
   flex: 1;
   min-width: 240px;
-  margin: 0;
+}
+.couleurs-entete .sous-titre {
+  margin: 4px 0 0;
   color: var(--texte-secondaire);
+}
+.couleurs-confirmation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--attention);
+  border-radius: 10px;
+  background: var(--capsule-fond);
+}
+.couleurs-confirmation span {
+  flex: 1;
 }
 .couleurs-message {
   margin: -6px 0 12px;

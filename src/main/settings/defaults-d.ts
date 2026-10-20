@@ -22,6 +22,7 @@ export function reglagesParDefautD(): ReglagesD {
       heureSombre: '21:00',
       heureClair: '07:00',
       personnalisees: null,
+      depart: 'indigo-nuit',
       cielTeinteParSite: false,
       couleurParConstellation: true,
       prefersColorScheme: true

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { COULEURS_INDIGO_NUIT, type ReglagesCouleurs } from '../../shared/types-reglages'
 import { THEMES } from '../../shared/themes'
-import { apercuTheme, creerLimiteur, couleursAffichees, estModifie, hexValide, modifierCouleur, patchPassage, segmentPassage } from './couleursModele'
+import { apercuTheme, creerLimiteur, couleursAffichees, ecraseraPersonnalisation, estModifie, hexValide, modifierCouleur, patchPassage, segmentPassage } from './couleursModele'
 
 const base: ReglagesCouleurs = {
   actif: 'indigo-nuit',
@@ -10,6 +10,7 @@ const base: ReglagesCouleurs = {
   heureSombre: '21:00',
   heureClair: '07:00',
   personnalisees: null,
+  depart: 'indigo-nuit',
   cielTeinteParSite: false,
   couleurParConstellation: true,
   prefersColorScheme: true
@@ -17,15 +18,25 @@ const base: ReglagesCouleurs = {
 
 describe('« Mes couleurs » modifié', () => {
   it('est faux sans personnalisation et quand toutes les valeurs sont celles de départ', () => {
-    expect(estModifie(null)).toBe(false)
-    expect(estModifie(structuredClone(COULEURS_INDIGO_NUIT))).toBe(false)
+    expect(estModifie(null, 'indigo-nuit')).toBe(false)
+    expect(estModifie(structuredClone(COULEURS_INDIGO_NUIT), 'indigo-nuit')).toBe(false)
   })
   it('devient vrai dès qu\'une couleur change, et faux quand elle revient à sa valeur de départ', () => {
     const p1 = modifierCouleur(base, 'accent', 'sombre', '#112233')
     expect(p1.actif).toBe('mes-couleurs')
-    expect(estModifie(p1.personnalisees)).toBe(true)
+    expect(estModifie(p1.personnalisees, p1.depart)).toBe(true)
     const p2 = modifierCouleur({ ...base, ...p1 }, 'accent', 'sombre', COULEURS_INDIGO_NUIT.accent.sombre)
-    expect(estModifie(p2.personnalisees)).toBe(false)
+    expect(estModifie(p2.personnalisees, p2.depart)).toBe(false)
+  })
+  it('se mesure par rapport au thème de départ : partir de Forêt, changer puis remettre une couleur', () => {
+    const p1 = modifierCouleur({ ...base, actif: 'foret' }, 'ciel-fond', 'clair', '#abcdef')
+    expect(p1.depart).toBe('foret')
+    expect(estModifie(p1.personnalisees, p1.depart)).toBe(true)
+    const p2 = modifierCouleur({ ...base, ...p1 }, 'ciel-fond', 'clair', THEMES.foret.couleurs['ciel-fond'].clair)
+    expect(p2.depart).toBe('foret')
+    expect(estModifie(p2.personnalisees, p2.depart)).toBe(false)
+    // Forêt n'est pas Indigo : la copie non retouchée diffère pourtant d'Indigo nuit.
+    expect(estModifie(p2.personnalisees, 'indigo-nuit')).toBe(true)
   })
   it('copie le thème affiché (autre que Indigo) avant de changer une couleur, sans toucher au thème prêt', () => {
     const avant = structuredClone(THEMES.encre.couleurs)
@@ -33,6 +44,16 @@ describe('« Mes couleurs » modifié', () => {
     expect(p.personnalisees['ciel-fond'].clair).toBe('#ABCDEF')
     expect(p.personnalisees['capsule-fond']).toEqual(THEMES.encre.couleurs['capsule-fond'])
     expect(THEMES.encre.couleurs).toEqual(avant)
+  })
+})
+
+describe('écrasement de « Mes couleurs »', () => {
+  const perso = modifierCouleur(base, 'accent', 'clair', '#010203')
+  it('demande confirmation seulement si une personnalisation différente du thème affiché serait remplacée', () => {
+    expect(ecraseraPersonnalisation({ ...base, actif: 'foret' })).toBe(false)
+    expect(ecraseraPersonnalisation({ ...base, ...perso, actif: 'foret' })).toBe(true)
+    expect(ecraseraPersonnalisation({ ...base, ...perso })).toBe(false)
+    expect(ecraseraPersonnalisation({ ...base, personnalisees: structuredClone(THEMES.foret.couleurs), actif: 'foret' })).toBe(false)
   })
 })
 
@@ -48,8 +69,11 @@ describe('thème prêt', () => {
     expect(couleursAffichees({ ...base, ...perso }).accent.clair).toBe('#010203'.toUpperCase())
   })
   it('l\'aperçu d\'une vignette lit ciel, page et texte en clair', () => {
-    expect(apercuTheme(THEMES.sable.couleurs)).toEqual({ ciel: '#E9DEC8', page: '#FBF7F0', texte: '#3A2E1E' })
-    expect(apercuTheme(THEMES['nuit-complete'].couleurs)).toEqual({ ciel: '#0E0E1E', page: '#121214', texte: '#E6E6EA' })
+    expect(apercuTheme('sable', THEMES.sable.couleurs)).toEqual({ ciel: '#E9DEC8', page: '#FBF7F0', texte: '#3A2E1E' })
+    expect(apercuTheme('nuit-complete', THEMES['nuit-complete'].couleurs)).toEqual({ ciel: '#0E0E1E', page: '#121214', texte: '#E6E6EA' })
+    // Indigo nuit et Mes couleurs : page #FFFFFF du design (et non #F7F7FB).
+    expect(apercuTheme('indigo-nuit', THEMES['indigo-nuit'].couleurs)).toEqual({ ciel: '#15152E', page: '#FFFFFF', texte: '#1C1C2E' })
+    expect(apercuTheme('mes-couleurs', THEMES['mes-couleurs'].couleurs).page).toBe('#FFFFFF')
   })
 })
 

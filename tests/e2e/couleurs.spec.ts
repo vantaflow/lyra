@@ -75,7 +75,7 @@ test('couleurs : modifier une couleur affiche « Mes couleurs — modifié » et
     const r = await ouvrirCouleurs(app, fenetre)
     const mes = r.locator('.th', { hasText: 'Mes couleurs' })
     await expect(mes).not.toContainText('modifié')
-    await r.getByRole('button', { name: 'Ciel — fond, clair', exact: true }).click()
+    await r.getByRole('button', { name: 'Ciel — fond, clair : #15152E', exact: true }).click()
     await r.getByLabel('Ciel — fond, clair : valeur').fill('#204060')
     await r.getByLabel('Ciel — fond, clair : valeur').press('Enter')
     await expect(mes).toContainText('Mes couleurs')
@@ -84,12 +84,12 @@ test('couleurs : modifier une couleur affiche « Mes couleurs — modifié » et
     await expect.poll(() => variable(fenetre, '--ciel')).toBe('#204060')
     await expect.poll(async () => (await lire(fenetre)).couleurs.personnalisees?.['ciel-fond'].clair).toBe('#204060')
     // Remise à la valeur de départ : plus « modifié ».
-    await r.getByRole('button', { name: 'Ciel — fond, clair', exact: true }).click()
+    await r.getByRole('button', { name: 'Ciel — fond, clair : #204060', exact: true }).click()
     await r.getByLabel('Ciel — fond, clair : valeur').fill('15152e')
     await r.getByLabel('Ciel — fond, clair : valeur').press('Enter')
     await expect(mes).not.toContainText('modifié')
     // Une valeur invalide est ignorée.
-    await r.getByRole('button', { name: 'Accent, sombre', exact: true }).click()
+    await r.getByRole('button', { name: 'Accent, sombre : #8B8AF0', exact: true }).click()
     await r.getByLabel('Accent, sombre : valeur').fill('rouge')
     await r.getByLabel('Accent, sombre : valeur').press('Enter')
     await expect(mes).not.toContainText('modifié')
@@ -162,6 +162,82 @@ test('couleurs : la recherche « plage » saute à « Passer en sombre » quand 
     await expect(r.locator('h1')).toHaveText('Couleurs et thèmes')
     await expect(r.locator('[data-reglage="couleurs.passage"]')).toHaveClass(/trouve/)
     await expect(r.getByLabel('Début du mode sombre')).toHaveCount(0)
+  } finally {
+    await app.close()
+  }
+})
+
+test('couleurs : Échap n\'applique rien, Entrée n\'écrit qu\'une fois', async () => {
+  test.setTimeout(90_000)
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const r = await ouvrirCouleurs(app, fenetre)
+    const mes = r.locator('.th', { hasText: 'Mes couleurs' })
+    await r.getByRole('button', { name: 'Ciel — fond, clair : #15152E', exact: true }).click()
+    await r.getByLabel('Ciel — fond, clair : valeur').fill('#204060')
+    await r.getByLabel('Ciel — fond, clair : valeur').press('Escape')
+    await expect(r.getByLabel('Ciel — fond, clair : valeur')).toHaveCount(0)
+    await r.waitForTimeout(300)
+    expect((await lire(fenetre)).couleurs.personnalisees).toBeNull()
+    await expect(mes).not.toContainText('modifié')
+    expect(await variable(fenetre, '--ciel')).toBe('#15152e')
+
+    // Entrée : une seule écriture de « Mes couleurs ».
+    await r.evaluate(() => {
+      const w = window as unknown as { __ecritures: number }
+      w.__ecritures = 0
+      window.lyra.on('settings:changed', (x) => {
+        if (x.couleurs.personnalisees) w.__ecritures++
+      })
+    })
+    await r.getByRole('button', { name: 'Ciel — fond, clair : #15152E', exact: true }).click()
+    await r.getByLabel('Ciel — fond, clair : valeur').fill('#204060')
+    await r.getByLabel('Ciel — fond, clair : valeur').press('Enter')
+    await expect(mes).toContainText('modifié')
+    await r.waitForTimeout(400)
+    expect(await r.evaluate(() => (window as unknown as { __ecritures: number }).__ecritures)).toBe(1)
+  } finally {
+    await app.close()
+  }
+})
+
+test('couleurs : éditer depuis un thème prêt demande confirmation avant de remplacer « Mes couleurs »', async () => {
+  test.setTimeout(90_000)
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const r = await ouvrirCouleurs(app, fenetre)
+    // Une personnalisation existe déjà (accent), puis on affiche Forêt.
+    await r.getByRole('button', { name: 'Accent, clair : #5452C8', exact: true }).click()
+    await r.getByLabel('Accent, clair : valeur').fill('#010203')
+    await r.getByLabel('Accent, clair : valeur').press('Enter')
+    await expect.poll(async () => (await lire(fenetre)).couleurs.personnalisees?.accent.clair).toBe('#010203')
+    await r.getByRole('button', { name: 'Forêt' }).click()
+    await expect.poll(async () => (await lire(fenetre)).couleurs.actif).toBe('foret')
+    const ciel = (await lire(fenetre)).couleurs.personnalisees!['ciel-fond'].clair
+
+    const champ = async (): Promise<void> => {
+      await r.getByRole('button', { name: /^Ciel — fond, clair : #/ }).click()
+      await r.getByLabel('Ciel — fond, clair : valeur').fill('#204060')
+      await r.getByLabel('Ciel — fond, clair : valeur').press('Enter')
+    }
+    await champ()
+    await expect(r.getByText('Remplacer Mes couleurs par une copie de Forêt ?')).toBeVisible()
+    await r.getByRole('button', { name: 'Annuler' }).click()
+    await expect(r.getByText('Remplacer Mes couleurs par une copie de Forêt ?')).toHaveCount(0)
+    await r.waitForTimeout(300)
+    const apres = (await lire(fenetre)).couleurs
+    expect(apres.actif).toBe('foret')
+    expect(apres.personnalisees!.accent.clair).toBe('#010203')
+    expect(apres.personnalisees!['ciel-fond'].clair).toBe(ciel)
+
+    await champ()
+    await r.getByRole('button', { name: 'Remplacer' }).click()
+    await expect.poll(async () => (await lire(fenetre)).couleurs.actif).toBe('mes-couleurs')
+    const fin = (await lire(fenetre)).couleurs
+    expect(fin.depart).toBe('foret')
+    expect(fin.personnalisees!['ciel-fond'].clair).toBe('#204060')
+    expect(fin.personnalisees!.accent.clair).not.toBe('#010203')
+    await expect(r.locator('.th', { hasText: 'Mes couleurs' })).toContainText('modifié')
   } finally {
     await app.close()
   }
