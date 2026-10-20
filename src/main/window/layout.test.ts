@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { BANDE, CAPSULE, DND_CROISSANT, DND_HAUTEUR, DND_RAPPEL_REPLI, largeurRappel, FENETRE_MIN, LARGEUR_MAX, RAIL, computeLayout, positionFeux } from './layout'
+import { BANDE, BOUTONS_FENETRE, CAPSULE, DND_CROISSANT, DND_HAUTEUR, DND_PASTILLE, DND_RAPPEL_REPLI, largeurRappel, FENETRE_MIN, LARGEUR_MAX, RAIL, computeLayout, positionFeux } from './layout'
 
 const taille = { width: 1280, height: 800 }
 const fenetre = { x: 0, y: 0, width: 1280, height: 800 }
@@ -119,6 +119,69 @@ describe('computeLayout : Ne pas déranger', () => {
   it('petite fenêtre : la zone reste dans la fenêtre', () => {
     const l = computeLayout({ width: 300, height: 60 }, ciel('gauche'), false, false, { rappel: true })
     expect(l.chrome).toEqual({ x: 0, y: 0, width: 300, height: 60 })
+  })
+  it('Windows : le rappel et le croissant se posent à gauche des boutons de fenêtre, avec la réserve de la capsule (150 px)', () => {
+    expect(BOUTONS_FENETRE).toEqual({ largeur: 150, hauteur: 32 })
+    for (const dnd of [{ rappel: true, largeur: 470.4 }, { rappel: true }, { rappel: false }]) {
+      const l = computeLayout(taille, ciel('gauche'), false, false, dnd, BOUTONS_FENETRE.largeur)
+      const z = dnd.rappel ? largeurRappel(dnd.largeur) : DND_CROISSANT.width
+      expect(l.page).toEqual(fenetre)
+      expect(l.chrome).toEqual({ x: 1280 - 150 - z, y: 0, width: z, height: DND_HAUTEUR })
+      // La pastille (à 16 px du bord droit de la vue) laisse au moins 28 px aux boutons natifs (3 × 46 px).
+      const droitePastille = l.chrome.x + l.chrome.width - DND_PASTILLE.droite
+      expect(1280 - 138 - droitePastille).toBeGreaterThanOrEqual(28)
+    }
+  })
+  it('Windows, petite fenêtre : la zone reste à gauche des boutons et dans la fenêtre', () => {
+    const l = computeLayout({ width: 500, height: 60 }, ciel('gauche'), false, false, { rappel: true }, 150)
+    expect(l.chrome).toEqual({ x: 0, y: 0, width: 350, height: 60 })
+  })
+  describe('aux limites : zone toujours dans la fenêtre, x ≥ 0, largeur > 0, sans dépendre d\'une remesure', () => {
+    const tailles = [
+      { width: 1280, height: 800 },
+      { width: 1024, height: 720 },
+      { width: FENETRE_MIN.width, height: FENETRE_MIN.height },
+      { width: 400, height: 300 },
+      { width: 160, height: 60 },
+      { width: 150, height: 40 },
+      { width: 90, height: 40 },
+      { width: 20, height: 20 }
+    ]
+    const mesures = [undefined, 0, -12, Number.NaN, Number.POSITIVE_INFINITY, 1, 469.4, 5000, 1e9]
+    for (const boutons of [0, BOUTONS_FENETRE.largeur]) {
+      for (const t of tailles) {
+        it(`${t.width}×${t.height}, boutons ${boutons}`, () => {
+          for (const largeur of mesures) {
+            for (const rappel of [true, false]) {
+              const c = computeLayout(t, ciel('gauche'), false, false, { rappel, largeur }, boutons).chrome
+              const msg = JSON.stringify({ t, boutons, largeur, rappel, c })
+              for (const v of Object.values(c)) expect(Number.isFinite(v), msg).toBe(true)
+              expect(c.x, msg).toBeGreaterThanOrEqual(0)
+              expect(c.y, msg).toBe(0)
+              expect(c.width, msg).toBeGreaterThan(0)
+              expect(c.height, msg).toBeGreaterThan(0)
+              expect(c.x + c.width, msg).toBeLessThanOrEqual(t.width)
+              expect(c.height, msg).toBeLessThanOrEqual(t.height)
+              // Les boutons de fenêtre restent libres dès que la fenêtre laisse la place au croissant à leur gauche.
+              if (t.width - boutons >= DND_CROISSANT.width) expect(c.x + c.width, msg).toBeLessThanOrEqual(t.width - boutons)
+            }
+          }
+        })
+      }
+    }
+    it('largeur mesurée absente, nulle ou invalide : repli (720 px), jamais une vue vide ou NaN', () => {
+      for (const largeur of [undefined, 0, -3, Number.NaN, Number.POSITIVE_INFINITY]) expect(largeurRappel(largeur)).toBe(DND_RAPPEL_REPLI)
+    })
+    it('la zone ne dépend que de la mesure : la même mesure redonne la même zone (aucune oscillation possible)', () => {
+      const a = computeLayout({ width: 1024, height: 720 }, ciel('gauche'), false, false, { rappel: true, largeur: 492.6 }, 150).chrome
+      const b = computeLayout({ width: 1024, height: 720 }, ciel('gauche'), false, false, { rappel: true, largeur: 492.6 }, 150).chrome
+      expect(a).toEqual(b)
+      expect(a).toEqual({ x: 1024 - 150 - 539, y: 0, width: 539, height: DND_HAUTEUR })
+    })
+  })
+  it('macOS (sans boutons à réserver) : le design est inchangé', () => {
+    const l = computeLayout(taille, ciel('gauche'), false, false, { rappel: false }, 0)
+    expect(l.chrome).toEqual({ x: 1280 - DND_CROISSANT.width, y: 0, width: DND_CROISSANT.width, height: DND_CROISSANT.height })
   })
   it("plein écran HTML l'emporte : le chrome disparaît", () => {
     const l = computeLayout(taille, ciel('gauche'), true, false, { rappel: true })

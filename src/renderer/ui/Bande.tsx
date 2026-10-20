@@ -78,7 +78,8 @@ interface Props {
   position: 'haut' | 'bas'
   refCiel?: Ref<HTMLElement>
   surEntree?: () => void
-  surSortie?: () => void
+  /** La souris quitte le ciel (le point de sortie dit si elle part vers la page). */
+  surSortie?: (e: MouseEvent) => void
   surSortieFocus?: (e: FocusEvent) => void
 }
 

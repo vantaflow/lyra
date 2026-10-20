@@ -1,11 +1,13 @@
 import { _electron, type ElectronApplication, type Page } from '@playwright/test'
-import { mkdtempSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { resolve } from 'node:path'
+import { dossierTemporaire, effacerDossier } from './nettoyage'
 
 const racine = resolve(__dirname, '../..')
 
-/** Lance Lyra avec un userData temporaire et renvoie la première fenêtre. */
+/**
+ * Lance Lyra avec un userData temporaire et renvoie la première fenêtre. Le profil créé ici est effacé dès que l'app
+ * se ferme (sauf `LYRA_E2E_GARDER=1`) ; un `LYRA_USER_DATA` fourni par le test reste à la charge du test.
+ */
 export async function lancerLyra(
   extraEnv: Record<string, string> = {},
   options: { premierLancement?: boolean } = {}
@@ -16,10 +18,13 @@ export async function lancerLyra(
     if (k !== 'ELECTRON_RUN_AS_NODE' && v !== undefined) env[k] = v
   }
   env.LYRA_TEST = '1'
-  env.LYRA_USER_DATA = mkdtempSync(join(tmpdir(), 'lyra-e2e-'))
+  const profil = extraEnv.LYRA_USER_DATA === undefined ? dossierTemporaire('lyra-e2e-') : undefined
+  if (profil) env.LYRA_USER_DATA = profil
   Object.assign(env, extraEnv)
 
   const app = await _electron.launch({ args: ['.'], cwd: racine, env })
+  // Fin du processus (fermeture normale ou plantage) : le profil n'a plus de raison d'être.
+  if (profil) app.once('close', () => effacerDossier(profil))
   await app.firstWindow()
   // Plusieurs vues web : la fenêtre d'interface est celle qui charge ui.html.
   const estUI = (p: Page): boolean => p.url().includes('ui.html') && !p.url().includes('#overlay')

@@ -7,6 +7,8 @@ import { lancerLyra } from './helpers'
 const layout = (f: Page) => f.evaluate(() => window.lyra.invoke('layout:get'))
 const menu = (app: ElectronApplication, id: string): Promise<void> =>
   app.evaluate(({ Menu }, i) => Menu.getApplicationMenu()!.getMenuItemById(i)!.click(), id)
+/** Sortie simulée du ciel révélé (à gauche) vers la page. */
+const versLaPage = { clientX: 600, clientY: 300 }
 
 test('« Replier le ciel » : page à 14 px, rail visible ; survol → ciel au-dessus ; sortie → retiré ; Épingler', async () => {
   const { app, fenetre } = await lancerLyra()
@@ -38,14 +40,14 @@ test('« Replier le ciel » : page à 14 px, rail visible ; survol → ciel au-d
     expect(l.bounds.page.x).toBe(14)
 
     // La souris dessus : rien ne bouge, même après le délai de retrait.
-    await fenetre.locator('.ciel-revele').dispatchEvent('mouseleave')
+    await fenetre.locator('.ciel-revele').dispatchEvent('mouseleave', versLaPage)
     await fenetre.waitForTimeout(150)
     await fenetre.locator('.ciel-revele').dispatchEvent('mouseenter')
     await fenetre.waitForTimeout(500)
     expect((await layout(fenetre)).revele).toBe(true)
 
-    // Sortie : retiré après 300 ms (+ glissement).
-    await fenetre.locator('.ciel-revele').dispatchEvent('mouseleave')
+    // Sortie vers la page : retiré après 500 ms (+ glissement).
+    await fenetre.locator('.ciel-revele').dispatchEvent('mouseleave', versLaPage)
     await expect.poll(async () => (await layout(fenetre)).revele).toBe(false)
     await expect(fenetre.locator('.ciel-revele')).toHaveCount(0)
     l = await layout(fenetre)
@@ -218,6 +220,113 @@ test("fenêtre fermée pendant le glissement de la poignée : l'aperçu de large
     // Fermeture de la fenêtre qui glissait (la plus récente), sans fin de glissement.
     await app.evaluate(({ BaseWindow }) => BaseWindow.getAllWindows().sort((a, b) => b.id - a.id)[0].close())
     await expect.poll(async () => (await layout(fenetre)).bounds.page.x).toBe(x0)
+  } finally {
+    await app.close()
+  }
+})
+
+/**
+ * Points du ciel révélé (`sel`) qui seraient des zones de déplacement de la fenêtre. Calcul d'Electron
+ * (DraggableRegionsToSkRegion) : les boîtes `-webkit-app-region` de tout le document, dans l'ordre, s'unissent (drag) ou
+ * se retranchent (no-drag), sans tenir compte de l'empilement. Sous Windows, une telle zone est non cliente
+ * (WM_NCHITTEST → HTCAPTION) : la souris qui y passe quitte la page, d'où un `mouseleave` du ciel.
+ */
+const zonesDeplacementSous = (f: Page, sel: string): Promise<Array<[number, number]>> =>
+  f.evaluate((s) => {
+    const regions = [...document.querySelectorAll('*')]
+      .map((e) => ({ r: e.getBoundingClientRect(), mode: getComputedStyle(e).getPropertyValue('-webkit-app-region') }))
+      .filter((x) => x.mode === 'drag' || x.mode === 'no-drag')
+    const b = document.querySelector(s)!.getBoundingClientRect()
+    const points: Array<[number, number]> = []
+    for (let y = Math.ceil(b.top); y < b.bottom; y += 2) {
+      for (let x = Math.ceil(b.left); x < b.right; x += 2) {
+        let drag = false
+        for (const { r, mode } of regions) if (x >= r.left && x < r.right && y >= r.top && y < r.bottom) drag = mode === 'drag'
+        if (drag) points.push([x, y])
+      }
+    }
+    return points
+  }, sel)
+
+test('ciel révélé : aucune zone de déplacement de la fenêtre sous le ciel ni la bande (capsule comprise)', async () => {
+  test.setTimeout(60_000)
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const cas = [
+      { position: 'gauche', deplacerParGlisser: true, sel: '.ciel-revele' },
+      { position: 'gauche', deplacerParGlisser: false, sel: '.ciel-revele' },
+      { position: 'droite', deplacerParGlisser: true, sel: '.ciel-revele' },
+      { position: 'haut', deplacerParGlisser: true, sel: '.bande-revele' },
+      { position: 'haut', deplacerParGlisser: false, sel: '.bande-revele' },
+      { position: 'bas', deplacerParGlisser: true, sel: '.bande-revele' }
+    ] as const
+    for (const c of cas) {
+      await fenetre.evaluate((x) => window.lyra.invoke('settings:set', { ciel: { masque: true, position: x.position, deplacerParGlisser: x.deplacerParGlisser } } as never), c)
+      await expect(fenetre.locator('.rail')).toBeVisible()
+      await fenetre.evaluate(() => window.lyra.invoke('ciel:reveler', { actif: true }))
+      await expect(fenetre.locator(c.sel)).toBeVisible()
+      // Fin du glissement d'entrée (180 ms).
+      await fenetre.waitForTimeout(300)
+      const points = await zonesDeplacementSous(fenetre, c.sel)
+      expect(points.slice(0, 5), `${c.position}, deplacerParGlisser ${c.deplacerParGlisser} : ${points.length} points, y ${[...new Set(points.map((p) => p[1]))].join(',')}`).toEqual([])
+      await fenetre.evaluate(() => window.lyra.invoke('ciel:reveler', { actif: false }))
+      await expect(fenetre.locator(c.sel)).toHaveCount(0)
+    }
+  } finally {
+    await app.close()
+  }
+})
+
+test('ciel révélé, vraie souris : vers la page il se retire ; par le haut on atteint « Épingler le ciel » ; retour sur la page : retiré', async () => {
+  test.setTimeout(60_000)
+  const { app, fenetre } = await lancerLyra()
+  const revele = async (): Promise<boolean> => (await layout(fenetre)).revele
+  try {
+    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { ciel: { masque: true } } as never))
+    await expect(fenetre.locator('.rail')).toBeVisible()
+
+    // Survol du rail, puis la souris part vers la page : retiré.
+    await fenetre.mouse.move(7, 400)
+    await expect(fenetre.locator('.ciel-revele')).toBeVisible()
+    await fenetre.mouse.move(150, 300, { steps: 4 })
+    await fenetre.mouse.move(700, 300, { steps: 4 })
+    await expect.poll(revele).toBe(false)
+
+    // De nouveau : on vise « Épingler le ciel » (coin haut droit) en dépassant le haut de la fenêtre, on s'y attarde.
+    await fenetre.mouse.move(7, 400, { steps: 4 })
+    await expect(fenetre.locator('.ciel-revele')).toBeVisible()
+    await fenetre.mouse.move(150, 200, { steps: 4 })
+    // Fin du glissement d'entrée : le bouton est à sa place.
+    await fenetre.locator('.ciel-revele').evaluate((e) => Promise.all(e.getAnimations().map((a) => a.finished)))
+    const bouton = (await fenetre.getByRole('button', { name: 'Épingler le ciel' }).boundingBox())!
+    const cx = bouton.x + bouton.width / 2
+    const cy = bouton.y + bouton.height / 2
+    await fenetre.mouse.move(cx, -6, { steps: 6 })
+    await fenetre.waitForTimeout(900)
+    expect(await revele()).toBe(true)
+    await expect(fenetre.locator('.ciel-revele')).not.toHaveClass(/sortant/)
+    await fenetre.mouse.move(cx, cy, { steps: 3 })
+    await fenetre.mouse.down()
+    await fenetre.mouse.up()
+    await expect(fenetre.locator('.rail')).toHaveCount(0)
+    await expect(fenetre.locator('.ciel')).toBeVisible()
+    let l = await layout(fenetre)
+    expect(l.ciel.masque).toBe(false)
+    expect(l.revele).toBe(false)
+
+    // Masqué de nouveau : sortie par le haut, puis retour direct sur la page (sans repasser par le ciel) : retiré.
+    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { ciel: { masque: true } } as never))
+    await expect(fenetre.locator('.rail')).toBeVisible()
+    await fenetre.mouse.move(7, 400, { steps: 4 })
+    await expect(fenetre.locator('.ciel-revele')).toBeVisible()
+    await fenetre.mouse.move(150, 200, { steps: 4 })
+    await fenetre.mouse.move(200, -6, { steps: 4 })
+    await fenetre.waitForTimeout(700)
+    expect(await revele()).toBe(true)
+    await fenetre.mouse.move(700, 400, { steps: 6 })
+    await expect.poll(revele).toBe(false)
+    l = await layout(fenetre)
+    expect(l.ciel.masque).toBe(true)
   } finally {
     await app.close()
   }
