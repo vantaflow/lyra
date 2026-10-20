@@ -73,27 +73,17 @@ Reste, à reprendre plus tard :
    - l'historique Safari et Orion, limité à 1 Gio ;
    - `bplist` : mémoïsation et budget mémoire ;
    - `mozlz4` : taille bornée et vecteurs LZ4.
-3. ⬜ **Application dans Lyra**. **Plan détaillé prêt** : `plans/2026-10-19-lyra-jalon-e-task3.md` (24ae738), avec la liste de ce qui manque dans Lyra :
-   - `Bookmarks.ajouterLot` ;
-   - `History.importer` dédoublonné ;
-   - `TabTree.creerConstellation` et `ouvrirEndormie` ;
-   - `PALETTE_CONSTELLATIONS`, partagée avec D ;
-   - `Settings.moteursPerso` et `Settings.import` ;
-   - `hoteVersOrigines`.
+3. ✅ **Application dans Lyra** (2428e26..9f62b61), en 5 sous-tâches relues une à une, sur le Mac : branchements de détection (Firefox, Safari, Orion) et mineurs des tâches 1-2 ; ajouts aux magasins (`Bookmarks.ajouterLot`, `History.importer`, `TabTree.creerConstellation`, `TabManager.ouvrirEndormie`, `PALETTE_CONSTELLATIONS`, `Settings.moteursPerso`, `Settings.import`) ; `appliquer.ts` + `moteurs.ts` (dédoublonnage, constellations par couleur OKLab, arbitrage des mots-clés) ; lecteur dans un `utilityProcess` avec contre-pression (2 lots en vol) ; IPC `import:*` (lyra://settings seulement, jamais en privé), historique lu en dernier pour éviter l'interblocage.
+4. ✅ **Exporter et paquet `.lyra`** (7514392..7072421) : favoris HTML Netscape, historique CSV (formules neutralisées), ciel et réglages JSON, import de ces fichiers ; paquet chiffré (AES-256-GCM, PBKDF2-SHA-256 600 000) sans mot de passe, cookies seulement de `persist:lyra` et sur demande ; sauvegarde nocturne (clé protégée par `safeStorage`, 7 gardées) ; analyseurs linéaires face aux fichiers hostiles.
+5. ✅ **Interface et e2e** (b62f118, 691e52b) : page « Importer et exporter » d'après `Importation.dc.html` (libellés qui promettraient ce que la v1 ne fait pas ajustés : voir le ledger).
 
-   Mineurs reportés des relectures 1 et 2, à faire dans cette tâche :
-   - code `chiffre` perdu dans `chromium.ts:362/388` ;
-   - lots d'historique **non triés** par date ;
-   - arrondi de `mo()` ;
-   - test de jonction NTFS ;
-   - repli `Extensions/` à marquer `inconnu` ;
-   - `/OOM/i` à remplacer par `\bOOM\b` ;
-   - extensions imposées (`location` 7 et 9) : champ `imposee`, décochables ;
-   - test `bplist` avec références partagées imbriquées ;
-   - `safari.test.ts` : NUL brut à remplacer par `\0`, et LF ;
-   - commentaire `NOEUDS_MAX`.
-4. ⬜ **Exporter** et paquet `.lyra`.
-5. ⬜ **Interface et e2e**. Ne pas promettre « Chrome peut rester ouvert » pour les onglets : le fichier de session est verrouillé sous Windows.
+**Jalon E terminé** (relecture finale de toute la branche puis une vague de corrections 9ef20c5..63cc955 : filtre des secrets qui retirait `reseau.passerelles`, paquet avec toutes les fenêtres normales, confirmation de la phrase de passe, un seul `enTest()` = `LYRA_TEST` ET application non empaquetée pour toutes les capacités de test, README). Vérifié : typecheck, vitest 891+, Playwright 100/100, `dist:mac` et `@paquet` 2/2 (asar : lecteur, `sql-wasm.wasm`, `fflate`).
+
+Reste, à reprendre :
+- avant une release : un import réel dans l'application installée (l'application empaquetée ignore les profils de test) ; chien de garde du lecteur (aucun message pendant N minutes → arrêt) ; case « cookies » du paquet dans l'interface ;
+- à la fusion avec le jalon B : `patchPage` doit aussi retirer `import`, le paquet doit lister `extensions.installees` en plus de la file, renommer l'un des deux `EntreeImport`, régénérer `package-lock.json` (B ajoute `fflate` 0.8.3, E 0.8.2 : garder 0.8.3) ;
+- options d'import non proposées dans l'interface : une fenêtre par fenêtre importée, « faire de X le moteur par défaut », extensions imposées ;
+- mineurs détaillés dans le ledger SDD du jalon E (copie : `docs/superpowers/ledgers/jalon-e.md`).
 
 ## Jalons B et D — plans prêts, rédigés par une session d'appoint
 
