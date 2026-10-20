@@ -1,5 +1,5 @@
 import { test, expect, _electron } from '@playwright/test'
-import { existsSync, mkdtempSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -49,4 +49,17 @@ test('@paquet l\'asar embarque le lecteur d\'import, sql.js (wasm) et fflate', a
   expect(fichiers).toContain('out/main/import-worker.js')
   expect(fichiers).toContain('node_modules/sql.js/dist/sql-wasm.wasm')
   expect(fichiers.some((f) => f.startsWith('node_modules/fflate/'))).toBe(true)
+})
+
+// L'icône de Lyra doit être dans le paquet : icône d'application (.icns macOS ; Lyra.exe porte déjà le .ico) et ressource de fenêtre.
+test('@paquet le paquet embarque l\'icône de l\'application et celle des fenêtres', async () => {
+  const png = readFileSync(join(ressources(), 'icon.png'))
+  expect(png.readUInt32BE(16)).toBe(1024)
+  if (process.platform === 'darwin') {
+    const icns = readFileSync(join(ressources(), 'icon.icns'))
+    expect(icns.subarray(0, 4).toString('latin1')).toBe('icns')
+    // Types de vignettes 512 px et 1024 px (ic09, ic10) : electron-builder exige au moins 512 px.
+    expect(icns.includes(Buffer.from('ic10'))).toBe(true)
+    expect(readFileSync(join(ressources(), '..', 'Info.plist'), 'utf8')).toContain('<string>icon.icns</string>')
+  }
 })

@@ -1,7 +1,7 @@
 {
   "name": "lyra",
   "productName": "Lyra",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Navigateur web de bureau sobre, sans télémétrie, avec bloqueur de publicités intégré",
   "main": "./out/main/index.js",
   "license": "GPL-3.0",

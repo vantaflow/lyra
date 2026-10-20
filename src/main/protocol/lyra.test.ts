@@ -26,6 +26,13 @@ describe('resolveLyraPath', () => {
   it('les assets sont résolus sous la racine', () => {
     expect(resolveLyraPath('lyra://newtab/assets/x.js', racine)).toBe(resolve(racine, 'assets', 'x.js'))
   })
+  it('le favicon de chaque hôte interne est le fichier favicon.png de la racine', () => {
+    for (const h of ['newtab', 'erreur', 'extensions', 'settings', 'history', 'bookmarks', 'downloads', 'shields']) {
+      expect(resolveLyraPath(`lyra://${h}/favicon.png`, racine)).toBe(resolve(racine, 'favicon.png'))
+    }
+    // Les liens relatifs des pages à sous-route (lyra://settings/historique) pointent aussi sur l'hôte.
+    expect(resolveLyraPath('lyra://settings/favicon.png', racine)).toBe(resolve(racine, 'favicon.png'))
+  })
   it('refuse la traversée de chemin', () => {
     expect(resolveLyraPath('lyra://newtab/../secret', racine)).toBeNull()
     expect(resolveLyraPath('lyra://newtab/assets/../../secret', racine)).toBeNull()
@@ -56,6 +63,10 @@ describe('urlDev', () => {
       `${base}/src/renderer/newtab/main.tsx?t=123`
     )
     expect(urlDev('lyra://newtab/newtab/main.tsx?import', base)).toBe(`${base}/newtab/main.tsx?import`)
+  })
+  it('proxifie le favicon vers le dossier public de Vite', () => {
+    expect(urlDev('lyra://newtab/favicon.png', base)).toBe(`${base}/favicon.png`)
+    expect(urlDev('lyra://settings/favicon.png', base)).toBe(`${base}/favicon.png`)
   })
   it('refuse hôte inconnu, traversée et autre schéma', () => {
     expect(urlDev('lyra://inconnu/x.js', base)).toBeNull()

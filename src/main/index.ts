@@ -23,6 +23,7 @@ import { installerAccueilImporte } from './settings/accueil-importe'
 import { installerImportIpc } from './import/ipc'
 import { installerExportIpc } from './export/ipc'
 import { enTest } from './modeTest'
+import { cheminIcone } from './icone'
 import { SauvegardeAuto } from './export/sauvegardeAuto'
 import { coffreDeTest, coffreSysteme } from './export/coffre'
 import { cookiesDeSession, PARTITION_COOKIES } from './export/cookies'
@@ -370,6 +371,8 @@ function hoteLisible(url: string): string {
 }
 
 void app.whenReady().then(async () => {
+  // macOS, en développement : le Dock affiche l'icône de Lyra (le paquet porte la sienne). Jamais en test : pas d'icône qui surgit.
+  if (process.platform === 'darwin' && !app.isPackaged && !enTest()) app.dock?.setIcon(cheminIcone(false, process.resourcesPath, app.getAppPath()))
   // Après une veille du système, les minuteries de Ne pas déranger sont recalculées sur l'horloge murale.
   powerMonitor.on('resume', () => dnd.surReprise())
   const ua = nettoyerUserAgent(app.userAgentFallback)
