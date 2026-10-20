@@ -4,8 +4,8 @@
 import { EventEmitter } from 'node:events'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
-import { creerProcessus, envLecteur } from './processus'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { creerProcessus, DELAIS_PAR_DEFAUT, envLecteur } from './processus'
 import type { Enfant } from './processus'
 import type { MessageDuLecteur, MessageVersLecteur } from './protocole'
 import type { ProfilDetecte, Visite } from './types'
@@ -223,5 +223,98 @@ describe('envLecteur', () => {
   })
   it('non empaquetée : environnement inchangé (e2e)', () => {
     expect(envLecteur(env, false)).toEqual(env)
+  })
+})
+
+describe('chien de garde du lecteur', () => {
+  afterEach(() => vi.useRealTimers())
+  const delais = { inactiviteMs: 1000, detecterMs: 500, apercuMs: 800 }
+  const avecDelais = (): { enfant: FauxEnfant; p: ReturnType<typeof creerProcessus> } => {
+    const enfant = new FauxEnfant()
+    return { enfant, p: creerProcessus(() => enfant, delais) }
+  }
+
+  it('valeurs par défaut : 2 min d’inactivité, 60 s pour détecter et pour l’aperçu', () => {
+    expect(DELAIS_PAR_DEFAUT).toEqual({ inactiviteMs: 120_000, detecterMs: 60_000, apercuMs: 60_000 })
+  })
+
+  it('lire : aucun message pendant le délai, l’enfant est tué et les éléments restants sont Indisponible', async () => {
+    vi.useFakeTimers()
+    const { enfant, p } = avecDelais()
+    const els: Array<[string, unknown]> = []
+    const promesse = p.lire(profil, {}, ['favoris', 'historique', 'onglets'], { surElement: (e, v) => void els.push([e, v]) })
+    enfant.dire({ type: 'element', element: 'favoris', valeur: { barre: [], autres: [] } })
+    await vi.advanceTimersByTimeAsync(999)
+    expect(enfant.tue).toBe(false)
+    await vi.advanceTimersByTimeAsync(2)
+    await promesse
+    expect(enfant.tue).toBe(true)
+    expect(els.map(([e]) => e)).toEqual(['favoris', 'historique', 'onglets'])
+    const raison = (els[1]![1] as { indisponible: boolean; raison: string; code?: string })
+    expect(raison.indisponible).toBe(true)
+    expect(raison.raison).toMatch(/ne répond plus/)
+    expect(raison.code).toBe('annule')
+  })
+
+  it('lire : chaque message relance le délai', async () => {
+    vi.useFakeTimers()
+    const { enfant, p } = avecDelais()
+    const promesse = p.lire(profil, {}, ['favoris'], {})
+    for (let i = 0; i < 5; i++) {
+      await vi.advanceTimersByTimeAsync(900)
+      enfant.dire({ type: 'progression', element: 'favoris', fait: i })
+    }
+    expect(enfant.tue).toBe(false)
+    enfant.dire({ type: 'element', element: 'favoris', valeur: { barre: [], autres: [] } })
+    enfant.dire({ type: 'fin' })
+    await promesse
+  })
+
+  it('lire : pas de décompte pendant que le main applique un lot (contre-pression)', async () => {
+    vi.useFakeTimers()
+    const { enfant, p } = avecDelais()
+    let finLot: () => void = () => undefined
+    const promesse = p.lire(profil, {}, ['historique'], { surLot: () => new Promise<void>((ok) => (finLot = ok)) })
+    enfant.dire({ type: 'lot', element: 'historique', visites: [] })
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(enfant.tue).toBe(false)
+    finLot()
+    await vi.advanceTimersByTimeAsync(500)
+    enfant.dire({ type: 'element', element: 'historique', valeur: { pages: 0, visites: 0 } })
+    enfant.dire({ type: 'fin' })
+    await promesse
+    expect(enfant.tue).toBe(true)
+  })
+
+  it('detecter : délai global dépassé, erreur lisible et enfant tué', async () => {
+    vi.useFakeTimers()
+    const { enfant, p } = avecDelais()
+    const promesse = p.detecter()
+    const attendu = expect(promesse).rejects.toThrow(/détection.*trop longtemps/i)
+    await vi.advanceTimersByTimeAsync(501)
+    await attendu
+    expect(enfant.tue).toBe(true)
+  })
+
+  it('apercu : délai global dépassé (même avec des messages), erreur lisible', async () => {
+    vi.useFakeTimers()
+    const { enfant, p } = avecDelais()
+    const promesse = p.apercu(profil, ['favoris'], 92)
+    const attendu = expect(promesse).rejects.toThrow(/aperçu.*trop longtemps/i)
+    await vi.advanceTimersByTimeAsync(700)
+    enfant.dire({ type: 'progression', element: 'favoris', fait: 1 } as MessageDuLecteur)
+    await vi.advanceTimersByTimeAsync(101)
+    await attendu
+    expect(enfant.tue).toBe(true)
+  })
+
+  it('detecter et apercu : réponse dans le délai, minuterie annulée', async () => {
+    vi.useFakeTimers()
+    const { enfant, p } = avecDelais()
+    const promesse = p.detecter()
+    enfant.dire({ type: 'profils', profils: [profil] })
+    enfant.dire({ type: 'fin' })
+    expect(await promesse).toEqual([profil])
+    expect(vi.getTimerCount()).toBe(0)
   })
 })

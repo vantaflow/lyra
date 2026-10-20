@@ -48,10 +48,22 @@ export interface Processus {
   lire(profil: ProfilDetecte, params: ParametresLecture, elements: readonly ElementImport[], opts?: OptionsLectureProcessus): Promise<void>
 }
 
+/** Délais du chien de garde (ms) ; injectables pour les tests. */
+export interface DelaisProcessus {
+  /** `lire` : aucun message du lecteur (et aucun lot en cours d'application) pendant ce délai = lecteur bloqué. */
+  inactiviteMs: number
+  /** Délai global de `detecter`. */
+  detecterMs: number
+  /** Délai global de `apercu`. */
+  apercuMs: number
+}
+export const DELAIS_PAR_DEFAUT: DelaisProcessus = { inactiviteMs: 120_000, detecterMs: 60_000, apercuMs: 60_000 }
+
+export const RAISON_BLOQUE = "Le lecteur ne répond plus : l'import a été arrêté"
 export const RAISON_ARRET = "Le lecteur s'est arrêté"
 const DELAI_ABANDON = 3000
 
-type Issue = 'fin' | 'arret' | 'abandon'
+type Issue = 'fin' | 'arret' | 'abandon' | 'inactif' | 'delai'
 
 interface Controle {
   /** Envoie un message au lecteur (accusé `suite`). */
@@ -67,7 +79,8 @@ function piloter(
   message: MessageVersLecteur,
   surMessage: (m: MessageDuLecteur, c: Controle) => void | Promise<void>,
   signal?: AbortSignal,
-  delaiAbandon = DELAI_ABANDON
+  delaiAbandon = DELAI_ABANDON,
+  garde: { inactiviteMs?: number; globalMs?: number } = {}
 ): Promise<{ issue: Issue; erreur?: unknown }> {
   if (signal?.aborted) return Promise.resolve({ issue: 'abandon' })
   return new Promise((resolve) => {
@@ -75,10 +88,20 @@ function piloter(
     let minuteur: ReturnType<typeof setTimeout> | undefined
     let fini = false
     let file: Promise<void> = Promise.resolve()
+    let enAttente = 0
+    let gardeInactif: ReturnType<typeof setTimeout> | undefined
+    let gardeGlobal: ReturnType<typeof setTimeout> | undefined
+    const armerInactivite = (): void => {
+      if (gardeInactif) clearTimeout(gardeInactif)
+      gardeInactif = undefined
+      if (garde.inactiviteMs !== undefined && !fini) gardeInactif = setTimeout(() => terminer('inactif'), garde.inactiviteMs)
+    }
     const terminer = (issue: Issue, erreur?: unknown): void => {
       if (fini) return
       fini = true
       if (minuteur) clearTimeout(minuteur)
+      if (gardeInactif) clearTimeout(gardeInactif)
+      if (gardeGlobal) clearTimeout(gardeGlobal)
       signal?.removeEventListener('abort', surAbandon)
       try {
         enfant.kill()
@@ -97,12 +120,20 @@ function piloter(
       minuteur = setTimeout(() => terminer('abandon'), delaiAbandon)
     }
     const enfiler = (tache: () => void | Promise<void>): void => {
+      // Un message reçu suspend le décompte tant qu'il n'est pas traité (lot appliqué par le main : le lecteur attend, ce n'est pas un blocage).
+      enAttente++
+      if (gardeInactif) clearTimeout(gardeInactif)
+      gardeInactif = undefined
       file = file.then(async () => {
-        if (fini) return
         try {
-          await tache()
-        } catch (erreur) {
-          terminer('arret', erreur)
+          if (fini) return
+          try {
+            await tache()
+          } catch (erreur) {
+            terminer('arret', erreur)
+          }
+        } finally {
+          if (--enAttente === 0) armerInactivite()
         }
       })
     }
@@ -128,21 +159,32 @@ function piloter(
     })
     enfant.on('exit', () => enfiler(() => terminer('arret')))
     signal?.addEventListener('abort', surAbandon, { once: true })
+    if (garde.globalMs !== undefined) gardeGlobal = setTimeout(() => terminer('delai'), garde.globalMs)
+    armerInactivite()
     enfant.postMessage(message)
   })
 }
 
 const arret = (): Indisponible => indisponible(RAISON_ARRET, 'annule')
 const echec = (e: unknown): Indisponible => indisponible(`Application interrompue : ${e instanceof Error ? e.message : String(e)}`)
+const bloque = (): Indisponible => indisponible(RAISON_BLOQUE, 'annule')
 const abandonne = (): Indisponible => indisponible('Lecture annulée.', 'annule')
 
-export function creerProcessus(fork: Fork): Processus {
+export function creerProcessus(fork: Fork, delais: DelaisProcessus = DELAIS_PAR_DEFAUT): Processus {
   return {
     async detecter() {
       let profils: ProfilDetecte[] = []
-      await piloter(fork, { type: 'detecter' }, (m) => {
-        if (m.type === 'profils') profils = m.profils
-      })
+      const { issue } = await piloter(
+        fork,
+        { type: 'detecter' },
+        (m) => {
+          if (m.type === 'profils') profils = m.profils
+        },
+        undefined,
+        undefined,
+        { globalMs: delais.detecterMs }
+      )
+      if (issue === 'delai') throw new Error('La détection des navigateurs a pris trop longtemps : elle a été arrêtée. Réessayez.')
       return profils
     },
 
@@ -155,9 +197,11 @@ export function creerProcessus(fork: Fork): Processus {
           if (m.type === 'apercu') resultat = { compteurs: m.compteurs, indisponibles: m.indisponibles, ...(m.extensions ? { extensions: m.extensions } : {}) }
         },
         opts.signal,
-        opts.delaiAbandon
+        opts.delaiAbandon,
+        { globalMs: delais.apercuMs }
       )
       if (resultat) return resultat
+      if (issue === 'delai') throw new Error("L'aperçu de ce profil a pris trop longtemps : il a été arrêté. Réessayez.")
       const raison = issue === 'arret' ? arret() : abandonne()
       return { compteurs: {}, indisponibles: Object.fromEntries(elements.map((e) => [e, raison])) }
     },
@@ -181,11 +225,12 @@ export function creerProcessus(fork: Fork): Processus {
           }
         },
         opts.signal,
-        opts.delaiAbandon
+        opts.delaiAbandon,
+        { inactiviteMs: delais.inactiviteMs }
       )
       for (const element of elements) {
         if (vus.has(element)) continue
-        opts.surElement?.(element, erreur !== undefined ? echec(erreur) : issue === 'arret' ? arret() : abandonne())
+        opts.surElement?.(element, erreur !== undefined ? echec(erreur) : issue === 'inactif' ? bloque() : issue === 'arret' ? arret() : abandonne())
       }
     }
   }
