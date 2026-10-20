@@ -208,8 +208,10 @@ describe('prêt pour un utilityProcess', () => {
     expect(viaMessage).toEqual(direct)
   })
 
+  // Seul `processus.ts` (côté main : lance le utilityProcess) a le droit de toucher Electron.
+  const AUTORISES_ELECTRON = ['processus.ts']
   it('aucun module du dossier d’import (hors tests) ne dépend d’Electron', () => {
-    const sources = readdirSync(IMPORT).filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
+    const sources = readdirSync(IMPORT).filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts') && !AUTORISES_ELECTRON.includes(f))
     expect(sources.length).toBeGreaterThan(5)
     for (const f of sources) {
       expect(readFileSync(join(IMPORT, f), 'utf8'), f).not.toMatch(/from ['"]electron['"]|require\(['"]electron['"]\)/)
