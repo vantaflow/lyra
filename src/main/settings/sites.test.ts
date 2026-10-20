@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { cleDe, cleCanonique, resoudre, ResolveurSites, desactiverBoucliers, reactiverBoucliers } from './sites'
+import { cleDe, cleCanonique, resoudre, ResolveurSites, desactiverBoucliers, reactiverBoucliers, decisionMemorisee } from './sites'
 import { validerSettings, validerPatch } from './validate'
 import { reglagesParDefaut } from './defaults'
 import { fusion } from './store'
@@ -180,5 +180,20 @@ describe('niveau de Boucliers par défaut', () => {
     const sites = {}
     expect(resoudre(sites, 'https://a.com', 'strict').boucliers).toBe('strict')
     expect(resoudre(sites, 'https://a.com', 'standard').boucliers).toBe('standard')
+  })
+})
+
+describe('permission « demander » enregistrable', () => {
+  it('est acceptée par le valideur, et masque la décision d’un motif plus large', () => {
+    const v = validerPatch({ sites: { 'a.fr': { permissions: { notifications: 'demander' } } } }) as { sites: Record<string, RegleSite> }
+    expect(v.sites['a.fr'].permissions).toEqual({ notifications: 'demander' })
+    const sites: Record<string, RegleSite> = { '*.a.fr': { permissions: { notifications: 'refuser' } }, 'www.a.fr': { permissions: { notifications: 'demander' } } }
+    expect(resoudre(sites, 'https://www.a.fr').permissions?.notifications).toBe('demander')
+    expect(resoudre(sites, 'https://x.a.fr').permissions?.notifications).toBe('refuser')
+  })
+  it('reste une demande côté main (rien de mémorisé)', () => {
+    expect(decisionMemorisee('demander')).toBeUndefined()
+    expect(decisionMemorisee('refuser')).toBe('refuser')
+    expect(decisionMemorisee(undefined)).toBeUndefined()
   })
 })

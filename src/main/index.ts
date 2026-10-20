@@ -47,7 +47,7 @@ import { installerReglesSites, installerSites, installerZoomSites } from './site
 import { installerTheme } from './theme/installer'
 import { couleurFaviconEnCache } from './theme/couleurFavicon'
 import { reglagesHorsSitesChanges } from './sites/service'
-import { resoudre } from './settings/sites'
+import { decisionMemorisee, resoudre } from './settings/sites'
 import { zoomVoulu } from './tabs/zoom'
 import { Dnd, type NotificationRetenue } from './dnd/Dnd'
 import { installerConfidentialite, type Confidentialite } from './confidentialite/installer'
@@ -392,7 +392,7 @@ void app.whenReady().then(async () => {
   // Page d'accueil importée d'un autre navigateur : copiée une seule fois dans Démarrage (avant la première fenêtre).
   installerAccueilImporte(reglages)
   const depsPermissions: DepsPermissions = {
-    lire: (origine, type) => resoudre(reglages.getSettings().sites, origine).permissions?.[type],
+    lire: (origine, type) => decisionMemorisee(resoudre(reglages.getSettings().sites, origine).permissions?.[type]),
     memoriser: (origine, type, decision) => void reglages.setSettings({ sites: { [origine]: { permissions: { [type]: decision } } } }),
     demander: demanderPermission,
     // Ne pas déranger : demande de notifications retenue jusqu'à la sortie ; notifications suspendues (service workers compris).
@@ -508,7 +508,7 @@ void app.whenReady().then(async () => {
     if (id !== undefined) dnd.montrerRappel(id)
   })
   // Surcharge de window.Notification (preload page) : appels synchrones, l'origine vient du cadre expéditeur.
-  const decisionNotifications = (origine: string): string | undefined => resoudre(reglages.getSettings().sites, origine).permissions?.notifications
+  const decisionNotifications = (origine: string): string | undefined => decisionMemorisee(resoudre(reglages.getSettings().sites, origine).permissions?.notifications)
   // Iframe about:blank / srcdoc : elle hérite de l'origine du cadre qui l'a créée (le parent le plus proche qui a une adresse).
   const urlEffective = (cadre?: WebFrameMain | null): string => {
     let c = cadre

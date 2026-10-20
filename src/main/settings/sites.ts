@@ -64,6 +64,9 @@ function origineEtHote(url: string): { origine: string; hote: string } | null {
   }
 }
 
+/** Décision de permission mémorisée par une règle ; « demander » masque l'héritage mais reste une demande (rien de mémorisé). */
+export const decisionMemorisee = (d: 'autoriser' | 'refuser' | 'demander' | undefined): 'autoriser' | 'refuser' | undefined => (d === 'demander' ? undefined : d)
+
 const tri = (b: RegleSite['boucliers']): RegleEffective['boucliers'] | undefined =>
   b === undefined ? undefined : b === false ? 'desactives' : b === true ? 'standard' : b
 

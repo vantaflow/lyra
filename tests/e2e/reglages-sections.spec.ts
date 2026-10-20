@@ -53,7 +53,6 @@ test('aucune section du sommaire n’est un emplacement vide (hors Importer, Ext
       ['demarrage', 'Démarrage et sessions'],
       ['styles', 'Styles et scripts'],
       ['sauvegarde', 'Sauvegarde et profils'],
-      ['labo', 'Labo'],
       ['boucliers', 'Boucliers']
     ]) {
       await r.evaluate((h) => { location.hash = h }, `#/${route}`)
@@ -213,18 +212,41 @@ test('Démarrage : la page d’accueil refuse javascript: et file:, complète un
   }
 })
 
-test('Styles et scripts et Labo : contrôles inertes, mention « bientôt »', async () => {
+test('Styles et scripts : le CSS global saisi est enregistré et appliqué à une page web ; plus de « Bientôt »', async () => {
+  test.setTimeout(90_000)
   const { app, fenetre } = await lancerLyra()
   try {
     const r = await ouvrirReglages(app, fenetre, 'styles')
-    await expect(r.getByRole('textbox', { name: 'Feuille de style globale' })).toBeDisabled()
-    await expect(r.getByRole('button', { name: 'Ajouter un script' })).toBeDisabled()
-    await expect(r.getByText(/Bientôt/).first()).toBeVisible()
-    await r.evaluate(() => { location.hash = '#/labo' })
-    await expect(r.getByRole('switch', { name: 'Mode lecture' })).toBeDisabled()
-    await expect(r.getByRole('switch', { name: "Fenêtres des extensions sur la page" })).toBeDisabled()
-    await r.evaluate(() => { location.hash = '#/sauvegarde' })
-    await expect(r.locator('.card a.btn')).toHaveAttribute('href', '#/importer')
+    await expect(r.getByText(/Bientôt/)).toHaveCount(0)
+    const zone = r.getByRole('textbox', { name: 'Feuille de style globale' })
+    await expect(zone).toBeEnabled()
+    await zone.fill('p { color: rgb(1, 2, 3) !important }')
+    await expect.poll(async () => (await reglages(fenetre)).styles.css).toBe('p { color: rgb(1, 2, 3) !important }')
+    await r.getByRole('button', { name: 'Ajouter un script…' }).click()
+    await expect.poll(async () => (await reglages(fenetre)).styles.scripts.length).toBe(1)
+    await r.getByRole('button', { name: /Supprimer le script/ }).click()
+    await expect.poll(async () => (await reglages(fenetre)).styles.scripts.length).toBe(0)
+    const url = `${BASE}/css-global`
+    await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), url)
+    await expect.poll(() => page(app, url)).toBeDefined()
+    const p = page(app, url)!
+    await expect.poll(() => p.evaluate(() => getComputedStyle(document.querySelector('p')!).color)).toBe('rgb(1, 2, 3)')
+  } finally {
+    await app.close()
+  }
+})
+
+test('Réglages : plus de section Général ni Labo, #/general mène à la première section, Extensions renvoie vers lyra://extensions', async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const r = await ouvrirReglages(app, fenetre, 'general')
+    await expect(r.locator('h1')).toHaveText("Le ciel et l'apparence")
+    await expect(r.getByText(/Langue de l'interface/)).toHaveCount(0)
+    await expect(r.locator('.nav a', { hasText: /^(Général|Labo)$/ })).toHaveCount(0)
+    await expect(r.locator('.nav a', { hasText: 'Extensions' })).toHaveAttribute('href', 'lyra://extensions')
+    await r.fill('#chercher-reglage', 'extensions')
+    await r.press('#chercher-reglage', 'Enter')
+    await expect.poll(async () => (await fenetre.evaluate(() => window.lyra.invoke('sky:get'))).sky.stars.map((e) => e.url)).toContain('lyra://extensions')
   } finally {
     await app.close()
   }

@@ -245,8 +245,8 @@ export const TYPES_PERMISSION: readonly TypePermission[] = ['camera', 'micro', '
 export interface RegleSite extends RegleSiteD {
   /** false ou 'desactives' : Boucliers désactivés sur ce site ; 'standard' ou 'strict' : niveau. Absent : actifs (écriture canonique : tri-état). */
   boucliers?: BouclierSite
-  /** Décisions mémorisées pour ce site ; absent : on demande. */
-  permissions?: Partial<Record<TypePermission, DecisionPermission>>
+  /** Décisions mémorisées pour ce site ; absent : on demande (« demander » masque une décision héritée d'une règle plus large). */
+  permissions?: Partial<Record<TypePermission, DecisionPermission | 'demander'>>
   /** Facteur de zoom mémorisé (0.25 à 5) ; absent : 100 %. */
   zoom?: number
   /** true : les notifications et popups de ce site passent même en mode Ne pas déranger. Absent : retenues. */

@@ -81,14 +81,14 @@ test('pages internes, thème clair par défaut : #app = rgb(247, 247, 251) sur r
   }
 })
 
-test('réglages : le sommaire compte 19 entrées, la recherche les filtre, lyra://history ouvre Historique', async () => {
+test('réglages : le sommaire compte 17 entrées, la recherche les filtre, lyra://history ouvre Historique', async () => {
   const { app, fenetre } = await lancerLyra()
   try {
     await fenetre.evaluate(() => window.lyra.invoke('test:navigate', 'lyra://settings'))
     await expect.poll(() => page(app, 'lyra://settings')).toBeDefined()
     const r = page(app, 'lyra://settings')!
-    await expect(r.locator('.nav a')).toHaveCount(19)
-    await expect(r.locator('h1')).toHaveText('Général')
+    await expect(r.locator('.nav a')).toHaveCount(17)
+    await expect(r.locator('h1')).toHaveText("Le ciel et l'apparence")
     await r.fill('#chercher-reglage', 'moteur')
     await expect(r.locator('.nav a')).toHaveText(['Palette et recherche'])
     await fenetre.evaluate(() => window.lyra.invoke('test:navigate', 'lyra://history'))
@@ -130,7 +130,7 @@ test('réglages : « zoom » mène à Règles par site (route + mise en évidenc
     await expect.poll(() => r.evaluate(() => document.activeElement?.getAttribute('data-reglage'))).toBe('palette.moteur')
     await r.press('#chercher-reglage', 'Escape')
     await expect(r.locator('#chercher-reglage')).toHaveValue('')
-    await expect(r.locator('.nav a')).toHaveCount(19)
+    await expect(r.locator('.nav a')).toHaveCount(17)
   } finally {
     await app.close()
   }

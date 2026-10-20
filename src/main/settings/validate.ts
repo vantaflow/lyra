@@ -15,12 +15,12 @@ const MAX_SITES = 10_000
 
 const TYPES = ['camera', 'micro', 'notifications', 'geolocalisation', 'presse-papiers']
 
-/** permissions : { type connu: 'autoriser' | 'refuser' } ; le reste est ignoré. */
+/** permissions : { type connu: 'autoriser' | 'refuser' | 'demander' } ; le reste est ignoré. */
 function permissions(v: unknown): Obj | undefined {
   if (!estObjet(v)) return undefined
   const sortie: Obj = {}
   for (const t of TYPES) {
-    const d = enumeration('autoriser', 'refuser')(propre(v, t))
+    const d = enumeration('autoriser', 'refuser', 'demander')(propre(v, t))
     if (d) sortie[t] = d
   }
   return Object.keys(sortie).length > 0 ? sortie : undefined

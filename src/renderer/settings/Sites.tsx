@@ -178,9 +178,8 @@ function Detail({ cle, sites, focus, privee, installees, defaut }: { cle: string
   const notifications: Notifications = eff.permissions?.notifications ?? 'demander'
   const reglerNotifications = async (v: Notifications): Promise<void> => {
     const parDefaut: Notifications = her.permissions?.notifications ?? 'demander'
-    // « Demander » n'est pas une décision enregistrable : il ne s'obtient qu'en retirant la décision.
-    if (v !== parDefaut && v === 'demander') return
-    if (v !== parDefaut) return ecrire(cle, { permissions: { notifications: v as 'autoriser' | 'refuser' } })
+    // « Demander » est enregistrable : sous une règle plus large qui autorise ou refuse, il masque l'héritage.
+    if (v !== parDefaut) return ecrire(cle, { permissions: { notifications: v } })
     // La fusion des réglages n'enlève pas une clé : on retire le bloc, puis on réécrit les autres décisions.
     const { notifications: _n, ...autres } = regle.permissions ?? {}
     await ecrire(cle, { permissions: null })
