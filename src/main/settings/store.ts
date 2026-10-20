@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, renameSync, mkdirSync, rmSync, copyFileSync } from 'node:fs'
+import { readFileSync, writeFileSync, renameSync, mkdirSync, rmSync, copyFileSync, constants } from 'node:fs'
 import { dirname } from 'node:path'
 
 function estObjet(v: unknown): v is Record<string, unknown> {
@@ -16,11 +16,12 @@ export function fusion<T>(base: T, patch: unknown): T {
   return sortie as T
 }
 
-/** Garde `<fichier>.corrompu` avant que la première écriture ne remplace un fichier illisible. */
-export function conserverCopieCorrompue(chemin: string): void {
+/** Garde `<fichier>.corrompu-<horodatage>` avant que la première écriture ne remplace un fichier illisible (un incident suivant n'écrase pas la copie du précédent). */
+export function conserverCopieCorrompue(chemin: string, maintenant: () => number = Date.now): void {
   try {
-    copyFileSync(chemin, `${chemin}.corrompu`)
-    console.warn(`[reglages] copie du fichier illisible : ${chemin}.corrompu`)
+    const copie = `${chemin}.corrompu-${new Date(maintenant()).toISOString().replace(/[-:.]/g, '')}`
+    copyFileSync(chemin, copie, constants.COPYFILE_EXCL)
+    console.warn(`[reglages] copie du fichier illisible : ${copie}`)
   } catch {
     // Copie impossible : les défauts restent utilisés, rien de plus à faire.
   }
@@ -32,6 +33,8 @@ export class JsonStore<T extends object> {
   private ecouteurs = new Set<(v: T) => void>()
   private minuteur: ReturnType<typeof setTimeout> | undefined
   private derniereEcriture = 0
+  /** Lecture refusée (droits, E/S) : le fichier existe sans doute encore intact, on ne l'écrase pas. */
+  private lectureEnEchec = false
 
   /** `delaiEcritureMs` : intervalle minimal entre deux écritures disque (0 : chaque changement est écrit tout de suite). */
   constructor(
@@ -79,7 +82,13 @@ export class JsonStore<T extends object> {
     let texte: string
     try {
       texte = readFileSync(this.chemin, 'utf8')
-    } catch {
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+        this.lectureEnEchec = true
+        console.warn(
+          `[reglages] lecture impossible (${(e as NodeJS.ErrnoException).code ?? 'erreur'}) : ${this.chemin} ; valeurs par défaut utilisées et fichier laissé intact, les changements ne seront pas enregistrés`
+        )
+      }
       return this.defauts
     }
     try {
@@ -113,6 +122,7 @@ export class JsonStore<T extends object> {
   }
 
   private ecrire(): void {
+    if (this.lectureEnEchec) return
     this.derniereEcriture = Date.now()
     const tmp = `${this.chemin}.tmp`
     try {

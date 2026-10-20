@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mkdtempSync, writeFileSync, readFileSync, readdirSync } from 'node:fs'
+import { mkdtempSync, writeFileSync, readFileSync, readdirSync, chmodSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonStore, fusion } from './store'
+import { JsonStore, fusion, conserverCopieCorrompue } from './store'
 
 interface Conf { a: number; b: string; n: { x: number; y: number } }
 const defauts: Conf = { a: 1, b: 'b', n: { x: 1, y: 2 } }
@@ -34,6 +34,38 @@ describe('JsonStore', () => {
   it('fichier corrompu : défauts sans exception', () => {
     writeFileSync(chemin, '{')
     expect(new JsonStore(chemin, defauts).get()).toEqual(defauts)
+  })
+
+  it('copies .corrompu horodatées : un second incident n\'écrase pas la première copie', () => {
+    const avert = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    try {
+      writeFileSync(chemin, 'premier')
+      conserverCopieCorrompue(chemin, () => Date.UTC(2026, 9, 20, 10, 0, 0, 1))
+      writeFileSync(chemin, 'second')
+      conserverCopieCorrompue(chemin, () => Date.UTC(2026, 9, 20, 10, 0, 0, 2))
+    } finally {
+      avert.mockRestore()
+    }
+    const copies = readdirSync(dossier).filter((f) => f.includes('.corrompu-')).sort()
+    expect(copies).toEqual(['conf.json.corrompu-20261020T100000001Z', 'conf.json.corrompu-20261020T100000002Z'])
+    expect(copies.map((c) => readFileSync(join(dossier, c), 'utf8'))).toEqual(['premier', 'second'])
+  })
+
+  it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)('lecture refusée (EACCES) : message, défauts, et le fichier n\'est jamais écrasé', () => {
+    writeFileSync(chemin, JSON.stringify({ a: 42 }))
+    chmodSync(chemin, 0o000)
+    const avert = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    try {
+      const s = new JsonStore(chemin, defauts)
+      expect(s.get()).toEqual(defauts)
+      expect(avert.mock.calls.map((c) => String(c[0])).join('\n')).toMatch(/lecture impossible \(EACCES\)/)
+      s.set({ a: 2 })
+      expect(s.get().a).toBe(2)
+    } finally {
+      avert.mockRestore()
+      chmodSync(chemin, 0o600)
+    }
+    expect(JSON.parse(readFileSync(chemin, 'utf8')).a).toBe(42)
   })
 
   it('écriture atomique : pas de .tmp résiduel', () => {

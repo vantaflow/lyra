@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { migrer } from './migrations'
 import { reglagesParDefaut } from './defaults'
 import { creerReglages } from './settings'
@@ -11,6 +11,13 @@ import v1 from './fixtures/settings-v1.json'
 
 const defauts = reglagesParDefaut('/dl')
 const AUCUN_REP = (): boolean => false
+
+/** Chemin de l'unique copie `<fichier>.corrompu-<horodatage>` du dossier. */
+function copieCorrompue(chemin: string): string {
+  const copies = readdirSync(dirname(chemin)).filter((f) => f.startsWith(`${basename(chemin)}.corrompu-`))
+  expect(copies).toHaveLength(1)
+  return join(dirname(chemin), copies[0])
+}
 
 describe('migrer', () => {
   it('migre la fixture v1 sans perte : tout champ v1 est conservé, version 2, blocs D à leurs défauts', () => {
@@ -106,7 +113,7 @@ describe('persistance', () => {
     } finally {
       avert.mockRestore()
     }
-    expect(readFileSync(`${chemin}.corrompu`, 'utf8')).toBe('{pas du json')
+    expect(readFileSync(copieCorrompue(chemin), 'utf8')).toBe('{pas du json')
     expect(JSON.parse(readFileSync(chemin, 'utf8')).theme).toBe('clair')
   })
 
@@ -120,7 +127,7 @@ describe('persistance', () => {
     } finally {
       avert.mockRestore()
     }
-    expect(readFileSync(`${chemin}.corrompu`, 'utf8')).toBe('[1,2]')
+    expect(readFileSync(copieCorrompue(chemin), 'utf8')).toBe('[1,2]')
   })
 
   it('les clés rejetées sont journalisées', () => {
