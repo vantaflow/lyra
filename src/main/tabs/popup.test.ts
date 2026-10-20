@@ -10,8 +10,10 @@ describe('estVraiePopup', () => {
     expect(p('foreground-tab', 'popup')).toBe(true)
     expect(p('foreground-tab', ' Left=10 , top=20')).toBe(true)
   })
-  it('disposition « nouvelle fenêtre » : popup même sans features', () => {
-    expect(p('new-window', '')).toBe(true)
+  it('disposition « nouvelle fenêtre » sans features (Maj+clic sur un lien) : lien ordinaire', () => {
+    expect(p('new-window', '')).toBe(false)
+    expect(p('new-window', 'noopener')).toBe(false)
+    expect(p('new-window', 'popup')).toBe(true)
   })
   it('noopener, noreferrer, attributionsrc seuls : lien ordinaire', () => {
     expect(p('foreground-tab', 'noopener')).toBe(false)

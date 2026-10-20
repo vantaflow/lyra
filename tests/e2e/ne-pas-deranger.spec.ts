@@ -286,3 +286,39 @@ test("le mode n'est pas restauré au redémarrage", async () => {
     await app2.close()
   }
 })
+
+test("Maj+clic sur un lien (disposition nouvelle fenêtre sans features) : étoile ordinaire, rien n'est retenu", async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const p = await ouvrir(app, fenetre, DND)
+    const avant = await ciel(fenetre)
+    await menu(app, 'ne-pas-deranger')
+    await expect.poll(async () => (await etat(fenetre)).actif).toBe(true)
+    await p.locator('#lien').click({ modifiers: ['Shift'] })
+    await expect.poll(async () => (await ciel(fenetre)).sky.stars.length).toBe(avant.sky.stars.length + 1)
+    expect((await etat(fenetre)).popups).toBe(0)
+  } finally {
+    await app.close()
+  }
+})
+
+test('⌘ ⇧ D au clavier (page au premier plan) : entre puis sort, sans passer par le menu', async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    await ouvrir(app, fenetre, DND)
+    // Touche envoyée à la page elle-même : c'est `before-input-event` qui la traite, pas l'accélérateur du menu.
+    const touche = (): Promise<void> =>
+      app.evaluate(({ webContents }, adresse) => {
+        const wc = webContents.getAllWebContents().find((w) => w.getURL() === adresse)!
+        const modifiers = [process.platform === 'darwin' ? 'meta' : 'control', 'shift'] as const
+        wc.sendInputEvent({ type: 'keyDown', keyCode: 'D', modifiers: [...modifiers] })
+        wc.sendInputEvent({ type: 'keyUp', keyCode: 'D', modifiers: [...modifiers] })
+      }, DND)
+    await touche()
+    await expect.poll(async () => (await etat(fenetre)).actif).toBe(true)
+    await touche()
+    await expect.poll(async () => (await etat(fenetre)).actif).toBe(false)
+  } finally {
+    await app.close()
+  }
+})
