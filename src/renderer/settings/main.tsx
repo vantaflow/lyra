@@ -52,6 +52,9 @@ function App() {
   useEffect(() => {
     const maj = (): void => setRoute(routeDepuisHash(location.hash))
     window.addEventListener('hashchange', maj)
+    // Un changement de hash survenu entre le premier rendu et cet abonnement (l'effet attend la prochaine image,
+    // qui tarde dans une fenêtre cachée ou en arrière-plan) serait sinon perdu.
+    maj()
     return () => window.removeEventListener('hashchange', maj)
   }, [])
 
