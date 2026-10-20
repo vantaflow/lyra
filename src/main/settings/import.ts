@@ -60,6 +60,18 @@ export function patchImporte(brut: unknown, estRepertoire: (chemin: string) => b
   return retirerRegistreExtensions(patch) as Partial<Settings>
 }
 
+/** Contenu d'un fichier de réglages : le patch à appliquer, ou null si le fichier est illisible (JSON invalide, trop gros ou pas un objet). */
+export function lireFichierReglages(brut: string, estRepertoire?: (chemin: string) => boolean): Partial<Settings> | null {
+  if (Buffer.byteLength(brut, 'utf8') > TAILLE_MAX_IMPORT) return null
+  try {
+    const v: unknown = JSON.parse(brut)
+    if (typeof v !== 'object' || v === null || Array.isArray(v)) return null
+    return patchImporte(v, estRepertoire)
+  } catch {
+    return null
+  }
+}
+
 /** Réglages tels qu'écrits dans un export JSON : sans `import` ni `extensions.installees` (usage local). */
 export function reglagesExportables(s: Settings): Record<string, unknown> {
   const { import: _import, ...reste } = s as unknown as Record<string, unknown>

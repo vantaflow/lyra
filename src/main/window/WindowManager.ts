@@ -59,13 +59,17 @@ function creerVueUI(): WebContentsView {
   })
 }
 
+/** Rayon des coins de la page (px), comme les 12 px du cadre de page du design. */
+export const RAYON_PAGE = 12
+
 export class WindowManager {
   private fenetres = new Map<number, LyraWindow>()
 
   /** Largeur en cours de réglage à la poignée (aperçu en direct, pas encore enregistrée). */
   private apercu: number | null = null
 
-  constructor(private lireCielBrut: () => Settings['ciel']) {}
+  /** `coinsArrondis` : « Coins arrondis de la page » (Apparence) ; absent : arrondis. */
+  constructor(private lireCielBrut: () => Settings['ciel'], private coinsArrondis: () => boolean = () => true) {}
 
   /** Réglage du ciel, avec l'aperçu de largeur en cours. */
   private lireCiel(): Settings['ciel'] {
@@ -146,6 +150,7 @@ export class WindowManager {
       chrome.setVisible(l.chrome.width > 0 && l.chrome.height > 0)
       overlay.setBounds(l.overlay)
       pageView?.setBounds(l.page)
+      pageView?.setBorderRadius(pleinEcran || dnd !== null || !this.coinsArrondis() ? 0 : RAYON_PAGE)
       pageView?.setVisible(!glisse)
       if (process.platform === 'darwin') {
         // Centrés sur la bande quand le ciel est en haut, à leur place habituelle sinon.

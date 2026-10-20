@@ -81,7 +81,7 @@ let reglagesCourants: () => Settings = () => {
   throw new Error('réglages non initialisés')
 }
 let reglagesStore: Reglages | undefined
-const manager = new WindowManager(() => reglagesCourants().ciel)
+const manager = new WindowManager(() => reglagesCourants().ciel, () => reglagesCourants().apparence.coinsArrondis)
 const onglets = new Map<number, TabManager>()
 let historique: History | undefined
 /** Archivage des étoiles éteintes (vérifié au démarrage puis chaque heure) ; `decalageHorloge` n'est non nul qu'en mode test. */

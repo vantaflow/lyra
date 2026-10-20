@@ -36,7 +36,9 @@ export function installerConfidentialite(deps: DepsConfidentialite): Confidentia
     }
   }
   handle('confidentialite:purger', async () => {
-    await effacerMaintenant(actions)
+    // Une donnée non effacée est une erreur : l'interface n'affiche « Données effacées. » qu'en cas de succès.
+    const faites = await effacerMaintenant(actions)
+    if (faites.length < 3) throw new Error(`Effacement incomplet (${faites.join(', ') || 'rien'})`)
   })
   // Dernière fenêtre fermée (macOS garde l'application ouverte) puis sortie : une seule exécution, la sortie attend celle en cours.
   let aEffacer = true

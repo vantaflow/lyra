@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { COINS, DENSITES_PX, PASTILLES_CIEL, PASTILLES_ETOILE, POLICES, pastilleActive, tailleTexteCss, variablesApparence } from './apparence'
+import { COINS, DENSITES_PX, PASTILLES_CIEL, pastillesCiel, PASTILLES_ETOILE, POLICES, pastilleActive, tailleTexteCss, variablesApparence } from './apparence'
 
 describe('apparence', () => {
   it('pastilles de l’étoile active : hex du design', () => {
@@ -41,5 +41,10 @@ describe('apparence', () => {
     const v = variablesApparence({ police: 'x; background:red', tailleTexte: 13, densite: 'confortable', coinsArrondis: true })
     expect(v['--police']).toBe(POLICES[0].css)
     expect(variablesApparence({ police: 'Georgia', tailleTexte: 13, densite: 'confortable', coinsArrondis: true })['--police']).toContain('Georgia')
+  })
+  it('en sombre, la valeur par défaut du ciel allume la pastille « Indigo nuit »', () => {
+    expect(pastilleActive(pastillesCiel(true), '#0E0E1E')?.libelle).toBe('Indigo nuit')
+    expect(pastilleActive(pastillesCiel(false), '#15152E')?.libelle).toBe('Indigo nuit')
+    expect(pastilleActive(pastillesCiel(false), '#0E0E1E')).toBeNull()
   })
 })

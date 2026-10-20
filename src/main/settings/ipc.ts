@@ -5,7 +5,7 @@ import { handle } from '../ipc'
 import type { Reglages } from './settings'
 import { contenuExport, importerTheme } from './themes-fichier'
 import { TAILLE_MAX_THEME } from '../../shared/themes'
-import { TAILLE_MAX_IMPORT, ErreurReglagesVolumineux, patchImporte, serialiserReglages } from './import'
+import { ErreurReglagesVolumineux, lireFichierReglages, serialiserReglages } from './import'
 
 export function installerReglagesIpc(reglages: Reglages): void {
   handle('app:version', () => app.getVersion())
@@ -37,11 +37,10 @@ export function installerReglagesIpc(reglages: Reglages): void {
     const r = await dialog.showOpenDialog({ filters: [{ name: 'JSON', extensions: ['json'] }], properties: ['openFile'] })
     if (r.canceled || r.filePaths.length === 0) return null
     try {
-      const brut = await readFile(r.filePaths[0], 'utf8')
-      if (Buffer.byteLength(brut, 'utf8') > TAILLE_MAX_IMPORT) return null
-      return reglages.setSettings(patchImporte(JSON.parse(brut)))
+      const patch = lireFichierReglages(await readFile(r.filePaths[0], 'utf8'))
+      return patch ? reglages.setSettings(patch) : { erreur: 'Fichier de réglages illisible' }
     } catch {
-      return null
+      return { erreur: 'Fichier de réglages illisible' }
     }
   })
   handle('themes:importer', async () => {

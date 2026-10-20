@@ -1,5 +1,5 @@
 // Réglages d'apparence de l'interface : pastilles de couleur du design, police, taille, densité, coins → variables CSS.
-import type { ReglagesApparence } from './types-reglages'
+import { COULEURS_INDIGO_NUIT, type ReglagesApparence } from './types-reglages'
 
 export interface Pastille {
   libelle: string
@@ -22,6 +22,14 @@ export const PASTILLES_CIEL: readonly Pastille[] = [
   { libelle: 'Ardoise', hex: '#22262E' },
   { libelle: 'Forêt', hex: '#12261F' }
 ]
+
+/**
+ * Pastilles du ciel pour un mode : en sombre, « Indigo nuit » vaut la couleur sombre du thème (`#0E0E1E`), sans quoi la valeur par défaut
+ * du mode sombre n'allumerait aucune pastille.
+ */
+export function pastillesCiel(sombre: boolean): readonly Pastille[] {
+  return sombre ? PASTILLES_CIEL.map((p) => (p.libelle === 'Indigo nuit' ? { ...p, hex: COULEURS_INDIGO_NUIT['ciel-fond'].sombre } : p)) : PASTILLES_CIEL
+}
 
 export const pastilleActive = (pastilles: readonly Pastille[], hex: string): Pastille | null =>
   pastilles.find((p) => p.hex.toUpperCase() === hex.toUpperCase()) ?? null

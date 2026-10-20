@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import type { DownloadInfo } from '../../shared/types'
-import { Interrupteur, Ligne, Titre } from './controles'
+import { Interrupteur, Ligne } from './controles'
+import { MessageErreur, useErreur } from './erreurs'
 import { useReglages } from './reglages'
 import { couleursVignette, extension, fraction, texteEtat } from '../../shared/telechargements'
 
@@ -9,21 +10,22 @@ type Canal = 'downloads:pause' | 'downloads:resume' | 'downloads:cancel' | 'down
 export function Telechargements() {
   const [liste, setListe] = useState<DownloadInfo[]>([])
   const [s, regler] = useReglages()
+  const [erreur, rattraper] = useErreur()
 
   useEffect(() => {
-    const charger = (): void => void window.lyra.invoke('downloads:list').then(setListe)
+    const charger = (): void => void window.lyra.invoke('downloads:list').then(setListe, () => undefined)
     charger()
     return window.lyra.on('downloads:changed', charger)
   }, [])
 
-  const agir = (canal: Canal, id: string): void => void window.lyra.invoke(canal, { id })
+  const agir = (canal: Canal, id: string): void => void rattraper(window.lyra.invoke(canal, { id }), "L'action sur le téléchargement a échoué.")
   const effacer = async (): Promise<void> => {
-    await window.lyra.invoke('downloads:clear')
-    setListe(await window.lyra.invoke('downloads:list'))
+    if ((await rattraper(window.lyra.invoke('downloads:clear'), "La liste n'a pas pu être effacée.").then((r) => r === undefined ? false : true)) === false) return
+    setListe(await window.lyra.invoke('downloads:list').catch(() => []))
   }
 
   const choisirDossier = async (): Promise<void> => {
-    const d = await window.lyra.invoke('settings:choisirDossier')
+    const d = await rattraper(window.lyra.invoke('settings:choisirDossier'), "Le dossier n'a pas pu être choisi.")
     if (d) regler({ telechargements: { dossier: d } })
   }
 
@@ -31,7 +33,6 @@ export function Telechargements() {
     <>
       {s && (
         <>
-          <Titre>Téléchargements</Titre>
           <div class="card">
             <Ligne reglage="telechargements.dossier" titre="Dossier de téléchargement" aide={s.telechargements.dossier}>
               <button class="btn" type="button" onClick={() => void choisirDossier()}>
@@ -48,6 +49,7 @@ export function Telechargements() {
           </div>
         </>
       )}
+      <MessageErreur message={erreur} />
       <div class="barre">
         <span class="souple" style={{ flex: 1 }}></span>
         <button class="btn" type="button" id="effacer-telechargements" onClick={() => void effacer()} disabled={liste.length === 0}>

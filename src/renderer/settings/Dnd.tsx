@@ -3,6 +3,7 @@ import type { DureeDnd } from '../../shared/ipc'
 import type { RegleSite } from '../../shared/types'
 import { Ligne, Segments, Titre } from './controles'
 import { exceptionsDnd } from './exceptionsDnd'
+import { MessageErreur, useErreur } from './erreurs'
 import { useReglages } from './reglages'
 import './sections.css'
 
@@ -16,14 +17,15 @@ const enDuree = (id: string): DureeDnd => (id === 'arret' ? 'arret' : id === '30
 export function Dnd() {
   const [s, regler] = useReglages()
   const [sites, setSites] = useState<Record<string, RegleSite>>({})
+  const [erreur, rattraper] = useErreur()
   useEffect(() => {
-    void window.lyra.invoke('sites:lister').then(setSites)
+    window.lyra.invoke('sites:lister').then(setSites, () => undefined)
     return window.lyra.on('sites:changed', setSites)
   }, [])
   if (!s) return null
   const exceptions = exceptionsDnd(sites)
   // Retirer une exception écrit la règle du site (`exceptionDnd` retiré) : la liste n'a pas de stockage propre.
-  const retirer = (cle: string): void => void window.lyra.invoke('sites:ecrire', { cle, regle: { exceptionDnd: null } })
+  const retirer = (cle: string): void => void rattraper(window.lyra.invoke('sites:ecrire', { cle, regle: { exceptionDnd: null } }), "L'exception n'a pas pu être retirée.")
 
   return (
     <>
@@ -58,6 +60,7 @@ export function Dnd() {
           ))
         )}
       </div>
+      <MessageErreur message={erreur} />
     </>
   )
 }

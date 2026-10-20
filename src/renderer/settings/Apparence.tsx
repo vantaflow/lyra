@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { LARGEUR_MAX, LARGEUR_MIN } from '../../main/window/layout'
-import { PASTILLES_CIEL, PASTILLES_ETOILE, POLICES, TAILLE_MAX, TAILLE_MIN, tailleTexteCss, pastilleActive, type Pastille } from '../../shared/apparence'
+import { pastillesCiel, PASTILLES_ETOILE, POLICES, TAILLE_MAX, TAILLE_MIN, tailleTexteCss, pastilleActive, type Pastille } from '../../shared/apparence'
 import type { CleCouleur, CouleursTheme, NomTheme } from '../../shared/types-reglages'
 import { THEMES } from '../../shared/themes'
 import { Interrupteur, Ligne, Segments, Selecteur, Titre } from './controles'
@@ -284,7 +284,7 @@ export function Apparence() {
           <Pastilles pastilles={PASTILLES_ETOILE} courante={affichees['etoile-active'][mode]} libelle="Couleur de l'étoile active" changer={changerCouleur('etoile-active')} />
         </Ligne>
         <Ligne reglage="apparence.couleurCiel" titre="Couleur du ciel" aide="Indigo nuit, ou votre couleur">
-          <Pastilles pastilles={PASTILLES_CIEL} courante={affichees['ciel-fond'][mode]} libelle="Couleur du ciel" changer={changerCouleur('ciel-fond')} />
+          <Pastilles pastilles={pastillesCiel(mode === 'sombre')} courante={affichees['ciel-fond'][mode]} libelle="Couleur du ciel" changer={changerCouleur('ciel-fond')} />
         </Ligne>
         <Ligne reglage="apparence.police" titre="Police de l'interface">
           <Selecteur libelle="Police de l'interface" valeur={a.police} options={POLICES.map((p) => ({ id: p.id, libelle: p.libelle }))} surChange={(police) => regler({ apparence: { police } })} />

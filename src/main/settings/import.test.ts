@@ -61,3 +61,13 @@ describe('patchPage (settings:set depuis une page)', () => {
   })
 })
 
+
+describe('lireFichierReglages', () => {
+  it('rend le patch d’un fichier valide et null pour un fichier illisible', async () => {
+    const { lireFichierReglages } = await import('./import')
+    expect(lireFichierReglages('{"telechargements":{"demander":true}}', () => true)).toEqual({ telechargements: { demander: true } })
+    expect(lireFichierReglages('pas du json')).toBeNull()
+    expect(lireFichierReglages('[1,2]')).toBeNull()
+    expect(lireFichierReglages('null')).toBeNull()
+  })
+})

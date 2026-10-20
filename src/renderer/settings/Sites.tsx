@@ -3,6 +3,7 @@ import type { ExtensionInstallee, RegleSite, ScriptPerso, Settings } from '../..
 import { CLES_UA, CLE_UA_DEFAUT, estCleUa, libelleUa, majeurChrome, type CleUa } from '../../shared/ua-profils'
 import { cleCanonique } from '../../main/settings/sites'
 import { EditeurCode, EditeurScript } from './EditeurScript'
+import { MessageErreur, useErreur } from './erreurs'
 import { Interrupteur, Ligne, Segments, Selecteur, Titre } from './controles'
 import {
   celluleBoucliers,
@@ -67,7 +68,7 @@ const NOTIFICATIONS: { id: Notifications; libelle: string }[] = [
   { id: 'refuser', libelle: 'Refuser' }
 ]
 
-const ecrire = (cle: string, regle: Champs): Promise<void> => window.lyra.invoke('sites:ecrire', { cle, regle })
+const ecrireBrut = (cle: string, regle: Champs): Promise<void> => window.lyra.invoke('sites:ecrire', { cle, regle })
 
 /** Étiquette colorée (vert, rouge, violet : couleurs du design) ou texte brut. */
 function Valeur({ c }: { c: Cellule }) {
@@ -139,6 +140,9 @@ function Tableau({ sites, cles, choisie, installees, defaut }: { sites: Record<s
 
 /** Détail d'une règle (sans règle enregistrée : ses valeurs par défaut, la première écriture la crée). */
 function Detail({ cle, sites, focus, privee, installees, defaut }: { cle: string; sites: Record<string, Regle>; focus: string | null; privee: boolean; installees: ExtensionInstallee[]; defaut: Boucliers }) {
+  const [erreur, rattraper] = useErreur()
+  // Écriture rattrapée : un échec s'affiche sous le détail au lieu d'une promesse rejetée silencieuse.
+  const ecrire = (c: string, champs: Champs): Promise<void> => rattraper(ecrireBrut(c, champs), "La règle n'a pas pu être enregistrée.").then(() => undefined)
   const regle: Regle = sites[cle] ?? {}
   const existe = Object.hasOwn(sites, cle)
   // `eff` : ce qui s'applique au site (règle propre puis règles plus larges) ; `her` : ce qui s'appliquerait sans la règle propre.
@@ -222,7 +226,7 @@ function Detail({ cle, sites, focus, privee, installees, defaut }: { cle: string
   }
 
   const supprimer = (): void => {
-    void window.lyra.invoke('sites:supprimer', cle)
+    rattraper(window.lyra.invoke('sites:supprimer', cle), "La règle n'a pas pu être supprimée.").catch(() => undefined)
     location.hash = '#/sites'
     document.getElementById('nouvelle-regle')?.focus()
   }
@@ -239,7 +243,7 @@ function Detail({ cle, sites, focus, privee, installees, defaut }: { cle: string
         <Ligne reglage="sites.boucliers" titre="Boucliers" aide="Strict ajoute les listes de gênes et bloque les scripts tiers inconnus" herite={regle.boucliers === undefined && boucliersHerites(sites, cle)}>
           <Segments valeur={boucliers} options={BOUCLIERS} surChange={reglerBoucliers} />
         </Ligne>
-        <Ligne reglage="sites.scriptlets" titre="Scriptlets anti-publicité YouTube" aide="Mis à jour avec les listes ; inactifs quand les Boucliers du site sont désactivés" herite={herite('scriptletsYoutube')}>
+        <Ligne reglage="sites.scriptlets" titre="Scriptlets anti-publicité YouTube" aide="Mis à jour avec les listes ; toujours actifs en Standard et Strict" herite={herite('scriptletsYoutube')}>
           <Interrupteur actif={scriptletsActifs} inerte={boucliers === 'desactives'} libelle="Scriptlets YouTube" surChange={reglerScriptlets} />
         </Ligne>
         <Ligne reglage="sites.cookies" titre="Cookies" herite={herite('cookies')}>
@@ -324,6 +328,7 @@ function Detail({ cle, sites, focus, privee, installees, defaut }: { cle: string
           </button>
         </div>
       </fieldset>
+      <MessageErreur message={erreur} />
       <div class="pied-detail">
         <button class="btn danger" type="button" id="supprimer-regle" disabled={!existe || privee} onClick={supprimer}>
           Supprimer
@@ -347,7 +352,14 @@ function NouvelleRegle({ existantes, defaut, fermer }: { existantes: Record<stri
     }
     // Une règle existante n'est pas écrasée : on ouvre son détail.
     // La règle écrite reprend le niveau déjà en vigueur sur le site (un motif `*.` Strict reste Strict).
-    if (!Object.hasOwn(existantes, cle)) await ecrire(cle, regleInitiale(existantes, cle, defaut))
+    if (!Object.hasOwn(existantes, cle)) {
+      try {
+        await ecrireBrut(cle, regleInitiale(existantes, cle, defaut))
+      } catch {
+        setErreur("La règle n'a pas pu être créée.")
+        return
+      }
+    }
     fermer('titre')
     location.hash = encoderRoute(cle)
   }
@@ -401,7 +413,7 @@ export function Sites() {
   const [installees, setInstallees] = useState<ExtensionInstallee[]>([])
   const [defaut, setDefaut] = useState<Boucliers>('standard')
   useEffect(() => {
-    void window.lyra.invoke('sites:lister').then(setSites)
+    void window.lyra.invoke('sites:lister').then(setSites, () => setSites({}))
     const lire = (s: Settings): void => {
       setInstallees(s.extensions?.installees ?? [])
       setDefaut(s.boucliers?.niveau ?? 'standard')

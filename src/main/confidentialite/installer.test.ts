@@ -83,4 +83,12 @@ describe('installerConfidentialite', () => {
     expect(session.clearStorageData).toHaveBeenCalledWith({ storages: ['cookies'] })
     expect(session.clearCache).toHaveBeenCalled()
   })
+
+  it('la purge immédiate échoue si une donnée n’a pas pu être effacée', async () => {
+    monter({}, async () => {
+      throw new Error('disque')
+    })
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    await expect(handlers.get('confidentialite:purger')!()).rejects.toThrow('Effacement incomplet')
+  })
 })

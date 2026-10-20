@@ -1,3 +1,4 @@
+import { Fragment } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { accelerateurDeEvenement } from '../../shared/accelerateur'
 import { COMMANDES, GROUPES, defautDe, estParDefaut, messageRefus, natives, patchToutParDefaut, redefinissable, tableEffective, tenterAttribution, type DefCommande } from '../../shared/commandes'
@@ -51,8 +52,8 @@ export function Raccourcis() {
     const perso = modifiable && !estParDefaut(c.id, table, plateforme)
     const enCours = capture === c.id
     return (
-      <>
-        <Ligne key={c.id} reglage={`raccourcis-${c.id}`} titre={c.libelle} aide={modifiable ? undefined : 'Géré par le système'}>
+      <Fragment key={c.id}>
+        <Ligne reglage={`raccourcis-${c.id}`} titre={c.libelle} aide={modifiable ? undefined : 'Géré par le système'}>
           {perso && (
             <button class="btn" type="button" aria-label={`Rétablir « ${c.libelle} » par défaut`} onClick={() => { setRefus(null); regler({ raccourcis: { [c.id]: '' } }) }}>
               Par défaut
@@ -79,7 +80,7 @@ export function Raccourcis() {
             {refus.message}
           </p>
         )}
-      </>
+      </Fragment>
     )
   }
 

@@ -283,7 +283,7 @@ export type Requetes = {
   /** Boîte de dialogue : enregistre les réglages en JSON ; vrai si le fichier est écrit. */
   'settings:export': [void, boolean]
   /** Boîte de dialogue : lit un JSON de réglages, le valide et l'applique ; null si annulé ou illisible. */
-  'settings:import': [void, Settings | null]
+  'settings:import': [void, Settings | { erreur: string } | null]
   /** Boîte de dialogue : lit un thème JSON `{ nom, couleurs }` et l'applique comme « Mes couleurs » ; null si annulé, `erreur` si invalide. */
   'themes:importer': [void, { nom: string } | { erreur: string } | null]
   /** Boîte de dialogue : enregistre « Mes couleurs » en JSON `{ nom, couleurs }` ; vrai si le fichier est écrit, `erreur` si l'écriture échoue. */

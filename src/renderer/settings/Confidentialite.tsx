@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks'
 import { Interrupteur, Ligne, Titre } from './controles'
+import { MessageErreur, useErreur } from './erreurs'
 import { useReglages } from './reglages'
 import './sections.css'
 
@@ -9,15 +10,19 @@ export function Confidentialite() {
   const [s, regler] = useReglages()
   const [purge, setPurge] = useState<Etat>('repos')
   const [historiqueEfface, setHistoriqueEfface] = useState(false)
+  const [erreur, , setErreur] = useErreur()
   if (!s) return null
   const c = s.confidentialite
 
   const purger = async (): Promise<void> => {
     setPurge('en-cours')
+    setErreur('')
     try {
       await window.lyra.invoke('confidentialite:purger')
-    } finally {
       setPurge('fait')
+    } catch {
+      setPurge('repos')
+      setErreur("Les données n'ont pas pu être effacées.")
     }
   }
 
@@ -43,7 +48,11 @@ export function Confidentialite() {
             class="btn"
             type="button"
             onClick={() => {
-              void window.lyra.invoke('history:clear').then(() => setHistoriqueEfface(true))
+              setErreur('')
+              window.lyra.invoke('history:clear').then(
+                () => setHistoriqueEfface(true),
+                () => setErreur("L'historique n'a pas pu être effacé.")
+              )
             }}
           >
             Effacer l'historique
@@ -70,6 +79,7 @@ export function Confidentialite() {
           )}
         </Ligne>
       </div>
+      <MessageErreur message={erreur} />
       <p class="note">Aucune donnée ne quitte cet ordinateur.</p>
     </>
   )
