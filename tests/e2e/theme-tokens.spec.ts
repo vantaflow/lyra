@@ -25,6 +25,16 @@ test.beforeAll(() => {
 test.afterAll(() => rmSync(racine, { recursive: true, force: true }))
 type Reference = Record<string, Record<string, string[]>>
 
+/** Écarts propres à la plateforme (classe `mac` ou `win` de la fenêtre, pastilles de feux tricolores macOS seulement) : ignorés à la comparaison. */
+function sansPlateforme(vue: Record<string, string[]>): Record<string, string[]> {
+  const sortie: Record<string, string[]> = {}
+  for (const [cle, sigs] of Object.entries(vue)) {
+    if (cle === 'div.pastilles') continue
+    sortie[cle.replace(/^(div\.fenetre)(\.mac|\.win)?((\.[a-z-]+)*)$/, (_m, a, _p, reste) => a + String(reste).split('.').filter((c) => c && c !== 'mac' && c !== 'win').map((c) => '.' + c).join(''))] = sigs
+  }
+  return sortie
+}
+
 const trouver = (app: { windows(): Page[] }, debut: string): Page | undefined => app.windows().find((w) => w.url().startsWith(debut))
 
 /** Signature des couleurs calculées : clé = balise + id + classes triées, valeur = signatures distinctes (indépendant du nombre d'éléments). */
@@ -128,7 +138,7 @@ test('thème clair par défaut : les couleurs calculées de toutes les vues Lyra
     }
     const reference = JSON.parse(readFileSync(FICHIER, 'utf8')) as Reference
     expect(Object.keys(actuel).sort()).toEqual(Object.keys(reference).sort())
-    for (const vue of Object.keys(reference)) expect(actuel[vue], vue).toEqual(reference[vue])
+    for (const vue of Object.keys(reference)) expect(sansPlateforme(actuel[vue]), vue).toEqual(sansPlateforme(reference[vue]))
   } finally {
     await app.close()
   }

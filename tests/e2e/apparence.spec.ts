@@ -145,8 +145,8 @@ test('apparence : lignes de constellation et icônes des sites', async () => {
     await expect(fenetre.locator('.ciel.sans-lignes')).toHaveCount(0)
     expect(await fenetre.locator('.star .dot').count()).toBeGreaterThan(0)
     await ecrire(fenetre, { apparence: { iconesSites: true } })
-    // Aucun favicon connu pour le nouvel onglet : le point reste.
-    expect(await fenetre.locator('.star .dot').count()).toBeGreaterThan(0)
+    // Le nouvel onglet a l'icône de Lyra pour favicon : l'étoile montre cette icône à la place du point (ou le point tant qu'elle n'est pas connue).
+    await expect.poll(async () => fenetre.locator('.star .dot, .star .dot-icone').count()).toBeGreaterThan(0)
   } finally {
     await app.close()
   }
