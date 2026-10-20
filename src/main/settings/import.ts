@@ -57,7 +57,20 @@ export function patchImporte(brut: unknown, estRepertoire: (chemin: string) => b
     delete patch.reseau.personnelle
     if (Object.keys(patch.reseau).length === 0) delete patch.reseau
   }
+  desactiverScriptsImportes(patch)
   return retirerRegistreExtensions(patch) as Partial<Settings>
+}
+
+/**
+ * Un script personnalisé qui vient d'un fichier partagé ne s'exécute jamais sans que l'utilisateur l'ait relu et activé :
+ * `actif: false` forcé sur `styles.scripts` et sur les `scriptsPerso` de chaque règle de site importée.
+ */
+function desactiverScriptsImportes(patch: Partial<Settings>): void {
+  const coupe = (l: unknown): void => {
+    if (Array.isArray(l)) for (const sc of l) if (sc && typeof sc === 'object') (sc as { actif: boolean }).actif = false
+  }
+  coupe(patch.styles?.scripts)
+  for (const regle of Object.values(patch.sites ?? {})) coupe(regle?.scriptsPerso)
 }
 
 /** Réglages tels qu'écrits dans un export JSON : sans `import` ni `extensions.installees` (usage local). */

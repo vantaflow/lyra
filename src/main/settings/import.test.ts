@@ -5,6 +5,17 @@ describe('patchImporte', () => {
   const oui = (): boolean => true
   const non = (): boolean => false
 
+  it('force actif: false sur les scripts personnalisés importés (globaux et par site), pas sur un patch de page', () => {
+    const brut = {
+      styles: { css: 'a{}', scripts: [{ nom: 'g', code: '1', actif: true }] },
+      sites: { 'a.com': { scriptsPerso: [{ nom: 's', code: '2', actif: true }, { nom: 't', code: '3', actif: true }] } }
+    }
+    const p = patchImporte(brut, oui)
+    expect(p.styles?.scripts?.map((x) => x.actif)).toEqual([false])
+    expect(p.sites?.['a.com'].scriptsPerso?.map((x) => x.actif)).toEqual([false, false])
+    expect(p.styles?.css).toBe('a{}')
+    expect(patchPage(brut).styles?.scripts?.[0].actif).toBe(true)
+  })
   it('garde un dossier absolu existant', () => {
     expect(patchImporte({ telechargements: { dossier: '/tmp', demander: true } }, oui).telechargements).toEqual({ dossier: '/tmp', demander: true })
   })
