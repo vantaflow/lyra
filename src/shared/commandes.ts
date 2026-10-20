@@ -50,7 +50,8 @@ export const COMMANDES: readonly DefCommande[] = [
   def('trouver', 'Rechercher dans la page', 'Navigation', 'trouver', 'CmdOrCtrl+F', { page: 'recherche' }),
   def('favori', 'Ajouter aux favoris', 'Navigation', 'favori', 'CmdOrCtrl+D'),
   def('favoris', 'Favoris', 'Navigation', 'favoris', 'CmdOrCtrl+Shift+B'),
-  def('historique', 'Historique', 'Navigation', 'historique', 'CmdOrCtrl+Y'),
+  // Hors macOS, Ctrl+Y est « Rétablir » (comme dans Chrome et Edge, l'historique est sur Ctrl+H).
+  def('historique', 'Historique', 'Navigation', 'historique', 'CmdOrCtrl+Y', { defautAutre: 'Ctrl+H' }),
   def('telechargements', 'Téléchargements', 'Navigation', 'telechargements', 'CmdOrCtrl+Shift+J'),
 
   def('zoomAvant', 'Zoom avant', 'Affichage', 'zoom-plus', 'CmdOrCtrl+Plus'),
@@ -81,7 +82,8 @@ export function redefinissable(c: DefCommande, plateforme: Plateforme): boolean 
 export function natives(plateforme: Plateforme): { libelle: string; accelerateur: string }[] {
   return [
     { libelle: 'Annuler', accelerateur: 'CmdOrCtrl+Z' },
-    { libelle: 'Rétablir', accelerateur: plateforme === 'darwin' ? 'CmdOrCtrl+Shift+Z' : 'CmdOrCtrl+Y' },
+    // Rôle `redo` d'Electron : Ctrl+Y sous Windows, Maj+Ctrl/⌘+Z ailleurs.
+    { libelle: 'Rétablir', accelerateur: plateforme === 'win32' ? 'CmdOrCtrl+Y' : 'CmdOrCtrl+Shift+Z' },
     { libelle: 'Couper', accelerateur: 'CmdOrCtrl+X' },
     { libelle: 'Copier', accelerateur: 'CmdOrCtrl+C' },
     { libelle: 'Coller', accelerateur: 'CmdOrCtrl+V' },
@@ -126,7 +128,7 @@ export function estParDefaut(id: string, table: Record<string, string>, platefor
   return brut === null || canonique(brut, plateforme) === canonique(defautDe(c, plateforme), plateforme)
 }
 
-export type ResultatAttribution = { ok: true; valeur: string } | { ok: false; raison: 'invalide' | 'modificateur' | 'reserve' | 'natif' } | { ok: false; raison: 'conflit'; avec: string }
+export type ResultatAttribution = { ok: true; valeur: string } | { ok: false; raison: 'invalide' | 'modificateur' | 'reserve' | 'natif' | 'saisie' } | { ok: false; raison: 'conflit'; avec: string }
 
 /**
  * Attribue la combinaison saisie à une commande : la valeur à enregistrer (vide si c'est le défaut), ou la raison du
@@ -148,6 +150,7 @@ export function messageRefus(r: Extract<ResultatAttribution, { ok: false }>): st
   if (r.raison === 'conflit') return `Déjà utilisée par « ${r.avec} ».`
   if (r.raison === 'modificateur') return 'Ajoutez ⌘ ou Ctrl : une touche seule gênerait la saisie dans les pages.'
   if (r.raison === 'reserve') return 'Cette combinaison est réservée par le système.'
+  if (r.raison === 'saisie') return 'Cette combinaison sert à écrire du texte et gênerait la saisie : choisissez-en une autre.'
   if (r.raison === 'natif') return 'Cette combinaison sert à copier, coller… et ne peut pas être réaffectée.'
   return "Cette combinaison n'est pas reconnue."
 }

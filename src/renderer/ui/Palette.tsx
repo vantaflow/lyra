@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import type { Suggestion } from '../../shared/types'
 import { choixPourEntree } from './paletteChoix'
+import { sousTitrePalette } from './raccourcisEffectifs'
 import { MOTEURS } from '../../main/palette/engines'
 
 /** Titres de groupe, dans l'ordre d'affichage (fidèle à Panneaux.dc.html). */
@@ -139,7 +140,7 @@ export function Palette() {
                     {s.icone ?? ''}
                   </span>
                   <span class="t">{s.titre}</span>
-                  <span class="h">{s.sousTitre ?? ''}</span>
+                  <span class="h">{s.type === 'commande' ? sousTitrePalette(s) : (s.sousTitre ?? '')}</span>
                   {i === sel && <kbd>↩</kbd>}
                 </div>
               </>

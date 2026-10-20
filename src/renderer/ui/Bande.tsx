@@ -1,4 +1,5 @@
 import { Fragment, type Ref } from 'preact'
+import { entreParentheses } from './raccourcisEffectifs'
 import { useEffect, useRef } from 'preact/hooks'
 import type { Star as StarT } from '../../shared/types'
 import { racines, regrouper, reglerCiel } from './cielCommun'
@@ -10,7 +11,6 @@ import { variablesAppliquees, versionTheme } from './themeVivant'
 import { cielDeplacer, couleurParConstellation, estTerne, etats, iconesSites, relierEnfants, sky, titreEtoile } from './state'
 
 const mac = window.lyra.plateforme === 'darwin'
-const touche = mac ? '⌘' : 'Ctrl'
 
 /** Descendants d'une étoile, à plat (ordre du ciel) : chacun devient un petit point relié. */
 function descendants(racine: StarT, groupe: StarT[]): StarT[] {
@@ -118,7 +118,7 @@ export function Bande({ revele = false, position, refCiel, surEntree, surSortie,
         {mac && position === 'haut' && <div class="pastilles" aria-hidden="true"></div>}
         <span class="marque-lyra">Lyra</span>
       </div>
-      <button class="sb palette-icone" type="button" aria-label={`Aller à, rechercher, commander (${touche} L)`} onClick={() => void window.lyra.invoke('palette:open')}>
+      <button class="sb palette-icone" type="button" aria-label={`Aller à, rechercher, commander${entreParentheses('palette')}`} onClick={() => void window.lyra.invoke('palette:open')}>
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
           <circle cx="11" cy="11" r="6.5" />
           <path d="M20 20l-4.2-4.2" />
@@ -140,7 +140,7 @@ export function Bande({ revele = false, position, refCiel, surEntree, surSortie,
         ))}
       </nav>
       {/* Hors du défilement : « Nouvelle étoile » reste toujours à portée. */}
-      <button class="sb nouvelle-icone" type="button" aria-label={`Nouvelle étoile (${touche} T)`} onClick={() => void window.lyra.invoke('tabs:open', { url: 'lyra://newtab' })}>
+      <button class="sb nouvelle-icone" type="button" aria-label={`Nouvelle étoile${entreParentheses('nouvelleEtoile')}`} onClick={() => void window.lyra.invoke('tabs:open', { url: 'lyra://newtab' })}>
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
           <path d="M12 5v14" />
           <path d="M5 12h14" />

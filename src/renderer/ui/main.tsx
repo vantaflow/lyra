@@ -12,6 +12,7 @@ import { FindBar } from './FindBar'
 import { signal } from '@preact/signals'
 import { demarrerTheme, variablesAppliquees, versionTheme } from './themeVivant'
 import { suivreApparence } from './apparenceVivante'
+import { suivreRaccourcis } from './raccourcisEffectifs'
 import { creerLisseur, teinteDuCiel } from './teinteCiel'
 
 /** Teinte affichée, lissée : une page qui change vite de `theme-color` ne fait pas clignoter le ciel. */
@@ -70,11 +71,13 @@ function Racine() {
 if (location.hash === '#overlay') {
   document.documentElement.classList.add('overlay')
   suivreApparence()
+  suivreRaccourcis()
   render(<Overlay />, document.getElementById('app')!)
 } else {
   // Fenêtre privée : la classe `privee` fait prendre à cette vue les variables du thème privé (Aurore par défaut), voir themeVivant.
   if (location.hash === '#privee') document.documentElement.classList.add('privee')
   void initialiserEtat()
+  suivreRaccourcis()
   render(<Racine />, document.getElementById('app')!)
 }
 

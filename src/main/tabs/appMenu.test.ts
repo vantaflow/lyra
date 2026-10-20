@@ -62,6 +62,11 @@ describe('construireModele', () => {
     expect(parId(win, 'devtools')!.accelerator).toBe('F12')
     expect(parId(win, 'quitter')!.accelerator).toBe('CmdOrCtrl+Q')
     expect(win.some((i) => i.role === 'appMenu')).toBe(false)
+    // « Historique » : Ctrl+H, pour ne pas voler Ctrl+Y (Rétablir) au menu Édition ; macOS garde ⌘ Y.
+    expect(parId(win, 'historique')!.accelerator).toBe('Ctrl+H')
+    expect(parId(faire({}, 'linux'), 'historique')!.accelerator).toBe('Ctrl+H')
+    expect(parId(faire({}, 'darwin'), 'historique')!.accelerator).toBe('CmdOrCtrl+Y')
+    expect(aplatir(win).filter((i) => i.accelerator === 'CmdOrCtrl+Y' || i.accelerator === 'Ctrl+Y')).toEqual([])
     const mac = faire({}, 'darwin')
     expect(parId(mac, 'quitter')).toBeUndefined()
     expect(mac[0].role).toBe('appMenu')

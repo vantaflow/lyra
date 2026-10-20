@@ -107,6 +107,10 @@ test('conflit, combinaison sans ⌘/Ctrl et réservée : refusées avec un messa
     await ligne.locator('.touche').click()
     await reglages.keyboard.press('K')
     await expect(reglages.getByRole('alert')).toContainText('⌘ ou Ctrl')
+    // Une touche d'édition (⌘ ← efface, Ctrl Retour arrière efface un mot) gênerait la saisie de texte.
+    await ligne.locator('.touche').click()
+    await reglages.keyboard.press('ControlOrMeta+Backspace')
+    await expect(reglages.getByRole('alert')).toContainText('écrire du texte')
     // Réservée au système.
     if (process.platform === 'darwin') {
       await ligne.locator('.touche').click()
@@ -126,14 +130,35 @@ test('conflit, combinaison sans ⌘/Ctrl et réservée : refusées avec un messa
 test('« Tout par défaut » rétablit toutes les commandes (réglages et menu)', async () => {
   const { app, fenetre } = await lancerLyra()
   try {
-    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { raccourcis: { palette: 'CmdOrCtrl+Shift+K', trouver: 'CmdOrCtrl+Alt+F' } }))
+    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { raccourcis: { palette: 'CmdOrCtrl+Shift+K', trouver: 'CmdOrCtrl+Shift+G' } }))
     const reglages = await ouvrirReglages(app, fenetre)
-    await expect.poll(() => accelerateurMenu(app, 'trouver'), { timeout: 5000 }).toBe('CmdOrCtrl+Alt+F')
+    await expect.poll(() => accelerateurMenu(app, 'trouver'), { timeout: 5000 }).toBe('CmdOrCtrl+Shift+G')
     await reglages.getByRole('button', { name: 'Tout par défaut' }).click()
     await expect.poll(() => raccourcis(fenetre)).toEqual({ palette: '', trouver: '' })
     await expect.poll(() => accelerateurMenu(app, 'trouver'), { timeout: 5000 }).toBe('CmdOrCtrl+F')
     await expect.poll(() => accelerateurMenu(app, 'palette'), { timeout: 5000 }).toBe('CmdOrCtrl+L')
     await expect(reglages.getByRole('button', { name: 'Tout par défaut' })).toBeDisabled()
+  } finally {
+    await app.close()
+  }
+})
+
+test('l’interface affiche les raccourcis effectifs et suit une redéfinition (ciel, info-bulle, menu ⋯)', async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const mac = process.platform === 'darwin'
+    const affiche = (ctrlMaj: string, mac_: string): string => (mac ? mac_ : ctrlMaj)
+    const kbdPalette = fenetre.locator('.ciel button.palette kbd')
+    await expect(kbdPalette).toHaveText(affiche('Ctrl+L', '⌘ L'))
+    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { raccourcis: { palette: 'CmdOrCtrl+Shift+K', nouvelleEtoile: 'CmdOrCtrl+Shift+E' } }))
+    await expect(kbdPalette).toHaveText(affiche('Ctrl+Maj+K', '⌘ ⇧ K'))
+    await expect(fenetre.locator('.ciel button.nouvelle kbd')).toHaveText(affiche('Ctrl+Maj+E', '⌘ ⇧ E'))
+    // Le menu ⋯ (vue overlay) lit les mêmes réglages ; « Historique » : ⌘ Y sur macOS, Ctrl+H ailleurs.
+    await fenetre.evaluate(() => window.lyra.invoke('menu:open', { droite: 600, bas: 40 }))
+    await expect.poll(() => app.windows().some((w) => w.url().includes('#overlay'))).toBe(true)
+    const menu = app.windows().find((w) => w.url().includes('#overlay'))!.locator('.menu-capsule')
+    await expect(menu.getByRole('menuitem', { name: /^Nouvelle étoile/ })).toContainText(affiche('Ctrl+Maj+E', '⌘ ⇧ E'))
+    await expect(menu.getByRole('menuitem', { name: /^Historique/ })).toContainText(affiche('Ctrl+H', '⌘ Y'))
   } finally {
     await app.close()
   }

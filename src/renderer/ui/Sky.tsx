@@ -1,4 +1,5 @@
 import { Branche } from './Branche'
+import { entreParentheses, raccourciDe } from './raccourcisEffectifs'
 import { Epingle } from './Epingle'
 import type { Ref } from 'preact'
 import { racines, regrouper, reglerCiel } from './cielCommun'
@@ -52,7 +53,7 @@ export function PiedActions({ souple = true }: { souple?: boolean }) {
           <path d="M5 20h14" />
         </svg>
       </button>
-      <button class="sb" type="button" aria-label="Ne pas déranger" title={`Ne pas déranger (${mac ? '⌘ ⇧ D' : 'Ctrl Maj D'})`} onClick={() => void window.lyra.invoke('dnd:basculer')}>
+      <button class="sb" type="button" aria-label="Ne pas déranger" title={`Ne pas déranger${entreParentheses('dnd')}`} onClick={() => void window.lyra.invoke('dnd:basculer')}>
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />
         </svg>
@@ -82,7 +83,6 @@ interface PropsSky {
 export function Sky({ revele = false, refCiel, surEntree, surSortie, surSortieFocus, largeur }: PropsSky = {}) {
   const { epinglees, sans, constellations } = regrouper(sky.value)
   versionTheme.value // le ciel de référence des couleurs de constellation change avec le thème
-  const touche = mac ? '⌘' : 'Ctrl'
 
   return (
     <aside
@@ -120,7 +120,7 @@ export function Sky({ revele = false, refCiel, surEntree, surSortie, surSortieFo
             </svg>
           </button>
         ) : (
-          <button class="sb replier" type="button" aria-label="Replier le ciel" title={`Replier le ciel (${touche} \\)`} onClick={() => void reglerCiel({ masque: true })}>
+          <button class="sb replier" type="button" aria-label="Replier le ciel" title={`Replier le ciel${entreParentheses('basculerCiel')}`} onClick={() => void reglerCiel({ masque: true })}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <rect x="3" y="4" width="18" height="16" rx="3" />
               <path d={cielPosition.value === 'droite' ? 'M15 4v16' : 'M9 4v16'} />
@@ -135,7 +135,7 @@ export function Sky({ revele = false, refCiel, surEntree, surSortie, surSortieFo
           <path d="M20 20l-4.2-4.2" />
         </svg>
         <span class="palette-texte">Aller à, rechercher, commander…</span>
-        <kbd>{touche} L</kbd>
+        <kbd>{raccourciDe('palette')}</kbd>
       </button>
 
       {epinglees.length > 0 && (
@@ -167,7 +167,7 @@ export function Sky({ revele = false, refCiel, surEntree, surSortie, surSortieFo
             <path d="M5 12h14" />
           </svg>
           <span>Nouvelle étoile</span>
-          <kbd style={{ marginLeft: 'auto' }}>{touche} T</kbd>
+          <kbd style={{ marginLeft: 'auto' }}>{raccourciDe('nouvelleEtoile')}</kbd>
         </button>
       </nav>
 

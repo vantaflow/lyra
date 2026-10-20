@@ -107,6 +107,45 @@ describe('valider', () => {
   it('refuse une chaîne invalide', () => {
     expect(valider('zzz', 'darwin')).toEqual({ ok: false, raison: 'invalide' })
   })
+  it('Windows et Linux : Ctrl+Y (Rétablir) et Ctrl+Maj+Z sont des rôles natifs ; sous macOS Ctrl+Y est libre', () => {
+    expect(valider('CmdOrCtrl+Y', 'win32')).toEqual({ ok: false, raison: 'natif' })
+    expect(valider('Ctrl+Shift+Z', 'linux')).toEqual({ ok: false, raison: 'natif' })
+    expect(valider('CmdOrCtrl+Y', 'darwin').ok).toBe(true)
+  })
+})
+
+describe('valider : une combinaison ne doit jamais casser la saisie de texte', () => {
+  const refusee = (a: string, p: string): unknown => valider(a, p)
+  it('touches d’édition avec ⌘/Ctrl (mots, début/fin, suppression, espace, entrée) : refusées', () => {
+    for (const p of ['darwin', 'win32']) {
+      for (const t of ['Backspace', 'Delete', 'Left', 'Right', 'Up', 'Down', 'Home', 'End', 'PageUp', 'PageDown', 'Space', 'Enter']) {
+        // ⌘ Espace est déjà réservé (Spotlight) sous macOS.
+        expect(refusee(`CmdOrCtrl+${t}`, p), `${t} ${p}`).toEqual({ ok: false, raison: t === 'Space' && p === 'darwin' ? 'reserve' : 'saisie' })
+        expect(refusee(`CmdOrCtrl+Shift+${t}`, p), `Shift ${t} ${p}`).toEqual({ ok: false, raison: 'saisie' })
+      }
+    }
+  })
+  it('Tab reste permis (Ctrl+Tab est le défaut de « Étoile suivante »)', () => {
+    expect(valider('Ctrl+Tab', 'win32').ok).toBe(true)
+    expect(valider('Ctrl+Shift+Tab', 'darwin').ok).toBe(true)
+  })
+  it('Windows/Linux : Ctrl+Alt+caractère est AltGr (« @ », « € », « ~ » sur un clavier AZERTY) : refusé', () => {
+    for (const p of ['win32', 'linux']) {
+      for (const a of ['CmdOrCtrl+Alt+F', 'Ctrl+Alt+7', 'CmdOrCtrl+Alt+Shift+K', 'Ctrl+Alt+,']) expect(refusee(a, p), `${a} ${p}`).toEqual({ ok: false, raison: 'saisie' })
+      expect(valider('CmdOrCtrl+Alt+F5', p).ok).toBe(true)
+    }
+    expect(valider('Cmd+Alt+I', 'darwin').ok).toBe(true)
+    expect(valider('CmdOrCtrl+Alt+F', 'darwin').ok).toBe(true)
+  })
+  it('macOS : Ctrl+lettre (sans ⌘) sert à l’édition (Ctrl A/E/K/F/B/N/P/D/H/T/O/Y) : refusé ; avec ⌘, Maj ou Alt, permis', () => {
+    expect(refusee('Ctrl+K', 'darwin')).toEqual({ ok: false, raison: 'saisie' })
+    expect(refusee('Ctrl+E', 'darwin')).toEqual({ ok: false, raison: 'saisie' })
+    expect(valider('Ctrl+Shift+K', 'darwin').ok).toBe(true)
+    expect(valider('Ctrl+Cmd+F', 'darwin').ok).toBe(true)
+    expect(valider('Ctrl+1', 'darwin').ok).toBe(true)
+    // Ailleurs, Ctrl+lettre est un raccourci ordinaire.
+    expect(valider('Ctrl+K', 'win32').ok).toBe(true)
+  })
 })
 
 describe('detecterConflit', () => {

@@ -33,6 +33,12 @@ describe('raccourciPage (table par défaut)', () => {
     for (const k of ['l', 't', 'f']) expect(raccourciPage(t(k, { isAutoRepeat: true }), {}, 'darwin')).toMatchObject({ agir: false })
     expect(raccourciPage(t('d', { shift: true, isAutoRepeat: true }), {}, 'darwin')).toEqual({ nom: 'ne-pas-deranger', agir: false })
   })
+  it('touche F sans modificateur : reconnue quand elle est affectée ; la frappe ordinaire n’est jamais prise', () => {
+    const nu = { meta: false, control: false }
+    expect(raccourciPage(t('F6', nu), { palette: 'F6' }, 'win32')).toEqual({ nom: 'palette', agir: true })
+    expect(raccourciPage(t('F6', nu), {}, 'win32')).toBeNull()
+    for (const k of ['l', 'F', ' ', 'Enter', 'Backspace']) expect(raccourciPage(t(k, nu), { palette: 'F6' }, 'win32'), k).toBeNull()
+  })
   it('autres cas : aucun raccourci', () => {
     expect(raccourciPage(t('l', { shift: true }), {}, 'darwin')).toBeNull()
     expect(raccourciPage(t('d'), {}, 'darwin')).toBeNull()

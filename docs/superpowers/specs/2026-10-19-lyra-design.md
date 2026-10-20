@@ -98,7 +98,7 @@ Thème « Indigo nuit » par défaut : ciel `#15152E`, étoile active or de Vég
 
 ### Raccourcis (Cmd sur macOS, Ctrl sur Windows)
 
-Nouvel onglet T, fermer W, rouvrir Shift+T, nouvelle fenêtre N, privée Shift+N, adresse L, recharger R, recherche F, onglet suivant/précédent Ctrl+Tab / Ctrl+Shift+Tab, onglet n°N 1-8 et dernier 9, zoom +/-/0, historique Y, favoris Shift+B, téléchargements Shift+J, ajouter aux favoris D, plein écran F11 / Ctrl+Cmd+F, DevTools F12 / Alt+Cmd+I, quitter Q.
+Nouvel onglet T, fermer W, rouvrir Shift+T, nouvelle fenêtre N, privée Shift+N, adresse L, recharger R, recherche F, onglet suivant/précédent Ctrl+Tab / Ctrl+Shift+Tab, onglet n°N 1-8 et dernier 9, zoom +/-/0, historique Y (Ctrl+H hors macOS : Ctrl+Y reste « Rétablir »), favoris Shift+B, téléchargements Shift+J, ajouter aux favoris D, plein écran F11 / Ctrl+Cmd+F, DevTools F12 / Alt+Cmd+I, quitter Q. Tous redéfinissables dans Réglages ; sont refusés les raccourcis réservés au système, les rôles natifs (copier, coller, annuler, rétablir…) et ceux qui gêneraient la saisie de texte (touches d'édition, Ctrl+Alt = AltGr, Ctrl+lettre sous macOS).
 
 ## 5. Architecture technique
 

@@ -184,7 +184,7 @@ export function accelerateurDeEvenement(e: EvenementClavier, plateforme: Platefo
   })
 }
 
-export type RaisonRefus = 'invalide' | 'modificateur' | 'reserve' | 'natif'
+export type RaisonRefus = 'invalide' | 'modificateur' | 'reserve' | 'natif' | 'saisie'
 export type Validation = { ok: true; accelerateur: string } | { ok: false; raison: RaisonRefus }
 
 /** Réservés par le système, par plateforme (forme canonique). */
@@ -192,18 +192,32 @@ const RESERVES: Record<'darwin' | 'autre', string[]> = {
   darwin: ['Cmd+Q', 'Cmd+H', 'Cmd+Alt+H', 'Cmd+M', 'Cmd+Tab', 'Cmd+Shift+Tab', 'Cmd+Space', 'Cmd+Alt+Escape', 'Cmd+Shift+3', 'Cmd+Shift+4', 'Cmd+Shift+5', 'Ctrl+Cmd+Q', 'Ctrl+Cmd+Space'],
   autre: ['Alt+F4', 'Alt+Tab', 'Ctrl+Alt+Delete', 'Ctrl+Shift+Escape', 'Ctrl+Escape', 'Alt+Escape']
 }
-/**
- * Rôles natifs du menu Édition : non redéfinissables, donc non attribuables à une autre commande. Hors macOS, Ctrl+Y
- * (Rétablir) n'y figure pas : c'est le défaut de « Historique » (spec), déjà présent dans le menu actuel.
- */
+/** Rôles natifs du menu Édition : non redéfinissables, donc non attribuables à une autre commande. */
 const NATIFS: Record<'darwin' | 'autre', string[]> = {
   darwin: ['Cmd+C', 'Cmd+V', 'Cmd+X', 'Cmd+Z', 'Cmd+Shift+Z', 'Cmd+A'],
-  autre: ['Ctrl+C', 'Ctrl+V', 'Ctrl+X', 'Ctrl+Z', 'Ctrl+A']
+  // Rétablir : Ctrl+Y (Windows), Ctrl+Maj+Z (Linux, et accepté par les champs de texte de Chromium partout).
+  autre: ['Ctrl+C', 'Ctrl+V', 'Ctrl+X', 'Ctrl+Z', 'Ctrl+Y', 'Ctrl+Shift+Z', 'Ctrl+A']
+}
+
+/** Touches de déplacement, de suppression et de validation : avec ⌘/Ctrl elles pilotent les champs de texte (mots, début/fin). */
+const TOUCHES_EDITION = new Set(['Backspace', 'Delete', 'Left', 'Right', 'Up', 'Down', 'Home', 'End', 'PageUp', 'PageDown', 'Space', 'Enter'])
+
+/**
+ * La combinaison gênerait-elle la saisie de texte ? Un accélérateur de menu intercepte la touche avant le champ :
+ * - ⌘/Ctrl + touche d'édition (Ctrl+Retour arrière efface un mot, ⌘ ← va en début de ligne, Ctrl+Espace change de clavier) ;
+ * - Windows/Linux : Ctrl+Alt + caractère, c'est AltGr (« @ », « € », « ~ » sur un clavier AZERTY) ;
+ * - macOS : Ctrl + lettre seule (Ctrl A/E/K/F/B/N/P/D/H/T/O/Y sont les raccourcis d'édition de tout champ de texte).
+ */
+function gene(c: Combinaison, plateforme: Plateforme): boolean {
+  if (TOUCHES_EDITION.has(c.touche)) return true
+  if (estFonction(c.touche) || c.touche === 'Tab') return false
+  if (plateforme === 'darwin') return c.ctrl && !c.cmd && !c.cmdOuCtrl && !c.alt && !c.shift && /^[A-Z]$/.test(c.touche)
+  return (c.cmdOuCtrl || c.ctrl) && c.alt
 }
 
 const estFonction = (touche: string): boolean => /^F\d+$/.test(touche)
 
-/** Une combinaison attribuable : valide, avec ⌘/Ctrl (sauf touches F), ni réservée au système ni un rôle natif. */
+/** Une combinaison attribuable : valide, avec ⌘/Ctrl (sauf touches F), ni réservée au système, ni un rôle natif, ni une gêne pour la saisie. */
 export function valider(accelerateur: string, plateforme: Plateforme): Validation {
   const c = analyser(accelerateur)
   if (!c) return { ok: false, raison: 'invalide' }
@@ -212,6 +226,7 @@ export function valider(accelerateur: string, plateforme: Plateforme): Validatio
   const cano = canonique(accelerateur, plateforme)!
   if (RESERVES[cle].includes(cano)) return { ok: false, raison: 'reserve' }
   if (NATIFS[cle].includes(cano)) return { ok: false, raison: 'natif' }
+  if (gene(c, plateforme)) return { ok: false, raison: 'saisie' }
   return { ok: true, accelerateur: ecrire(c) }
 }
 

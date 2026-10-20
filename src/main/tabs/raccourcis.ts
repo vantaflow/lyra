@@ -27,6 +27,8 @@ export function raccourciPage(
   plateforme: string = process.platform
 ): { nom: RaccourciPage; agir: boolean } | null {
   if (t.type !== 'keyDown') return null
+  // Toute frappe passe ici : une combinaison attribuable porte toujours ⌘/Ctrl ou une touche F, la saisie ordinaire sort tout de suite.
+  if (!t.control && !t.meta && !/^F\d+$/.test(t.key)) return null
   const effective = tableEffective(table, plateforme)
   for (const c of COMMANDES) {
     if (c.page && effective[c.id] && correspond(effective[c.id], t, plateforme)) return { nom: c.page, agir: !t.isAutoRepeat }
