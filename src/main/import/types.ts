@@ -287,3 +287,41 @@ export function compter(d: DonneesImportees): Compteurs {
   }
   return c
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Résultat de l'application dans Lyra (jalon E, Task 3.3)
+
+/** `ok` : tout est écrit ; `partiel` : écrit mais des éléments ont été ignorés ou la lecture s'est arrêtée en route ; `indisponible` : rien d'écrit ; `annule` : abandonné ; `ignore` : non demandé. */
+export type EtatElement = 'ok' | 'partiel' | 'indisponible' | 'annule' | 'ignore'
+
+export interface ElementResultat {
+  etat: EtatElement
+  ajoutes: number
+  /** Déjà présents dans Lyra (rien d'écrit). */
+  presents: number
+  /** Refusés ou non transposables (schéma interdit, doublon dans la source, moteur absent de Lyra…). */
+  ignores: number
+  /** Arbitrages et précisions lisibles (mots-clés renommés, zoom conservé, langue ignorée, page d'accueil en attente…). */
+  notes: string[]
+  code?: CodeErreurImport
+  raison?: string
+}
+
+export interface ResultatImport extends Record<ElementImport, ElementResultat> {
+  /** Durée de l'application (ms). */
+  duree: number
+  source: NavigateurSource
+  /** Nom du profil importé. */
+  profil: string
+}
+
+export interface OptionsApplication {
+  /** `courante` : tout dans la fenêtre courante (défaut) ; `nouvelle-par-fenetre` : une fenêtre Lyra par fenêtre importée. */
+  fenetre: 'courante' | 'nouvelle-par-fenetre'
+  /** Charger les 10 premières étoiles créées (sinon elles restent endormies). */
+  ouvrirMaintenant: boolean
+  /** L'utilisateur confirme que le moteur par défaut importé remplace celui de Lyra même s'il en avait déjà choisi un. */
+  moteurParDefaut: boolean
+  /** Identifiants des extensions imposées par une stratégie que l'utilisateur a explicitement cochées. */
+  extensionsChoisies: string[]
+}
