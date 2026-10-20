@@ -218,7 +218,7 @@ test('Boucliers : la bascule par site en fenêtre privée n’écrit rien dans l
   }
 })
 
-test('téléchargements : aucune trace (URL) en privé dans la liste ni dans telechargements.json', async () => {
+test('téléchargements : la fenêtre privée a sa liste en mémoire ; rien dans la liste normale ni dans telechargements.json', async () => {
   const { app, fenetre } = await lancerLyra()
   try {
     const userData = await app.evaluate(({ app: a }) => a.getPath('userData'))
@@ -232,9 +232,27 @@ test('téléchargements : aucune trace (URL) en privé dans la liste ni dans tel
     await expect.poll(async () => (await fenetre.evaluate(() => window.lyra.invoke('downloads:list'))).filter((x) => x.etat === 'termine').length).toBe(1)
     const urls = (await fenetre.evaluate(() => window.lyra.invoke('downloads:list'))).map((x) => x.url)
     expect(urls).toEqual([`${BASE}/dl-normal`])
+    // Dans la fenêtre privée : sa propre liste en mémoire, avec le seul téléchargement privé.
+    await expect.poll(async () => (await privee.evaluate(() => window.lyra.invoke('downloads:list'))).map((x) => x.url)).toEqual([`${BASE}/dl-prive`])
     const fichier = join(userData, 'telechargements.json')
     await expect.poll(() => existsSync(fichier) && readFileSync(fichier, 'utf8').includes('dl-normal')).toBe(true)
     expect(readFileSync(fichier, 'utf8')).not.toContain('dl-prive')
+    // Le panneau de la fenêtre privée montre le téléchargement privé ; celui de la normale non.
+    await privee.evaluate(() => window.lyra.invoke('downloads:panel'))
+    const panneaux = async (): Promise<Page[]> => {
+      const trouves: Page[] = []
+      for (const w of app.windows().filter((x) => x.url().includes('#overlay'))) if ((await w.getByRole('dialog', { name: 'Panneau des téléchargements' }).count()) > 0) trouves.push(w)
+      return trouves
+    }
+    await expect.poll(async () => (await panneaux()).length).toBe(1)
+    const panneauPrive = (await panneaux())[0]!
+    await expect(panneauPrive.locator('.pn-dl')).toContainText('dl-prive.txt')
+    await expect(panneauPrive.locator('.pn-dl')).not.toContainText('dl-normal.txt')
+    await panneauPrive.keyboard.press('Escape')
+    // « Effacer la liste » en privé ne touche pas la liste normale.
+    await privee.evaluate(() => window.lyra.invoke('downloads:clear'))
+    expect(await privee.evaluate(() => window.lyra.invoke('downloads:list'))).toEqual([])
+    expect((await fenetre.evaluate(() => window.lyra.invoke('downloads:list'))).map((x) => x.url)).toEqual([`${BASE}/dl-normal`])
   } finally {
     await app.close()
   }
