@@ -241,6 +241,52 @@ describe('moteursPerso', () => {
     expect(p.moteursPerso).toEqual([ok])
   })
 
+  it('https seulement : http, %s multiples ou dans l\'hôte, identifiants dans l\'adresse sont refusés', () => {
+    const invalides = [
+      'http://wiki.exemple.fr/?q=%s',
+      'https://wiki.exemple.fr/?q=%s&r=%s',
+      'https://%s.exemple.fr/',
+      'https://wiki.exemple.fr%s/',
+      'https://%s/',
+      'https://utilisateur:secret@wiki.exemple.fr/?q=%s',
+      'https://wiki.exemple.fr',
+      'https://wiki.exemple.fr/?q=%S',
+      `https://wiki.exemple.fr/?q=%s${'x'.repeat(2000)}`
+    ]
+    const p = validerPatch({ moteursPerso: [ok, ...invalides.map((url, i) => ({ ...ok, id: `x${i}`, motCle: `k${i}`, url }))] })
+    expect(p.moteursPerso).toEqual([ok])
+  })
+
+  it('mot-clé : unique (casse ignorée), distinct des intégrés, sans préfixe de palette ; mis en minuscules', () => {
+    const p = validerPatch({
+      moteursPerso: [
+        ok,
+        { ...ok, id: 'x1', nom: 'Autre', motCle: 'MW' },
+        { ...ok, id: 'x2', motCle: 'w' },
+        { ...ok, id: 'x3', motCle: 'YT' },
+        { ...ok, id: 'x4', motCle: '>x' },
+        { ...ok, id: 'x5', motCle: '?x' },
+        { ...ok, id: 'x6', motCle: '#x' },
+        { ...ok, id: 'x7', motCle: 'Zéro' }
+      ]
+    })
+    expect(p.moteursPerso).toEqual([ok, { ...ok, id: 'x7', motCle: 'zéro' }])
+  })
+
+  it('un identifiant ne peut pas être celui d\'un moteur intégré', () => {
+    expect(validerPatch({ moteursPerso: [{ ...ok, id: 'google' }, ok] }).moteursPerso).toEqual([ok])
+  })
+
+  it('au plus 100 moteurs', () => {
+    const tous = Array.from({ length: 120 }, (_, i) => ({ ...ok, id: `p${i}`, motCle: `m${i}` }))
+    expect(validerPatch({ moteursPerso: tous }).moteursPerso).toHaveLength(100)
+  })
+
+  it('un fichier de réglages relu garde la même validation (http retiré)', () => {
+    const s = validerSettings({ version: 2, moteursPerso: [ok, { ...ok, id: 'h', motCle: 'h', url: 'http://x.fr/?q=%s' }] }, defauts)
+    expect(s.moteursPerso).toEqual([ok])
+  })
+
   it('[] explicite accepté ; liste entièrement invalide ignorée', () => {
     expect(validerPatch({ moteursPerso: [] })).toEqual({ moteursPerso: [] })
     expect(validerPatch({ moteursPerso: ['x'] })).toEqual({})

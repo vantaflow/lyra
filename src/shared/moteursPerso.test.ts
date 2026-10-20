@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { creerMoteurPerso, type MoteurExistant } from './moteursPerso'
+import { adresseMoteurValide, creerMoteurPerso, motCleMoteurValide, type MoteurExistant } from './moteursPerso'
 
 const integres: MoteurExistant[] = [
   { id: 'duckduckgo', nom: 'DuckDuckGo', motCle: 'd' },
@@ -40,5 +40,23 @@ describe('creerMoteurPerso', () => {
   it('donne un identifiant unique quand le nom produit le même', () => {
     const r = creerMoteurPerso({ ...saisie, nom: 'Mon  wiki!' , motCle: 'm2' }, [...integres, { id: 'perso-mon-wiki', nom: 'Autre', motCle: 'mw' }])
     expect(r).toMatchObject({ ok: true, moteur: { id: 'perso-mon-wiki-2' } })
+  })
+})
+
+describe('adresseMoteurValide', () => {
+  it('accepte https avec un seul %s après l\'hôte (chemin, requête ou fragment)', () => {
+    for (const u of ['https://exemple.fr/?q=%s', 'https://exemple.fr:8443/s/%s', 'https://exemple.fr/#%s', 'HTTPS://exemple.fr/?q=%s'])
+      expect(adresseMoteurValide(u), u).toBe(true)
+  })
+  it('refuse http, plusieurs %s, %s dans l\'hôte ou les identifiants, adresse sans %s', () => {
+    for (const u of ['http://exemple.fr/?q=%s', 'https://exemple.fr/?q=%s&r=%s', 'https://%s.exemple.fr/', 'https://exemple.fr%s', 'https://u:p@exemple.fr/?q=%s', 'https://exemple.fr/', 'javascript:%s', 'ftp://exemple.fr/%s'])
+      expect(adresseMoteurValide(u), u).toBe(false)
+  })
+})
+
+describe('motCleMoteurValide', () => {
+  it('sans espace, 24 au plus, sans préfixe de palette', () => {
+    expect(motCleMoteurValide('mw')).toBe(true)
+    for (const m of ['', 'a b', 'x'.repeat(25), '>x', '?x', '#x']) expect(motCleMoteurValide(m), m).toBe(false)
   })
 })

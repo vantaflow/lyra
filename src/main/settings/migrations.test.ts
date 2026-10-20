@@ -50,7 +50,7 @@ describe('migrer', () => {
   })
 
   it('moteursPerso, import et extensions (B/E) traversent la migration', () => {
-    const moteurs = [{ id: 'm1', nom: 'Wiki', motCle: 'w', url: 'https://w.fr/?q=%s' }]
+    const moteurs = [{ id: 'm1', nom: 'Wiki', motCle: 'mw', url: 'https://w.fr/?q=%s' }]
     const installee = { id: 'a'.repeat(32), nom: 'X', version: '1.0.0', source: 'zip', magasin: 'chrome', dossier: `${'a'.repeat(32)}/1.0.0`, active: true, installeeLe: '2026-10-19T10:00:00.000Z', miseAJourLe: '2026-10-19T10:00:00.000Z' }
     const extensions = { installees: [installee], majAuto: true, derniereVerification: '2026-10-19T10:00:00.000Z' }
     const imp = { extensionsEnAttente: [], reglagesEnAttente: { pageAccueil: 'https://a.fr' } }
