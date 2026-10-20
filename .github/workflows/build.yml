@@ -23,6 +23,13 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run e2e
+      - name: Résultats e2e (en cas d'échec)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-${{ runner.os }}
+          path: test-results/
+          if-no-files-found: ignore
       - name: Paquet macOS
         if: runner.os == 'macOS'
         run: npx electron-builder --mac --arm64 --publish never

@@ -219,6 +219,7 @@ test('Boucliers : la bascule par site en fenêtre privée n’écrit rien dans l
 })
 
 test('téléchargements : la fenêtre privée a sa liste en mémoire ; rien dans la liste normale ni dans telechargements.json', async () => {
+  test.setTimeout(90_000)
   const { app, fenetre } = await lancerLyra()
   try {
     const userData = await app.evaluate(({ app: a }) => a.getPath('userData'))
@@ -226,10 +227,15 @@ test('téléchargements : la fenêtre privée a sa liste en mémoire ; rien dans
     await fenetre.evaluate((d) => window.lyra.invoke('settings:set', { telechargements: { dossier: d, demander: false } }), dossier)
     const privee = await ouvrirPrivee(app)
     await privee.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), `${BASE}/dl-prive`)
-    await expect.poll(() => existsSync(join(dossier, 'dl-prive.txt'))).toBe(true)
+    // Sous Windows, « terminé » (événement done) n'arrive qu'après l'analyse antivirus du fichier déjà renommé
+    // (Attachment Services) : sur un runner chargé, elle dépasse parfois les 5 s par défaut. On attend donc la fin
+    // réelle de chaque téléchargement, avec une marge, et le privé avant de lancer le normal (pas de chevauchement).
+    const FIN_DL = { timeout: 30_000 }
+    await expect.poll(() => existsSync(join(dossier, 'dl-prive.txt')), FIN_DL).toBe(true)
+    await expect.poll(async () => (await privee.evaluate(() => window.lyra.invoke('downloads:list'))).map((x) => x.etat), FIN_DL).toEqual(['termine'])
     // Témoin : un téléchargement normal, lui, est listé et écrit.
     await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), `${BASE}/dl-normal`)
-    await expect.poll(async () => (await fenetre.evaluate(() => window.lyra.invoke('downloads:list'))).filter((x) => x.etat === 'termine').length).toBe(1)
+    await expect.poll(async () => (await fenetre.evaluate(() => window.lyra.invoke('downloads:list'))).filter((x) => x.etat === 'termine').length, FIN_DL).toBe(1)
     const urls = (await fenetre.evaluate(() => window.lyra.invoke('downloads:list'))).map((x) => x.url)
     expect(urls).toEqual([`${BASE}/dl-normal`])
     // Dans la fenêtre privée : sa propre liste en mémoire, avec le seul téléchargement privé.
