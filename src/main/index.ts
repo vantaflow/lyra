@@ -429,7 +429,7 @@ void app.whenReady().then(async () => {
   handle('history:search', ({ texte, limite }) => hist.rechercher(texte, limite))
   handle('history:delete', ({ url }) => hist.supprimer(url))
   handle('history:clear', () => hist.effacer())
-  confidentialite = installerConfidentialite({ reglages, historique: hist, sessions: () => [session.fromPartition('persist:lyra')] })
+  confidentialite = installerConfidentialite({ reglages, historique: hist, sessions: () => [session.fromPartition('persist:lyra')], marqueur: join(paths.userData(), 'effacement-en-attente') })
   handle('history:frequent', ({ n }) => hist.frequents(n))
   // Fenêtre privée : jamais de favori écrit (le bouton y est désactivé) ; l'état renvoyé reste celui du favori existant.
   handle('bookmarks:toggle', (f, e) => (estPrivee(e.sender) ? favoris.existe(f.url) : favoris.toggle(f)))
@@ -1054,6 +1054,8 @@ void app.whenReady().then(async () => {
     for (const wc of webContents.getAllWebContents()) if (estVueLyra(wc.getURL())) envoyer(wc, 'settings:changed', { ...s, sites: {} })
   })
   await nettoyageDemarrage
+  // Effacement de la fermeture manqué par un arrêt brutal : rejoué avant la restauration des onglets.
+  await confidentialite?.rattrapage
   sessionStore = new SessionStore(join(paths.userData(), 'session.json'))
   const restauree = restaurerSession(reglages.getSettings().demarrage.restaurer, sessionStore.charger())
   if (restauree) for (const f of restauree.fenetres) creerFenetre({}, f)
