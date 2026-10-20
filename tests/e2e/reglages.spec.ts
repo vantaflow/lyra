@@ -44,10 +44,10 @@ test('nouvel onglet : la saisie lance une recherche avec le moteur par défaut',
 test('réglages : thème sombre → une page web voit prefers-color-scheme: dark', async () => {
   const { app, fenetre } = await lancerLyra()
   try {
-    await fenetre.evaluate(() => window.lyra.invoke('test:navigate', 'lyra://settings'))
+    await fenetre.evaluate(() => window.lyra.invoke('test:navigate', 'lyra://settings#/apparence'))
     await expect.poll(() => page(app, 'lyra://settings')).toBeDefined()
     const r = page(app, 'lyra://settings')!
-    await expect(r.locator('h1')).toHaveText('Général')
+    await expect(r.locator('h1')).toHaveText("Le ciel et l'apparence")
     await r.getByRole('button', { name: 'Sombre' }).click()
     await expect.poll(() => fenetre.evaluate(() => window.lyra.invoke('settings:get')).then((s) => s.theme)).toBe('sombre')
     await fenetre.evaluate((u) => window.lyra.invoke('test:navigate', u), FIXTURE)
@@ -76,6 +76,24 @@ test('pages internes à fond clair : #app lisible sur réglages, historique et t
         .poll(() => page(app, url)!.evaluate(() => { const a = document.getElementById('app'); return a ? getComputedStyle(a).backgroundColor : '' }), { message: url })
         .toBe('rgb(247, 247, 251)')
     }
+  } finally {
+    await app.close()
+  }
+})
+
+test('réglages : le sommaire compte 19 entrées, la recherche les filtre, lyra://history ouvre Historique', async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    await fenetre.evaluate(() => window.lyra.invoke('test:navigate', 'lyra://settings'))
+    await expect.poll(() => page(app, 'lyra://settings')).toBeDefined()
+    const r = page(app, 'lyra://settings')!
+    await expect(r.locator('.nav a')).toHaveCount(19)
+    await expect(r.locator('h1')).toHaveText('Général')
+    await r.fill('#chercher-reglage', 'moteur')
+    await expect(r.locator('.nav a')).toHaveText(['Palette et recherche'])
+    await fenetre.evaluate(() => window.lyra.invoke('test:navigate', 'lyra://history'))
+    await expect.poll(() => page(app, 'lyra://history')).toBeDefined()
+    await expect(page(app, 'lyra://history')!.locator('h1')).toHaveText('Historique')
   } finally {
     await app.close()
   }

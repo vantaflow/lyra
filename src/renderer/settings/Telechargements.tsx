@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'preact/hooks'
 import type { DownloadInfo } from '../../shared/types'
+import { Interrupteur, Ligne, Titre } from './controles'
+import { useReglages } from './reglages'
 import { couleursVignette, extension, fraction, texteEtat } from '../../shared/telechargements'
 
 type Canal = 'downloads:pause' | 'downloads:resume' | 'downloads:cancel' | 'downloads:open' | 'downloads:reveal'
 
 export function Telechargements() {
   const [liste, setListe] = useState<DownloadInfo[]>([])
+  const [s, regler] = useReglages()
 
   useEffect(() => {
     const charger = (): void => void window.lyra.invoke('downloads:list').then(setListe)
@@ -19,8 +22,32 @@ export function Telechargements() {
     setListe(await window.lyra.invoke('downloads:list'))
   }
 
+  const choisirDossier = async (): Promise<void> => {
+    const d = await window.lyra.invoke('settings:choisirDossier')
+    if (d) regler({ telechargements: { dossier: d } })
+  }
+
   return (
     <>
+      {s && (
+        <>
+          <Titre>Téléchargements</Titre>
+          <div class="card">
+            <Ligne titre="Dossier de téléchargement" aide={s.telechargements.dossier}>
+              <button class="btn" type="button" onClick={() => void choisirDossier()}>
+                Choisir…
+              </button>
+            </Ligne>
+            <Ligne titre="Demander où enregistrer chaque fichier">
+              <Interrupteur
+                actif={s.telechargements.demander}
+                libelle="Demander où enregistrer"
+                surChange={(demander) => regler({ telechargements: { demander } })}
+              />
+            </Ligne>
+          </div>
+        </>
+      )}
       <div class="barre">
         <span class="souple" style={{ flex: 1 }}></span>
         <button class="btn" type="button" id="effacer-telechargements" onClick={() => void effacer()} disabled={liste.length === 0}>

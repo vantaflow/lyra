@@ -265,7 +265,7 @@ test('la position, la largeur et le masquage sont restaurés au démarrage', asy
 test('les réglages : vignettes de position, curseur de largeur', async () => {
   const { app, fenetre } = await lancerLyra()
   try {
-    await fenetre.evaluate(() => window.lyra.invoke('tabs:open', { url: 'lyra://settings' }))
+    await fenetre.evaluate(() => window.lyra.invoke('tabs:open', { url: 'lyra://settings#/apparence' }))
     await expect.poll(() => app.windows().some((w) => w.url().startsWith('lyra://settings'))).toBe(true)
     const r = app.windows().find((w) => w.url().startsWith('lyra://settings'))!
     await expect(r.locator('.pos')).toHaveText(['Gauche', 'Droite', 'Haut', 'Bas', 'Masqué'])

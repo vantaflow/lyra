@@ -382,3 +382,36 @@ body,
 .rng:focus-visible::-webkit-slider-thumb {
   box-shadow: 0 0 0 3px rgba(84, 82, 200, 0.35);
 }
+
+/* Sommaire : recherche d'un réglage, entrées filtrées, sous-titre de section */
+.nav .chercher {
+  height: 36px;
+  margin: 0 0 10px;
+  padding: 0 12px;
+  border: 1px solid #d6d6e2;
+  border-radius: 9px;
+  background: #fff;
+  font: 13px 'Manrope', sans-serif;
+  color: #1c1c2e;
+  box-sizing: border-box;
+  width: 100%;
+}
+.nav .chercher:focus {
+  outline: none;
+  border-color: #5452c8;
+}
+.nav .aucun {
+  margin: 4px 12px;
+  font-size: 13px;
+  color: #6b6b80;
+}
+.emplacement .btn {
+  text-decoration: none;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
