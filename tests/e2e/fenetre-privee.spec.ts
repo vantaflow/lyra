@@ -182,11 +182,14 @@ test('zoom par site : mémorisé en fenêtre normale, jamais en fenêtre privée
     const privee = await ouvrirPrivee(app)
     await privee.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), `${BASE}/zoom-privee`)
     await expect.poll(() => cookieVu('/zoom-privee')).toBeDefined()
+    // La requête arrive au serveur avant que la page soit validée : le zoom se mémorise d'après l'adresse de la page.
+    await expect.poll(() => app.windows().some((w) => w.url() === `${BASE}/zoom-privee`)).toBe(true)
     expect(await privee.evaluate(() => window.lyra.invoke('tabs:zoom', { delta: 1 }))).toBeGreaterThan(1)
     expect((await fenetre.evaluate(() => window.lyra.invoke('settings:get'))).sites).toEqual({})
 
     await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), `${BASE}/zoom-normale`)
     await expect.poll(() => cookieVu('/zoom-normale')).toBeDefined()
+    await expect.poll(() => app.windows().some((w) => w.url() === `${BASE}/zoom-normale`)).toBe(true)
     expect(await fenetre.evaluate(() => window.lyra.invoke('tabs:zoom', { delta: 1 }))).toBeGreaterThan(1)
     await expect.poll(async () => Object.keys((await fenetre.evaluate(() => window.lyra.invoke('settings:get'))).sites)).toHaveLength(1)
   } finally {
