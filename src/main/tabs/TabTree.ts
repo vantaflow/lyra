@@ -146,11 +146,18 @@ export class TabTree {
     if (!star) return null
     if (star.parentId && this.indexDe(star.parentId) < 0) delete star.parentId
     if (this.indexDe(star.id) >= 0) star.id = randomUUID()
+    // Sa constellation a pu disparaître entre-temps (constellation automatique vidée par la fermeture).
+    if (star.constellationId !== undefined && !this.constellation(star.constellationId)) delete star.constellationId
     star.dormant = false
     delete star.inactifDepuis
     this.stars.splice(Math.min(star.index, this.stars.length), 0, star)
     this.reindexer()
     return star
+  }
+
+  /** Lecture du ciel sans copie (placement : appelé à chaque étoile ouverte). Ne jamais modifier ce qui est rendu. */
+  lecture(): Pick<SkyState, 'stars' | 'constellations' | 'activeId'> {
+    return { stars: this.stars, constellations: this.constellations, activeId: this.activeId }
   }
 
   toJSON(): SkyState {
