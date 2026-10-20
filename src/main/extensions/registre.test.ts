@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { creerRegistre, dossierAbsolu, idPourDossier, validerInstallees } from './registre'
+import { creerRegistre, dossierAbsolu, idPourDossier, migrerSourceUbo, validerInstallees } from './registre'
 import { validerPatch, validerSettings } from '../settings/validate'
 import { reglagesParDefaut } from '../settings/defaults'
 import type { ExtensionInstallee, Settings } from '../../shared/types'
@@ -35,6 +35,10 @@ describe('validerInstallees', () => {
   it('refuse un id qui n\'est pas 32 lettres a-p', () => {
     expect(validerInstallees([ext({ id: 'z'.repeat(32) }), ext({ id: 'a'.repeat(31) }), ext({ id: 'A'.repeat(32) })])).toBeUndefined()
     expect(validerInstallees([ext({ id: 'z'.repeat(32) }), ext({ id: ID_B, dossier: `${ID_B}/1` })])).toEqual([ext({ id: ID_B, dossier: `${ID_B}/1` })])
+  })
+  it('accepte la source « ubo » (uBlock Origin installé par Lyra)', () => {
+    const u = ext({ nom: 'uBlock Origin', source: 'ubo', magasin: 'chrome' })
+    expect(validerInstallees([u])).toEqual([u])
   })
   it('refuse source et magasin hors énumération', () => {
     expect(validerInstallees([{ ...ext(), source: 'torrent' }])).toBeUndefined()
@@ -136,5 +140,40 @@ describe('creerRegistre', () => {
     expect(r.retirer(ID_A)).toBe(true)
     expect(r.lister().map((e) => e.id)).toEqual([ID_B])
     expect(r.retirer(ID_A)).toBe(false)
+  })
+})
+
+describe('migrerSourceUbo', () => {
+  const faux = (init: ExtensionInstallee[]) => {
+    let s = { ...reglagesParDefaut('/dl'), extensions: { installees: init, majAuto: true } } as Settings
+    return {
+      getSettings: () => s,
+      setSettings: (patch: Partial<Settings>) => {
+        s = { ...s, ...validerPatch(patch), extensions: { ...s.extensions, ...(validerPatch(patch).extensions ?? {}) } } as Settings
+        return s
+      }
+    }
+  }
+  const ancienUbo = ext({ nom: 'uBlock Origin', source: 'zip', magasin: 'chrome' })
+  it('une entrée « zip » reconnue comme uBO (nom, casse et espaces ignorés) passe en « ubo », sans toucher au reste', () => {
+    const autre = ext({ id: ID_B, dossier: `${ID_B}/1`, nom: 'Autre', source: 'zip', magasin: 'inconnu' })
+    const r = creerRegistre(faux([{ ...ancienUbo, nom: '  uBlock ORIGIN ' }, autre]))
+    expect(migrerSourceUbo(r)).toBe(1)
+    expect(r.lister()[0]).toMatchObject({ id: ID_A, nom: '  uBlock ORIGIN ', source: 'ubo', version: '1.0.0', active: true })
+    expect(r.lister()[1]).toEqual(autre)
+  })
+  it('idempotent ; une entrée déjà « ubo », « cws » ou « dossier » nommée uBlock Origin n\'est pas touchée', () => {
+    const cws = ext({ id: ID_B, dossier: `${ID_B}/1`, nom: 'uBlock Origin', source: 'cws', magasin: 'chrome' })
+    const r = creerRegistre(faux([ancienUbo, cws]))
+    expect(migrerSourceUbo(r)).toBe(1)
+    expect(migrerSourceUbo(r)).toBe(0)
+    expect(r.lister().map((e) => e.source)).toEqual(['ubo', 'cws'])
+  })
+  it('rien à migrer : le registre n\'est pas réécrit', () => {
+    const f = faux([ext()])
+    let ecritures = 0
+    const r = creerRegistre({ getSettings: f.getSettings, setSettings: (p) => (ecritures++, f.setSettings(p)) })
+    expect(migrerSourceUbo(r)).toBe(0)
+    expect(ecritures).toBe(0)
   })
 })

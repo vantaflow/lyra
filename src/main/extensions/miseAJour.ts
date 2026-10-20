@@ -2,7 +2,7 @@
  * Mises à jour des extensions : au démarrage puis toutes les 6 h (réglage `extensions.majAuto`) et à la demande.
  * Extensions du Chrome Web Store (`source === 'cws'`, actives ou non) et d'AMO (`source === 'amo'`, version de l'API v5) : version annoncée par l'endpoint de mise à jour de Google
  * comparée à la version installée, puis réinstallation par le chemin normal de Lyra ; uBlock Origin : version de la dernière
- * release GitHub. Sans Electron (tout est injecté).
+ * release GitHub (source `ubo`, jamais un zip local homonyme). Sans Electron (tout est injecté).
  */
 import type { ResultatInstallation } from '../../shared/types'
 import type { Registre, StoreReglages } from './registre'
@@ -53,7 +53,8 @@ export function comparerVersions(a: string, b: string): number {
   return 0
 }
 
-export const estUbo = (e: { nom: string; source: string }): boolean => e.source === 'zip' && e.nom.trim().toLowerCase() === 'ublock origin'
+/** uBlock Origin installé par Lyra (source `ubo`) : un zip local nommé « uBlock Origin » n'est jamais mis à jour par la release GitHub. */
+export const estUbo = (e: { source: string }): boolean => e.source === 'ubo'
 
 export function creerMiseAJour(o: OptionsMiseAJour): MiseAJour {
   const maintenant = o.maintenant ?? ((): Date => new Date())
