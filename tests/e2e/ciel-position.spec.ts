@@ -131,8 +131,10 @@ test('ciel masqué : rail sur le bord de chaque position, capsule conservée, r�
     await fenetre.locator('.rail').dispatchEvent('mouseenter')
     await expect(fenetre.locator('.ciel-revele')).toBeVisible()
     await fenetre.waitForTimeout(400)
-    // (Fenêtre cachée : l'animation de glissement ne progresse pas ; on lit donc le placement CSS, pas la boîte animée.)
-    const b = await fenetre.locator('.ciel-revele').evaluate((e) => ({ right: getComputedStyle(e).right, width: e.getBoundingClientRect().width }))
+    // (Fenêtre cachée : l'animation de glissement ne progresse pas ; on lit donc le placement CSS, pas la boîte animée.
+    // La largeur de mise en page — offsetWidth — ignore la transformation : getBoundingClientRect donnait 286.00006
+    // quand l'animation avait tout de même avancé, run 39503656092.)
+    const b = await fenetre.locator('.ciel-revele').evaluate((e) => ({ right: getComputedStyle(e).right, width: (e as HTMLElement).offsetWidth }))
     expect(b).toEqual({ right: '0px', width: 286 })
   } finally {
     await app.close()
