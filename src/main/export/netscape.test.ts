@@ -71,4 +71,12 @@ describe('favoris HTML Netscape', () => {
     const [lu] = aplatir(exporterFavorisHtml([f('https://a.fr/', 'A', 'a∕b / c')]))
     expect(lu.dossier).toBe('a∕b / c')
   })
+
+  it('analyse linéaire : balises jamais fermées ou « < » sans « > » en moins de 500 ms', () => {
+    for (const hostile of ['<a'.repeat(200_000), '<A>'.repeat(200_000), '<DL><DT><A HREF="x">'.repeat(50_000), '<H3>'.repeat(200_000), '<a href="' + '<'.repeat(200_000)]) {
+      const t = Date.now()
+      lireFavorisHtml(hostile)
+      expect(Date.now() - t).toBeLessThan(500)
+    }
+  })
 })

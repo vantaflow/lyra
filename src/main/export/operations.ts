@@ -35,6 +35,9 @@ export interface OptionsExport {
 
 const pauseParDefaut = (): Promise<void> => new Promise((r) => setImmediate(r))
 
+/** Fichier CSV d'historique : au-delà, refusé (la lecture est en flux, mais un fichier démesuré n'est pas un export de Lyra). */
+export const TAILLE_MAX_CSV = 256 * 1024 * 1024
+
 const TAILLE_MAX = { favoris: 64 * 1024 * 1024, ciel: 32 * 1024 * 1024, reglages: 1_000_000, paquet: 1024 * 1024 * 1024 } as const
 
 /** Écriture atomique : le fichier d'arrivée n'existe jamais à moitié écrit. */
@@ -168,9 +171,11 @@ export async function importerFichier(d: DemandeImportFichier, cibles: CiblesImp
         return sortie(await appliquer({ ...base, donnees: { favoris: arbre } }, cibles, options))
       }
       case 'historique': {
-        const refus = verifierTaille(d.chemin!, Number.MAX_SAFE_INTEGER)
+        const refus = verifierTaille(d.chemin!, TAILLE_MAX_CSV)
         if (refus) return refus
-        return sortie(await appliquer({ ...base, donnees: { historique: lotsDepuisCsv(morceauxTexte(d.chemin!)) } }, cibles, options))
+        let ignorees = 0
+        const resultat = await appliquer({ ...base, donnees: { historique: lotsDepuisCsv(morceauxTexte(d.chemin!), () => ignorees++) } }, cibles, options)
+        return sortie(resultat, { avertissements: ignorees ? [`${ignorees} ligne(s) trop longue(s) ignorée(s).`] : [] })
       }
       case 'ciel': {
         const refus = verifierTaille(d.chemin!, TAILLE_MAX.ciel)

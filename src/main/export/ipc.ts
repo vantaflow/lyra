@@ -8,7 +8,8 @@ import { isAbsolute } from 'node:path'
 import { handle } from '../ipc'
 import type { CiblesImport } from '../import/appliquer'
 import { estPageReglages } from '../import/importeur'
-import { ErreurPaquet } from './chiffrement'
+import { PHRASE_MIN } from '../../shared/exportTextes'
+import { ErreurPaquet, verifierPhrase } from './chiffrement'
 import { exporterCiel, exporterFavoris, exporterHistorique, exporterPaquet, exporterReglages, importerFichier, type DepsOperations } from './operations'
 import type { SauvegardeAuto } from './sauvegardeAuto'
 import type { CodeErreurExport, DemandeExportFichier, ReponseSauvegardeAuto, ResultatExport } from './types'
@@ -42,6 +43,15 @@ const HTML_F: Filtres = [{ name: 'Favoris (HTML)', extensions: ['html', 'htm'] }
 const CSV_F: Filtres = [{ name: 'CSV', extensions: ['csv'] }]
 const LYRA_F: Filtres = [{ name: 'Paquet Lyra', extensions: ['lyra'] }]
 const FILTRES_IMPORT = { favoris: HTML_F, historique: CSV_F, ciel: JSON_F, reglages: JSON_F, paquet: LYRA_F } as const
+const phraseTropCourte = (phrase: unknown): boolean => {
+  try {
+    verifierPhrase(typeof phrase === 'string' ? phrase : '')
+    return false
+  } catch {
+    return true
+  }
+}
+const MESSAGE_PHRASE_COURTE = `La phrase de passe doit contenir au moins ${PHRASE_MIN} caractères.`
 const jour = (): string => new Date().toISOString().slice(0, 10)
 
 export function installerExportIpc(deps: DepsExportIpc): void {
@@ -85,7 +95,7 @@ export function installerExportIpc(deps: DepsExportIpc): void {
   handle('export:paquet', (d, e) => {
     controle(e, 'export:paquet')
     // La phrase est vérifiée avant toute boîte de dialogue.
-    if (typeof d?.phrase !== 'string' || [...d.phrase.normalize('NFC')].length < 8) return { ok: false, erreur: 'phrase-courte', message: 'La phrase de passe doit contenir au moins 8 caractères.' } as ResultatExport
+    if (phraseTropCourte(d?.phrase)) return { ok: false, erreur: 'phrase-courte', message: MESSAGE_PHRASE_COURTE } as ResultatExport
     return exporter('export:paquet', e, d, `sauvegarde-lyra-${jour()}.lyra`, LYRA_F, (c, o) => exporterPaquet(c, o, { phrase: d.phrase, cookies: d.cookies === true }))
   })
 
@@ -99,7 +109,7 @@ export function installerExportIpc(deps: DepsExportIpc): void {
       deps.sauvegarde.desactiver()
       return { ok: true, etat: deps.sauvegarde.etat() }
     }
-    if (typeof d.phrase !== 'string' || [...d.phrase.normalize('NFC')].length < 8) return { ok: false, erreur: 'phrase-courte', message: 'La phrase de passe doit contenir au moins 8 caractères.' }
+    if (phraseTropCourte(d.phrase)) return { ok: false, erreur: 'phrase-courte', message: MESSAGE_PHRASE_COURTE }
     let dossier: string | undefined
     if (enTest()) dossier = typeof d.dossier === 'string' && isAbsolute(d.dossier) ? d.dossier : undefined
     else {
@@ -108,7 +118,7 @@ export function installerExportIpc(deps: DepsExportIpc): void {
     }
     if (!dossier) return { ok: false, erreur: 'annule', message: 'Aucun dossier choisi.' }
     try {
-      return { ok: true, etat: await deps.sauvegarde.activer(dossier, d.phrase) }
+      return { ok: true, etat: await deps.sauvegarde.activer(dossier, d.phrase as string) }
     } catch (err) {
       const indisponible = err instanceof ErreurPaquet
       return { ok: false, erreur: indisponible ? 'indisponible' : 'dossier', message: indisponible ? err.message : 'Ce dossier n’est pas utilisable.' }

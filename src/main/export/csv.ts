@@ -8,21 +8,33 @@ import type { Visite } from '../import/types'
 export const ENTETE_CSV = 'date,titre,adresse,visites'
 export const TAILLE_LOT_CSV = 5000
 
-const champ = (s: string): string => (/[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s)
+/** Un champ qui commence par l'un de ces caractères serait exécuté comme une formule par un tableur. */
+const DECLENCHEUR = /^[=+\-@\t\r]/
+/** Le `'` protecteur retiré à la lecture : seulement devant un déclencheur (l'aller-retour reste exact). */
+const PROTEGE = /^'+[=+\-@\t\r]/
+/** Un champ plus long est une ligne corrompue (ex. guillemet jamais refermé) : elle est ignorée. */
+export const TAILLE_CHAMP_MAX = 64 * 1024
+
+const champ = (s: string): string => {
+  // Un texte qui commence déjà par « ' » + déclencheur est préfixé aussi, pour que la lecture ne le confonde pas avec une protection.
+  const sur = DECLENCHEUR.test(s) || PROTEGE.test(s) ? `'${s}` : s
+  return /[",\r\n]/.test(sur) ? `"${sur.replace(/"/g, '""')}"` : sur
+}
+const nettoyer = (s: string): string => (PROTEGE.test(s) ? s.slice(1) : s)
 
 export const ligneCsv = (v: Visite): string => `${new Date(v.date).toISOString()},${champ(v.titre)},${champ(v.url)},${v.visites}`
 
 function versVisite(c: string[]): Visite | null {
   if (c.length < 3) return null
   const date = Date.parse(c[0])
-  const url = c[2].trim()
+  const url = nettoyer(c[2]).trim()
   if (!Number.isFinite(date) || !url) return null
   const n = Number(c[3])
-  return { url, titre: c[1], date, visites: Number.isInteger(n) && n >= 1 ? n : 1 }
+  return { url, titre: nettoyer(c[1]), date, visites: Number.isInteger(n) && n >= 1 ? n : 1 }
 }
 
 /** Lit un flux de morceaux de texte (découpage quelconque) et rend des lots de visites ; l'en-tête et les lignes invalides sont ignorés. */
-export async function* lotsDepuisCsv(source: AsyncIterable<string>): AsyncGenerator<Visite[]> {
+export async function* lotsDepuisCsv(source: AsyncIterable<string>, surIgnoree?: () => void): AsyncGenerator<Visite[]> {
   let lot: Visite[] = []
   let champs: string[] = []
   let courant = ''
@@ -31,8 +43,18 @@ export async function* lotsDepuisCsv(source: AsyncIterable<string>): AsyncGenera
   let guillemetVu = false
   let debut = true
   let premiere = true
+  /** Ligne trop longue : tout est ignoré jusqu'à la fin de ligne suivante. */
+  let saut = false
 
   const finLigne = (): void => {
+    if (saut) {
+      saut = false
+      guillemets = false
+      guillemetVu = false
+      courant = ''
+      champs = []
+      return
+    }
     champs.push(courant)
     courant = ''
     const c = champs
@@ -54,6 +76,18 @@ export async function* lotsDepuisCsv(source: AsyncIterable<string>): AsyncGenera
     }
     for (let i = 0; i < texte.length; i++) {
       const ch = texte[i]
+      if (saut) {
+        if (ch === '\n') finLigne()
+        continue
+      }
+      if (courant.length > TAILLE_CHAMP_MAX) {
+        saut = true
+        courant = ''
+        champs = []
+        surIgnoree?.()
+        i--
+        continue
+      }
       if (guillemetVu) {
         guillemetVu = false
         if (ch === '"') {

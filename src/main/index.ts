@@ -531,7 +531,7 @@ void app.whenReady().then(async () => {
   })
   const sauvegardeAuto = new SauvegardeAuto({
     fichierConfig: join(paths.userData(), 'sauvegarde-auto.json'),
-    coffre: process.env.LYRA_TEST === '1' ? coffreDeTest : coffreSysteme(),
+    coffre: process.env.LYRA_TEST === '1' && !app.isPackaged ? coffreDeTest : coffreSysteme(),
     horloge: { maintenant: () => Date.now(), planifier: (fn, ms) => { const t = setTimeout(fn, ms); t.unref(); return () => clearTimeout(t) } },
     sources: () => ({ version: app.getVersion(), reglages: reglages.getSettings(), favoris: favoris.lister(), ciel: ongletsNormaux()?.exporter().ciel, visites: () => hist.visites() }),
     delaiDemarrage: process.env.LYRA_TEST === '1' ? 500 : undefined

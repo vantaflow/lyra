@@ -72,12 +72,14 @@ export function exporterFavorisHtml(favoris: Favori[]): string {
 
 // --- Lecture ---------------------------------------------------------------------------------------------------------
 
-const BALISE = /<(\/?)([a-zA-Z][a-zA-Z0-9]*)((?:"[^"]*"|'[^']*'|[^>"'])*)>/g
 const ATTRIBUT = /([a-zA-Z_][\w-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g
+const NOM_BALISE = /^(\/?)([a-zA-Z][a-zA-Z0-9]*)/
+/** Une balise plus longue est ignorée pour ses attributs (évite un travail démesuré sur un fichier hostile). */
+const ATTRIBUTS_MAX = 16 * 1024
 
 function attributs(brut: string): Map<string, string> {
   const m = new Map<string, string>()
-  for (const a of brut.matchAll(ATTRIBUT)) m.set(a[1].toLowerCase(), decoder(a[2] ?? a[3] ?? a[4] ?? ''))
+  for (const a of brut.slice(0, ATTRIBUTS_MAX).matchAll(ATTRIBUT)) m.set(a[1].toLowerCase(), decoder(a[2] ?? a[3] ?? a[4] ?? ''))
   return m
 }
 
@@ -88,17 +90,51 @@ function dateMs(brut: string | undefined): number {
   return n < 1e14 ? Math.round(n) : 0
 }
 
-/** Lecture tolérante : tout ce qui n'est pas un lien ou un dossier est ignoré ; la profondeur est bornée. */
+/** Retire les balises d'un texte, en une seule passe ; un « < » sans « > » reste du texte. */
+function sansBalises(s: string): string {
+  let sortie = ''
+  let depuis = 0
+  for (;;) {
+    const i = s.indexOf('<', depuis)
+    if (i === -1) break
+    const j = s.indexOf('>', i)
+    if (j === -1) break
+    sortie += s.slice(depuis, i)
+    depuis = j + 1
+  }
+  return sortie + s.slice(depuis)
+}
+
+/**
+ * Lecture tolérante et linéaire : l'analyse avance toujours (un « > » cherché par balise, la prochaine fermeture
+ * mémorisée une seule fois), tout ce qui n'est pas un lien ou un dossier est ignoré, la profondeur est bornée.
+ */
 export function lireFavorisHtml(html: string): FavorisImportes {
   const racine: NoeudFavori[] = []
   const pile: NoeudFavori[][] = [racine]
   let enTrop = 0
   let attente: DossierFavori | undefined
-  BALISE.lastIndex = 0
-  let m: RegExpExecArray | null
-  while ((m = BALISE.exec(html)) !== null) {
-    const ferme = m[1] === '/'
-    const nom = m[2].toLowerCase()
+  // Copie en minuscules ASCII (mêmes positions que le texte d'origine) pour chercher les fermetures.
+  const bas = html.replace(/[A-Z]/g, (c) => c.toLowerCase())
+  const fermeture = { a: { de: -1, a: -1 }, h3: { de: -1, a: -1 } }
+  const prochaineFermeture = (nom: 'a' | 'h3', depuis: number): number => {
+    const m = fermeture[nom]
+    if (m.de <= depuis && (m.a === -1 ? m.de === -2 : m.a >= depuis)) return m.a
+    m.a = bas.indexOf(`</${nom}`, depuis)
+    m.de = m.a === -1 ? -2 : depuis
+    return m.a
+  }
+  let pos = 0
+  while (pos < html.length) {
+    const i = html.indexOf('<', pos)
+    if (i === -1) break
+    const fin = html.indexOf('>', i)
+    if (fin === -1) break
+    const n = NOM_BALISE.exec(html.slice(i + 1, i + 24))
+    pos = fin + 1
+    if (!n) continue
+    const ferme = n[1] === '/'
+    const nom = n[2].toLowerCase()
     if (nom === 'dl') {
       if (ferme) {
         if (enTrop > 0) enTrop--
@@ -110,13 +146,15 @@ export function lireFavorisHtml(html: string): FavorisImportes {
         attente = undefined
       }
     } else if ((nom === 'h3' || nom === 'a') && !ferme) {
-      const fin = new RegExp(`</${nom}\\s*>`, 'ig')
-      fin.lastIndex = BALISE.lastIndex
-      const f = fin.exec(html)
-      const texte = decoder(html.slice(BALISE.lastIndex, f ? f.index : html.length).replace(/<[^>]*>/g, '')).trim()
-      BALISE.lastIndex = f ? f.index + f[0].length : html.length
+      const f = prochaineFermeture(nom, pos)
+      const texte = decoder(sansBalises(html.slice(pos, f === -1 ? html.length : f))).trim()
+      if (f === -1) pos = html.length
+      else {
+        const g = html.indexOf('>', f)
+        pos = g === -1 ? html.length : g + 1
+      }
       const courant = pile[pile.length - 1]
-      const attr = attributs(m[3])
+      const attr = attributs(html.slice(i + 1 + n[0].length, fin))
       if (nom === 'h3') {
         const dossier: DossierFavori = { type: 'dossier', titre: texte, date: dateMs(attr.get('add_date')), enfants: [] }
         courant.push(dossier)
