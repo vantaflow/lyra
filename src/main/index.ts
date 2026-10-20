@@ -63,6 +63,7 @@ import { svgVersPng } from './extensions/icones'
 import { appliquerStubs, type ShimsStubs } from './extensions/stubs'
 import { collecterStubs, creerJournal, enregistrerMessageConsole, lireRapportConversion } from './extensions/journal'
 import { installerFixtures } from './extensions/fixturesTest'
+import { installerGestesMolette } from './tabs/gestes'
 
 definirFournisseurLangue(() => app.getLocale())
 app.setPath('userData', paths.userData())
@@ -237,6 +238,7 @@ function creerFenetre(opts: { privee?: boolean; urlInitiale?: string } = {}, res
       // Fenêtre privée : ni détection automatique ni proposition d'ajout (rien n'est écrit dans les réglages).
       passerelles: passerelles?.crochets({ privee: opts.privee === true }),
       raccourcis: () => reglagesCourants().raccourcis,
+      gestes: () => reglagesCourants().gestes,
       surEchap: () => dnd.sortir(fenetre.id),
       basculerDnd: () => basculerDnd(fenetre.id),
       retenirPopup: (p) => dnd.retenirPopup(fenetre.id, p),
@@ -558,6 +560,8 @@ void app.whenReady().then(async () => {
     const origine = origineDe(urlEffective(e.senderFrame))
     if (m && origine && typeof id === 'number' && dnd.retirerNotification(m.fenetreId, id, origine)) cadresNotifications.delete(id)
   })
+  // Relais `wheel` des pages (précédent / suivant, zoom) : étoiles seulement, réglages `gestes.*` relus à chaque message.
+  installerGestesMolette(ipcMain, { possede: ongletsPossedant, reglages: () => reglages.getSettings().gestes })
   handle('settings:get', () => reglages.getSettings())
   handle('settings:set', (patch, e) => reglages.setSettings(patchPage(patch, { privee: estPrivee(e.sender) })))
   installerReglagesIpc(reglages)

@@ -23,6 +23,7 @@ import { Dnd } from './Dnd'
 import { Demarrage } from './Demarrage'
 import { Styles } from './Styles'
 import { Sauvegarde } from './Sauvegarde'
+import { Gestes } from './Gestes'
 import { Labo } from './Labo'
 import { chercher, REPLI_LIGNE } from './recherche'
 import { routeDepuisHash, SECTIONS } from './sections'
@@ -175,7 +176,7 @@ function App() {
         {route === 'confidentialite' && <Confidentialite />}
         {route === 'telechargements' && <Telechargements />}
         {route === 'raccourcis' && <Raccourcis />}
-        {route === 'gestes' && <Emplacement description="Gestes de souris et molette." />}
+        {route === 'gestes' && <Gestes />}
         {route === 'nepasderanger' && <Dnd />}
         {route === 'demarrage' && <Demarrage />}
         {route === 'styles' && <Styles />}
