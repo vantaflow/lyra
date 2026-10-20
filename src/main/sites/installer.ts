@@ -5,7 +5,7 @@ import { envoyer, handle } from '../ipc'
 import type { Reglages } from '../settings/settings'
 import { creerReglesSites } from './regles'
 import { creerServiceSites } from './service'
-import { scriptUaPourPage } from './ua'
+import { AUCUNE_REGLE_PAGE, reglesDePage, urlDeFrame } from './page'
 
 export interface DepsSites {
   reglages: Reglages
@@ -25,18 +25,52 @@ export function installerSites(deps: DepsSites): void {
   handle('sites:supprimer', (cle, e) => service.supprimer(cle, e.sender))
 }
 
-/** Règles par site passant par `webRequest` (cookies, scripts, user-agent) : à brancher sur chaque session par `equiper`. */
-export function installerReglesSites(deps: { reglages: Reglages }) {
+/**
+ * Règles par site passant par `webRequest` (cookies, scripts, user-agent) : à brancher sur chaque session par `equiper`.
+ * `onChanged` des règles : cookies et service workers des sites devenus « Bloqués » nettoyés à l'écriture de la règle.
+ */
+export function installerReglesSites(deps: { reglages: Reglages; estPage(wc: WebContents): boolean }) {
   const sites = (): Record<string, RegleSite> => deps.reglages.getSettings().sites
-  // Synchrone : le preload des pages attend la réponse avant le premier script de la page. La page principale est celle de l'expéditeur
-  // (jamais l'adresse que la page annonce), et seules les pages web reçoivent un script.
-  ipcMain.on('sites:ua-script', (e) => {
+  // Synchrone : le preload des pages attend la réponse avant le premier script de la frame. Ce canal n'est pas sous `sites:*` (réservé
+  // aux vues internes, refusé aux pages) : il est ouvert aux preloads des pages web, comme `shields:scriptlets`, d'où la garde `estPage`
+  // (l'expéditeur est un onglet de Lyra) et l'absence de toute donnée fournie par la page : la page principale est celle de l'expéditeur
+  // (`getURL`), la frame est celle qui envoie (`senderFrame`, origine héritée comprise pour about:blank / srcdoc / blob:).
+  ipcMain.on('page:regles-site', (e) => {
     try {
-      e.returnValue = scriptUaPourPage(sites(), e.sender.getURL())
+      const f = e.senderFrame
+      if (!f || !deps.estPage(e.sender)) {
+        e.returnValue = AUCUNE_REGLE_PAGE
+        return
+      }
+      // Une fenced frame n'a pas de parent mais n'est pas la frame principale de l'onglet : ni scripts perso, ni page « haute » à elle.
+      const principale = !f.parent && f === e.sender.mainFrame
+      e.returnValue = reglesDePage(sites(), principale ? f.url : e.sender.getURL(), urlDeFrame(f.url, f.origin), undefined, {
+        globaux: deps.reglages.getSettings().styles,
+        principale
+      })
     } catch (err) {
-      console.warn('[sites] script du user-agent :', err)
-      e.returnValue = ''
+      console.warn('[sites] règles de la frame :', err)
+      e.returnValue = AUCUNE_REGLE_PAGE
     }
   })
-  return creerReglesSites({ sites })
+  const regles = creerReglesSites({ sites })
+  let precedent = sites()
+  deps.reglages.onChanged((s) => {
+    if (s.sites === precedent) return
+    const avant = precedent
+    precedent = s.sites
+    void regles.surSitesChanges(avant, s.sites).catch((err) => console.error('[sites] nettoyage à l’écriture de la règle', err))
+  })
+  return regles
+}
+
+/** Règles de zoom : à chaque écriture de `sites`, les étoiles ouvertes des sites concernés prennent leur nouveau zoom (sans recharger). */
+export function installerZoomSites(deps: { reglages: Reglages; onglets(): Iterable<{ zoomsChanges(avant: Record<string, RegleSite>, apres: Record<string, RegleSite>): void }> }): void {
+  let precedent = deps.reglages.getSettings().sites
+  deps.reglages.onChanged((s) => {
+    if (s.sites === precedent) return
+    const avant = precedent
+    precedent = s.sites
+    for (const tm of deps.onglets()) tm.zoomsChanges(avant, s.sites)
+  })
 }

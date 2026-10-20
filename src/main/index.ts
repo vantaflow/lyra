@@ -43,11 +43,12 @@ import type { TypePermission } from '../shared/types'
 import type { Passerelles } from './passerelles/Passerelles'
 import { creerPasserelles } from './passerelles/electron'
 import { installerPasserellesIpc } from './passerelles/ipc'
-import { installerReglesSites, installerSites } from './sites/installer'
+import { installerReglesSites, installerSites, installerZoomSites } from './sites/installer'
 import { installerTheme } from './theme/installer'
 import { couleurFaviconEnCache } from './theme/couleurFavicon'
 import { reglagesHorsSitesChanges } from './sites/service'
 import { resoudre } from './settings/sites'
+import { zoomVoulu } from './tabs/zoom'
 import { Dnd, type NotificationRetenue } from './dnd/Dnd'
 import { installerConfidentialite, type Confidentialite } from './confidentialite/installer'
 import { NOUVEL_ONGLET, pageDeDemarrage, restaurerSession, urlNouvelleFenetre } from '../shared/accueil'
@@ -233,8 +234,8 @@ function creerFenetre(opts: { privee?: boolean; urlInitiale?: string } = {}, res
       placement: () => ({ nouvelleEtoile: reglagesCourants().apparence.nouvelleEtoile, regrouperParSite: reglagesCourants().apparence.regrouperParSite }),
       surChangement: sauverSession,
       session: sesPrivee,
-      // Fenêtre privée : le zoom par site n'est ni lu ni mémorisé.
-      zoomDe: opts.privee ? undefined : (origine) => resoudre(reglagesCourants().sites, origine).zoom,
+      // Fenêtre privée : le zoom des règles est lu (jamais écrit : le zoom manuel n'y est pas mémorisé).
+      zoomDe: (origine) => zoomVoulu(reglagesCourants().sites, origine),
       memoriserZoom: opts.privee ? undefined : (origine, zoom) => void reglagesStore?.setSettings({ sites: { [origine]: { zoom } } }),
       rechercheUrl: (texte) => urlDeRecherche(moteurParId(reglagesCourants().moteurParDefaut, moteursDisponibles(reglagesCourants())), texte),
       // Fenêtre privée : ni détection automatique ni proposition d'ajout (rien n'est écrit dans les réglages).
@@ -640,12 +641,27 @@ void app.whenReady().then(async () => {
   passerelles = pass
   installerPasserellesIpc(pass, estPrivee)
   installerSites({ reglages, estPrivee })
+  // Règle de zoom modifiée (ou retirée : « Par défaut ») : appliquée sans recharger aux étoiles ouvertes du site, fenêtres privées comprises.
+  installerZoomSites({ reglages, onglets: () => onglets.values() })
   // Cookies, scripts et user-agent par site : écouteurs du hub (après les Boucliers) sur chaque session de pages web.
-  const reglesSites = installerReglesSites({ reglages })
+  const reglesSites = installerReglesSites({ reglages, estPage: (wc) => ongletsPossedant(wc) !== undefined })
   const sessionsWeb = [session.defaultSession, session.fromPartition('persist:lyra')]
   for (const ses of sessionsWeb) reglesSites.equiper(ses, { privee: false })
-  // Reliquats d'un arrêt brutal : les cookies « Session seulement » d'une exécution précédente ne survivent pas au démarrage.
-  void Promise.all(sessionsWeb.map((ses) => reglesSites.purger(ses)))
+  // Reliquats d'un arrêt brutal (cookies « Session seulement » et « Bloqués », service workers des sites aux scripts bloqués) :
+  // terminé avant la restauration des onglets, donc avant la moindre page.
+  // Borné à 3 s (et jamais rejeté) : un nettoyage bloqué ne doit pas empêcher d'ouvrir la première fenêtre.
+  let delaiNettoyage: NodeJS.Timeout | undefined
+  const nettoyageDemarrage = Promise.race([
+    Promise.all(sessionsWeb.map((ses) => reglesSites.demarrer(ses))),
+    new Promise<void>((ok) => {
+      delaiNettoyage = setTimeout(() => {
+        console.error('[sites] nettoyage du démarrage trop long : abandonné après 3 s')
+        ok()
+      }, 3000)
+    })
+  ])
+    .catch((err) => console.error('[sites] nettoyage du démarrage impossible', err))
+    .finally(() => clearTimeout(delaiNettoyage))
   // Le PAC initial est en place avant toute fenêtre (une étoile restaurée ne part pas en direct).
   await pass.demarrer()
   // Extensions : branchées et chargées avant la création de la moindre vue (donc de la première fenêtre).
@@ -1023,6 +1039,7 @@ void app.whenReady().then(async () => {
     manager.relayoutAll()
     for (const wc of webContents.getAllWebContents()) envoyer(wc, 'settings:changed', { ...s, sites: {} })
   })
+  await nettoyageDemarrage
   sessionStore = new SessionStore(join(paths.userData(), 'session.json'))
   const restauree = restaurerSession(reglages.getSettings().demarrage.restaurer, sessionStore.charger())
   if (restauree) for (const f of restauree.fenetres) creerFenetre({}, f)

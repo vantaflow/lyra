@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { RegleSite } from '../../shared/types'
 import type { DetailsEnvoi } from '../session/webRequestHub'
 import { profilUa } from '../ua'
-import { ecouteurUaEnvoi, enTetesPourProfil, scriptUaPourPage } from './ua'
+import { ecouteurUaEnvoi, enTetesPourProfil, fonctionUaPourPage } from './ua'
 
 type Sites = Record<string, RegleSite>
 const CHROME = '152.0.7977.167'
@@ -85,11 +85,11 @@ describe('User-Agent par site (onBeforeSendHeaders)', () => {
 
 describe('script navigator du preload', () => {
   it('fourni pour une page dont la règle a un profil alternatif, vide sinon', () => {
-    const js = scriptUaPourPage(sites('firefox'), 'https://exemple.test/page', CHROME)
+    const js = fonctionUaPourPage(sites('firefox'), 'https://exemple.test/page', CHROME)
     expect(js).toContain("'platform', \"Win32\"")
-    expect(scriptUaPourPage(sites('lyra'), 'https://exemple.test/page', CHROME)).toBe('')
-    expect(scriptUaPourPage({}, 'https://exemple.test/page', CHROME)).toBe('')
-    expect(scriptUaPourPage(sites('firefox'), 'https://autre.test/page', CHROME)).toBe('')
-    expect(scriptUaPourPage(sites('firefox'), 'file:///tmp/a.html', CHROME)).toBe('')
+    expect(fonctionUaPourPage(sites('lyra'), 'https://exemple.test/page', CHROME)).toBe('')
+    expect(fonctionUaPourPage({}, 'https://exemple.test/page', CHROME)).toBe('')
+    expect(fonctionUaPourPage(sites('firefox'), 'https://autre.test/page', CHROME)).toBe('')
+    expect(fonctionUaPourPage(sites('firefox'), 'file:///tmp/a.html', CHROME)).toBe('')
   })
 })
