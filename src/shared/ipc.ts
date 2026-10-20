@@ -1,3 +1,4 @@
+import type { DemandeExportFichier, DemandeExportPaquet, DemandeImportFichier, DemandeSauvegardeAuto, EtatSauvegardeAutoIpc, ReponseImportFichier, ReponseSauvegardeAuto, ResultatExport } from '../main/export/types'
 import type { Compteurs, ElementImport, ExtensionImportee, Indisponible, OptionsApplication, ProfilDetecte, ResultatImport } from '../main/import/types'
 import type { DecisionPermission, DownloadInfo, HistoryEntry, PasserellePerso, Settings, SiteContourne, SkyState, Suggestion, TypePermission } from './types'
 
@@ -234,11 +235,21 @@ export type Requetes = {
   'bookmarks:toggle': [{ url: string; title: string }, boolean]
   'bookmarks:exists': [{ url: string }, boolean]
   'bookmarks:list': [void, FavoriIpc[]]
-  /** Pages `lyra://settings` seulement, jamais une fenêtre privée (jalon E). `import:fichier` est réservé (Task 4). */
+  /** Pages `lyra://settings` seulement, jamais une fenêtre privée (jalon E). */
   'import:detecter': [void, ProfilDetecte[]]
   'import:apercu': [DemandeApercuImport, ReponseApercuImport]
   'import:lancer': [DemandeImport, ReponseImport]
   'import:annuler': [{ id: string }, void]
+  /** Export (jalon E, Task 4) : mêmes règles que `import:*` (page de réglages, jamais une fenêtre privée : refus par exception). */
+  'export:favoris': [DemandeExportFichier, ResultatExport]
+  'export:historique': [DemandeExportFichier, ResultatExport]
+  'export:ciel': [DemandeExportFichier, ResultatExport]
+  'export:reglages': [DemandeExportFichier, ResultatExport]
+  'export:paquet': [DemandeExportPaquet, ResultatExport]
+  'export:sauvegardeAuto': [DemandeSauvegardeAuto, ReponseSauvegardeAuto]
+  'export:sauvegardeEtat': [void, EtatSauvegardeAutoIpc]
+  /** Import d'un fichier (favoris HTML, historique CSV, ciel JSON, réglages JSON, paquet `.lyra`) ; fenêtre privée : `{ ok: false, erreur: 'prive' }`. */
+  'import:fichier': [DemandeImportFichier, ReponseImportFichier]
   'bookmarks:remove': [{ url: string }, void]
   'downloads:list': [void, DownloadInfo[]]
   'downloads:pause': [{ id: string }, void]

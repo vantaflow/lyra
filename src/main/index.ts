@@ -16,9 +16,14 @@ import { Bookmarks } from './bookmarks/Bookmarks'
 import { Downloads } from './downloads/Downloads'
 import { installerReglagesIpc } from './settings/ipc'
 import { installerImportIpc } from './import/ipc'
+import { installerExportIpc } from './export/ipc'
+import { SauvegardeAuto } from './export/sauvegardeAuto'
+import { coffreDeTest, coffreSysteme } from './export/coffre'
+import { cookiesDeSession, PARTITION_COOKIES } from './export/cookies'
+import type { DepsOperations } from './export/operations'
 import { processusImport } from './import/processus'
 import { balayerOrphelins } from './import/copie'
-import type { CibleCiel } from './import/appliquer'
+import type { CibleCiel, CiblesImport } from './import/appliquer'
 import { SessionStore, type FenetreSession } from './session/SessionStore'
 import { Permissions, type DepsPermissions, type ReponsePermission } from './permissions/Permissions'
 import { Attentes, REFUS } from './permissions/attentes'
@@ -499,22 +504,41 @@ void app.whenReady().then(async () => {
     const [, m] = [...onglets].find(([id]) => !avant.has(id))!
     return m
   }
-  installerImportIpc({
-    processus: processusImport,
-    estPrivee,
-    cibles: (wc) => {
-      const normale = (m: TabManager | undefined): TabManager | undefined => (m && !privees.has(m.fenetreId) ? m : undefined)
-      // La fenêtre de la page de réglages si elle est normale, sinon la plus récente, sinon une nouvelle.
-      const m = normale(ongletsPossedant(wc)) ?? normale(ongletsCourants()) ?? [...onglets].reverse().map(([, t]) => normale(t)).find(Boolean) ?? nouvelleFenetreNormale()
-      return {
-        favoris,
-        historique: hist,
-        ciel: cibleCiel(m),
-        nouvelleFenetre: () => cibleCiel(nouvelleFenetreNormale()),
-        reglages: { get: () => reglages.getSettings(), set: (patch) => reglages.setSettings(patch) }
-      }
+  // La fenêtre normale de la page de réglages si elle existe, sinon la plus récente (jamais une fenêtre privée).
+  const ongletsNormaux = (wc?: WebContents): TabManager | undefined => {
+    const normale = (m: TabManager | undefined): TabManager | undefined => (m && !privees.has(m.fenetreId) ? m : undefined)
+    return (wc ? normale(ongletsPossedant(wc)) : undefined) ?? normale(ongletsCourants()) ?? [...onglets].reverse().map(([, t]) => normale(t)).find(Boolean)
+  }
+  const ciblesImport = (wc: WebContents): CiblesImport => {
+    const m = ongletsNormaux(wc) ?? nouvelleFenetreNormale()
+    return {
+      favoris,
+      historique: hist,
+      ciel: cibleCiel(m),
+      nouvelleFenetre: () => cibleCiel(nouvelleFenetreNormale()),
+      reglages: { get: () => reglages.getSettings(), set: (patch) => reglages.setSettings(patch) }
     }
+  }
+  installerImportIpc({ processus: processusImport, estPrivee, cibles: ciblesImport })
+  // Export et import de fichiers, sauvegarde automatique nocturne (paquet `.lyra` chiffré ; cookies jamais inclus).
+  const operationsPour = (wc: WebContents): DepsOperations => ({
+    version: app.getVersion(),
+    favoris,
+    historique: hist,
+    reglages,
+    ciel: () => ongletsNormaux(wc)?.exporter().ciel,
+    cookies: cookiesDeSession(session.fromPartition(PARTITION_COOKIES))
   })
+  const sauvegardeAuto = new SauvegardeAuto({
+    fichierConfig: join(paths.userData(), 'sauvegarde-auto.json'),
+    coffre: process.env.LYRA_TEST === '1' ? coffreDeTest : coffreSysteme(),
+    horloge: { maintenant: () => Date.now(), planifier: (fn, ms) => { const t = setTimeout(fn, ms); t.unref(); return () => clearTimeout(t) } },
+    sources: () => ({ version: app.getVersion(), reglages: reglages.getSettings(), favoris: favoris.lister(), ciel: ongletsNormaux()?.exporter().ciel, visites: () => hist.visites() }),
+    delaiDemarrage: process.env.LYRA_TEST === '1' ? 500 : undefined
+  })
+  installerExportIpc({ estPrivee, operations: operationsPour, cibles: ciblesImport, sauvegarde: sauvegardeAuto })
+  sauvegardeAuto.demarrer()
+  app.on('will-quit', () => sauvegardeAuto.arreter())
   // Passerelles : rien n'est chargé ni appliqué tant qu'aucun site n'est contourné.
   const sessionsProxy = (): Session[] => [session.defaultSession, session.fromPartition('persist:lyra'), ...sessionsPrivees]
   const pass = creerPasserelles({
