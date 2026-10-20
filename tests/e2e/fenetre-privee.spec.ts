@@ -2,7 +2,8 @@ import { test, expect, type ElectronApplication, type Page } from '@playwright/t
 import { createServer, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { lancerLyra } from './helpers'
 
 // Petit serveur http local : /pose pose un cookie, toute autre adresse enregistre le cookie reçu.
@@ -257,6 +258,72 @@ test('passerelles : ajouter, basculerSite et retirer sont refusés depuis une fe
     await fenetre.evaluate(() => window.lyra.invoke('passerelles:ajouter', { hote: 'normal-ajout.fr' }))
     await fenetre.evaluate(() => window.lyra.invoke('passerelles:basculerSite', { hote: 'normal-bascule.fr' }))
     expect(await sites()).toEqual(['normal-ajout.fr', 'normal-bascule.fr'])
+  } finally {
+    await app.close()
+  }
+})
+
+const fixture = (nom: string): string => pathToFileURL(resolve(__dirname, 'fixtures', nom)).href
+const pageOuverte = (app: ElectronApplication, adresse: string): Page | undefined => app.windows().find((w) => w.url() === adresse)
+
+test("Ne pas déranger en fenêtre privée : rien n'est retenu ni livré, Notification.permission n'est pas « granted »", async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    // Site autorisé dans le profil normal : la fenêtre privée ne doit pas le lire.
+    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { sites: { 'file://': { permissions: { notifications: 'autoriser' } } } }))
+    const privee = await ouvrirPrivee(app)
+    const adresse = fixture('dnd.html')
+    await privee.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), adresse)
+    await expect.poll(() => pageOuverte(app, adresse)).toBeDefined()
+    const p = pageOuverte(app, adresse)!
+    await privee.evaluate(() => window.lyra.invoke('dnd:basculer', undefined))
+    await expect.poll(async () => (await privee.evaluate(() => window.lyra.invoke('dnd:get'))).actif).toBe(true)
+    const permission = await p.evaluate(() => {
+      new Notification('Secrète', { body: 'corps' })
+      return Notification.permission
+    })
+    expect(permission).not.toBe('granted')
+    expect((await privee.evaluate(() => window.lyra.invoke('dnd:get'))).notifications).toBe(0)
+    await privee.evaluate(() => window.lyra.invoke('dnd:basculer', undefined))
+    await expect.poll(async () => (await privee.evaluate(() => window.lyra.invoke('dnd:get'))).actif).toBe(false)
+    expect(await privee.evaluate(() => window.lyra.invoke('test:livraisons'))).toEqual([])
+  } finally {
+    await app.close()
+  }
+})
+
+test("invite de permission : pas de case « Se souvenir » en fenêtre privée (proposée en fenêtre normale)", async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const adresse = fixture('permissions.html')
+    // Overlay (de n'importe quelle fenêtre) qui affiche la demande en cours.
+    const avecDemande = async (): Promise<Page> => {
+      let trouve: Page | undefined
+      await expect
+        .poll(async () => {
+          trouve = undefined
+          for (const w of app.windows().filter((x) => x.url().includes('#overlay'))) if ((await w.locator('.perm-texte').count()) > 0) trouve = w
+          return trouve
+        })
+        .toBeDefined()
+      return trouve!
+    }
+    const demander = async (ui: Page): Promise<Page> => {
+      const avant = app.windows().filter((w) => w.url() === adresse)
+      await ui.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), adresse)
+      await expect.poll(() => app.windows().filter((w) => w.url() === adresse && !avant.includes(w)).length).toBe(1)
+      void app.windows().find((w) => w.url() === adresse && !avant.includes(w))!.evaluate(() => void Notification.requestPermission())
+      return avecDemande()
+    }
+    const privee = await ouvrirPrivee(app)
+    const o = await demander(privee)
+    await expect(o.locator('.perm-carte')).toBeVisible()
+    await expect(o.locator('.perm-souvenir')).toHaveCount(0)
+    await o.getByRole('button', { name: 'Refuser' }).click()
+    // Témoin : en fenêtre normale la case existe.
+    const o2 = await demander(fenetre)
+    await expect(o2.locator('.perm-souvenir')).toHaveCount(1)
+    await o2.getByRole('button', { name: 'Refuser' }).click()
   } finally {
     await app.close()
   }

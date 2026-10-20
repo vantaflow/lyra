@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { PasserellePerso, Settings } from '../../shared/types'
 import type { Candidat } from './liste'
-import { Passerelles, type DepsPasserelles, type SessionProxy } from './Passerelles'
+import { DELAI_PAC_MAX_MS, Passerelles, type DepsPasserelles, type SessionProxy } from './Passerelles'
 
 type Reseau = Settings['reseau']
 
@@ -669,6 +669,24 @@ describe('Passerelles — relecture finale', () => {
     await p.pacApplique()
     for (const s of env.sessions) expect(evaluer(s, 'https://a.fr/')).not.toBe('DIRECT')
     await p.attendre()
+  })
+
+  it('2. pacApplique : un setProxy bloqué ne fige pas l\'attente au-delà du délai maximal', async () => {
+    vi.useFakeTimers()
+    try {
+      const { p, env } = monter()
+      env.sessions[0].setProxy = () => new Promise<void>(() => {})
+      p.demarrer()
+      p.ajouter('a.fr')
+      let fini = false
+      void p.pacApplique().then(() => (fini = true))
+      await vi.advanceTimersByTimeAsync(DELAI_PAC_MAX_MS - 1)
+      expect(fini).toBe(false)
+      await vi.advanceTimersByTimeAsync(2)
+      expect(fini).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('2. la veille du proxy système est réarmée après un échec de setProxy', async () => {

@@ -125,6 +125,9 @@ const sansWww = (h: string): string => {
 const memePerso = (a?: PasserellePerso, b?: PasserellePerso): boolean =>
   a === b || (!!a && !!b && a.type === b.type && a.hote === b.hote && a.port === b.port)
 
+/** Attente maximale de l'application du PAC aux sessions. */
+export const DELAI_PAC_MAX_MS = 5000
+
 export class Passerelles implements CrochetsPasserelles {
   private pool: Candidat[] = []
   private poolPerso = false
@@ -198,7 +201,12 @@ export class Passerelles implements CrochetsPasserelles {
    * aussitôt d'un rechargement l'attend : sinon la fermeture des connexions interrompt la navigation (-3, ignoré).
    */
   pacApplique(): Promise<void> {
-    return this.file
+    // Un setProxy bloqué ne fige pas l'interface : au-delà du délai, on continue.
+    let minuteur: ReturnType<typeof setTimeout> | undefined
+    const delai = new Promise<void>((ok) => {
+      minuteur = setTimeout(ok, DELAI_PAC_MAX_MS)
+    })
+    return Promise.race([this.file, delai]).finally(() => clearTimeout(minuteur))
   }
 
   arreter(): void {

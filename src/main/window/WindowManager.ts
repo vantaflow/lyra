@@ -171,6 +171,8 @@ export class WindowManager {
       relayout,
       estRevele,
       reveler(b) {
+        // Ignoré pendant Ne pas déranger ou le plein écran : aucun état latent à la sortie du mode.
+        if (b && (dnd !== null || pleinEcran)) return false
         revele = b
         relayout()
         return estRevele()
@@ -238,6 +240,8 @@ export class WindowManager {
     chrome.webContents.on('render-process-gone', finGlisse)
     chrome.webContents.on('did-start-loading', finGlisse)
     win.on('closed', () => {
+      // Fermée pendant le glissement de la poignée : l'aperçu de largeur ne reste pas sur les autres fenêtres.
+      finGlisse()
       this.fenetres.delete(lw.id)
       for (const v of [chrome, overlay, pageView]) {
         if (v && !v.webContents.isDestroyed()) v.webContents.close()

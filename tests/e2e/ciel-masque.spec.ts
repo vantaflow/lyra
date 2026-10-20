@@ -187,3 +187,38 @@ test('ciel révélé : on vise à partir du ciel affiché (pas du rail de 14 px)
     await app.close()
   }
 })
+
+test('⌘ \\ pendant Ne pas déranger : aucun ciel révélé à la sortie du mode', async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { ciel: { masque: true } } as never))
+    await menu(app, 'ne-pas-deranger')
+    await expect.poll(async () => (await fenetre.evaluate(() => window.lyra.invoke('dnd:get'))).actif).toBe(true)
+    await menu(app, 'basculer-ciel')
+    await fenetre.evaluate(() => window.lyra.invoke('dnd:sortir'))
+    await expect.poll(async () => (await fenetre.evaluate(() => window.lyra.invoke('dnd:get'))).actif).toBe(false)
+    const l = await layout(fenetre)
+    expect(l.revele).toBe(false)
+    expect(l.ordre).toEqual(['chrome', 'page', 'overlay'])
+  } finally {
+    await app.close()
+  }
+})
+
+test("fenêtre fermée pendant le glissement de la poignée : l'aperçu de largeur est levé", async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const x0 = (await layout(fenetre)).bounds.page.x
+    await app.evaluate(({ Menu }) => Menu.getApplicationMenu()!.getMenuItemById('fenetre-privee')!.click())
+    const interfaces = (): Page[] => app.windows().filter((p) => p.url().includes('#privee') && !p.url().includes('#overlay'))
+    await expect.poll(() => interfaces().length).toBe(1)
+    const privee = interfaces()[0]
+    await privee.evaluate(() => window.lyra.invoke('ciel:apercu', { largeur: 400 }))
+    await expect.poll(async () => (await layout(fenetre)).bounds.page.x).toBeGreaterThan(x0)
+    // Fermeture de la fenêtre qui glissait (la plus récente), sans fin de glissement.
+    await app.evaluate(({ BaseWindow }) => BaseWindow.getAllWindows().sort((a, b) => b.id - a.id)[0].close())
+    await expect.poll(async () => (await layout(fenetre)).bounds.page.x).toBe(x0)
+  } finally {
+    await app.close()
+  }
+})

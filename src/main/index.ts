@@ -203,9 +203,17 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
     sauverSession()
     if (sesPrivee) void jeterSessionPrivee(sesPrivee)
   })
-  if (restauration) tabs.restaurer(restauration)
+  // Équipement en échec : on journalise et on ferme la fenêtre privée (fail-closed), jamais de fenêtre vide ni de rejet non géré.
+  const echecEquipement = (err: unknown): void => {
+    console.error('[privee] équipement de la session privée impossible, fenêtre fermée', err)
+    if (!fenetre.win.isDestroyed()) fenetre.win.close()
+  }
+  if (restauration) {
+    tabs.restaurer(restauration)
+    void equipement.catch(echecEquipement)
+  }
   // Une session privée est équipée (PAC compris) avant la première navigation : aucune requête ne part sans passerelle.
-  else void equipement.then(() => !fenetre.win.isDestroyed() && tabs.ouvrir('lyra://newtab'))
+  else void equipement.then(() => !fenetre.win.isDestroyed() && tabs.ouvrir('lyra://newtab')).catch(echecEquipement)
 }
 
 /** Fermeture d'une fenêtre privée : plus rien ne subsiste de sa session. */
@@ -417,6 +425,8 @@ void app.whenReady().then(async () => {
     return c?.url ?? ''
   }
   const contexteNotification = (e: { sender: WebContents; senderFrame?: WebFrameMain | null }): { m: TabManager; origine: string } | undefined => {
+    // Fenêtre privée : aucune permission du profil normal n'est lue (la page suit le chemin natif, refusé pendant le mode).
+    if (estPrivee(e.sender)) return undefined
     const m = ongletsPossedant(e.sender)
     const origine = origineDe(urlEffective(e.senderFrame))
     return m && origine && dnd.retient(m.fenetreId, origine) ? { m, origine } : undefined
