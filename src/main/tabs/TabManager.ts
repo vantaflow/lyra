@@ -29,6 +29,7 @@ const interditAuxSites = (url: string): boolean => /^lyra:/i.test(url) || (!EN_T
 interface Extras {
   favicon?: string
   couleur?: string
+  teinteFavicon?: string
 }
 
 /** Drapeau transmis aux preloads web : la sonde window.__lyraShields n'existe qu'en test. */
@@ -66,6 +67,8 @@ export interface OptionsTabs {
   basculerDnd?: () => void
   /** Ne pas déranger : retient une popup (`window.open` avec features) ; faux si elle doit s'ouvrir normalement. */
   retenirPopup?: (popup: { url: string; origine: string; etoileId: string }) => boolean
+  /** Couleur dominante d'un favicon déjà en cache (« Le ciel prend la teinte du site actif ») ; `null` : aucune. */
+  couleurFavicon?: (wc: WebContents, url: string) => Promise<string | null>
 }
 
 export class TabManager {
@@ -488,7 +491,8 @@ export class TabManager {
         ...(estZoomNormal(wc.getZoomFactor()) ? {} : { zoom: wc.getZoomFactor() }),
         ...(this.inactifDepuis.has(id) ? { inactifDepuis: this.inactifDepuis.get(id) } : {}),
         ...(ex.favicon ? { favicon: ex.favicon } : {}),
-        ...(ex.couleur ? { couleur: ex.couleur } : {})
+        ...(ex.couleur ? { couleur: ex.couleur } : {}),
+        ...(ex.teinteFavicon ? { teinteFavicon: ex.teinteFavicon } : {})
       }
     }
     return { sky: this.tree.toJSON(), etats }
@@ -565,10 +569,18 @@ export class TabManager {
     })
     wc.on('page-title-updated', (_e, titre) => this.historique?.titre(wc.getURL(), titre))
     wc.on('page-favicon-updated', (_e, favicons) => {
-      this.extras.set(id, { ...this.extras.get(id), favicon: favicons[0] })
+      this.extras.set(id, { ...this.extras.get(id), favicon: favicons[0], teinteFavicon: undefined })
       const etoile = this.tree.star(id)
       if (etoile && favicons[0]) etoile.favicon = favicons[0]
       this.notifier()
+      // Teinte du site à défaut de `theme-color` : lue dans le cache, jamais sur le réseau.
+      if (favicons[0] && this.options.couleurFavicon) {
+        void this.options.couleurFavicon(wc, favicons[0]).then((teinte) => {
+          if (!teinte || wc.isDestroyed() || this.extras.get(id)?.favicon !== favicons[0]) return
+          this.extras.set(id, { ...this.extras.get(id), teinteFavicon: teinte })
+          this.notifier()
+        })
+      }
     })
     wc.on('did-change-theme-color', (_e, couleur) => {
       this.extras.set(id, { ...this.extras.get(id), couleur: couleur ?? undefined })

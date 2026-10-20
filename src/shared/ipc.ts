@@ -20,6 +20,8 @@ export interface EtatEtoile {
   canGoBack: boolean
   canGoForward: boolean
   couleur?: string
+  /** Couleur dominante du favicon déjà en cache (aucune requête réseau) ; sert de teinte quand la page n'a pas de `theme-color`. */
+  teinteFavicon?: string
   /** Timestamp (ms) depuis lequel l'étoile est inactive ; absent pour l'étoile active. */
   inactifDepuis?: number
   /** Facteur de zoom de la page ; absent à 100 %. */

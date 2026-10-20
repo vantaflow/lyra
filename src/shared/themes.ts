@@ -85,7 +85,7 @@ export const THEMES: Record<NomTheme, Theme> = {
   'mes-couleurs': { nom: 'Mes couleurs', couleurs: structuredClone(COULEURS_INDIGO_NUIT) }
 }
 
-function rgba(hex: string, alpha: number): string {
+export function rgbaDe(hex: string, alpha: number): string {
   const n = (i: number): number => parseInt(hex.slice(i, i + 2), 16)
   return `rgba(${n(1)},${n(3)},${n(5)},${alpha})`
 }
@@ -201,8 +201,8 @@ export function deriver(couleurs: CouleursTheme, mode: Mode): Record<string, str
   vars['--libelles-ciel'] = corriger(v('--libelles-ciel'), c('ciel-fond'), 3)
   vars['--libelles-groupe'] = corriger(v('--libelles-groupe'), c('ciel-fond'), 3)
   vars['--bouclier-ciel'] = corriger(couleurs.boucliers.sombre, c('ciel-fond'), SEUIL)
-  vars['--halo-etoile'] = rgba(c('etoile-active'), 0.7)
-  vars['--halo-anneau'] = rgba(c('etoile-active'), 0.22)
+  vars['--halo-etoile'] = rgbaDe(c('etoile-active'), 0.7)
+  vars['--halo-anneau'] = rgbaDe(c('etoile-active'), 0.22)
   // Teintes des pages Lyra : dérivées du thème dans les deux modes (Indigo nuit en clair = valeurs d'origine de theme.css).
   vars['--bordure-champ'] = sombre ? corriger(v('--bordure-champ'), fond, 3) : v('--bordure-champ')
   vars['--separateur'] = v('--separateur')

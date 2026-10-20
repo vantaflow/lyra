@@ -39,6 +39,7 @@ import { creerPasserelles } from './passerelles/electron'
 import { installerPasserellesIpc } from './passerelles/ipc'
 import { installerSites } from './sites/installer'
 import { installerTheme } from './theme/installer'
+import { couleurFaviconEnCache } from './theme/couleurFavicon'
 import { reglagesHorsSitesChanges } from './sites/service'
 import { resoudre } from './settings/sites'
 import { Dnd, type NotificationRetenue } from './dnd/Dnd'
@@ -203,7 +204,8 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
       passerelles: passerelles?.crochets({ privee: opts.privee === true }),
       surEchap: () => dnd.sortir(fenetre.id),
       basculerDnd: () => basculerDnd(fenetre.id),
-      retenirPopup: (p) => dnd.retenirPopup(fenetre.id, p)
+      retenirPopup: (p) => dnd.retenirPopup(fenetre.id, p),
+      couleurFavicon: (wc, url) => (reglagesCourants().couleurs.cielTeinteParSite ? couleurFaviconEnCache(wc, url) : Promise.resolve(null))
     }
   )
   // Une demande de permission ne survit pas à un changement de route ou à la fermeture de l'overlay.

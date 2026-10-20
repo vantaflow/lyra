@@ -1,5 +1,19 @@
 import { test, expect, type ElectronApplication, type Page } from '@playwright/test'
+import { createServer, type Server } from 'node:http'
+import type { AddressInfo } from 'node:net'
 import { lancerLyra } from './helpers'
+
+let serveur: Server
+let BASE = ''
+test.beforeAll(async () => {
+  serveur = createServer((_q, r) => {
+    r.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+    r.end('<!doctype html><title>Site rouge</title><meta name="theme-color" content="#ff0000"><p>rouge</p>')
+  })
+  await new Promise<void>((ok) => serveur.listen(0, '127.0.0.1', ok))
+  BASE = `http://127.0.0.1:${(serveur.address() as AddressInfo).port}`
+})
+test.afterAll(() => serveur.close())
 
 const trouver = (app: { windows(): Page[] }, debut: string): Page | undefined => app.windows().find((w) => w.url().startsWith(debut))
 const variable = (p: Page, nom: string): Promise<string> => p.evaluate((n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), nom)
@@ -91,6 +105,24 @@ test('thème : « Programmé » + coucher se calcule sans erreur et themeSource 
     await expect.poll(mode).toBe('sombre')
     await poser(fenetre, { couleurs: { prefersColorScheme: true } })
     await expect.poll(source).toBe('dark')
+  } finally {
+    await app.close()
+  }
+})
+
+test('thème : « Le ciel prend la teinte du site actif » fond 18 % du theme-color de la page dans le ciel, et seulement si le réglage est actif', async () => {
+  test.setTimeout(60_000)
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const cielRendu = (): Promise<string> => fenetre.evaluate(() => getComputedStyle(document.querySelector('.fenetre')!).getPropertyValue('--ciel').trim())
+    await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), BASE)
+    await expect.poll(() => fenetre.evaluate(() => window.lyra.invoke('sky:get').then((c) => Object.values(c.etats).some((e) => e.couleur)))).toBe(true)
+    expect(await cielRendu()).toBe('#15152e')
+    await poser(fenetre, { couleurs: { cielTeinteParSite: true } })
+    // #15152E fondu à 18 % avec #FF0000.
+    await expect.poll(cielRendu).toBe('#3f1126')
+    await poser(fenetre, { couleurs: { cielTeinteParSite: false } })
+    await expect.poll(cielRendu).toBe('#15152e')
   } finally {
     await app.close()
   }

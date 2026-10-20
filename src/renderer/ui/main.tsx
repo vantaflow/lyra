@@ -5,11 +5,12 @@ import { Capsule } from './Capsule'
 import { Bande } from './Bande'
 import { Sky } from './Sky'
 import { CielRevele, Rail } from './Rail'
-import { cielAppui, cielCible, cielMasque, cielPosition, cielRevele, dnd, initialiserEtat } from './state'
+import { cielAppui, cielCible, cielMasque, cielPosition, cielRevele, cielTeinteParSite, dnd, etats, initialiserEtat, sky } from './state'
 import { RappelDnd } from './Rappel'
 import { Overlay } from './Overlay'
 import { FindBar } from './FindBar'
-import { demarrerTheme } from './themeVivant'
+import { demarrerTheme, versionTheme } from './themeVivant'
+import { teinteDuCiel } from './teinteCiel'
 
 function App() {
   const winStyle = window.lyra.plateforme === 'win32' ? ' win' : window.lyra.plateforme === 'darwin' ? ' mac' : ''
@@ -20,12 +21,16 @@ function App() {
   // Les pastilles macOS sont dans le ciel (colonne à gauche, bande en haut) ; sinon la capsule leur laisse la place.
   const pastillesCapsule = mac && (masque || (position !== 'gauche' && position !== 'haut'))
   const cible = cielCible.value
+  // « Le ciel prend la teinte du site actif » : 18 % de la couleur de la page (theme-color, sinon favicon en cache) dans le fond du ciel.
+  versionTheme.value
+  const cielBase = getComputedStyle(document.documentElement).getPropertyValue('--ciel').trim()
+  const teinte = teinteDuCiel(cielBase, etats.value[sky.value.activeId ?? ''], cielTeinteParSite.value)
   // Révélé, la vue chrome ne couvre plus que le ciel : fond transparent autour pour laisser voir la page.
   useEffect(() => {
     document.documentElement.classList.toggle('revele', revele)
   }, [revele])
   return (
-    <div class={`fenetre${winStyle} pos-${position}${masque ? ' masque' : ''}${revele ? ' revele' : ''}${cible ? ' glisse' : ''}${cible || cielAppui.value ? ' appui' : ''}${pastillesCapsule ? ' capsule-pastilles' : ''}`}>
+    <div style={teinte ? { '--ciel': teinte } : undefined} class={`fenetre${winStyle} pos-${position}${masque ? ' masque' : ''}${revele ? ' revele' : ''}${cible ? ' glisse' : ''}${cible || cielAppui.value ? ' appui' : ''}${pastillesCapsule ? ' capsule-pastilles' : ''}`}>
       {masque ? <Rail /> : position === 'haut' || position === 'bas' ? <Bande position={position} /> : <Sky />}
       <section class="page-zone" aria-label="Page active">
         <div class="carte">

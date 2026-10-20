@@ -5,7 +5,8 @@ import { racines, regrouper, reglerCiel } from './cielCommun'
 import { glisserEntete } from './gestes'
 import { Epingle } from './Epingle'
 import { PiedActions } from './Sky'
-import { cielDeplacer, estTerne, etats, sky, titreEtoile } from './state'
+import { styleConstellation } from './teinteCiel'
+import { cielDeplacer, couleurParConstellation, estTerne, etats, sky, titreEtoile } from './state'
 
 const mac = window.lyra.plateforme === 'darwin'
 const touche = mac ? '⌘' : 'Ctrl'
@@ -125,10 +126,11 @@ export function Bande({ revele = false, position, refCiel, surEntree, surSortie,
       <nav class="bande-etoiles" aria-label="Onglets ouverts" ref={defilement} onWheel={molette}>
         <Etoiles groupe={sans} />
         {constellations.map(({ constellation: c, etoiles: groupe }) => (
-          <Fragment key={c.id}>
+          // `display: contents` : le groupe ne change pas la mise en page, il porte seulement la couleur de la constellation.
+          <span key={c.id} style={{ display: 'contents', ...styleConstellation(c.color, couleurParConstellation.value) }}>
             <span class="hg">{c.name}</span>
             <Etoiles groupe={groupe} />
-          </Fragment>
+          </span>
         ))}
       </nav>
       {/* Hors du défilement : « Nouvelle étoile » reste toujours à portée. */}

@@ -73,6 +73,9 @@ export const cielLargeurAffichee = computed(() => cielLargeurApercu.value ?? cie
 export type PositionCiel = Settings['ciel']['position']
 /** Position du ciel (réglage) : colonne à gauche ou à droite, bande en haut ou en bas. */
 export const cielPosition = signal<PositionCiel>('gauche')
+/** « Le ciel prend la teinte du site actif » et « Chaque constellation a sa couleur » (réglages `couleurs`). */
+export const cielTeinteParSite = signal(false)
+export const couleurParConstellation = signal(true)
 /** Glisser l'en-tête du ciel vers un bord pour le déplacer (réglage). */
 export const cielDeplacer = signal(true)
 /** Appui sur l'en-tête du ciel en cours (avant même le seuil du glisser) : les zones de déplacement de la fenêtre sont levées. */
@@ -108,6 +111,8 @@ export async function initialiserEtat(): Promise<void> {
     cielPosition.value = r.ciel.position
     cielDeplacer.value = r.ciel.deplacerParGlisser
     revelerAuSurvol.value = r.ciel.revelerAuSurvol
+    cielTeinteParSite.value = r.couleurs.cielTeinteParSite
+    couleurParConstellation.value = r.couleurs.couleurParConstellation
   }
   window.lyra.on('settings:changed', appliquer)
   window.lyra.on('ciel:revele', (b) => (cielRevele.value = b))

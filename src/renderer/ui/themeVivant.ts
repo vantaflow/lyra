@@ -1,6 +1,10 @@
 // Thème vivant des vues Lyra (interface, overlay, pages lyra://) : le processus principal diffuse les variables CSS du thème effectif
 // (`theme:variables`), posées ici sur <html> sans rechargement. theme.css garde les valeurs d'Indigo nuit pour le premier rendu.
+import { signal } from '@preact/signals'
 import type { ThemeDiffuse } from '../../shared/ipc'
+
+/** Incrémenté à chaque thème appliqué : les composants qui lisent une variable calculée s'y abonnent. */
+export const versionTheme = signal(0)
 
 /** Sous-ensemble de <html> utilisé (injectable en test). */
 export interface RacineTheme {
@@ -34,7 +38,9 @@ export function demarrerTheme(): void {
   const posees = new Set<string>()
   let dernier: ThemeDiffuse | null = null
   const appliquer = (): void => {
-    if (dernier) appliquerTheme(html, dernier, html.classList.contains('privee'), posees)
+    if (!dernier) return
+    appliquerTheme(html, dernier, html.classList.contains('privee'), posees)
+    versionTheme.value++
   }
   window.lyra.on('theme:variables', (t) => {
     dernier = t

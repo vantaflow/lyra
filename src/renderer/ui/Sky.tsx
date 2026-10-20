@@ -3,7 +3,8 @@ import { Epingle } from './Epingle'
 import type { Ref } from 'preact'
 import { racines, regrouper, reglerCiel } from './cielCommun'
 import { glisserEntete, largeurAuClavier, redimensionnerCiel } from './gestes'
-import { boucliers, cielDeplacer, cielLargeurAffichee, cielPosition, sky, telechargementActif } from './state'
+import { styleConstellation } from './teinteCiel'
+import { boucliers, cielDeplacer, couleurParConstellation, cielLargeurAffichee, cielPosition, sky, telechargementActif } from './state'
 
 const mac = window.lyra.plateforme === 'darwin'
 const ouvrirReglages = (): void => void window.lyra.invoke('tabs:open', { url: 'lyra://settings' })
@@ -148,7 +149,7 @@ export function Sky({ revele = false, refCiel, surEntree, surSortie, surSortieFo
           <Branche key={s.id} star={s} groupe={sans} />
         ))}
         {constellations.map(({ constellation: c, etoiles: groupe }) => (
-          <div key={c.id}>
+          <div key={c.id} style={styleConstellation(c.color, couleurParConstellation.value)}>
             <div class="grp">
               <span>{c.name}</span>
               <span class="grp-n">{groupe.length}</span>
