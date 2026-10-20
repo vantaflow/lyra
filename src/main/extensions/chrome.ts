@@ -178,10 +178,10 @@ export interface Finalisation {
   exigerInstallee?: boolean
 }
 
-/** « catalogue » (Chrome Web Store, AMO) ou « local » (zip, crx, dossier, xpi) : deux provenances qui ne se remplacent pas. */
-const provenance = (s: SourceExtension): 'catalogue' | 'local' => (s === 'cws' || s === 'amo' ? 'catalogue' : 'local')
+/** « catalogue » (Chrome Web Store, AMO, uBlock Origin de Lyra) ou « local » (zip, crx, dossier, xpi) : deux provenances qui ne se remplacent pas. */
+const provenance = (s: SourceExtension): 'catalogue' | 'local' => (s === 'cws' || s === 'amo' || s === 'ubo' ? 'catalogue' : 'local')
 const origineTexte = (s: SourceExtension): string =>
-  s === 'cws' ? 'le Chrome Web Store' : s === 'amo' ? 'addons.mozilla.org' : 'un fichier ou un dossier local'
+  s === 'cws' ? 'le Chrome Web Store' : s === 'amo' ? 'addons.mozilla.org' : s === 'ubo' ? "l'installation de uBlock Origin par Lyra" : 'un fichier ou un dossier local'
 
 /** Briques communes aux installateurs (Chrome, Firefox) : réseau borné, extraction, finalisation (registre + chargement). */
 export function creerBaseInstallation(d: DepsInstallateurChrome) {
@@ -384,7 +384,7 @@ export function creerInstallateurChrome(d: DepsInstallateurChrome): Installateur
   async function installerUbo(miseAJour = false): Promise<ResultatInstallation> {
     const release = await releaseUbo()
     const zip = await requete(release.url, hoteGithub, MAX_ARCHIVE)
-    return depuisZip(zip, { source: 'zip', magasin: 'chrome', ...(miseAJour ? { exigerInstallee: true } : {}) })
+    return depuisZip(zip, { source: 'ubo', magasin: 'chrome', ...(miseAJour ? { exigerInstallee: true } : {}) })
   }
 
   async function installerChrome(source: string): Promise<ResultatInstallation> {

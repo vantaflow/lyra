@@ -446,10 +446,38 @@ describe('uBlock Origin (release GitHub)', () => {
     const r = await inst.installerChrome('ubo')
     if (r.etat !== 'installee') throw new Error(JSON.stringify(r))
     expect(r).toMatchObject({ nom: 'uBlock Origin', version: '1.64.0' })
-    expect(registre.trouver(r.id)).toMatchObject({ source: 'zip', magasin: 'chrome' })
+    expect(registre.trouver(r.id)).toMatchObject({ source: 'ubo', magasin: 'chrome' })
     expect(existsSync(join(base, r.id, '1.64.0', 'manifest.json'))).toBe(true)
     expect(appels[0]).toBe('https://api.github.com/repos/gorhill/uBlock/releases/latest')
     expect(await inst.derniereVersionUbo()).toBe('1.64.0')
+  })
+
+  const fUbo = (v: string): typeof fetch =>
+    (async (url: string | URL | Request) => (String(url).startsWith('https://api.github.com/') ? reponse(release(v)) : reponse(zipUbo(v)))) as typeof fetch
+
+  it('provenance : un paquet local ne remplace pas uBO (même identité) ; la mise à jour uBO de Lyra le remplace', async () => {
+    const { inst, registre, chargeur } = monter(fUbo('1.64.0'))
+    const r = await inst.installerChrome('ubo')
+    if (r.etat !== 'installee') throw new Error(JSON.stringify(r))
+    const cle = (JSON.parse(readFileSync(join(base, r.id, '1.64.0', 'manifest.json'), 'utf8')) as { key: string }).key
+    // Même clé = même identité : zip, crx et dossier locaux sont refusés tant que uBO n'est pas désinstallé.
+    const refus = await inst.installerChrome(ecrire('ubo-local.zip', zipSync({ 'manifest.json': manifest({ name: 'uBlock Origin', version: '9.9.9', key: cle }) })))
+    expect(refus).toMatchObject({ etat: 'erreur', raison: expect.stringContaining('désinstalle-la d\'abord') })
+    expect(registre.trouver(r.id)).toMatchObject({ source: 'ubo', version: '1.64.0' })
+    // Mise à jour par Lyra : acceptée, la source reste « ubo ».
+    const maj = creerInstallateurChrome({ base, registre, chargeur, fetch: fUbo('1.65.0'), journal: () => {} })
+    expect(await maj.installerUbo(true)).toMatchObject({ etat: 'installee', id: r.id, version: '1.65.0' })
+    expect(registre.trouver(r.id)).toMatchObject({ source: 'ubo', version: '1.65.0' })
+  })
+
+  it('un zip local nommé « uBlock Origin » sans clé reçoit sa propre identité (n\'hérite pas de la clé de uBO)', async () => {
+    const { inst, registre } = monter(fUbo('1.64.0'))
+    const u = await inst.installerChrome('ubo')
+    const l = await inst.installerChrome(ecrire('ubo-local.zip', zipSync({ 'manifest.json': manifest({ name: 'uBlock Origin', version: '2.0.0' }) })))
+    if (u.etat !== 'installee' || l.etat !== 'installee') throw new Error(JSON.stringify([u, l]))
+    expect(l.id).not.toBe(u.id)
+    expect(registre.trouver(u.id)).toMatchObject({ source: 'ubo', version: '1.64.0' })
+    expect(registre.trouver(l.id)).toMatchObject({ source: 'zip' })
   })
 
   it('refuse un lien de téléchargement hors github.com', async () => {

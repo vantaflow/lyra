@@ -54,8 +54,9 @@ export function etatTexte(e: Pick<InfoExtension, 'active' | 'chargee' | 'convert
   return morceaux.length > 0 ? morceaux.join(' · ') : undefined
 }
 
-/** Origine de l'extension : « Chrome », « Firefox · convertie » ou « Firefox ». */
-export const origineTexte = (e: Pick<InfoExtension, 'magasin' | 'convertie'>): string => (e.magasin === 'firefox' ? (e.convertie ? 'Firefox · convertie' : 'Firefox') : 'Chrome')
+/** Origine de l'extension : « Chrome », « Chrome · GitHub » (uBlock Origin installé par Lyra), « Firefox · convertie » ou « Firefox ». */
+export const origineTexte = (e: Pick<InfoExtension, 'magasin' | 'convertie'> & Partial<Pick<InfoExtension, 'source'>>): string =>
+  e.magasin === 'firefox' ? (e.convertie ? 'Firefox · convertie' : 'Firefox') : e.source === 'ubo' ? 'Chrome · GitHub' : 'Chrome'
 
 /** Lignes du journal au format du design : ✓ ce qui marche, – ce qui est ignoré, ℹ ce qu'il faut savoir. */
 export function lignesJournal(j: JournalExtension | undefined): string[] {

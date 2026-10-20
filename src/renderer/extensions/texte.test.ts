@@ -61,6 +61,8 @@ describe('lignesJournal', () => {
   it('origine', () => {
     expect(origineTexte({ magasin: 'firefox', convertie: true })).toBe('Firefox · convertie')
     expect(origineTexte({ magasin: 'chrome' })).toBe('Chrome')
+    expect(origineTexte({ magasin: 'chrome', source: 'cws' })).toBe('Chrome')
+    expect(origineTexte({ magasin: 'chrome', source: 'ubo' })).toBe('Chrome · GitHub')
   })
 })
 
