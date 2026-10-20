@@ -105,13 +105,13 @@ Reste, à reprendre : (point 3 de `release-prep` non fait ici : repris par une a
 
 L'application empaquetée ignore les profils de test : seul un vrai import valide la chaîne complète. Je n'ai lu aucun vrai profil.
 
-1. Dans le worktree à jour : `npm run dist:mac`, puis ouvrir `dist/Lyra-<version>-arm64.dmg` et glisser Lyra dans Applications (quitter d'abord toute autre instance de Lyra).
+1. Dans le worktree à jour : `npm run dist:mac`, puis ouvrir `release/Lyra-<version>-arm64.dmg` (dossier de sortie d'`electron-builder.yml`) et glisser Lyra dans Applications (quitter d'abord toute autre instance de Lyra).
 2. Fermer Chrome (le profil est verrouillé tant qu'il tourne ; Lyra lit une copie, mais un Chrome ouvert peut avoir des écritures en attente). Safari : donner à Lyra l'« Accès complet au disque » (Réglages Système → Confidentialité et sécurité) si l'aperçu signale un accès refusé, puis relancer Lyra.
 3. Lancer Lyra, ouvrir `lyra://settings` → « Importer et exporter », choisir Chrome (puis, dans un second temps, Safari), garder l'aperçu et cocher tout ce qui est proposé.
 4. Vérifier après l'import :
    - favoris : dossiers et barre conservés, pas de doublons si on relance l'import ;
    - historique : visites présentes dans la palette et dans `lyra://history` (dates plausibles), l'import ne se bloque pas (le chien de garde arrête un lecteur muet après 2 min) ;
-   - onglets : ouverts en constellations (une par couleur de groupe), endormis, sans charger les pages ;
+   - onglets : ouverts endormis (sans charger les pages), un groupe d'onglets = une constellation (réutilisée si le nom existe déjà) ;
    - extensions : arrivées dans la file de `lyra://extensions`, rien d'installé sans confirmation ;
    - moteurs de recherche : mots-clés importés, moteur par défaut inchangé ;
    - tout élément illisible affiche une raison claire (verrou, accès refusé…), jamais d'écran figé.
