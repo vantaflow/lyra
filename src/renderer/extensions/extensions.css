@@ -1,4 +1,11 @@
-/* Page lyra://extensions : valeurs copiées de docs/design/project/Extensions.dc.html (partie « page » ; le ciel est rendu par la vue chrome). */
+/* Page lyra://extensions : valeurs copiées de docs/design/project/Extensions.dc.html (partie « page » ; le ciel est rendu par la vue chrome).
+   Couleurs : jetons du thème (theme.css), valeurs par défaut = celles du design en clair ; le mode sombre vient du thème diffusé. */
+:root {
+  --etiq-incompat-fond: #f3e3e1;
+}
+:root[data-mode='sombre'] {
+  --etiq-incompat-fond: var(--danger-fond);
+}
 @font-face {
   font-family: 'Manrope';
   src: url('../fonts/Manrope-latin.woff2') format('woff2');
@@ -10,19 +17,26 @@ body,
 #app {
   margin: 0;
   min-height: 100%;
-  background: #f7f7fb;
+  background: var(--page);
+}
+/* theme.css pose la couleur du ciel sur html et #app : le texte de la page reste celui du thème. */
+html {
+  color: CanvasText;
+}
+#app {
+  color: var(--texte);
 }
 body {
   font-family: Manrope, -apple-system, 'Segoe UI', system-ui, sans-serif;
-  color: #1c1c2e;
+  color: var(--texte);
   font-size: 14px;
   line-height: 1.45;
 }
 a {
-  color: #4a48c4;
+  color: var(--lien);
 }
 a:hover {
-  color: #2f2d8a;
+  color: var(--teinte-accent-texte);
 }
 .page {
   display: flex;
@@ -51,34 +65,34 @@ a:hover {
 }
 .entete p {
   margin: 4px 0 0;
-  color: #6b6b80;
+  color: var(--texte-secondaire);
 }
 h2 {
   margin: 6px 0 -6px;
   font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #6b6b80;
+  color: var(--texte-secondaire);
 }
 .card {
-  border: 1px solid #e6e6ee;
+  border: 1px solid var(--trait);
   border-radius: 12px;
   padding: 0 18px;
-  background: #fff;
+  background: var(--capsule-fond);
 }
 .row {
   display: flex;
   align-items: center;
   gap: 14px;
   padding: 14px 0;
-  border-top: 1px solid #eeeef4;
+  border-top: 1px solid var(--separateur);
 }
 .row:first-child {
   border-top: 0;
 }
 .row.ouverte {
   align-items: flex-start;
-  background: #f7f7fb;
+  background: var(--page);
   margin: 0 -18px;
   padding: 14px 18px;
 }
@@ -86,7 +100,7 @@ h2 {
   opacity: 0.9;
 }
 .hint {
-  color: #6b6b80;
+  color: var(--texte-secondaire);
   font-size: 12.5px;
 }
 .tg {
@@ -105,17 +119,17 @@ h2 {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--capsule-fond);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 .tg.on {
-  background: #5452c8;
+  background: var(--accent);
 }
 .tg.on i {
   right: 3px;
 }
 .tg.off {
-  background: #c9c9d6;
+  background: var(--piste);
 }
 .tg.off i {
   left: 3px;
@@ -126,21 +140,21 @@ h2 {
   gap: 8px;
   height: 32px;
   padding: 0 12px;
-  border: 1px solid #d6d6e2;
+  border: 1px solid var(--bordure-champ);
   border-radius: 9px;
-  background: #fff;
-  color: #1c1c2e;
+  background: var(--capsule-fond);
+  color: var(--texte);
   font: 500 13px Manrope, sans-serif;
   cursor: pointer;
   white-space: nowrap;
 }
 .btn.pri {
-  background: #5452c8;
-  border-color: #5452c8;
-  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--capsule-fond);
 }
 .btn.danger {
-  color: #8e2e22;
+  color: var(--danger);
 }
 .btn:disabled {
   opacity: 0.5;
@@ -149,11 +163,11 @@ h2 {
 .inp {
   height: 36px;
   padding: 0 12px;
-  border: 1px solid #d6d6e2;
+  border: 1px solid var(--bordure-champ);
   border-radius: 9px;
-  background: #f8f8fc;
+  background: var(--champ-fond);
   font: 13px Manrope, sans-serif;
-  color: #1c1c2e;
+  color: var(--texte);
   box-sizing: border-box;
   flex: 1;
   min-width: 0;
@@ -174,20 +188,20 @@ h2 {
   justify-content: center;
 }
 .tag.chrome {
-  background: #e6e6f7;
-  color: #2f2d8a;
+  background: var(--teinte-accent);
+  color: var(--teinte-accent-texte);
 }
 .tag.firefox {
-  background: #fbefd8;
-  color: #8a5a10;
+  background: var(--attention-fond);
+  color: var(--attention);
 }
 .tag.fichier {
-  background: #f3f3f9;
-  color: #6b6b80;
+  background: var(--pilule);
+  color: var(--texte-secondaire);
 }
 .tag.incompat {
-  background: #f3e3e1;
-  color: #8e2e22;
+  background: var(--etiq-incompat-fond);
+  color: var(--danger);
 }
 .ico {
   width: 36px;
@@ -203,11 +217,11 @@ h2 {
 }
 .log {
   font: 12.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  background: #f3f3f9;
-  border: 1px solid #e6e6ee;
+  background: var(--pilule);
+  border: 1px solid var(--trait);
   border-radius: 8px;
   padding: 10px 12px;
-  color: #1c1c2e;
+  color: var(--texte);
   margin: 0;
   white-space: pre-wrap;
   line-height: 1.6;
@@ -237,12 +251,12 @@ h2 {
 }
 .fichier-texte {
   flex: 1;
-  color: #3a3a50;
+  color: var(--texte-doux);
 }
 .bandeau {
-  border: 1px solid #fbefd8;
-  background: #fbefd8;
-  color: #8a5a10;
+  border: 1px solid var(--attention-fond);
+  background: var(--attention-fond);
+  color: var(--attention);
   border-radius: 12px;
   padding: 10px 18px;
   font-weight: 500;
@@ -280,5 +294,5 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  color: #3a3a50;
+  color: var(--texte-doux);
 }

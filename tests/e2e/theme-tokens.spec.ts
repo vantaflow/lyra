@@ -99,6 +99,7 @@ async function collecter(app: ElectronApplication, fenetre: Page, avant?: (p: Pa
     if (route === 'importer') await expect(p.locator('#importer-maintenant')).toBeEnabled()
     await prendre(`settings-${route}`, p)
   }
+  await prendre('extensions', await aller(app, fenetre, 'lyra://extensions', 'lyra://extensions'))
   await prendre('history', await aller(app, fenetre, 'lyra://history', 'lyra://history'))
   await prendre('downloads', await aller(app, fenetre, 'lyra://downloads', 'lyra://downloads'))
   // Pages d'erreur : introuvable et réseau.
@@ -168,6 +169,7 @@ test('mode sombre : la capsule vaut rgb(23,23,42) et la page rgb(18,18,20), plus
       ['lyra://settings', 'lyra://settings', 'apparence'],
       ['lyra://settings', 'lyra://settings', 'reseau'],
       ['lyra://settings', 'lyra://settings', 'importer'],
+      ['lyra://extensions', 'lyra://extensions', ''],
       ['lyra://history', 'lyra://history', ''],
       ['lyra://downloads', 'lyra://downloads', '']
     ] as const) {

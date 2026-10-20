@@ -627,9 +627,6 @@
   "button.sel": [
    "color=rgb(28, 28, 46) | backgroundColor=rgb(248, 248, 252) | borderTopColor=rgb(214, 214, 226) | borderRightColor=rgb(214, 214, 226) | borderBottomColor=rgb(214, 214, 226) | borderLeftColor=rgb(214, 214, 226) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
-  "span.hint": [
-   "color=rgb(107, 107, 128) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(107, 107, 128) | borderRightColor=rgb(107, 107, 128) | borderBottomColor=rgb(107, 107, 128) | borderLeftColor=rgb(107, 107, 128) | outlineColor=rgb(107, 107, 128) | boxShadow=none | textDecorationColor=rgb(107, 107, 128) | caretColor=rgb(107, 107, 128) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
   "html": [
    "color=rgb(28, 28, 46) | backgroundColor=rgb(247, 247, 251) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ]
@@ -1539,6 +1536,78 @@
   ],
   "html": [
    "color=rgb(28, 28, 46) | backgroundColor=rgb(247, 247, 251) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ]
+ },
+ "extensions": {
+  "div#app": [
+   "color=rgb(28, 28, 46) | backgroundColor=rgb(247, 247, 251) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "main.page": [
+   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "div.entete": [
+   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "div": [
+   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "h1": [
+   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "p": [
+   "color=rgb(107, 107, 128) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(107, 107, 128) | borderRightColor=rgb(107, 107, 128) | borderBottomColor=rgb(107, 107, 128) | borderLeftColor=rgb(107, 107, 128) | outlineColor=rgb(107, 107, 128) | boxShadow=none | textDecorationColor=rgb(107, 107, 128) | caretColor=rgb(107, 107, 128) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "button.btn": [
+   "color=rgb(28, 28, 46) | backgroundColor=rgb(255, 255, 255) | borderTopColor=rgb(214, 214, 226) | borderRightColor=rgb(214, 214, 226) | borderBottomColor=rgb(214, 214, 226) | borderLeftColor=rgb(214, 214, 226) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "span.hint": [
+   "color=rgb(107, 107, 128) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(107, 107, 128) | borderRightColor=rgb(107, 107, 128) | borderBottomColor=rgb(107, 107, 128) | borderLeftColor=rgb(107, 107, 128) | outlineColor=rgb(107, 107, 128) | boxShadow=none | textDecorationColor=rgb(107, 107, 128) | caretColor=rgb(107, 107, 128) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "h2": [
+   "color=rgb(107, 107, 128) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(107, 107, 128) | borderRightColor=rgb(107, 107, 128) | borderBottomColor=rgb(107, 107, 128) | borderLeftColor=rgb(107, 107, 128) | outlineColor=rgb(107, 107, 128) | boxShadow=none | textDecorationColor=rgb(107, 107, 128) | caretColor=rgb(107, 107, 128) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "div.card": [
+   "color=rgb(28, 28, 46) | backgroundColor=rgb(255, 255, 255) | borderTopColor=rgb(230, 230, 238) | borderRightColor=rgb(230, 230, 238) | borderBottomColor=rgb(230, 230, 238) | borderLeftColor=rgb(230, 230, 238) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "div.row": [
+   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(238, 238, 244) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none",
+   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "span.chrome.fixe.tag": [
+   "color=rgb(47, 45, 138) | backgroundColor=rgb(230, 230, 247) | borderTopColor=rgb(47, 45, 138) | borderRightColor=rgb(47, 45, 138) | borderBottomColor=rgb(47, 45, 138) | borderLeftColor=rgb(47, 45, 138) | outlineColor=rgb(47, 45, 138) | boxShadow=none | textDecorationColor=rgb(47, 45, 138) | caretColor=rgb(47, 45, 138) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "label.libelle": [
+   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "input#cws.inp": [
+   "color=rgb(28, 28, 46) | backgroundColor=rgb(248, 248, 252) | borderTopColor=rgb(214, 214, 226) | borderRightColor=rgb(214, 214, 226) | borderBottomColor=rgb(214, 214, 226) | borderLeftColor=rgb(214, 214, 226) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "button.btn.pri": [
+   "color=rgb(255, 255, 255) | backgroundColor=rgb(84, 82, 200) | borderTopColor=rgb(84, 82, 200) | borderRightColor=rgb(84, 82, 200) | borderBottomColor=rgb(84, 82, 200) | borderLeftColor=rgb(84, 82, 200) | outlineColor=rgb(255, 255, 255) | boxShadow=none | textDecorationColor=rgb(255, 255, 255) | caretColor=rgb(255, 255, 255) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "span.firefox.fixe.tag": [
+   "color=rgb(138, 90, 16) | backgroundColor=rgb(251, 239, 216) | borderTopColor=rgb(138, 90, 16) | borderRightColor=rgb(138, 90, 16) | borderBottomColor=rgb(138, 90, 16) | borderLeftColor=rgb(138, 90, 16) | outlineColor=rgb(138, 90, 16) | boxShadow=none | textDecorationColor=rgb(138, 90, 16) | caretColor=rgb(138, 90, 16) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "input#amo.inp": [
+   "color=rgb(28, 28, 46) | backgroundColor=rgb(248, 248, 252) | borderTopColor=rgb(214, 214, 226) | borderRightColor=rgb(214, 214, 226) | borderBottomColor=rgb(214, 214, 226) | borderLeftColor=rgb(214, 214, 226) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "span.fichier.fixe.tag": [
+   "color=rgb(107, 107, 128) | backgroundColor=rgb(243, 243, 249) | borderTopColor=rgb(107, 107, 128) | borderRightColor=rgb(107, 107, 128) | borderBottomColor=rgb(107, 107, 128) | borderLeftColor=rgb(107, 107, 128) | outlineColor=rgb(107, 107, 128) | boxShadow=none | textDecorationColor=rgb(107, 107, 128) | caretColor=rgb(107, 107, 128) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "span.fichier-texte": [
+   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "strong": [
+   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "ul.limites": [
+   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "li": [
+   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "html": [
+   "color=rgb(0, 0, 0) | backgroundColor=rgb(247, 247, 251) | borderTopColor=rgb(0, 0, 0) | borderRightColor=rgb(0, 0, 0) | borderBottomColor=rgb(0, 0, 0) | borderLeftColor=rgb(0, 0, 0) | outlineColor=rgb(0, 0, 0) | boxShadow=none | textDecorationColor=rgb(0, 0, 0) | caretColor=rgb(0, 0, 0) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ]
  },
  "history": {

@@ -10,6 +10,7 @@ const FEUILLES = [
   'src/renderer/settings/settings.css',
   'src/renderer/settings/reseau.css',
   'src/renderer/settings/importer.css',
+  'src/renderer/extensions/extensions.css',
   'src/renderer/newtab/newtab.css',
   'src/renderer/erreur/erreur.css'
 ]
@@ -24,6 +25,8 @@ const PLAFOND_HEX: Record<string, number> = {
   'src/renderer/ui/theme.css': 46,
   'src/renderer/newtab/newtab.css': 39,
   'src/renderer/settings/importer.css': 1,
+  // Le texte blanc de la pastille de marque (`.ico`).
+  'src/renderer/extensions/extensions.css': 1,
   'src/renderer/settings/settings.css': 0,
   'src/renderer/settings/reseau.css': 0,
   'src/renderer/erreur/erreur.css': 0
@@ -55,7 +58,7 @@ describe('tokenisation du CSS', () => {
     // Variables locales posées ailleurs (animations, largeur du ciel, etc.).
     const LOCALES = new Set(['--glisse', '--largeur', '--ciel-largeur', '--w', '--x', '--y',
       // Apparence (réglages) : posées par `variablesApparence`, ce ne sont pas des couleurs de thème.
-      '--police', '--taille-texte', '--densite', '--coins', '--coins-droite', '--coins-haut', '--coins-bas'])
+      '--etiq-incompat-fond', '--police', '--taille-texte', '--densite', '--coins', '--coins-droite', '--coins-haut', '--coins-bas'])
     for (const f of FEUILLES) {
       for (const [, nom] of lire(f).matchAll(/var\((--[a-z-]+)/g)) {
         if (LOCALES.has(nom)) continue

@@ -1,6 +1,8 @@
 import { render } from 'preact'
 import { useCallback, useEffect, useState } from 'preact/hooks'
 import type { CandidatAmo, InfoExtension, JournalExtension, ProgressionFile, ResultatFile, ResultatInstallation, Settings } from '../../shared/types'
+import '../ui/theme.css'
+import { demarrerTheme } from '../ui/themeVivant'
 import './extensions.css'
 import { depuis, ETAT_FILE, etatTexte, hoteDe, LIMITES, lignesJournal, origineTexte, porteeTexte, resumeFile, sitesExclus } from './texte'
 
@@ -466,4 +468,5 @@ function App() {
   return <Page privee={privee} />
 }
 
+demarrerTheme()
 render(<App />, document.getElementById('app')!)
