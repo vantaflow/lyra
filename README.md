@@ -79,6 +79,14 @@ Les tests e2e tournent en arrière-plan (fenêtres cachées, sans voler le focus
 
 Variables utiles : `LYRA_E2E_RESEAU=1` active les tests réseau (`@reseau`), `LYRA_E2E_PAQUET=1` ceux de l'app empaquetée (`@paquet`).
 
+### Audit des boutons
+
+```sh
+npm run build && npx playwright test tests/e2e/audit   # ou LYRA_E2E_AUDIT=1 npm run e2e
+```
+
+L'audit (`tests/e2e/audit-*.spec.ts`, tag `@audit`, harnais dans `tests/e2e/audit/harnais.ts`) découvre chaque contrôle visible des pages internes (chaque section de `lyra://settings`, `lyra://extensions`, historique, favoris, téléchargements, Boucliers, nouvel onglet, pages d'erreur), de la vue chrome, des panneaux de l'overlay et du mode Ne pas déranger, l'actionne, puis exige un effet observable et aucune erreur (console, exception, rejet non géré, processus principal, texte d'erreur visible). Tout se passe dans un profil temporaire, fenêtres cachées, réseau intercepté, dialogues natifs simulés, profils d'import fabriqués. Le rapport est écrit dans `test-results/audit-boutons.json`. Tant que les défauts connus ne sont pas corrigés, il est exclu de `npm run e2e`.
+
 ## Licence
 
 GPL-3.0 — voir `LICENSE`. `electron-chrome-extensions` (GPL-3.0) est une dépendance. Les fontes Manrope et Instrument Serif sont sous licence OFL (voir `src/renderer/fonts/`).
