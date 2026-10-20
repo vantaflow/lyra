@@ -99,7 +99,9 @@ Relecture finale (Opus) puis corrections : fenêtre privée sans aucune action d
 
 Limites assumées (dites dans l'interface) : la règle par site des extensions est enregistrée mais Electron ne retire pas les scripts ; permissions optionnelles refusées ; `declarativeNetRequest` partiel.
 
-Reste, à reprendre : (point 3 de `release-prep` non fait ici : repris par une autre session) source `ubo` dans le registre (un zip local nommé « uBlock Origin » peut remplacer uBO, sur choix de l'utilisateur) ; mineurs M5-M15 de la relecture finale (doublons de code, extraire le démarrage des extensions d'`index.ts`, résidus `.attente-`/`.tmp-`, `chrome.tabs.update` hors `will-navigate`, conflit de raccourcis) ; `settings:export` exporte le registre et `settings:import` n'a pas de garde en fenêtre privée.
+✅ Source `ubo` dans le registre (main, 24ecd61) : uBlock Origin installé par Lyra est enregistré en source « ubo » (plus reconnu à son nom), les anciennes entrées « zip » sont migrées au démarrage ; un zip local nommé « uBlock Origin » ne le remplace plus.
+
+Reste, à reprendre : mineurs M5-M15 de la relecture finale (doublons de code, extraire le démarrage des extensions d'`index.ts`, résidus `.attente-`/`.tmp-`, `chrome.tabs.update` hors `will-navigate`, conflit de raccourcis) ; `settings:export` exporte le registre et `settings:import` n'a pas de garde en fenêtre privée.
 
 ## Import réel dans l'application installée — marche à suivre (à faire à la main)
 
