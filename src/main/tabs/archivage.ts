@@ -16,6 +16,20 @@ export function etoilesEteintes(ciel: SkyState, maintenant: number, jours: numbe
   )
 }
 
+/**
+ * Ciel lu sur disque, prêt à être restauré : toutes les étoiles dormantes, avec une date d'inactivité fiable. Une session
+ * d'avant l'archivage (sans date), une date illisible (texte, NaN, négative) ou dans le futur reçoit la date de restauration ;
+ * `auto` (constellation du regroupement par site) n'est gardé que s'il vaut exactement `true`. Pur : l'argument n'est pas modifié.
+ */
+export function cielRestaure(ciel: SkyState, maintenant: number): SkyState {
+  const datee = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= maintenant ? v : maintenant)
+  return {
+    ...ciel,
+    stars: ciel.stars.map((s) => ({ ...s, dormant: true, inactifDepuis: datee(s.inactifDepuis) })),
+    constellations: ciel.constellations.map(({ auto, ...c }) => (auto === true ? { ...c, auto: true } : c))
+  }
+}
+
 /** Ce que l'archivage demande à une fenêtre. */
 export interface Archivable {
   ciel(): SkyState
@@ -67,7 +81,13 @@ export function demarrerArchivage(d: DepsArchivage): Archiveur {
     const maintenant = (d.maintenant ?? Date.now)()
     const historique = d.historique()
     let n = 0
-    for (const f of d.fenetres()) n += archiverFenetre(f.tabs, { prive: f.privee, jours, maintenant, historique })
+    for (const f of d.fenetres()) {
+      try {
+        n += archiverFenetre(f.tabs, { prive: f.privee, jours, maintenant, historique })
+      } catch {
+        // Une fenêtre en cours de fermeture ne doit ni bloquer les autres ni faire tomber le minuteur (exception non gérée du main).
+      }
+    }
     return n
   }
   verifier()

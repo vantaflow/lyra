@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { SkyState, Star } from '../../shared/types'
 import { History } from '../history/History'
-import { archiverFenetre, demarrerArchivage, etoilesEteintes, type Archivable } from './archivage'
+import { archiverFenetre, cielRestaure, demarrerArchivage, etoilesEteintes, type Archivable } from './archivage'
 
 const JOUR = 86_400_000
 const T0 = 1_800_000_000_000
@@ -153,5 +153,68 @@ describe('demarrerArchivage', () => {
     const a = demarrerArchivage({ fenetres: () => [{ tabs: f, privee: false }], jours: () => null, historique: () => historiqueTmp(), maintenant: () => T0 })
     expect(a.verifier()).toBe(0)
     a.arreter()
+  })
+})
+
+describe('demarrerArchivage : résilience', () => {
+  it('une fenêtre qui échoue n’empêche ni les autres ni les vérifications suivantes', () => {
+    const cassee: Archivable = {
+      ciel: () => {
+        throw new Error('fenêtre détruite')
+      },
+      retirer: () => false
+    }
+    const bonne = faux(ciel([etoile('a', { inactifDepuis: T0 - 50 * JOUR })]))
+    const a = demarrerArchivage({
+      fenetres: () => [
+        { tabs: cassee, privee: false },
+        { tabs: bonne, privee: false }
+      ],
+      jours: () => 30,
+      historique: () => historiqueTmp(),
+      maintenant: () => T0
+    })
+    expect(bonne.retirees).toEqual(['a'])
+    expect(() => a.verifier()).not.toThrow()
+    a.arreter()
+  })
+})
+
+describe('cielRestaure (migration et validation d’une session lue sur disque)', () => {
+  const brut = (stars: unknown[], constellations: unknown[] = []): SkyState => ({ stars, constellations, activeId: null, pinned: [] }) as unknown as SkyState
+
+  it('toutes les étoiles sont endormies ; une session sans date reçoit la date de restauration', () => {
+    const r = cielRestaure(brut([etoile('a', { dormant: false, inactifDepuis: undefined }), etoile('b', { inactifDepuis: T0 - 3 * JOUR })]), T0)
+    expect(r.stars.map((s) => [s.dormant, s.inactifDepuis])).toEqual([
+      [true, T0],
+      [true, T0 - 3 * JOUR]
+    ])
+  })
+
+  it('une date invalide (texte, NaN, négative, infinie) ou dans le futur devient la date de restauration', () => {
+    const mauvaises = ['abc', null, Number.NaN, -5, Infinity, T0 + 10 * JOUR, {}]
+    const r = cielRestaure(brut(mauvaises.map((v, i) => etoile(`e${i}`, { inactifDepuis: v as never }))), T0)
+    expect(r.stars.map((s) => s.inactifDepuis)).toEqual(mauvaises.map(() => T0))
+  })
+
+  it('`auto` n’est conservé que s’il vaut exactement true', () => {
+    const r = cielRestaure(
+      brut([], [
+        { id: 'c1', name: 'a.fr', color: '#fff', auto: true },
+        { id: 'c2', name: 'Travail', color: '#fff', auto: 'oui' },
+        { id: 'c3', name: 'Autre', color: '#fff', auto: 1 },
+        { id: 'c4', name: 'Perso', color: '#fff' }
+      ]),
+      T0
+    )
+    expect(r.constellations.map((c) => c.auto)).toEqual([true, undefined, undefined, undefined])
+    expect(r.constellations.map((c) => 'auto' in c)).toEqual([true, false, false, false])
+  })
+
+  it('ne modifie pas l’objet reçu', () => {
+    const c = brut([etoile('a', { inactifDepuis: undefined })])
+    cielRestaure(c, T0)
+    expect(c.stars[0].dormant).toBe(true)
+    expect(c.stars[0].inactifDepuis).toBeUndefined()
   })
 })

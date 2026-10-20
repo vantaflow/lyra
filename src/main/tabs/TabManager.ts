@@ -6,6 +6,7 @@ import { CAPSULE } from '../window/layout'
 import { TabTree } from './TabTree'
 import { peutEndormir } from './dormance'
 import { domaineEnregistrable, placerEnfant, placerNouvelle, planRegroupement, type ModePlacement, type Placement } from './placement'
+import { cielRestaure } from './archivage'
 import { PALETTE_CONSTELLATIONS } from '../../shared/couleurs'
 import type { FenetreSession, HistoriqueEtoile } from '../session/SessionStore'
 import { categorieDe, type Categorie } from './categorie'
@@ -128,8 +129,8 @@ export class TabManager {
    */
   private placer(url: string, parentId?: string): Placement {
     const reglages = this.options.placement?.()
-    const ciel = this.tree.toJSON()
-    const parentOk = parentId !== undefined && ciel.stars.some((s) => s.id === parentId)
+    const ciel = this.tree.lecture()
+    const parentOk = parentId !== undefined && this.tree.star(parentId) !== undefined
     const p: Placement = parentOk ? placerEnfant(ciel, parentId) : placerNouvelle(ciel, ciel.activeId, reglages?.nouvelleEtoile ?? 'hors-constellation')
     if (p.constellationId || !reglages?.regrouperParSite) return p
     const constellationId = this.constellationDuSite(url)
@@ -141,9 +142,10 @@ export class TabManager {
   private constellationDuSite(url: string): string | undefined {
     const domaine = domaineEnregistrable(url)
     if (!domaine) return undefined
-    const plan = planRegroupement(this.tree.toJSON(), domaine)
+    const { constellations } = this.tree.lecture()
+    const plan = planRegroupement({ constellations }, domaine)
     if ('constellationId' in plan) return plan.constellationId
-    const couleur = PALETTE_CONSTELLATIONS[this.tree.toJSON().constellations.length % PALETTE_CONSTELLATIONS.length]
+    const couleur = PALETTE_CONSTELLATIONS[constellations.length % PALETTE_CONSTELLATIONS.length]
     return this.tree.creerConstellation({ name: plan.creer, color: couleur, auto: true }).id
   }
 
@@ -177,7 +179,8 @@ export class TabManager {
   }
 
   creerConstellation(o: { name: string; color: string }): Constellation {
-    const c = this.tree.creerConstellation(o)
+    // Seuls nom et couleur : `auto` est réservé au regroupement par site.
+    const c = this.tree.creerConstellation({ name: o.name, color: o.color })
     this.notifier()
     return c
   }
@@ -371,7 +374,7 @@ export class TabManager {
   /** Minuterie d'endormissement d'une étoile inactive, réarmée à chaque activation. */
   private armer(id: string): void {
     clearTimeout(this.minuteursSommeil.get(id))
-    this.inactifDepuis.set(id, Date.now())
+    this.inactifDepuis.set(id, this.maintenant())
     const min = this.options.endormirApresMin?.() ?? 0
     if (min <= 0) return
     const t = setTimeout(() => {
@@ -450,10 +453,7 @@ export class TabManager {
 
   /** Recrée le ciel sauvegardé : étoiles endormies (sans vue) sauf l'active, réveillée. */
   restaurer(f: FenetreSession): void {
-    const ciel: SkyState = {
-      ...f.ciel,
-      stars: f.ciel.stars.map((s) => ({ ...s, dormant: true, inactifDepuis: s.inactifDepuis ?? this.maintenant() }))
-    }
+    const ciel = cielRestaure(f.ciel, this.maintenant())
     const actif = ciel.stars.find((s) => s.id === ciel.activeId) ?? ciel.stars[0]
     this.tree = TabTree.fromJSON({ ...ciel, activeId: actif.id })
     for (const [id, h] of Object.entries(f.entrees)) if (this.tree.star(id)) this.entrees.set(id, h)
