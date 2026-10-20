@@ -1,3 +1,4 @@
+import type { ExtensionInstallee } from '../../shared/types'
 import { describe, expect, it } from 'vitest'
 import {
   PALETTE_PASTILLES,
@@ -11,6 +12,8 @@ import {
   celluleZoom,
   decoderRoute,
   encoderRoute,
+  extensionsDuSite,
+  recordExtensions,
   idZoom,
   optionsZoom,
   pastille,
@@ -26,6 +29,14 @@ import {
   valeurAEcrire,
   vientDHeritage
 } from './sitesCellules'
+
+const ext = (id: string, nom: string): ExtensionInstallee => ({
+  id, nom, version: '1.0.0', source: 'cws', magasin: 'chrome', dossier: `${id}/1.0.0`, active: true, installeeLe: '2026-10-01T00:00:00.000Z', miseAJourLe: '2026-10-01T00:00:00.000Z'
+})
+const UBO = ext('a'.repeat(32), 'uBlock Origin')
+const DARK = ext('b'.repeat(32), 'Dark Reader')
+const ID_C = 'c'.repeat(32)
+const EXT_C = ext(ID_C, 'Troisième')
 
 describe('cellules du tableau', () => {
   it('Boucliers : valeur → libellé et teinte', () => {
@@ -48,9 +59,40 @@ describe('cellules du tableau', () => {
     expect(celluleScripts({})).toEqual({ texte: 'Autorisés' })
     expect(celluleScripts({ scripts: 'bloques' })).toEqual({ texte: 'Bloqués', teinte: 'rouge' })
   })
-  it('Extensions : « Toutes », inerte jusqu’à la Tâche 20', () => {
-    expect(celluleExtensions({})).toEqual({ texte: 'Toutes' })
-    expect(celluleExtensions({ extensions: { a: false } })).toEqual({ texte: 'Toutes' })
+  it('Extensions : Toutes, Aucune, « <nom> seulement » (calculé sur les extensions actives installées)', () => {
+    expect(celluleExtensions({}, [])).toEqual({ texte: 'Toutes' })
+    expect(celluleExtensions({}, [UBO, DARK])).toEqual({ texte: 'Toutes' })
+    expect(celluleExtensions({ extensions: { [UBO.id]: true } }, [UBO, DARK])).toEqual({ texte: 'Toutes' })
+    // Une clé d'extension absente du registre ne compte pas.
+    expect(celluleExtensions({ extensions: { [ID_C]: false } }, [UBO, DARK])).toEqual({ texte: 'Toutes' })
+    expect(celluleExtensions({ extensions: { [UBO.id]: false, [DARK.id]: false } }, [UBO, DARK])).toEqual({ texte: 'Aucune' })
+    expect(celluleExtensions({ extensions: { [DARK.id]: false } }, [UBO, DARK])).toEqual({ texte: 'uBlock Origin seulement' })
+    expect(celluleExtensions({ extensions: { [ID_C]: false } }, [UBO, DARK, { ...EXT_C, active: true }])).toEqual({ texte: 'uBlock Origin, Dark Reader seulement' })
+  })
+  it('Extensions : une extension désactivée ne compte ni comme autorisée ni comme bloquée', () => {
+    const off = { ...DARK, active: false }
+    expect(celluleExtensions({}, [UBO, off])).toEqual({ texte: 'Toutes' })
+    expect(celluleExtensions({ extensions: { [UBO.id]: false } }, [UBO, off])).toEqual({ texte: 'Aucune' })
+    expect(celluleExtensions({ extensions: { [off.id]: false } }, [UBO, off])).toEqual({ texte: 'Toutes' })
+  })
+  it('Extensions : liste du détail ✓/✗ et écriture du Record', () => {
+    const regle = { extensions: { [DARK.id]: false } }
+    expect(extensionsDuSite(regle, [UBO, DARK])).toEqual([
+      { id: UBO.id, nom: 'uBlock Origin', autorisee: true },
+      { id: DARK.id, nom: 'Dark Reader', autorisee: false }
+    ])
+    // `false` seulement pour les bloquées ; aucune bloquée → null (retire le champ).
+    expect(recordExtensions({ [UBO.id]: true, [DARK.id]: false }, {})).toEqual({ [DARK.id]: false })
+    expect(recordExtensions({ [UBO.id]: true, [DARK.id]: true }, {})).toBeNull()
+    // Une règle plus large bloque : l'autoriser ici s'écrit `true`.
+    expect(recordExtensions({ [UBO.id]: true, [DARK.id]: false }, { [UBO.id]: false })).toEqual({ [UBO.id]: true, [DARK.id]: false })
+    expect(recordExtensions({ [UBO.id]: true }, { [UBO.id]: false })).toEqual({ [UBO.id]: true })
+    for (const cle of Object.keys(recordExtensions({ [UBO.id]: false, [DARK.id]: false }, {}) ?? {})) expect(cle).toMatch(/^[a-p]{32}$/)
+  })
+  it('Extensions : valeur héritée d\'un motif', () => {
+    const sites = { '*.exemple.fr': { extensions: { [DARK.id]: false } }, 'www.exemple.fr': { boucliers: 'standard' as const } }
+    expect(effective(sites, 'www.exemple.fr').extensions).toEqual({ [DARK.id]: false })
+    expect(vientDHeritage(sites['www.exemple.fr'], effective(sites, 'www.exemple.fr'), 'extensions')).toBe(true)
   })
   it('Zoom', () => {
     expect(celluleZoom({ zoom: 1 }).texte).toBe('100 %')

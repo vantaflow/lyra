@@ -1,5 +1,5 @@
 /** IPC des réglages qui dépendent d'Electron : dialogues de dossier, export et import (le thème : `theme/installer.ts`). */
-import { dialog } from 'electron'
+import { app, dialog } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { handle } from '../ipc'
 import type { Reglages } from './settings'
@@ -8,6 +8,7 @@ import { TAILLE_MAX_THEME } from '../../shared/themes'
 import { TAILLE_MAX_IMPORT, ErreurReglagesVolumineux, patchImporte, serialiserReglages } from './import'
 
 export function installerReglagesIpc(reglages: Reglages): void {
+  handle('app:version', () => app.getVersion())
   handle('settings:choisirDossier', async () => {
     const r = await dialog.showOpenDialog({
       defaultPath: reglages.getSettings().telechargements.dossier,

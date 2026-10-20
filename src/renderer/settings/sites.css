@@ -130,9 +130,24 @@
 .row.colonne .zone-code {
   min-height: 84px;
 }
-.row .bientot {
-  color: var(--texte-secondaire);
+.ext-site {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
   font-size: 12.5px;
+  color: var(--texte-secondaire);
+}
+.ext-etat.ok {
+  color: var(--etiq-vert-texte);
+}
+.ext-etat.non {
+  color: var(--etiq-rouge-texte);
+}
+.ext-choix {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--texte);
 }
 .row .modifier {
   height: 26px;

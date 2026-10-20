@@ -1,5 +1,5 @@
 /** « Règles par site » : valeurs → cellules du tableau, pastille et route profonde (ParametresSites.dc.html). Module pur. */
-import type { RegleSite } from '../../shared/types'
+import type { ExtensionInstallee, RegleSite } from '../../shared/types'
 import { cleCanonique, cleDe, resoudre, type RegleEffective } from '../../main/settings/sites'
 
 export type Teinte = 'vert' | 'rouge' | 'violet'
@@ -31,8 +31,32 @@ export const celluleCookies = (r: RegleSite): Cellule => sans(COOKIES[r.cookies 
 
 export const celluleScripts = (r: RegleSite): Cellule => (r.scripts === 'bloques' ? { texte: 'Bloqués', teinte: 'rouge' } : sans('Autorisés'))
 
-/** Inerte : le calcul réel (extensions mises à `false` sur le site) arrive avec la Tâche 20 (jalon B). */
-export const celluleExtensions = (_r: RegleSite): Cellule => sans('Toutes')
+/** Extensions actives du registre avec leur état sur le site (`false` dans la règle effective = bloquée ; absent ou `true` = autorisée). */
+export function extensionsDuSite(r: RegleSite, installees: readonly ExtensionInstallee[]): { id: string; nom: string; autorisee: boolean }[] {
+  return installees.filter((e) => e.active).map((e) => ({ id: e.id, nom: e.nom, autorisee: r.extensions?.[e.id] !== false }))
+}
+
+/** Colonne « Extensions » (règle effective du site) : « Toutes », « Aucune » ou « <noms> seulement ». */
+export function celluleExtensions(r: RegleSite, installees: readonly ExtensionInstallee[]): Cellule {
+  const liste = extensionsDuSite(r, installees)
+  const autorisees = liste.filter((e) => e.autorisee)
+  if (autorisees.length === liste.length) return sans('Toutes')
+  if (autorisees.length === 0) return sans('Aucune')
+  return sans(`${autorisees.map((e) => e.nom).join(', ')} seulement`)
+}
+
+/**
+ * Valeur à écrire dans `extensions` de la règle : `false` pour chaque extension bloquée, rien pour les autres (absent = autorisée) ;
+ * `true` seulement pour autoriser ici une extension qu'une règle plus large bloque. `null` : plus rien à écrire (retire le champ).
+ */
+export function recordExtensions(autorisees: Record<string, boolean>, herite: Record<string, boolean> | undefined): Record<string, boolean> | null {
+  const sortie: Record<string, boolean> = {}
+  for (const [id, ok] of Object.entries(autorisees)) {
+    if (!ok) sortie[id] = false
+    else if (herite?.[id] === false) sortie[id] = true
+  }
+  return Object.keys(sortie).length > 0 ? sortie : null
+}
 
 /** « 110 % » ; le facteur de zoom est mémorisé en rapport (1,1). */
 export const libelleZoom = (zoom: number): string => `${Math.round(zoom * 100)} %`
@@ -128,7 +152,7 @@ export function decoderRoute(hash: string): { cle: string; style: boolean } | nu
 export const heritee = (c: Cellule, oui: boolean): Cellule => (oui ? { ...c, herite: true } : c)
 
 /** Champs d'une règle que le tableau et le détail affichent avec héritage. */
-export type ChampHerite = 'boucliers' | 'cookies' | 'scripts' | 'zoom' | 'exceptionDnd' | 'lectureAuto' | 'ua' | 'style' | 'scriptsPerso' | 'scriptletsYoutube'
+export type ChampHerite = 'boucliers' | 'cookies' | 'scripts' | 'zoom' | 'exceptionDnd' | 'lectureAuto' | 'ua' | 'style' | 'scriptsPerso' | 'scriptletsYoutube' | 'extensions'
 
 /** URL qui représente le site d'une clé de règle, pour interroger `resoudre` (hôte nu → https ; motif → un sous-domaine). */
 export function urlDeCle(cle: string): string {

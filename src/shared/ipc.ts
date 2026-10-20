@@ -183,6 +183,8 @@ export interface SkyChange {
 /** Requêtes renderer → main : canal → [données, réponse]. Complétée par les tâches suivantes. */
 export type Requetes = {
   'settings:get': [void, Settings]
+  /** Version de l'application (`app.getVersion()`), pour « À propos ». */
+  'app:version': [void, string]
   /** Registre des extensions, avec l'état de chargement de chacune. */
   'extensions:lister': [void, InfoExtension[]]
   /** Active ou désactive à chaud ; faux si l'extension est inconnue ou ne se charge pas. */

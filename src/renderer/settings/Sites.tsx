@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import type { RegleSite, ScriptPerso } from '../../shared/types'
+import type { ExtensionInstallee, RegleSite, ScriptPerso } from '../../shared/types'
 import { CLES_UA, CLE_UA_DEFAUT, estCleUa, libelleUa, majeurChrome, type CleUa } from '../../shared/ua-profils'
 import { cleCanonique } from '../../main/settings/sites'
 import { EditeurCode, EditeurScript } from './EditeurScript'
@@ -16,6 +16,8 @@ import {
   decoderRoute,
   effective,
   encoderRoute,
+  extensionsDuSite,
+  recordExtensions,
   heritage,
   heritee,
   idZoom,
@@ -79,7 +81,7 @@ function Valeur({ c }: { c: Cellule }) {
   )
 }
 
-function Tableau({ sites, cles, choisie }: { sites: Record<string, Regle>; cles: string[]; choisie: string | null }) {
+function Tableau({ sites, cles, choisie, installees }: { sites: Record<string, Regle>; cles: string[]; choisie: string | null; installees: ExtensionInstallee[] }) {
   const ouvrir = (cle: string): void => {
     location.hash = encoderRoute(cle)
   }
@@ -115,7 +117,7 @@ function Tableau({ sites, cles, choisie }: { sites: Record<string, Regle>; cles:
                 <td><Valeur c={heritee(celluleBoucliers(r), propre?.boucliers === undefined && boucliersHerites(sites, cle))} /></td>
                 <td><Valeur c={h(celluleCookies(r), 'cookies')} /></td>
                 <td><Valeur c={h(celluleScripts(r), 'scripts')} /></td>
-                <td><Valeur c={celluleExtensions(r)} /></td>
+                <td><Valeur c={h(celluleExtensions(r, installees), 'extensions')} /></td>
                 <td><Valeur c={h(celluleZoom(r), 'zoom')} /></td>
                 <td><Valeur c={h(celluleDnd(r), 'exceptionDnd')} /></td>
                 <td><Valeur c={h(celluleStyle(r), 'style')} /></td>
@@ -136,7 +138,7 @@ function Tableau({ sites, cles, choisie }: { sites: Record<string, Regle>; cles:
 }
 
 /** Détail d'une règle (sans règle enregistrée : ses valeurs par défaut, la première écriture la crée). */
-function Detail({ cle, sites, focus, privee }: { cle: string; sites: Record<string, Regle>; focus: string | null; privee: boolean }) {
+function Detail({ cle, sites, focus, privee, installees }: { cle: string; sites: Record<string, Regle>; focus: string | null; privee: boolean; installees: ExtensionInstallee[] }) {
   const regle: Regle = sites[cle] ?? {}
   const existe = Object.hasOwn(sites, cle)
   // `eff` : ce qui s'applique au site (règle propre puis règles plus larges) ; `her` : ce qui s'appliquerait sans la règle propre.
@@ -183,6 +185,23 @@ function Detail({ cle, sites, focus, privee }: { cle: string; sites: Record<stri
     const { notifications: _n, ...autres } = regle.permissions ?? {}
     await ecrire(cle, { permissions: null })
     if (Object.keys(autres).length > 0) await ecrire(cle, { permissions: autres })
+  }
+
+  // Extensions : liste ✓/✗ ; « Modifier » ouvre des cases, « Appliquer » écrit `false` pour les seules bloquées.
+  const exts = extensionsDuSite(eff, installees)
+  const [edition, setEdition] = useState(false)
+  const [choix, setChoix] = useState<Record<string, boolean>>({})
+  const ouvrirEdition = (): void => {
+    setChoix(Object.fromEntries(exts.map((e) => [e.id, e.autorisee])))
+    setEdition(true)
+  }
+  const appliquerExtensions = async (): Promise<void> => {
+    setEdition(false)
+    // Règle plus large : on n'écrit que ce qui diffère de ce que la règle donnerait sans le champ propre.
+    const valeur = recordExtensions(choix, her.extensions)
+    // La fusion n'enlève pas une clé : on retire le champ avant de réécrire le nouvel état.
+    await ecrire(cle, { extensions: null })
+    if (valeur) await ecrire(cle, { extensions: valeur })
   }
 
   const chrome = majeurChrome(navigator.userAgent) ?? 0
@@ -239,11 +258,36 @@ function Detail({ cle, sites, focus, privee }: { cle: string; sites: Record<stri
         <Ligne reglage="sites.notifications" titre="Notifications">
           <Segments valeur={notifications} options={NOTIFICATIONS} surChange={(v) => void reglerNotifications(v)} />
         </Ligne>
-        <Ligne reglage="sites.extensions" titre="Extensions autorisées sur ce site" aide="Les autres ne voient pas la page">
-          <span class="bientot">Bientôt</span>
-          <button class="btn modifier" type="button" disabled>
-            Modifier
-          </button>
+        <Ligne reglage="sites.extensions" titre="Extensions autorisées sur ce site" aide="Les autres ne voient pas la page" herite={herite('extensions')}>
+          <div class="ext-site">
+            {exts.length === 0 && <span class="hint">Aucune extension active</span>}
+            {exts.map((e) =>
+              edition ? (
+                <label key={e.id} class="ext-choix">
+                  <input type="checkbox" checked={choix[e.id] !== false} onChange={(ev) => setChoix({ ...choix, [e.id]: (ev.currentTarget as HTMLInputElement).checked })} />
+                  {e.nom}
+                </label>
+              ) : (
+                <span key={e.id} class={`ext-etat ${e.autorisee ? 'ok' : 'non'}`} data-ext={e.id}>
+                  {e.nom} {e.autorisee ? '✓' : '✗'}
+                </span>
+              )
+            )}
+          </div>
+          {edition ? (
+            <>
+              <button class="btn pri modifier" type="button" id="ext-appliquer" onClick={() => void appliquerExtensions()}>
+                Appliquer
+              </button>
+              <button class="btn" type="button" onClick={() => setEdition(false)}>
+                Annuler
+              </button>
+            </>
+          ) : (
+            <button class="btn modifier" type="button" id="ext-modifier" disabled={exts.length === 0} onClick={ouvrirEdition}>
+              Modifier
+            </button>
+          )}
         </Ligne>
         <Ligne reglage="sites.dnd" titre="Ne pas déranger : laisser passer les notifications de ce site" aide="Exception au mode" herite={herite('exceptionDnd')}>
           <Interrupteur actif={eff.exceptionDnd === true} libelle="Exception Ne pas déranger" surChange={(v) => regler({ exceptionDnd: valeurAEcrire(v, her.exceptionDnd === true) })} />
@@ -355,8 +399,11 @@ export function Sites() {
   const [hash, setHash] = useState(location.hash)
   const [creation, setCreation] = useState(false)
   const [privee, setPrivee] = useState(false)
+  const [installees, setInstallees] = useState<ExtensionInstallee[]>([])
   useEffect(() => {
     void window.lyra.invoke('sites:lister').then(setSites)
+    void window.lyra.invoke('settings:get').then((s) => setInstallees(s.extensions?.installees ?? []))
+    const arretReglages = window.lyra.on('settings:changed', (s) => setInstallees(s.extensions?.installees ?? []))
     void window.lyra.invoke('fenetre:privee').then(setPrivee, () => setPrivee(true))
     const arret = window.lyra.on('sites:changed', setSites)
     const maj = (): void => setHash(location.hash)
@@ -364,6 +411,7 @@ export function Sites() {
     maj()
     return () => {
       arret()
+      arretReglages()
       window.removeEventListener('hashchange', maj)
     }
   }, [])
@@ -400,8 +448,8 @@ export function Sites() {
               }}
             />
           )}
-          <Tableau sites={sites} cles={cles} choisie={cible?.cle ?? null} />
-          {cible && <Detail key={cible.cle} cle={cible.cle} sites={sites} focus={cible.style ? hash : null} privee={privee} />}
+          <Tableau sites={sites} cles={cles} choisie={cible?.cle ?? null} installees={installees} />
+          {cible && <Detail key={cible.cle} cle={cible.cle} sites={sites} focus={cible.style ? hash : null} privee={privee} installees={installees} />}
         </>
       )}
     </>
