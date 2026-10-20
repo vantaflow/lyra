@@ -500,6 +500,18 @@ export class Audit {
     return effets
   }
 
+  /** Attend que la restauration soit terminée : rien ne change pendant 300 ms (3 s au plus). */
+  private async attendreStabilite(cible: Page, surveillees: () => Promise<Page[]>): Promise<void> {
+    let precedent = await this.instantane(cible, 'body', await surveillees())
+    let stableDepuis = Date.now()
+    const limite = Date.now() + 3000
+    while (Date.now() - stableDepuis < 300 && Date.now() < limite) {
+      const suivant = await this.instantane(cible, 'body', await surveillees())
+      if (this.diff(precedent, suivant, new Set()).length > 0) stableDepuis = Date.now()
+      precedent = suivant
+    }
+  }
+
   /** Attend un effet (condition : instantané différent), au plus `delai` ms. */
   private async attendreEffet(cible: Page, chemin: string, surveillees: () => Promise<Page[]>, avant: Record<string, string>, bruit: Set<string>, delai = 2500): Promise<string[]> {
     const fin = Date.now() + delai
@@ -627,6 +639,7 @@ export class Audit {
       if (ov && (await this.overlayVisible())) pagesApres.push(ov)
       await this.releverEcran(pagesApres)
       await o.restaurer()
+      await this.attendreStabilite(await o.cible(), surveillees)
     }
     this.courant = null
     await this.releverMain()
@@ -700,6 +713,8 @@ function valeursDeSaisie(c: Decouvert): [string, string] {
   if (/mozilla|firefox/.test(l)) return ['exemple-audit', '!!!']
   if (/site|domaine|adresse/.test(l)) return ['exemple.test', '<<<%%%>>>']
   if (c.type === 'input:number') return ['42', '-1e999']
+  // Recherche dans la page : un mot présent dans les pages de test (fixtures/liens.html).
+  if (/dans la page/.test(l)) return ['Lien', '<<<%%%>>>']
   if (/recherch|cherch|search/.test(l)) return ['lyra', '<<<%%%>>>']
   return ['exemple.test', '<<<%%%>>>']
 }
