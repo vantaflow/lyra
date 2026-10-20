@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import { isAbsolute, relative, resolve, sep } from 'node:path'
 import type { ExtensionInstallee, MagasinExtension, Settings, SourceExtension } from '../../shared/types'
 
-export const SOURCES: readonly SourceExtension[] = ['cws', 'crx', 'zip', 'dossier', 'amo', 'xpi']
+export const SOURCES: readonly SourceExtension[] = ['cws', 'crx', 'zip', 'dossier', 'amo', 'xpi', 'ubo']
 export const MAGASINS: readonly MagasinExtension[] = ['chrome', 'edge', 'firefox', 'inconnu']
 export const MAX_EXTENSIONS = 200
 
@@ -78,6 +78,17 @@ export function dossierAbsolu(base: string, dossier: string): string {
   const rel = relative(racine, chemin)
   if (rel === '' || rel.startsWith('..') || isAbsolute(rel) || rel.split(sep).includes('..')) throw new Error(`dossier d'extension hors de ${racine}`)
   return chemin
+}
+
+/**
+ * Avant la source `ubo`, uBlock Origin installé par Lyra était enregistré en `zip` et reconnu à son nom : ces entrées
+ * passent en `ubo` (un zip local homonyme installé ensuite n'est plus pris pour lui). Retourne le nombre d'entrées migrées ;
+ * rien n'est réécrit s'il n'y en a aucune.
+ */
+export function migrerSourceUbo(registre: Registre): number {
+  const anciennes = registre.lister().filter((e) => e.source === 'zip' && e.nom.trim().toLowerCase() === 'ublock origin')
+  for (const e of anciennes) registre.ajouter({ ...e, source: 'ubo' })
+  return anciennes.length
 }
 
 export interface Registre {

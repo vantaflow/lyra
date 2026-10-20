@@ -79,7 +79,8 @@ export interface Settings extends ReglagesD {
   extensions: SettingsExtensions
 }
 
-export type SourceExtension = 'cws' | 'crx' | 'zip' | 'dossier' | 'amo' | 'xpi'
+/** `ubo` : uBlock Origin installé et mis à jour par Lyra (release GitHub) ; provenance de catalogue, distincte d'un `zip` local. */
+export type SourceExtension = 'cws' | 'crx' | 'zip' | 'dossier' | 'amo' | 'xpi' | 'ubo'
 export type MagasinExtension = 'chrome' | 'edge' | 'firefox' | 'inconnu'
 
 /** Extension du registre (`settings.extensions.installees`). */

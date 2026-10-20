@@ -49,7 +49,7 @@ import { origineDe, type Shields } from './shields/Shields'
 import type { DureeDnd } from '../shared/ipc'
 import { creerExtensions, type Extensions } from './extensions/Extensions'
 import { creerChargeur } from './extensions/chargeur'
-import { creerRegistre } from './extensions/registre'
+import { creerRegistre, migrerSourceUbo } from './extensions/registre'
 import { installerExtensionsIpc } from './extensions/ipc'
 import { creerInstallateurChrome } from './extensions/chrome'
 import { creerMiseAJour } from './extensions/miseAJour'
@@ -639,6 +639,8 @@ void app.whenReady().then(async () => {
   if (enTest() && process.env.LYRA_EXTENSIONS_FIXTURES) {
     installerFixtures(process.env.LYRA_EXTENSIONS_FIXTURES, baseExtensions, registreExtensions)
   }
+  // uBlock Origin d'avant la source « ubo » (enregistré en « zip », reconnu à son nom) : migré avant tout chargement.
+  migrerSourceUbo(registreExtensions)
   // Polyfill WebExtensions embarqué (webextension-polyfill 0.12.0, copié dans resources/extensions) : même convention que les listes des Boucliers.
   const dossierShims = join(app.isPackaged ? join(process.resourcesPath, 'resources') : join(app.getAppPath(), 'resources'), 'extensions')
   const polyfillExtensions = join(dossierShims, 'browser-polyfill.js')

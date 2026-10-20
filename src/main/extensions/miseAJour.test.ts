@@ -94,7 +94,7 @@ describe('verifier', () => {
   })
 
   it('uBO : compare la version de la release et réinstalle si plus récente', async () => {
-    const ubo = ext('u', { nom: 'uBlock Origin', source: 'zip', version: '1.63.0', dossier: `${id('u')}/1.63.0` })
+    const ubo = ext('u', { nom: 'uBlock Origin', source: 'ubo', version: '1.63.0', dossier: `${id('u')}/1.63.0` })
     const r = reglages([ubo])
     const installerUbo = vi.fn(async () => ({ etat: 'installee' as const, id: id('u'), nom: 'uBlock Origin', version: '1.64.0' }))
     const m = creerMiseAJour(base(r, { maintenant: () => NOW, derniereVersionUbo: async () => '1.64.0', installerUbo }))
@@ -106,6 +106,17 @@ describe('verifier', () => {
     const r2 = reglages([{ ...ubo, version: '1.64.0' }])
     expect((await creerMiseAJour(base(r2, { derniereVersionUbo: async () => '1.64.0', installerUbo })).verifier()).misesAJour).toEqual([])
     expect(installerUbo).not.toHaveBeenCalled()
+  })
+
+  it('uBO : seule la source « ubo » est mise à jour (un zip local nommé uBlock Origin est ignoré)', async () => {
+    const local = ext('u', { nom: 'uBlock Origin', source: 'zip', version: '1.0.0', dossier: `${id('u')}/1.0.0` })
+    const r = reglages([local])
+    const derniereVersionUbo = vi.fn(async () => '1.64.0')
+    const installerUbo = vi.fn(async () => ({ etat: 'installee' as const, id: id('u'), nom: 'uBlock Origin', version: '1.64.0' }))
+    const res = await creerMiseAJour(base(r, { derniereVersionUbo, installerUbo })).verifier()
+    expect(res.misesAJour).toEqual([])
+    expect(installerUbo).not.toHaveBeenCalled()
+    expect(derniereVersionUbo).not.toHaveBeenCalled()
   })
 
   it('sans extension du magasin ni uBO : aucun appel réseau', async () => {

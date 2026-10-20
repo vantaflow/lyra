@@ -125,7 +125,7 @@ export function creerInstallateurFirefox(d: DepsInstallateurFirefox): Installate
       const cle = cleDepuisGraine(guid ?? `nom:${nomBrut}:${createHash('sha256').update(xpi).digest('hex')}`)
       const existante = d.registre.trouver(idDepuisCle(cle))
       if (existante && o.source === 'xpi' && existante.source !== 'xpi') {
-        const origine = existante.source === 'amo' ? 'addons.mozilla.org' : existante.source === 'cws' ? 'le Chrome Web Store' : `une source « ${existante.source} »`
+        const origine = existante.source === 'amo' ? 'addons.mozilla.org' : existante.source === 'cws' ? 'le Chrome Web Store' : existante.source === 'ubo' ? "l'installation de uBlock Origin par Lyra" : `une source « ${existante.source} »`
         return echec(`ce fichier remplacerait l'extension ${existante.nom} installée depuis ${origine} : désinstalle-la d'abord si c'est voulu`)
       }
       const { rapport } = await convertir(attente, { enTete: [{ nom: 'browser-polyfill.js', source: d.polyfill }], svgVersPng: d.svgVersPng, cle })
