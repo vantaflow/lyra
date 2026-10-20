@@ -81,6 +81,8 @@ async function collecter(app: ElectronApplication, fenetre: Page, avant?: (p: Pa
     const p = await aller(app, fenetre, `lyra://settings#/${route}`, 'lyra://settings')
     await p.evaluate((r) => { location.hash = `#/${r}` }, route)
     await expect(p.locator('h1')).toBeVisible()
+    // La détection des navigateurs ajoute les boutons d'importation : on attend qu'elle ait fini.
+    if (route === 'importer') await expect(p.locator('#importer-maintenant')).toBeAttached()
     await prendre(`settings-${route}`, p)
   }
   await prendre('history', await aller(app, fenetre, 'lyra://history', 'lyra://history'))
