@@ -1,4 +1,3 @@
-import { COMMANDES } from '../../shared/commandes'
 import { SECTIONS } from './sections'
 
 /** Un enregistrement de l'index : une section (`id` = id de section) ou une ligne de réglage (`id` = `<section>.<réglage>`, porté en `data-reglage`). */
@@ -83,8 +82,9 @@ export const INDEX: EntreeIndex[] = [
   ligne('reseau', 'etat', 'État', ['passerelle', 'tester', 'réseau']),
   ligne('telechargements', 'dossier', 'Dossier de téléchargement', ['enregistrer', 'fichiers']),
   ligne('telechargements', 'demander', 'Demander où enregistrer chaque fichier', ['dossier', 'demander']),
-  // Une ligne par commande serait dynamique (`reglage` calculé) : le tableau est indexé d'un bloc, avec les libellés des commandes.
-  ligne('raccourcis', 'commandes', 'Raccourcis des commandes', ['combinaison', 'redéfinir', 'par défaut', 'réinitialiser', ...COMMANDES.map((c) => c.libelle)])
+  // Une ligne par commande serait dynamique (`reglage` calculé) : le tableau est indexé d'un bloc. Les libellés des commandes
+  // n'y figurent pas : « zoom » ou « historique » ne doivent pas faire surgir cette section (e2e reglages.spec.ts).
+  ligne('raccourcis', 'commandes', 'Raccourcis des commandes', ['combinaison', 'redéfinir', 'par défaut', 'réinitialiser'])
 ]
 
 /** Lignes parfois absentes de la page (affichées sous condition) : la recherche saute alors à la ligne qui les commande. */
