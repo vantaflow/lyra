@@ -43,6 +43,8 @@ import { couleurFaviconEnCache } from './theme/couleurFavicon'
 import { reglagesHorsSitesChanges } from './sites/service'
 import { resoudre } from './settings/sites'
 import { Dnd, type NotificationRetenue } from './dnd/Dnd'
+import { installerConfidentialite } from './confidentialite/installer'
+import { NOUVEL_ONGLET, pageDeDemarrage, restaurerSession } from '../shared/accueil'
 import { origineDe, type Shields } from './shields/Shields'
 import type { DureeDnd } from '../shared/ipc'
 
@@ -123,6 +125,7 @@ function livrerNotifications(fenetre: number, notifications: NotificationRetenue
 
 const dnd = new Dnd({
   exception: (origine) => resoudre(reglagesCourants().sites, origine).exceptionDnd === true,
+  dureeParDefaut: () => reglagesCourants().dnd.duree,
   livrerNotifications,
   // Popups retenues : ouvertes en étoiles d'arrière-plan, reliées à leur opener s'il existe encore.
   ouvrirPopups: (fenetre, popups) => {
@@ -176,7 +179,7 @@ function ongletsDe(wc: WebContents): TabManager {
   return m
 }
 
-function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSession): void {
+function creerFenetre(opts: { privee?: boolean; url?: string } = {}, restauration?: FenetreSession): void {
   const fenetre = manager.creerFenetre(opts)
   // Fenêtre privée : session mémoire à elle (cookies, cache, stockage jetés à la fermeture).
   // Toujours créée, jamais de repli sur `persist:lyra` : la première navigation attend l'équipement (démarrage compris).
@@ -229,7 +232,7 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
     void equipement.catch(echecEquipement)
   }
   // Une session privée est équipée (PAC compris) avant la première navigation : aucune requête ne part sans passerelle.
-  else void equipement.then(() => !fenetre.win.isDestroyed() && tabs.ouvrir('lyra://newtab')).catch(echecEquipement)
+  else void equipement.then(() => !fenetre.win.isDestroyed() && tabs.ouvrir(opts.url ?? NOUVEL_ONGLET)).catch(echecEquipement)
 }
 
 /** Fermeture d'une fenêtre privée : plus rien ne subsiste de sa session. */
@@ -363,6 +366,7 @@ void app.whenReady().then(async () => {
   handle('history:search', ({ texte, limite }) => hist.rechercher(texte, limite))
   handle('history:delete', ({ url }) => hist.supprimer(url))
   handle('history:clear', () => hist.effacer())
+  const confidentialite = installerConfidentialite({ reglages, historique: hist, sessions: () => [session.fromPartition('persist:lyra')] })
   handle('history:frequent', ({ n }) => hist.frequents(n))
   // Fenêtre privée : jamais de favori écrit (le bouton y est désactivé) ; l'état renvoyé reste celui du favori existant.
   handle('bookmarks:toggle', (f, e) => (estPrivee(e.sender) ? favoris.existe(f.url) : favoris.toggle(f)))
@@ -666,7 +670,7 @@ void app.whenReady().then(async () => {
     else if (action === 'historique') m.ouvrir('lyra://history')
     else m.ouvrir('lyra://settings')
   })
-  installerPalette({ ongletsDe, historique: hist, favoris, reglages: () => reglages.getSettings(), creerFenetre,
+  installerPalette({ ongletsDe, historique: hist, favoris, reglages: () => reglages.getSettings(), creerFenetre, privee: (m) => privees.has(m.fenetreId),
     dndActif: (m) => dnd.actif(m.fenetreId),
     dnd: (m, action) => (action === 'sortir' ? dnd.sortir(m.fenetreId) : entrerDnd(m.fenetreId, action)),
     deplacerCiel: (position) => void reglages.setSettings({ ciel: { position, masque: false } } as Partial<Settings>)
@@ -729,7 +733,8 @@ void app.whenReady().then(async () => {
     sauverSession()
     sessionStore?.vider()
     enFermeture = true
-    void hist.attendre().finally(() => app.quit())
+    // « Effacer à la fermeture » (Confidentialité) avant d'attendre les écritures de l'historique.
+    void confidentialite.aLaFermeture().then(() => hist.attendre()).finally(() => app.quit())
   })
   // Les règles par site (jusqu'à 10 000) ont leur évènement `sites:changed` : jamais rediffusées ici.
   let reglagesDiffuses: Settings = reglages.getSettings()
@@ -741,9 +746,9 @@ void app.whenReady().then(async () => {
     for (const wc of webContents.getAllWebContents()) envoyer(wc, 'settings:changed', { ...s, sites: {} })
   })
   sessionStore = new SessionStore(join(paths.userData(), 'session.json'))
-  const restauree = sessionStore.charger()
+  const restauree = restaurerSession(reglages.getSettings().demarrage.restaurer, sessionStore.charger())
   if (restauree) for (const f of restauree.fenetres) creerFenetre({}, f)
-  else creerFenetre()
+  else creerFenetre({ url: pageDeDemarrage(reglages.getSettings().demarrage.pageAccueil) })
   app.on('activate', () => {
     if (BaseWindow.getAllWindows().length === 0) creerFenetre()
   })

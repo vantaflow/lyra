@@ -92,6 +92,13 @@ describe('palette, confidentialité, gestes, démarrage', () => {
     expect(validerPatch({ demarrage: { nouvelleFenetre: 'ailleurs' } })).toEqual({})
     expect(validerPatch({ demarrage: { pageAccueil: 'x'.repeat(2049) } })).toEqual({})
   })
+  it("demarrage.pageAccueil : refuse javascript:, file: et tout ce qui n'est ni http(s) ni lyra://", () => {
+    for (const u of ['javascript:alert(1)', 'JavaScript:alert(1)', 'file:///etc/passwd', 'FILE:///tmp/x', 'data:text/html,x', 'exemple.fr', 'https://a b.fr', 'ftp://a.fr']) {
+      expect(validerPatch({ demarrage: { pageAccueil: u } }), u).toEqual({})
+    }
+    expect(validerPatch({ demarrage: { pageAccueil: 'https://exemple.fr/accueil', restaurer: false } })).toEqual({ demarrage: { pageAccueil: 'https://exemple.fr/accueil', restaurer: false } })
+    expect(validerPatch({ demarrage: { pageAccueil: 'lyra://history' } })).toEqual({ demarrage: { pageAccueil: 'lyra://history' } })
+  })
 })
 
 describe('dnd', () => {

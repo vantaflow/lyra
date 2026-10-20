@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { DELAI_RAPPEL_MS, Dnd, PLAFOND_NOTIFICATIONS, PLAFOND_POPUPS, texteFenetres, texteNotifications, texteReste, type EtatDnd, type NotificationRetenue, type PopupRetenue } from './Dnd'
+import { DELAI_RAPPEL_MS, Dnd, PLAFOND_NOTIFICATIONS, PLAFOND_POPUPS, texteFenetres, texteNotifications, texteReste, type DureeDnd, type EtatDnd, type NotificationRetenue, type PopupRetenue } from './Dnd'
 
-function creer(exceptions: string[] = [], horloge?: () => number) {
+function creer(exceptions: string[] = [], horloge?: () => number, dureeParDefaut?: () => DureeDnd) {
   const livrees: Array<[number, NotificationRetenue[]]> = []
   const popups: Array<[number, PopupRetenue[]]> = []
   const etats: Array<[number, EtatDnd]> = []
@@ -10,7 +10,8 @@ function creer(exceptions: string[] = [], horloge?: () => number) {
     livrerNotifications: (f, n) => livrees.push([f, n]),
     ouvrirPopups: (f, p) => popups.push([f, p]),
     surChangement: (f, e) => etats.push([f, e]),
-    maintenant: horloge
+    maintenant: horloge,
+    dureeParDefaut
   })
   return { dnd, livrees, popups, etats }
 }
@@ -340,5 +341,49 @@ describe('textes du rappel', () => {
     expect(texteReste(t + 60 * 60_000, t)).toBe('encore 1 h')
     expect(texteReste(t + 65 * 60_000, t)).toBe('encore 1 h 05')
     expect(texteReste(null, t)).toBe("jusqu'à l'arrêt")
+  })
+})
+
+describe('Dnd : durée par défaut lue des réglages', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('sans durée explicite, entrer() prend la durée des réglages (30 min)', () => {
+    const { dnd } = creer([], undefined, () => 30)
+    dnd.entrer(1)
+    expect(dnd.etat(1).duree).toBe(30)
+    vi.advanceTimersByTime(30 * 60_000)
+    expect(dnd.actif(1)).toBe(false)
+  })
+
+  it('« jusqu\'à l\'arrêt » : aucune minuterie', () => {
+    const { dnd } = creer([], undefined, () => 'arret')
+    dnd.entrer(1)
+    expect(dnd.etat(1)).toMatchObject({ duree: 'arret', fin: null })
+    vi.advanceTimersByTime(24 * 3_600_000)
+    expect(dnd.actif(1)).toBe(true)
+  })
+
+  it('basculer() entre avec la durée des réglages, lue à chaque appel', () => {
+    let d: DureeDnd = 30
+    const { dnd } = creer([], undefined, () => d)
+    dnd.basculer(1)
+    expect(dnd.etat(1).duree).toBe(30)
+    dnd.basculer(1)
+    d = 60
+    dnd.basculer(1)
+    expect(dnd.etat(1).duree).toBe(60)
+  })
+
+  it('une durée explicite prime sur les réglages', () => {
+    const { dnd } = creer([], undefined, () => 30)
+    dnd.entrer(1, 'arret')
+    expect(dnd.etat(1).duree).toBe('arret')
+  })
+
+  it('sans lecteur de réglages : 1 h', () => {
+    const { dnd } = creer()
+    dnd.entrer(1)
+    expect(dnd.etat(1).duree).toBe(60)
   })
 })
