@@ -30,9 +30,10 @@ const pageYoutube = (app: ElectronApplication): Page | undefined => app.windows(
 async function scenarioYoutube(ubo: boolean): Promise<void> {
   const { app, fenetre } = await lancerLyra()
   try {
-    // LYRA_E2E_STRICT=1 : même test avec une règle Boucliers « Strict » sur youtube.com et ses sous-domaines.
+    // LYRA_E2E_STRICT=1 : même test avec une règle Boucliers « Strict » et cookies « 1re partie » sur youtube.com et ses sous-domaines
+    // (les écouteurs du hub : Boucliers, garde Strict et règles de site coexistent).
     if (process.env.LYRA_E2E_STRICT === '1') {
-      for (const cle of ['youtube.com', '*.youtube.com']) await fenetre.evaluate((c) => window.lyra.invoke('sites:ecrire', { cle: c, regle: { boucliers: 'strict' } }), cle)
+      for (const cle of ['youtube.com', '*.youtube.com']) await fenetre.evaluate((c) => window.lyra.invoke('sites:ecrire', { cle: c, regle: { boucliers: 'strict', cookies: 'premiere-partie' } }), cle)
     }
     if (ubo) {
       const r = await fenetre.evaluate(() => window.lyra.invoke('extensions:installer', { source: 'ubo' }))

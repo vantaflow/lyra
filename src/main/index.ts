@@ -39,7 +39,7 @@ import type { TypePermission } from '../shared/types'
 import type { Passerelles } from './passerelles/Passerelles'
 import { creerPasserelles } from './passerelles/electron'
 import { installerPasserellesIpc } from './passerelles/ipc'
-import { installerSites } from './sites/installer'
+import { installerReglesSites, installerSites } from './sites/installer'
 import { installerTheme } from './theme/installer'
 import { couleurFaviconEnCache } from './theme/couleurFavicon'
 import { reglagesHorsSitesChanges } from './sites/service'
@@ -596,6 +596,12 @@ void app.whenReady().then(async () => {
   passerelles = pass
   installerPasserellesIpc(pass, estPrivee)
   installerSites({ reglages, estPrivee })
+  // Cookies, scripts et user-agent par site : écouteurs du hub (après les Boucliers) sur chaque session de pages web.
+  const reglesSites = installerReglesSites({ reglages })
+  const sessionsWeb = [session.defaultSession, session.fromPartition('persist:lyra')]
+  for (const ses of sessionsWeb) reglesSites.equiper(ses, { privee: false })
+  // Reliquats d'un arrêt brutal : les cookies « Session seulement » d'une exécution précédente ne survivent pas au démarrage.
+  void Promise.all(sessionsWeb.map((ses) => reglesSites.purger(ses)))
   // Le PAC initial est en place avant toute fenêtre (une étoile restaurée ne part pas en direct).
   await pass.demarrer()
   // Extensions : branchées et chargées avant la création de la moindre vue (donc de la première fenêtre).
@@ -919,6 +925,7 @@ void app.whenReady().then(async () => {
     permissionsPrivees.attacher(ses)
     telechargements.attacher(ses, { privee: true })
     boucliers.attacher(ses)
+    reglesSites.equiper(ses, { privee: true })
     sessionsPrivees.push(ses)
     await pass.attacherSession(ses)
   })
@@ -932,7 +939,11 @@ void app.whenReady().then(async () => {
     sauverSession()
     sessionStore?.vider()
     enFermeture = true
-    void hist.attendre().finally(() => app.quit())
+    // « Session seulement » : les cookies de ces sites sont purgés avant de quitter.
+    void hist
+      .attendre()
+      .then(() => Promise.all(sessionsWeb.map((ses) => reglesSites.purger(ses))))
+      .finally(() => app.quit())
   })
   // Les règles par site (jusqu'à 10 000) ont leur évènement `sites:changed` : jamais rediffusées ici.
   let reglagesDiffuses: Settings = reglages.getSettings()

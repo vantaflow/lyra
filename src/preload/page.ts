@@ -17,6 +17,9 @@ if (WEB) {
       ipcRenderer.send('shields:scriptlet-error', noms.at(-1) ?? 'inconnu')
     })
   }
+  // User-agent alternatif du site : `navigator` (platform, vendor, userAgentData) suit le profil, avant tout script de la page.
+  const profilNavigateur: string = ipcRenderer.sendSync('sites:ua-script') ?? ''
+  if (profilNavigateur) void webFrame.executeJavaScript(profilNavigateur).catch(() => undefined)
   // Sonde de test seulement (LYRA_TEST=1 → --lyra-test) : jamais visible des sites en usage normal.
   if (window === window.top && process.argv.includes('--lyra-test')) {
     void webFrame

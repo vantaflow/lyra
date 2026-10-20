@@ -8,6 +8,7 @@ import { fromElectronDetails, type ElectronBlocker } from '@ghostery/adblocker-e
 import { parse } from 'tldts-experimental'
 import type { Settings } from '../../shared/types'
 import { hubDe, apresBoucliers, estExempte, PRIORITE_BOUCLIERS, PRIORITE_APRES_BOUCLIERS, type SessionWeb } from '../session/webRequestHub'
+import { hautConnu, origineDe } from '../session/pageHaute'
 import { resoudre } from '../settings/sites'
 import { Compteurs } from './compteurs'
 import { bloqueScriptTiers } from './strict'
@@ -68,28 +69,7 @@ export interface Shields {
 const FILTRABLE = /^(https?|wss?):/i
 const WEB = /^https?:/i
 
-/** Origine servant de clé aux règles de site : « https://hôte[:port] », « file:// », ou '' . */
-export function origineDe(url: string): string {
-  try {
-    const u = new URL(url)
-    if (u.protocol === 'file:') return 'file://'
-    return u.origin === 'null' ? '' : u.origin
-  } catch {
-    return ''
-  }
-}
-
-/** Page de premier niveau qui a émis la requête, ou '' si elle est inconnue (service worker, webContents détruit sans référent). */
-function hautConnu(d: OnBeforeRequestListenerDetails | OnHeadersReceivedListenerDetails): string {
-  if (d.resourceType === 'mainFrame') return d.url
-  let url = ''
-  try {
-    url = d.webContents?.getURL() ?? ''
-  } catch {
-    // webContents détruit
-  }
-  return url || d.referrer || ''
-}
+export { origineDe }
 
 /** URL de la page de premier niveau (le référent d'une iframe ne compte pas) ; à défaut, l'URL de la requête. */
 const urlPremierNiveau = (d: OnBeforeRequestListenerDetails | OnHeadersReceivedListenerDetails): string => hautConnu(d) || d.url
