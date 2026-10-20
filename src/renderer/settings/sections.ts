@@ -44,12 +44,3 @@ export function routeDepuisHash(hash: string, hote: string): string {
   const brute = hash.replace(/^#\/?/, '').split('/')[0] || SECTION_DE_L_HOTE[hote] || 'general'
   return SECTIONS.some((s) => s.id === brute) || ROUTES_HORS_SOMMAIRE.includes(brute) ? brute : 'general'
 }
-
-const nu = (t: string): string => t.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
-
-/** Sections dont le libellé ou un mot-clé contient la recherche (sans accents ni casse) ; tout si la recherche est vide. */
-export function filtrerSections(recherche: string): SectionReglages[] {
-  const q = nu(recherche.trim())
-  if (!q) return SECTIONS
-  return SECTIONS.filter((s) => [s.libelle, ...s.motsCles].some((t) => nu(t).includes(q)))
-}

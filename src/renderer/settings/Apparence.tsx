@@ -58,14 +58,14 @@ export function Apparence() {
             ))}
           </div>
         </div>
-        <Ligne titre="Révéler le ciel masqué au survol du bord" aide="Sinon seulement avec ⌘ \ ou le bouton de la capsule">
+        <Ligne reglage="apparence.revelerSurvol" titre="Révéler le ciel masqué au survol du bord" aide="Sinon seulement avec ⌘ \ ou le bouton de la capsule">
           <Interrupteur
             actif={s.ciel.revelerAuSurvol}
             libelle="Révéler au survol"
             surChange={(revelerAuSurvol) => regler({ ciel: { revelerAuSurvol } })}
           />
         </Ligne>
-        <Ligne titre="Largeur du ciel" aide={`${largeur ?? s.ciel.largeur} px — se règle aussi en tirant son bord`}>
+        <Ligne reglage="apparence.largeur" titre="Largeur du ciel" aide={`${largeur ?? s.ciel.largeur} px — se règle aussi en tirant son bord`}>
           <input
             class="rng"
             type="range"
@@ -77,7 +77,7 @@ export function Apparence() {
             onChange={(e) => reglerLargeur(Number((e.currentTarget as HTMLInputElement).value), true)}
           />
         </Ligne>
-        <Ligne titre="Glisser l'en-tête du ciel vers un bord pour le déplacer">
+        <Ligne reglage="apparence.glisser" titre="Glisser l'en-tête du ciel vers un bord pour le déplacer">
           <Interrupteur
             actif={s.ciel.deplacerParGlisser}
             libelle="Déplacer par glisser"
@@ -88,7 +88,7 @@ export function Apparence() {
 
       <Titre>Apparence</Titre>
       <div class="card">
-        <Ligne titre="Thème">
+        <Ligne reglage="apparence.theme" titre="Thème">
           <Segments
             valeur={s.theme}
             options={[

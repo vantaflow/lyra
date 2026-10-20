@@ -14,14 +14,14 @@ export function General() {
     <>
       <Titre>Langue</Titre>
       <div class="card">
-        <Ligne titre="Langue de l'interface">
+        <Ligne reglage="general.langue" titre="Langue de l'interface">
           <Selecteur libelle="Langue" valeur={s.langue} options={LANGUES} surChange={(langue) => regler({ langue })} />
         </Ligne>
       </div>
 
       <Titre>Confidentialité</Titre>
       <div class="card">
-        <Ligne titre="Historique de navigation" aide="Supprime toutes les pages visitées">
+        <Ligne reglage="general.historique" titre="Historique de navigation" aide="Supprime toutes les pages visitées">
           <button class="btn" type="button" onClick={() => void window.lyra.invoke('history:clear')}>
             Effacer l'historique
           </button>

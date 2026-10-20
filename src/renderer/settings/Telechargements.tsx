@@ -33,12 +33,12 @@ export function Telechargements() {
         <>
           <Titre>Téléchargements</Titre>
           <div class="card">
-            <Ligne titre="Dossier de téléchargement" aide={s.telechargements.dossier}>
+            <Ligne reglage="telechargements.dossier" titre="Dossier de téléchargement" aide={s.telechargements.dossier}>
               <button class="btn" type="button" onClick={() => void choisirDossier()}>
                 Choisir…
               </button>
             </Ligne>
-            <Ligne titre="Demander où enregistrer chaque fichier">
+            <Ligne reglage="telechargements.demander" titre="Demander où enregistrer chaque fichier">
               <Interrupteur
                 actif={s.telechargements.demander}
                 libelle="Demander où enregistrer"

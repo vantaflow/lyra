@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filtrerSections, routeDepuisHash, SECTIONS } from './sections'
+import { routeDepuisHash, SECTIONS } from './sections'
 
 describe('SECTIONS', () => {
   it('compte les 19 entrées du design, dans leur ordre', () => {
@@ -46,16 +46,5 @@ describe('routeDepuisHash', () => {
   it('retombe sur Général pour une route inconnue', () => {
     expect(routeDepuisHash('#/nimportequoi', 'settings')).toBe('general')
     expect(routeDepuisHash('', 'settings')).toBe('general')
-  })
-})
-
-describe('filtrerSections', () => {
-  it('rend tout sans recherche', () => {
-    expect(filtrerSections('  ')).toHaveLength(19)
-  })
-  it('cherche dans le libellé et les mots-clés, sans accents ni casse', () => {
-    expect(filtrerSections('ciel').map((s) => s.id)).toContain('apparence')
-    expect(filtrerSections('SILENCE').map((s) => s.id)).toContain('nepasderanger')
-    expect(filtrerSections('zzzz')).toEqual([])
   })
 })

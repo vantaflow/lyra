@@ -415,3 +415,38 @@ body,
   overflow: hidden;
   clip: rect(0 0 0 0);
 }
+
+/* Résultats de recherche : lignes de réglage trouvées, et mise en évidence de la ligne choisie */
+.nav .trouves {
+  display: flex;
+  flex-direction: column;
+  margin-top: 6px;
+  border-top: 1px solid #e6e6ee;
+  padding-top: 6px;
+}
+.nav .trouves button {
+  display: block;
+  width: 100%;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: 13px 'Manrope', sans-serif;
+  color: #1c1c2e;
+  text-align: left;
+  cursor: pointer;
+}
+.nav .trouves button:hover {
+  background: #ececf5;
+}
+.nav .trouves button small {
+  display: block;
+  font-size: 11px;
+  color: #6b6b80;
+}
+.trouve {
+  background: rgba(84, 82, 200, 0.12);
+  box-shadow: 0 0 0 2px #5452c8;
+  border-radius: 8px;
+  transition: background 0.3s;
+}

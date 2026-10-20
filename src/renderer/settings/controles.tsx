@@ -3,9 +3,10 @@ import type { ComponentChildren } from 'preact'
 
 /** Contrôles de Parametres.dc.html : .row/.lbl/.hint, .tg, .sel, .seg. */
 
-export function Ligne({ titre, aide, children }: { titre: string; aide?: string; children?: ComponentChildren }) {
+/** `reglage` : identifiant de l'index de recherche (`<section>.<réglage>`), porté en `data-reglage` pour la mise en évidence. */
+export function Ligne({ titre, aide, reglage, children }: { titre: string; aide?: string; reglage?: string; children?: ComponentChildren }) {
   return (
-    <div class="row">
+    <div class="row" data-reglage={reglage}>
       <div class="lbl">
         <span>{titre}</span>
         {aide && <span class="hint">{aide}</span>}

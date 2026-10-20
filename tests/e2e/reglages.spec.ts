@@ -98,3 +98,30 @@ test('réglages : le sommaire compte 19 entrées, la recherche les filtre, lyra:
     await app.close()
   }
 })
+
+test('réglages : « zoom » mène à Règles par site (route + mise en évidence), « sombre » à Couleurs et thèmes, Échap vide', async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    await fenetre.evaluate(() => window.lyra.invoke('test:navigate', 'lyra://settings'))
+    await expect.poll(() => page(app, 'lyra://settings')).toBeDefined()
+    const r = page(app, 'lyra://settings')!
+    await r.fill('#chercher-reglage', 'zoom')
+    await expect(r.locator('.nav a')).toHaveText(['Règles par site'])
+    await r.locator('.nav a', { hasText: 'Règles par site' }).click()
+    await expect(r.locator('h1')).toHaveText('Règles par site')
+    await expect(r.locator('[data-reglage="sites"]')).toHaveClass(/trouve/)
+    await r.fill('#chercher-reglage', 'sombre')
+    await expect(r.locator('.nav a')).toContainText(['Couleurs et thèmes'])
+    await r.locator('.nav a', { hasText: 'Couleurs et thèmes' }).click()
+    await expect(r.locator('h1')).toHaveText('Couleurs et thèmes')
+    await r.fill('#chercher-reglage', 'largeur ciel')
+    await r.locator('[data-resultat="apparence.largeur"]').click()
+    await expect(r.locator('h1')).toHaveText("Le ciel et l'apparence")
+    await expect(r.locator('[data-reglage="apparence.largeur"]')).toHaveClass(/trouve/)
+    await r.press('#chercher-reglage', 'Escape')
+    await expect(r.locator('#chercher-reglage')).toHaveValue('')
+    await expect(r.locator('.nav a')).toHaveCount(19)
+  } finally {
+    await app.close()
+  }
+})

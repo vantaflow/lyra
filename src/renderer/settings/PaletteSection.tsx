@@ -9,7 +9,7 @@ export function PaletteSection() {
     <>
       <Titre>Moteur de recherche</Titre>
       <div class="card">
-        <Ligne titre="Moteur par défaut" aide="Utilisé par le nouvel onglet et la palette">
+        <Ligne reglage="palette.moteur" titre="Moteur par défaut" aide="Utilisé par le nouvel onglet et la palette">
           <Selecteur
             libelle="Moteur par défaut"
             valeur={s.moteurParDefaut}

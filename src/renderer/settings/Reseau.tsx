@@ -128,16 +128,17 @@ export function Reseau() {
     <>
       <p class="sous-titre">Atteindre les sites bloqués par le réseau sur lequel vous êtes.</p>
       <div class="card">
-        <Ligne titre="Passerelles pour les sites bloqués" aide="Les sites de la liste passent toujours par une passerelle ; les autres restent en direct">
+        <Ligne reglage="reseau.passerelles" titre="Passerelles pour les sites bloqués" aide="Les sites de la liste passent toujours par une passerelle ; les autres restent en direct">
           <Interrupteur actif={e.actif} libelle="Passerelles" surChange={(passerelles) => regler({ passerelles })} />
         </Ligne>
         <Ligne
+          reglage="reseau.detection"
           titre="Détecter les sites bloqués automatiquement"
           aide="Si un site https ne répond pas alors que le réseau fonctionne, Lyra essaie une passerelle et l'ajoute si elle réussit"
         >
           <Interrupteur actif={e.auto} libelle="Détection automatique" surChange={(auto) => regler({ auto })} />
         </Ligne>
-        <Ligne titre="État" aide={resumeEtat(e)}>
+        <Ligne reglage="reseau.etat" titre="État" aide={resumeEtat(e)}>
           <span class={`tag ${etiquette.classe}`} role="status">
             {etiquette.texte}
           </span>

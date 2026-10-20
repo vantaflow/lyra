@@ -33,13 +33,13 @@ export function BouclierSection() {
     <>
       <Titre>Boucliers</Titre>
       <div class="card">
-        <Ligne titre="Niveau de protection" aide="Bloque les publicités et les traqueurs connus">
+        <Ligne reglage="boucliers.niveau" titre="Niveau de protection" aide="Bloque les publicités et les traqueurs connus">
           <Segments valeur="standard" options={[{ id: 'standard', libelle: 'Standard' }]} />
         </Ligne>
-        <Ligne titre="Masquer aussi les gênes" aide="Bientôt : bandeaux de cookies et fenêtres d'invitation">
+        <Ligne reglage="boucliers.genes" titre="Masquer aussi les gênes" aide="Bientôt : bandeaux de cookies et fenêtres d'invitation">
           <Interrupteur actif={false} libelle="Masquer les gênes" inerte />
         </Ligne>
-        <Ligne titre="Mettre à jour les listes toutes les" aide="Les listes de blocage sont relues à cette fréquence">
+        <Ligne reglage="boucliers.frequence" titre="Mettre à jour les listes toutes les" aide="Les listes de blocage sont relues à cette fréquence">
           <Selecteur
             libelle="Fréquence de mise à jour"
             valeur={String(s.boucliers.majHeures)}
@@ -47,7 +47,7 @@ export function BouclierSection() {
             surChange={(h) => regler({ boucliers: { majHeures: Number(h) } })}
           />
         </Ligne>
-        <Ligne titre="Listes de blocage" aide={date ? `Dernière mise à jour : ${date}` : undefined}>
+        <Ligne reglage="boucliers.listes" titre="Listes de blocage" aide={date ? `Dernière mise à jour : ${date}` : undefined}>
           <button class="btn" type="button" id="maj-boucliers" disabled={maj} onClick={() => void mettreAJour()}>
             {maj ? 'Mise à jour…' : 'Mettre à jour maintenant'}
           </button>
