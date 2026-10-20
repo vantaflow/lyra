@@ -158,7 +158,7 @@ test('exports ciel, historique et réglages ; sauvegarde automatique activée pu
     expect(await r.evaluate((chemin) => window.lyra.invoke('export:reglages', { chemin }), regl)).toMatchObject({ ok: true })
     expect(JSON.parse(readFileSync(ciel, 'utf8'))).toMatchObject({ format: 'lyra-ciel', etoiles: [{ url: 'https://lire.fr/' }, { url: 'https://libre.fr/' }] })
     expect(readFileSync(histo, 'utf8')).toBe('date,titre,adresse,visites\r\n2026-01-02T03:04:05.000Z,"Page, avec virgule",https://histo.fr/a,1\r\n')
-    expect(JSON.parse(readFileSync(regl, 'utf8')).version).toBe(1)
+    expect(JSON.parse(readFileSync(regl, 'utf8')).version).toBe(2)
 
     // Phrase trop courte : refus ; sinon activation, première sauvegarde peu après, jamais la phrase sur le disque.
     expect(await r.evaluate((d) => window.lyra.invoke('export:sauvegardeAuto', d), { activer: true, dossier: dossierAuto, phrase: 'court' })).toMatchObject({ ok: false, erreur: 'phrase-courte' })

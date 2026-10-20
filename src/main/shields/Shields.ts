@@ -3,25 +3,32 @@
  * (scriptlets trop tardifs et handlers IPC globaux : voir la spec §6). Pur côté Electron : les
  * sessions et les détails de requêtes sont passés en paramètre, ce qui rend le module testable.
  */
-import type { OnBeforeRequestListenerDetails, OnHeadersReceivedListenerDetails, WebRequestFilter } from 'electron'
+import type { OnBeforeRequestListenerDetails, OnHeadersReceivedListenerDetails } from 'electron'
 import { fromElectronDetails, type ElectronBlocker } from '@ghostery/adblocker-electron'
 import { parse } from 'tldts-experimental'
 import type { Settings } from '../../shared/types'
+import { hubDe, type SessionWeb } from '../session/webRequestHub'
 import { Compteurs } from './compteurs'
+
+/** Les Boucliers passent avant les règles par site (priorité par défaut du hub : 100). */
+const PRIORITE_BOUCLIERS = 50
 
 type ReponseAvant = { cancel?: boolean; redirectURL?: string }
 type ReponseEntetes = { responseHeaders?: Record<string, string[] | string> }
 
 /** Ce dont les Boucliers ont besoin d'une session Electron (Session y est assignable). */
 export interface SessionShields {
-  webRequest: {
-    onBeforeRequest(filtre: WebRequestFilter, ecouteur: (d: OnBeforeRequestListenerDetails, cb: (r: ReponseAvant) => void) => void): void
-    onHeadersReceived(
-      filtre: WebRequestFilter,
-      ecouteur: (d: OnHeadersReceivedListenerDetails, cb: (r: ReponseEntetes) => void) => void
-    ): void
-  }
+  webRequest: SessionWeb['webRequest']
 }
+
+/** Les écouteurs ci-dessous rappellent de façon synchrone : adaptation à la forme « retourne la réponse » du hub. */
+const enRetour =
+  <D, R>(fn: (d: D, cb: (r: R) => void) => void) =>
+  (d: D): R | void => {
+    let reponse: R | undefined
+    fn(d, (r) => (reponse = r))
+    return reponse
+  }
 
 export interface OptionsShields {
   moteurInitial: ElectronBlocker
@@ -59,7 +66,6 @@ export interface Shields {
   styles(d: DemandeStyles): string
 }
 
-const TOUTES: WebRequestFilter = { urls: ['<all_urls>'] }
 const FILTRABLE = /^(https?|wss?):/i
 const WEB = /^https?:/i
 
@@ -155,8 +161,9 @@ export function creerShields(opts: OptionsShields): Shields {
 
   return {
     attacher(ses) {
-      ses.webRequest.onBeforeRequest(TOUTES, avant)
-      ses.webRequest.onHeadersReceived(TOUTES, entetes)
+      const hub = hubDe(ses)
+      hub.onBeforeRequest('boucliers', enRetour(avant), PRIORITE_BOUCLIERS)
+      hub.onHeadersReceived('boucliers', enRetour(entetes), PRIORITE_BOUCLIERS)
     },
     remplacerMoteur(m) {
       moteur = m

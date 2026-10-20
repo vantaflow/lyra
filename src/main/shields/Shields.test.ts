@@ -17,6 +17,7 @@ function fausseSession(): SessionShields & { avant?: Ecouteur; entetes?: Ecouteu
   const s: SessionShields & { avant?: Ecouteur; entetes?: Ecouteur } = {
     webRequest: {
       onBeforeRequest: (_f: unknown, fn: unknown) => void (s.avant = fn as Ecouteur),
+      onBeforeSendHeaders: () => undefined,
       onHeadersReceived: (_f: unknown, fn: unknown) => void (s.entetes = fn as Ecouteur)
     }
   }
