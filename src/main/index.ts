@@ -1,7 +1,7 @@
 import { app, BaseWindow, dialog, ipcMain, powerMonitor, Notification as NotificationSysteme, webContents, type WebContents, type WebFrameMain, protocol, session, type Session } from 'electron'
 import { readFileSync } from 'node:fs'
 import { WindowManager } from './window/WindowManager'
-import type { Settings, SkyState } from '../shared/types'
+import type { ExtensionEnAttente, Settings, SkyState } from '../shared/types'
 import { join } from 'node:path'
 import * as paths from './paths'
 import { definirFournisseurLangue } from '../shared/i18n'
@@ -628,7 +628,7 @@ void app.whenReady().then(async () => {
     }
   })
   const registreExtensions = creerRegistre(reglages)
-  if (process.env.LYRA_TEST === '1' && process.env.LYRA_EXTENSIONS_FIXTURES) {
+  if (enTest() && process.env.LYRA_EXTENSIONS_FIXTURES) {
     installerFixtures(process.env.LYRA_EXTENSIONS_FIXTURES, baseExtensions, registreExtensions)
   }
   // Polyfill WebExtensions embarqué (webextension-polyfill 0.12.0, copié dans resources/extensions) : même convention que les listes des Boucliers.
@@ -677,7 +677,6 @@ void app.whenReady().then(async () => {
       if (lu.avertissement) journalExtensions.avertissement(e.id, lu.avertissement)
     }
   })
-  const fileSimulee = process.env.LYRA_TEST === '1' && process.env.LYRA_FILE_SIMULEE === '1' ? { liste: [] as unknown[] } : undefined
   const installateurChrome = creerInstallateurChrome({ base: baseExtensions, registre: registreExtensions, chargeur: chargeurExtensions, shims: shimsExtensions })
   const installateurFirefox = creerInstallateurFirefox({ base: baseExtensions, registre: registreExtensions, chargeur: chargeurExtensions, polyfill: polyfillExtensions, shims: shimsExtensions, svgVersPng })
   const miseAJourExtensions = creerMiseAJour({
@@ -698,7 +697,7 @@ void app.whenReady().then(async () => {
     miseAJour: miseAJourExtensions,
     journal: journalExtensions,
     pagesExtension,
-    modeTest: process.env.LYRA_TEST === '1',
+    modeTest: enTest(),
     diffuser: (canal, data) => {
       // Jamais vers une fenêtre privée (la progression d'un import ne la concerne pas).
       for (const wc of webContents.getAllWebContents()) {
@@ -708,7 +707,7 @@ void app.whenReady().then(async () => {
     },
     // E2e : installateurs simulés (aucun accès réseau) — « b… » échoue, le reste s'installe.
     installateursFileTest:
-      process.env.LYRA_TEST === '1' && process.env.LYRA_FILE_SIMULEE === '1'
+      enTest() && process.env.LYRA_FILE_SIMULEE === '1'
         ? {
             chrome: async (id) => (id.startsWith('b') ? { etat: 'erreur', raison: 'Hors ligne (simulé).' } : { etat: 'installee', id, nom: `Simulée ${id.slice(0, 4)}`, version: '1.0' }),
             firefox: async (id) => ({ etat: 'installee', id, nom: `Simulée ${id}`, version: '1.0' })
@@ -716,19 +715,16 @@ void app.whenReady().then(async () => {
         : undefined,
     // Chrome, overlay ou étoile (lyra://extensions comprise) : la fenêtre privée est reconnue dans les trois cas.
     estPrivee,
-    // File d'import du jalon E (`settings.import.extensionsEnAttente`) : absente tant que E n'est pas fusionné (file vide).
-    // E2e (`LYRA_FILE_SIMULEE`) : file tenue en mémoire (le validateur de ce jalon ignore `import`).
-    lireFile: () => (fileSimulee ? fileSimulee.liste : (reglages.getSettings() as unknown as { import?: { extensionsEnAttente?: unknown } }).import?.extensionsEnAttente),
-    ecrireFile: (restantes) => {
-      if (fileSimulee) fileSimulee.liste = restantes
-      else void reglages.setSettings({ import: { extensionsEnAttente: restantes } } as unknown as Partial<Settings>)
-    },
+    // File d'import du jalon E : `settings.import.extensionsEnAttente`, lue et réécrite par le processus principal seul
+    // (une page ne peut pas l'écrire : `patchPage`). Les tableaux sont remplacés, pas fusionnés.
+    lireFile: () => reglages.getSettings().import.extensionsEnAttente,
+    ecrireFile: (restantes) => void reglages.setSettings({ import: { extensionsEnAttente: restantes as ExtensionEnAttente[] } } as Partial<Settings>),
     lireManifest: (e) => lireJson(join(baseExtensions, e.dossier, 'manifest.json')),
     ouvrirEtoile: (wc, url) => (ongletsPossedant(wc) ?? ongletsDe(wc)).ouvrir(url),
     ecrireRegleSite: (origine, id, active) => void reglages.setSettings({ sites: { [origine]: { extensions: { [id]: active } } } }),
     choisir: async (wc, quoi) => {
-      // Sous LYRA_TEST, pas de dialogue natif : le test fournit le chemin.
-      if (process.env.LYRA_TEST === '1' && process.env.LYRA_CHOIX_EXTENSION) return process.env.LYRA_CHOIX_EXTENSION
+      // En mode test, pas de dialogue natif : le test fournit le chemin.
+      if (enTest() && process.env.LYRA_CHOIX_EXTENSION) return process.env.LYRA_CHOIX_EXTENSION
       const f = manager.deWebContents(wc)
       // macOS accepte un fichier ou un dossier dans le même dialogue ; ailleurs, deux dialogues distincts.
       const options: Electron.OpenDialogOptions =
@@ -741,7 +737,7 @@ void app.whenReady().then(async () => {
   })
   await chargeurExtensions.chargerAuDemarrage()
   // Mises à jour : jamais sous test (pas de réseau inattendu), et seulement si le réglage est actif.
-  if (process.env.LYRA_TEST !== '1') miseAJourExtensions.demarrer()
+  if (!enTest()) miseAJourExtensions.demarrer()
   app.on('will-quit', () => miseAJourExtensions.arreter())
   if (enTest()) {
     handle('test:navigate', async (url) => {
@@ -751,9 +747,10 @@ void app.whenReady().then(async () => {
     })
     handle('test:endormir', (id) => ongletsCourants()?.endormir(id) ?? false)
     handle('test:livraisons', () => livraisonsTest)
+    // Pose (si fournie) puis rend la vraie file d'import des réglages (validée comme n'importe quel réglage).
     handle('test:fileImport', (liste) => {
-      if (fileSimulee && Array.isArray(liste)) fileSimulee.liste = liste
-      return fileSimulee?.liste ?? []
+      if (Array.isArray(liste)) reglages.setSettings({ import: { extensionsEnAttente: liste } } as Partial<Settings>)
+      return reglages.getSettings().import.extensionsEnAttente
     })
   }
   handle('tabs:open', (d, e) => ongletsDe(e.sender).ouvrir(d.url, { parentId: d.parentId, actif: d.actif }))

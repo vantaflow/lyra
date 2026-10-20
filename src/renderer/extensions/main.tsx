@@ -10,6 +10,8 @@ const couleurDe = (id: string): string => COULEURS[[...id].reduce((n, c) => n + 
 
 type Mode = 'journal' | 'sites'
 
+const MAGASIN_FILE = { chrome: 'Chrome Web Store', edge: 'À installer à la main (Edge)', firefox: 'addons.mozilla.org', inconnu: 'À installer à la main (origine inconnue)' } as const
+
 /** Hôte saisi (« https://www.youtube.com/watch », « YouTube.com ») → origine https, ou undefined. */
 function origineSaisie(saisie: string): string | undefined {
   const h = saisie.trim().toLowerCase().replace(/^https?:\/\//, '').split(/[/?#]/)[0]
@@ -184,6 +186,8 @@ function Page({ privee }: { privee: boolean | undefined }) {
   const [progressionFile, setProgressionFile] = useState<ProgressionFile | null>(null)
   const [resultatFile, setResultatFile] = useState<ResultatFile | null>(null)
 
+  const enAttente = reglages?.import.extensionsEnAttente ?? []
+
   const rafraichir = useCallback(async (): Promise<void> => {
     const l = await window.lyra.invoke('extensions:lister')
     setListe(l)
@@ -242,6 +246,18 @@ function Page({ privee }: { privee: boolean | undefined }) {
     setOccupe(true)
     try {
       setResultatFile(await window.lyra.invoke('extensions:consommerFile', { confirmees: [`${e.magasin}:${e.id}`] }))
+      await rafraichir()
+    } catch (err) {
+      setRetour({ texte: err instanceof Error ? err.message : String(err) })
+    } finally {
+      setOccupe(false)
+    }
+  }
+  // « Tout réinstaller » : le processus principal lit la file des réglages ; aucune entrée imposée n'est confirmée.
+  const reinstaller = async (): Promise<void> => {
+    setOccupe(true)
+    try {
+      setResultatFile(await window.lyra.invoke('extensions:consommerFile'))
       await rafraichir()
     } catch (err) {
       setRetour({ texte: err instanceof Error ? err.message : String(err) })
@@ -317,6 +333,33 @@ function Page({ privee }: { privee: boolean | undefined }) {
         </div>
       </div>
 
+      {enAttente.length > 0 && !progressionFile && !(resultatFile && resultatFile.resultats.length > 0) && (
+        <div class="card" role="region" aria-label="Extensions importées en attente">
+          <div class="row">
+            <strong>
+              {enAttente.length} {enAttente.length > 1 ? 'extensions importées attendent' : 'extension importée attend'} d'être réinstallée{enAttente.length > 1 ? 's' : ''}
+            </strong>
+            <button class="btn pri" type="button" disabled={occupe || bloque} onClick={() => void reinstaller()}>
+              Tout réinstaller
+            </button>
+          </div>
+          {enAttente.map((e) => (
+            <div class="row" key={`${e.magasin}:${e.id}`}>
+              <div class="corps retour">
+                <span>
+                  <strong>{e.nom}</strong> <span class="hint">{MAGASIN_FILE[e.magasin]}{e.actif ? '' : ' · désactivée'}</span>
+                </span>
+                {e.imposee && <span class="hint">Imposée par une règle du navigateur d'origine : installée seulement si tu le confirmes.</span>}
+              </div>
+              {e.imposee && (
+                <button class="btn" type="button" disabled={occupe || bloque} aria-label={`Installer quand même ${e.nom}`} onClick={() => void confirmerImposee(e)}>
+                  Installer quand même
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
       {progressionFile && (
         <div class="card" role="status">
           <div class="row">

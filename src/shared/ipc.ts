@@ -318,7 +318,7 @@ export type Requetes = {
   'passerelles:warp': [void, EtatPasserelles]
   /** Test uniquement (LYRA_TEST=1) : charge une URL dans la vue de page. */
   'test:navigate': [string, void]
-  /** Sous `LYRA_TEST` + `LYRA_FILE_SIMULEE` : pose la file d'import (en mémoire, jalon E non fusionné) et rend celle qui reste. */
+  /** Mode test (`enTest()`) : pose la file d'import des réglages (`import.extensionsEnAttente`) et rend celle qui reste. */
   'test:fileImport': [unknown[] | undefined, unknown[]]
   'test:endormir': [string, boolean]
   /** Test uniquement (LYRA_TEST=1) : dernière URL demandée par la palette. */

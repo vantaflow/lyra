@@ -251,3 +251,41 @@ test("crx:// n'est pas servi aux sites : une page web ne peut pas charger les ic
     await app.close()
   }
 })
+
+test("file d'import : la page lyra://extensions affiche la vraie file des réglages et la réinstalle ; une page ne peut pas l'écrire", async () => {
+  const { app, fenetre } = await lancerLyra({ LYRA_FILE_SIMULEE: '1' })
+  try {
+    const entrees = [
+      { id: id('a'), nom: 'Alpha', magasin: 'chrome' as const, actif: true, source: 'chrome' as const, date: 1 },
+      { id: id('d'), nom: 'Delta imposée', magasin: 'chrome' as const, actif: true, source: 'chrome' as const, date: 2, imposee: true }
+    ]
+    await fenetre.evaluate((e) => window.lyra.invoke('test:fileImport', e), entrees)
+    // La file est un vrai réglage : visible dans settings:get (donc dans la page de l'import d'E), mais non inscriptible par une page.
+    expect((await fenetre.evaluate(() => window.lyra.invoke('settings:get'))).import.extensionsEnAttente).toEqual(entrees)
+    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { import: { extensionsEnAttente: [] } } as never))
+    expect((await fenetre.evaluate(() => window.lyra.invoke('settings:get'))).import.extensionsEnAttente).toEqual(entrees)
+
+    await fenetre.evaluate(() => window.lyra.invoke('tabs:open', { url: 'lyra://extensions' }))
+    await expect.poll(() => page(app, 'lyra://extensions')).toBeDefined()
+    const p = page(app, 'lyra://extensions')!
+    const carte = p.getByRole('region', { name: 'Extensions importées en attente' })
+    await expect(carte.getByText('2 extensions importées attendent')).toBeVisible()
+    await expect(carte.getByText('Alpha')).toBeVisible()
+    await p.getByRole('button', { name: 'Tout réinstaller' }).click()
+    await expect(p.getByRole('status', { name: "Réinstallation depuis l'import" }).getByText('1 sur 2 réinstallées, 1 à confirmer')).toBeVisible()
+    // L'imposée reste dans la file : jamais installée sans confirmation explicite.
+    expect(await fenetre.evaluate(() => window.lyra.invoke('test:fileImport'))).toEqual([entrees[1]])
+
+    // Fenêtre privée : aucune règle par site n'est inscrite (comme le zoom et les permissions), en fenêtre normale oui.
+    await app.evaluate(({ Menu }) => Menu.getApplicationMenu()!.getMenuItemById('fenetre-privee')!.click())
+    await expect.poll(() => interfaces(app).find((w) => w.url().includes('#privee'))).toBeDefined()
+    const privee = interfaces(app).find((w) => w.url().includes('#privee'))!
+    const regle = { sites: { 'https://exemple.fr': { extensions: { [id('a')]: false } } } }
+    await privee.evaluate((r) => window.lyra.invoke('settings:set', r), regle)
+    expect((await fenetre.evaluate(() => window.lyra.invoke('settings:get'))).sites['https://exemple.fr']).toBeUndefined()
+    await fenetre.evaluate((r) => window.lyra.invoke('settings:set', r), regle)
+    expect((await fenetre.evaluate(() => window.lyra.invoke('settings:get'))).sites['https://exemple.fr']?.extensions).toEqual({ [id('a')]: false })
+  } finally {
+    await app.close()
+  }
+})
