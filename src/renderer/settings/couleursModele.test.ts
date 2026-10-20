@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { COULEURS_INDIGO_NUIT, type ReglagesCouleurs } from '../../shared/types-reglages'
 import { THEMES } from '../../shared/themes'
-import { apercuTheme, etiquettesContraste, formaterRatio, creerLimiteur, couleursAffichees, ecraseraPersonnalisation, estModifie, hexValide, modifierCouleur, patchPassage, segmentPassage } from './couleursModele'
+import { apercuTheme, etiquettesContraste, formaterRatio, creerLimiteur, couleursAffichees, ecraseraPersonnalisation, estModifie, hexValide, modifierCouleur, patchPassage, patchTheme, segmentPassage } from './couleursModele'
 
 const base: ReglagesCouleurs = {
   actif: 'indigo-nuit',
@@ -175,5 +175,19 @@ describe('étiquettes de contraste', () => {
   it('Indigo nuit : aucune étiquette', () => {
     expect(etiquettesContraste(COULEURS_INDIGO_NUIT, true)).toEqual({})
     expect(etiquettesContraste(COULEURS_INDIGO_NUIT, false)).toEqual({})
+  })
+})
+
+describe('patchTheme (« Thème » d’Apparence, même source que « Passer en sombre »)', () => {
+  it('Système / Clair / Sombre / Programmé écrivent le thème et un passage cohérent', () => {
+    expect(patchTheme('systeme', 'heure')).toEqual({ theme: 'systeme', couleurs: { passage: 'systeme' } })
+    expect(patchTheme('clair', 'heure')).toEqual({ theme: 'clair', couleurs: { passage: 'jamais' } })
+    expect(patchTheme('sombre', 'heure')).toEqual({ theme: 'sombre' })
+  })
+  it('Programmé garde un passage horaire (coucher ou heure), sinon « coucher »', () => {
+    expect(patchTheme('programme', 'heure')).toEqual({ theme: 'programme', couleurs: { passage: 'heure' } })
+    expect(patchTheme('programme', 'coucher')).toEqual({ theme: 'programme', couleurs: { passage: 'coucher' } })
+    expect(patchTheme('programme', 'systeme')).toEqual({ theme: 'programme', couleurs: { passage: 'coucher' } })
+    expect(patchTheme('programme', 'jamais')).toEqual({ theme: 'programme', couleurs: { passage: 'coucher' } })
   })
 })

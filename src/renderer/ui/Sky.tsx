@@ -5,7 +5,7 @@ import { racines, regrouper, reglerCiel } from './cielCommun'
 import { glisserEntete, largeurAuClavier, redimensionnerCiel } from './gestes'
 import { styleConstellation } from './teinteCiel'
 import { variablesAppliquees, versionTheme } from './themeVivant'
-import { boucliers, cielDeplacer, couleurParConstellation, cielLargeurAffichee, cielPosition, sky, telechargementActif } from './state'
+import { boucliers, cielDeplacer, couleurParConstellation, cielLargeurAffichee, cielPosition, relierEnfants, sky, telechargementActif } from './state'
 
 const mac = window.lyra.plateforme === 'darwin'
 const ouvrirReglages = (): void => void window.lyra.invoke('tabs:open', { url: 'lyra://settings' })
@@ -86,7 +86,7 @@ export function Sky({ revele = false, refCiel, surEntree, surSortie, surSortieFo
 
   return (
     <aside
-      class={`${revele ? 'ciel ciel-revele' : 'ciel'} pos-${cielPosition.value}`}
+      class={`${revele ? 'ciel ciel-revele' : 'ciel'} pos-${cielPosition.value}${relierEnfants.value ? '' : ' sans-lignes'}`}
       aria-label={revele ? 'Ciel des onglets (survol)' : 'Ciel des onglets'}
       ref={refCiel}
       style={{ width: `${largeur ?? cielLargeurAffichee.value}px` }}

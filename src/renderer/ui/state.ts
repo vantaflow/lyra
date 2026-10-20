@@ -1,6 +1,7 @@
 import { computed, signal } from '@preact/signals'
 import type { EtatBoucliers, EtatDnd, EtatEtoile } from '../../shared/ipc'
 import type { Settings, SkyState, Star } from '../../shared/types'
+import { variablesApparence } from '../../shared/apparence'
 
 const CIEL_VIDE: SkyState = { stars: [], constellations: [], activeId: null, pinned: [] }
 
@@ -76,6 +77,12 @@ export const cielPosition = signal<PositionCiel>('gauche')
 /** « Le ciel prend la teinte du site actif » et « Chaque constellation a sa couleur » (réglages `couleurs`). */
 export const cielTeinteParSite = signal(false)
 export const couleurParConstellation = signal(true)
+/** « Relier un onglet à celui qui l'a ouvert » : lignes de constellation. */
+export const relierEnfants = signal(true)
+/** « Afficher les icônes des sites à la place des points ». */
+export const iconesSites = signal(false)
+/** « Masquer la capsule quand la souris ne bouge plus ». */
+export const capsuleAuto = signal(false)
 /** Glisser l'en-tête du ciel vers un bord pour le déplacer (réglage). */
 export const cielDeplacer = signal(true)
 /** Appui sur l'en-tête du ciel en cours (avant même le seuil du glisser) : les zones de déplacement de la fenêtre sont levées. */
@@ -113,6 +120,10 @@ export async function initialiserEtat(): Promise<void> {
     revelerAuSurvol.value = r.ciel.revelerAuSurvol
     cielTeinteParSite.value = r.couleurs.cielTeinteParSite
     couleurParConstellation.value = r.couleurs.couleurParConstellation
+    relierEnfants.value = r.apparence.relierEnfants
+    iconesSites.value = r.apparence.iconesSites
+    capsuleAuto.value = r.apparence.capsuleAuto
+    for (const [nom, valeur] of Object.entries(variablesApparence(r.apparence))) document.documentElement.style.setProperty(nom, valeur)
   }
   window.lyra.on('settings:changed', appliquer)
   window.lyra.on('ciel:revele', (b) => (cielRevele.value = b))

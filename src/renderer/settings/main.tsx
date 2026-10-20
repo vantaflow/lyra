@@ -141,7 +141,14 @@ function App() {
       <main class="contenu">
         {route !== 'couleurs' && (
           <div class="entete">
-            <h1 data-reglage={route} tabIndex={-1}>{titre}</h1>
+            {route === 'apparence' ? (
+              <div class="bloc-titre">
+                <h1 data-reglage={route} tabIndex={-1}>{titre}</h1>
+                <p class="sous-titre">Où vit le ciel, comment brillent les étoiles, et à quoi ressemble Lyra.</p>
+              </div>
+            ) : (
+              <h1 data-reglage={route} tabIndex={-1}>{titre}</h1>
+            )}
             {(route === 'general' || route === 'apparence') && <ActionsReglages />}
           </div>
         )}

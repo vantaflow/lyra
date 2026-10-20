@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks'
 import type { Star as StarT } from '../../shared/types'
-import { deposer, estTerne, etats, glisse, sky, titreEtoile } from './state'
+import { deposer, estTerne, etats, glisse, iconesSites, sky, titreEtoile } from './state'
 
 interface Props {
   star: StarT
@@ -46,7 +46,11 @@ export function Star({ star }: Props) {
         setCible(null)
       }}
     >
-      <span class="dot" aria-hidden="true"></span>
+      {iconesSites.value && (etat?.favicon ?? star.favicon) ? (
+        <img class="dot-icone" src={etat?.favicon ?? star.favicon} alt="" width="14" height="14" aria-hidden="true" />
+      ) : (
+        <span class="dot" aria-hidden="true"></span>
+      )}
       <span class="t">{titreEtoile(star, etat)}</span>
       <span
         class="x"

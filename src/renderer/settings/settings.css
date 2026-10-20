@@ -468,3 +468,41 @@ body,
   color: var(--texte);
   font: 13px 'Manrope', sans-serif;
 }
+.pastilles {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.sw {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  flex: none;
+}
+.sw[aria-pressed='true'] {
+  box-shadow:
+    0 0 0 2px var(--capsule-fond),
+    0 0 0 4px var(--accent);
+}
+.entete .bloc-titre {
+  flex: 1;
+  min-width: 240px;
+}
+.entete .sous-titre {
+  margin: 4px 0 0;
+  color: var(--texte-secondaire);
+}
+.autre-couleur {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  background: transparent;
+  pointer-events: none;
+}

@@ -1,6 +1,7 @@
-import { useEffect } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { ouvrirRecherche } from './FindBar'
-import { actif, cielMasque, estNouvelleEtoile, etatActif, favori, fenetrePrivee, rafraichirFavori, reveler } from './state'
+import { creerCapsuleAuto } from './capsuleAuto'
+import { actif, capsuleAuto, cielMasque, estNouvelleEtoile, etatActif, favori, fenetrePrivee, rafraichirFavori, reveler } from './state'
 
 interface Affichage {
   /** Icône : cadenas vert (https), avertissement (http), engrenage (lyra://), aucune. */
@@ -48,6 +49,20 @@ export function Capsule() {
   const charge = etat?.chargement ?? false
   const via = etat?.viaPasserelle ?? false
   useEffect(() => rafraichirFavori(url), [url])
+  // « Masquer la capsule quand la souris ne bouge plus » : voir capsuleAuto.ts.
+  const [masquee, setMasquee] = useState(false)
+  const auto = useRef<ReturnType<typeof creerCapsuleAuto> | null>(null)
+  useEffect(() => {
+    const c = creerCapsuleAuto({ surChange: (v) => setMasquee(!v) })
+    auto.current = c
+    const surMouvement = (e: MouseEvent): void => c.mouvement(e.clientY)
+    window.addEventListener('mousemove', surMouvement)
+    return () => {
+      window.removeEventListener('mousemove', surMouvement)
+      c.activer(false)
+    }
+  }, [])
+  useEffect(() => auto.current?.activer(capsuleAuto.value), [capsuleAuto.value])
   const peutFavori = !!url && !url.startsWith('lyra://')
   const basculerFavori = (): void => {
     if (!peutFavori || fenetrePrivee) return
@@ -62,7 +77,7 @@ export function Capsule() {
   }
 
   return (
-    <div class="capsule">
+    <div class={masquee ? 'capsule auto-masquee' : 'capsule'} data-masquee={masquee ? '1' : '0'}>
       {cielMasque.value && (
         <button class="cb" type="button" aria-label="Afficher le ciel" onClick={() => reveler(true)}>
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

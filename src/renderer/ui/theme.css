@@ -116,6 +116,17 @@
   --bouclier-inactif: #68686e;
 }
 
+/* Réglages d'apparence : variables d'interface (pas des couleurs de thème, donc hors du :root des thèmes). */
+:root {
+  /* Apparence (réglages) : valeurs par défaut identiques à l'ancien rendu ; poussées par `variablesApparence`. */
+  --police: 'Manrope', system-ui, sans-serif;
+  --taille-texte: 13px;
+  --densite: 32px;
+  --coins: 12px 0 0 12px;
+  --coins-droite: 0 12px 12px 0;
+  --coins-haut: 12px 12px 0 0;
+  --coins-bas: 0 0 12px 12px;
+}
 html,
 body,
 #app {
@@ -123,7 +134,7 @@ body,
   height: 100%;
   background: var(--ciel);
   color: var(--etoiles);
-  font-family: 'Manrope', system-ui, sans-serif;
+  font-family: var(--police);
 }
 
 /* ---- Fenêtre principale : le ciel et la capsule (fidèle à docs/design/project/Main.dc.html) ---- */
@@ -243,13 +254,13 @@ body,
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 32px;
+  height: var(--densite);
   padding: 0 8px;
   border: 0;
   border-radius: 8px;
   background: transparent;
   color: var(--ciel-texte);
-  font: 13px/1 'Manrope', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  font: var(--taille-texte) / 1 var(--police);
   width: 100%;
   text-align: left;
   cursor: pointer;
@@ -325,6 +336,25 @@ body,
   border-left: 1px solid var(--lignes);
   display: flex;
   flex-direction: column;
+}
+.star .dot-icone {
+  flex: none;
+  border-radius: 3px;
+  object-fit: contain;
+}
+.sans-lignes .branch {
+  border-left-color: transparent;
+}
+.sans-lignes .branch .star::before {
+  display: none;
+}
+.capsule {
+  transition: opacity 160ms;
+}
+
+.capsule.auto-masquee {
+  opacity: 0;
+  pointer-events: none;
 }
 .branch .star::before {
   content: '';
@@ -423,7 +453,7 @@ body,
   display: flex;
   flex-direction: column;
   background: var(--capsule-fond);
-  border-radius: 12px 0 0 12px;
+  border-radius: var(--coins);
   overflow: hidden;
 }
 .page-vide {
@@ -1216,13 +1246,13 @@ html.revele #app,
   flex-direction: column-reverse;
 }
 .fenetre.pos-droite .carte {
-  border-radius: 0 12px 12px 0;
+  border-radius: var(--coins-droite);
 }
 .fenetre.pos-haut .carte {
-  border-radius: 12px 12px 0 0;
+  border-radius: var(--coins-haut);
 }
 .fenetre.pos-bas .carte {
-  border-radius: 0 0 12px 12px;
+  border-radius: var(--coins-bas);
 }
 .fenetre.pos-haut .page-zone,
 .fenetre.pos-bas .page-zone {

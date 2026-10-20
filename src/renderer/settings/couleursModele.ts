@@ -118,3 +118,11 @@ export function etiquettesContraste(couleurs: CouleursTheme, corriger: boolean):
   }
   return sortie
 }
+
+/** Réglages écrits par un segment de « Thème » (Apparence) : mêmes champs que « Passer en sombre ». « Sombre » ne touche pas au passage. */
+export function patchTheme(theme: Settings['theme'], passage: Passage): { theme: Settings['theme']; couleurs?: { passage: Passage } } {
+  if (theme === 'systeme') return patchPassage('systeme')
+  if (theme === 'clair') return patchPassage('jamais')
+  if (theme === 'programme') return patchPassage(passage === 'coucher' || passage === 'heure' ? passage : 'coucher')
+  return { theme }
+}

@@ -53,7 +53,9 @@ describe('tokenisation du CSS', () => {
     const nomsSombre = new Set([...bloc(":root[data-mode='sombre']").matchAll(/(--[a-z-]+):/g)].map((m) => m[1]))
     expect([...nomsClair].filter((n) => !nomsSombre.has(n))).toEqual([])
     // Variables locales posées ailleurs (animations, largeur du ciel, etc.).
-    const LOCALES = new Set(['--glisse', '--largeur', '--ciel-largeur', '--w', '--x', '--y'])
+    const LOCALES = new Set(['--glisse', '--largeur', '--ciel-largeur', '--w', '--x', '--y',
+      // Apparence (réglages) : posées par `variablesApparence`, ce ne sont pas des couleurs de thème.
+      '--police', '--taille-texte', '--densite', '--coins', '--coins-droite', '--coins-haut', '--coins-bas'])
     for (const f of FEUILLES) {
       for (const [, nom] of lire(f).matchAll(/var\((--[a-z-]+)/g)) {
         if (LOCALES.has(nom)) continue
