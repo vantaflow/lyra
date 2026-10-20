@@ -13,8 +13,9 @@ import { PageImport } from './PageImport'
 import { Apparence } from './Apparence'
 import { PaletteSection } from './PaletteSection'
 import { BouclierSection } from './BouclierSection'
+import { Couleurs } from './Couleurs'
 import { Emplacement } from './Emplacement'
-import { chercher } from './recherche'
+import { chercher, REPLI_LIGNE } from './recherche'
 import { routeDepuisHash, SECTIONS } from './sections'
 
 function App() {
@@ -51,7 +52,9 @@ function App() {
     let essais = 0
     let fin: number | undefined
     const cherche = window.setInterval(() => {
-      const el = document.querySelector<HTMLElement>(`[data-reglage="${cible.id}"]`)
+      // Ligne absente (ex. la plage horaire, masquée hors « À une heure fixe ») : on se replie sur la ligne qui la commande.
+      const trouver = (id: string): HTMLElement | null => document.querySelector<HTMLElement>(`[data-reglage="${id}"]`)
+      const el = trouver(cible.id) ?? (REPLI_LIGNE[cible.id] ? trouver(REPLI_LIGNE[cible.id]) : null)
       if (!el && ++essais < 40) return
       window.clearInterval(cherche)
       if (!el) return
@@ -142,7 +145,7 @@ function App() {
         </div>
         {route === 'general' && <General />}
         {route === 'apparence' && <Apparence />}
-        {route === 'couleurs' && <Emplacement description="Couleurs du ciel, de la capsule et des pages de Lyra." />}
+        {route === 'couleurs' && <Couleurs />}
         {route === 'palette' && <PaletteSection />}
         {route === 'boucliers' && <BouclierSection />}
         {route === 'sites' && <Emplacement description="Boucliers, cookies, zoom et permissions réglés site par site." />}

@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { chercher, INDEX } from './recherche'
+import { chercher, INDEX, REPLI_LIGNE } from './recherche'
 import { SECTIONS } from './sections'
 
 const ids = (q: string, index = INDEX): string[] => chercher(q, index).map((r) => r.id)
@@ -66,5 +66,16 @@ describe('INDEX', () => {
   })
   it('a des ids uniques', () => {
     expect(new Set(INDEX.map((r) => r.id)).size).toBe(INDEX.length)
+  })
+})
+
+describe('REPLI_LIGNE', () => {
+  it('chaque ligne de repli et sa cible sont indexées (la plage horaire se replie sur « Passer en sombre »)', () => {
+    const ids = INDEX.map((r) => r.id)
+    for (const [ligne, cible] of Object.entries(REPLI_LIGNE)) {
+      expect(ids, ligne).toContain(ligne)
+      expect(ids, cible).toContain(cible)
+    }
+    expect(REPLI_LIGNE['couleurs.heure']).toBe('couleurs.passage')
   })
 })

@@ -37,7 +37,27 @@ export const INDEX: EntreeIndex[] = [
   ligne('apparence', 'largeur', 'Largeur du ciel', ['ciel', 'taille', 'pixels']),
   ligne('apparence', 'glisser', "Glisser l'en-tête du ciel vers un bord pour le déplacer", ['ciel', 'déplacer', 'position']),
   ligne('apparence', 'theme', 'Thème', ['clair', 'sombre', 'système', 'apparence']),
+  ligne('couleurs', 'themes', 'Thèmes', ['indigo nuit', 'encre', 'forêt', 'sable', 'aurore', 'clair total', 'nuit complète', 'mes couleurs', 'importer', 'exporter']),
+  ligne('couleurs', 'cielFond', 'Ciel — fond', ['couleur', 'hexadécimal']),
+  ligne('couleurs', 'cielTexte', 'Ciel — texte', ['couleur']),
+  ligne('couleurs', 'etoileActive', 'Étoile active', ['couleur', 'lueur']),
+  ligne('couleurs', 'etoileActiveFond', 'Étoile active — fond', ['couleur']),
+  ligne('couleurs', 'etoiles', 'Étoiles', ['couleur']),
+  ligne('couleurs', 'etoilesEndormies', 'Étoiles endormies', ['couleur']),
+  ligne('couleurs', 'lignes', 'Lignes de constellation', ['couleur', 'traits']),
+  ligne('couleurs', 'capsuleFond', 'Capsule — fond', ['couleur']),
+  ligne('couleurs', 'capsuleTexte', 'Capsule — texte', ['couleur']),
+  ligne('couleurs', 'accent', 'Accent', ['couleur', 'boutons', 'liens']),
+  ligne('couleurs', 'boucliers', 'Boucliers', ['couleur', 'bouclier']),
+  ligne('couleurs', 'pagesFond', 'Pages de Lyra — fond', ['couleur', 'nouvel onglet', 'réglages']),
+  ligne('couleurs', 'nouvelOngletCiel', 'Nouvel onglet — ciel', ['couleur']),
+  ligne('couleurs', 'contraste', 'Contraste insuffisant ?', ['lisibilité', '4,5:1', 'accessibilité']),
+  ligne('couleurs', 'teinteSite', 'Le ciel prend la teinte du site actif', ['theme-color', 'icône', 'site']),
+  ligne('couleurs', 'constellation', 'Chaque constellation a sa couleur', ['groupe', 'étoile active', 'lignes']),
+  ligne('couleurs', 'passage', 'Passer en sombre', ['système', 'coucher du soleil', 'heure fixe', 'jamais', 'thème', 'mode sombre']),
   ligne('couleurs', 'heure', 'Sombre de … à … (à une heure fixe)', ['passer en sombre', 'heure', 'plage', 'nuit', 'horaire', 'minuit']),
+  ligne('couleurs', 'privee', 'Fenêtres privées', ['thème', 'privé', 'navigation privée']),
+  ligne('couleurs', 'themeSite', 'Thème du site dans la page', ['prefers-color-scheme', 'sombre', 'sites']),
   ligne('boucliers', 'niveau', 'Niveau de protection', ['publicités', 'traqueurs', 'bloquer', 'bouclier']),
   ligne('boucliers', 'genes', 'Masquer aussi les gênes', ['bandeaux', 'cookies', 'invitation']),
   ligne('boucliers', 'frequence', 'Mettre à jour les listes toutes les', ['fréquence', 'listes', 'jours']),
@@ -49,6 +69,9 @@ export const INDEX: EntreeIndex[] = [
   ligne('telechargements', 'dossier', 'Dossier de téléchargement', ['enregistrer', 'fichiers']),
   ligne('telechargements', 'demander', 'Demander où enregistrer chaque fichier', ['dossier', 'demander'])
 ]
+
+/** Lignes parfois absentes de la page (affichées sous condition) : la recherche saute alors à la ligne qui les commande. */
+export const REPLI_LIGNE: Record<string, string> = { 'couleurs.heure': 'couleurs.passage' }
 
 /** Minuscules sans accents. */
 export const normaliser = (t: string): string => t.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()

@@ -1,0 +1,131 @@
+/* « Couleurs et thèmes » (Couleurs.dc.html) : vignettes de thème, pastilles hexadécimales, mention « bientôt ». */
+.couleurs-entete {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 0 0 18px;
+}
+.couleurs-entete .sous-titre {
+  flex: 1;
+  min-width: 240px;
+  margin: 0;
+  color: var(--texte-secondaire);
+}
+.couleurs-message {
+  margin: -6px 0 12px;
+  font-size: 13px;
+  color: var(--texte-secondaire);
+}
+.themes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.th {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--trait);
+  border-radius: 12px;
+  background: var(--capsule-fond);
+  cursor: pointer;
+  text-align: left;
+  font: 600 13px 'Manrope', sans-serif;
+  color: var(--texte);
+}
+.th[aria-pressed='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--teinte-accent);
+}
+.th .hint {
+  font-weight: 400;
+}
+.th .pv {
+  height: 64px;
+  border-radius: 8px;
+  display: flex;
+  overflow: hidden;
+}
+.th .pv i {
+  display: block;
+  width: 30%;
+  height: 100%;
+}
+.th .pv b {
+  display: block;
+  flex: 1;
+  height: 100%;
+  position: relative;
+}
+.th .pv b::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  width: 40%;
+  height: 6px;
+  border-radius: 3px;
+  background: currentColor;
+  opacity: 0.35;
+}
+.colonne-mode {
+  width: 118px;
+}
+.hex {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 8px 0 6px;
+  border: 1px solid var(--bordure-champ);
+  border-radius: 8px;
+  background: var(--champ-fond);
+  font: 12.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--texte);
+  min-width: 118px;
+  box-sizing: border-box;
+}
+.hex .pastille {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 5px;
+  background: none;
+  flex: none;
+  cursor: pointer;
+  overflow: hidden;
+}
+.hex .pastille::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.hex .pastille::-webkit-color-swatch {
+  border: 0;
+}
+.hex .hex-val,
+.hex .hex-champ {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: text;
+}
+.hex .hex-champ:focus {
+  outline: none;
+}
+.hex .hex-champ[aria-invalid='true'] {
+  color: var(--danger);
+}
+.bientot {
+  font-size: 11.5px;
+  color: var(--texte-secondaire);
+}
