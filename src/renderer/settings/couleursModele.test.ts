@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { COULEURS_INDIGO_NUIT, type ReglagesCouleurs } from '../../shared/types-reglages'
 import { THEMES } from '../../shared/themes'
-import { COULEURS_INDIGO_NUIT as INDIGO } from '../../shared/types-reglages'
 import { apercuTheme, etiquettesContraste, formaterRatio, creerLimiteur, couleursAffichees, ecraseraPersonnalisation, estModifie, hexValide, modifierCouleur, patchPassage, segmentPassage } from './couleursModele'
 
 const base: ReglagesCouleurs = {
@@ -150,14 +149,14 @@ describe('référence de « Mes couleurs » (thème importé)', () => {
     expect(estModifie(p.personnalisees, p.depart, p.reference)).toBe(true)
   })
   it('éditer depuis un thème prêt remplace la référence par ce thème', () => {
-    const p = modifierCouleur({ ...base, actif: 'foret', reference: structuredClone(INDIGO) }, 'accent', 'clair', '#654321')
+    const p = modifierCouleur({ ...base, actif: 'foret', reference: structuredClone(COULEURS_INDIGO_NUIT) }, 'accent', 'clair', '#654321')
     expect(p.reference).toBeNull()
     expect(p.depart).toBe('foret')
   })
 })
 
 describe('étiquettes de contraste', () => {
-  const pale = structuredClone(INDIGO)
+  const pale = structuredClone(COULEURS_INDIGO_NUIT)
   pale['ciel-texte'].clair = '#3A3A60'
   it('formaterRatio : virgule française, arrondi vers le bas (jamais « 4,5 » pour 4,46)', () => {
     expect(formaterRatio(3.14)).toBe('3,1')
@@ -174,7 +173,7 @@ describe('étiquettes de contraste', () => {
     expect(etiquettesContraste(pale, false)['ciel-texte']?.clair).toMatch(/^Contraste \d,\d:1$/)
   })
   it('Indigo nuit : aucune étiquette', () => {
-    expect(etiquettesContraste(INDIGO, true)).toEqual({})
-    expect(etiquettesContraste(INDIGO, false)).toEqual({})
+    expect(etiquettesContraste(COULEURS_INDIGO_NUIT, true)).toEqual({})
+    expect(etiquettesContraste(COULEURS_INDIGO_NUIT, false)).toEqual({})
   })
 })

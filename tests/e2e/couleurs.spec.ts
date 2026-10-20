@@ -257,7 +257,7 @@ test('couleurs : un texte trop pâle est ajusté sans clic dans la vue UI, l\'é
     const r = await ouvrirCouleurs(app, fenetre)
     await expect(contrasteLigne(r)).toContainText('Lyra vérifie chaque paire texte/fond (4,5:1) et corrige la couleur du texte')
     await expect(contrasteLigne(r)).not.toContainText('bientôt')
-    const interrupteur = contrasteLigne(r).getByRole('switch', { name: 'Corriger le contraste' })
+    const interrupteur = contrasteLigne(r).getByRole('switch', { name: 'Vérifier le contraste' })
     await expect(interrupteur).toBeEnabled()
     await expect(interrupteur).toHaveAttribute('aria-checked', 'true')
     // Thème par défaut : aucune paire fautive, aucune étiquette.
@@ -297,13 +297,13 @@ test('couleurs : correction désactivée, la couleur choisie est diffusée telle
     perso['ciel-texte'].clair = '#3A3A60'
     await fenetre.evaluate((p) => window.lyra.invoke('settings:set', { couleurs: { actif: 'mes-couleurs', personnalisees: p, reference: p } } as never), perso)
     await expect.poll(() => variable(fenetre, '--ciel-texte')).not.toBe('#3a3a60')
-    await contrasteLigne(r).getByRole('switch', { name: 'Corriger le contraste' }).click()
+    await contrasteLigne(r).getByRole('switch', { name: 'Vérifier le contraste' }).click()
     await expect.poll(async () => (await lire(fenetre)).couleurs.corrigerContraste).toBe(false)
     await expect.poll(() => variable(fenetre, '--ciel-texte')).toBe('#3a3a60')
     await expect.poll(() => variable(r, '--ciel-texte')).toBe('#3a3a60')
     await expect(r.locator('.row', { hasText: 'Ciel — texte' }).locator('.contraste-etiquette[data-mode="clair"]')).toHaveText(/^Contraste \d,\d:1$/)
     // Réactivé : de nouveau corrigée.
-    await contrasteLigne(r).getByRole('switch', { name: 'Corriger le contraste' }).click()
+    await contrasteLigne(r).getByRole('switch', { name: 'Vérifier le contraste' }).click()
     await expect.poll(() => variable(fenetre, '--ciel-texte')).not.toBe('#3a3a60')
   } finally {
     await app.close()

@@ -240,7 +240,7 @@ export function Couleurs() {
         <LigneCouleur reglage="couleurs.pagesFond" cle="pages-fond" couleurs={affichees} etiquettes={etiquettes} changer={changer} />
         <LigneCouleur reglage="couleurs.nouvelOngletCiel" cle="nouvel-onglet-ciel" couleurs={affichees} etiquettes={etiquettes} changer={changer} />
         <Ligne reglage="couleurs.contraste" titre="Contraste insuffisant ?" aide="Lyra vérifie chaque paire texte/fond (4,5:1) et corrige la couleur du texte">
-          <Interrupteur actif={c.corrigerContraste} libelle="Corriger le contraste" surChange={(corrigerContraste) => regler({ couleurs: { corrigerContraste } })} />
+          <Interrupteur actif={c.corrigerContraste} libelle="Vérifier le contraste" surChange={(corrigerContraste) => regler({ couleurs: { corrigerContraste } })} />
         </Ligne>
       </div>
 
