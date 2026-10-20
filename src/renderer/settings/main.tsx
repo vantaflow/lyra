@@ -48,6 +48,15 @@ function routeDepuisHash(hash: string, hote: string = location.hostname): string
   return hash.replace(/^#\/?/, '').split('/')[0] || SECTION_DE_L_HOTE[hote] || 'general'
 }
 
+/**
+ * Lien du sommaire. Les hôtes lyra://history, bookmarks, downloads et shields servent aussi cette page, mais certains
+ * canaux (import, export…) ne répondent qu'à lyra://settings : hors de cet hôte, le sommaire y mène.
+ */
+function lienSection(id: string, hote: string = location.hostname): string {
+  if (id === 'extensions') return 'lyra://extensions'
+  return hote === 'settings' ? `#/${id}` : `lyra://settings#/${id}`
+}
+
 function App() {
   const [route, setRoute] = useState(() => routeDepuisHash(location.hash))
   useEffect(() => {
@@ -64,7 +73,7 @@ function App() {
     <div class="reglages">
       <nav class="nav" aria-label="Sections des réglages">
         {SECTIONS.map((s) => (
-          <a key={s.id} href={s.id === 'extensions' ? 'lyra://extensions' : `#/${s.id}`} class={s.id === route ? 'on' : undefined}>
+          <a key={s.id} href={lienSection(s.id)} class={s.id === route ? 'on' : undefined} aria-current={s.id === route ? 'page' : undefined}>
             {s.titre}
           </a>
         ))}

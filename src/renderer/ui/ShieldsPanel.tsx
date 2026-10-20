@@ -37,6 +37,11 @@ export function ShieldsPanel() {
   }, [])
 
   const fermer = (): void => void window.lyra.invoke('overlay:close')
+  /** Section des réglages dans une nouvelle étoile, puis le panneau se ferme. */
+  const ouvrirReglages = (section: string) => (e: MouseEvent): void => {
+    e.preventDefault()
+    void window.lyra.invoke('tabs:open', { url: `lyra://settings#/${section}` }).then(fermer)
+  }
   const basculer = (actif: boolean): void => {
     if (!etat?.origine || etat.privee) return
     setEtat({ ...etat, actif })
@@ -127,11 +132,11 @@ export function ShieldsPanel() {
         </details>
 
         <div class="pn-liens">
-          <a href="#" onClick={(e) => e.preventDefault()}>Règles de ce site</a>
+          <a href="lyra://settings#/sites" onClick={ouvrirReglages('sites')}>Règles de ce site</a>
           <span aria-hidden="true">·</span>
-          <a href="#" onClick={(e) => e.preventDefault()}>Statistiques</a>
+          <a href="lyra://settings#/boucliers" onClick={ouvrirReglages('boucliers')}>Statistiques</a>
           <span aria-hidden="true">·</span>
-          <a href="#" onClick={(e) => e.preventDefault()}>Signaler un site cassé</a>
+          <a role="link" aria-disabled="true" title="Bientôt">Signaler un site cassé</a>
         </div>
       </section>
     </div>

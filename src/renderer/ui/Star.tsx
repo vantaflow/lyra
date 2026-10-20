@@ -23,6 +23,7 @@ export function Star({ star }: Props) {
     <button
       class={classes}
       type="button"
+      aria-current={estActive ? 'page' : undefined}
       draggable={true}
       onClick={() => void window.lyra.invoke('tabs:activate', { id: star.id })}
       onDragStart={(e) => {

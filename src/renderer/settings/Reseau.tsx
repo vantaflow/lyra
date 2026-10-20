@@ -188,7 +188,7 @@ export function Reseau() {
             aria-describedby={refus ? 'ajout-refus' : undefined}
             onInput={(ev) => setSaisie((ev.currentTarget as HTMLInputElement).value)}
           />
-          <button class="btn pri" type="submit">
+          <button class="btn pri" type="submit" disabled={!saisie.trim()}>
             Ajouter
           </button>
         </form>
