@@ -5,6 +5,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { lancerLyra } from './helpers'
+import { dossierTemporaire } from './nettoyage'
 
 // Petit serveur http local : /pose pose un cookie, toute autre adresse enregistre le cookie reçu.
 let serveur: Server
@@ -122,8 +123,9 @@ test('historique : une visite en privé n’est pas écrite ; une visite normale
 })
 
 test('session : une fenêtre privée n’est jamais sauvegardée ni restaurée', async () => {
-  const premier = await lancerLyra()
-  const userData = await premier.app.evaluate(({ app }) => app.getPath('userData'))
+  // Profil fourni par le test : celui que crée lancerLyra est effacé à la fermeture, avant le second lancement.
+  const userData = dossierTemporaire('lyra-privee-session-')
+  const premier = await lancerLyra({ LYRA_USER_DATA: userData })
   try {
     const privee = await ouvrirPrivee(premier.app)
     await privee.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), `${BASE}/session-privee`)
