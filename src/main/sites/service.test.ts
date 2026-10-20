@@ -5,8 +5,10 @@ import { join } from 'node:path'
 import { creerReglages } from '../settings/settings'
 import { resoudre } from '../settings/sites'
 import type { RegleSite } from '../../shared/types'
+import type { OriginesUI } from '../ipc-origines'
 import { creerServiceSites, estVueInterne, reglagesHorsSitesChanges } from './service'
 
+const ORIGINES: OriginesUI = { prod: 'file:///app/renderer/' }
 interface V { url: string; privee?: boolean; recus: Array<Record<string, RegleSite>> }
 const vue = (url: string, privee = false): V => ({ url, privee, recus: [] })
 
@@ -15,6 +17,7 @@ function monter(vues: V[]) {
   const service = creerServiceSites<V & { getURL(): string }>({
     reglages,
     estPrivee: (v) => v.privee === true,
+    estInterne: (v) => estVueInterne(v.url, ORIGINES),
     vues: () => vues.map((v) => Object.assign(v, { getURL: () => v.url })),
     envoyer: (v, r) => v.recus.push(r)
   })
@@ -45,7 +48,7 @@ describe('service sites:*', () => {
     expect(resoudre(reglages.getSettings().sites, 'https://a.com').zoom).toBeUndefined()
   })
   it('sites:changed va aux vues internes seulement, sans settings:changed quand seules les règles changent', () => {
-    const interne = vue('file:///x/ui.html#chrome')
+    const interne = vue('file:///app/renderer/ui.html#chrome')
     const lyra = vue('lyra://reglages')
     const web = vue('https://evil.test/')
     const { service, reglages, E } = monter([interne, lyra, web])
@@ -64,10 +67,13 @@ describe('service sites:*', () => {
     expect(diffusions).toBe(1)
     expect(interne.recus).toHaveLength(1)
   })
-  it('estVueInterne', () => {
-    expect(estVueInterne('lyra://reglages')).toBe(true)
-    expect(estVueInterne('file:///app/renderer/ui.html#chrome')).toBe(true)
-    expect(estVueInterne('http://localhost:5173/ui.html', 'http://localhost:5173')).toBe(true)
-    expect(estVueInterne('https://a.com/ui.html')).toBe(false)
+  it('estVueInterne : préfixe exact du renderer, jamais une adresse qui contient ui.html', () => {
+    const dev: OriginesUI = { dev: 'http://localhost:5173', prod: ORIGINES.prod }
+    expect(estVueInterne('lyra://reglages', ORIGINES)).toBe(true)
+    expect(estVueInterne('file:///app/renderer/ui.html#chrome', ORIGINES)).toBe(true)
+    expect(estVueInterne('http://localhost:5173/ui.html', dev)).toBe(true)
+    for (const u of ['https://a.com/ui.html', 'file:///tmp/ui.html', 'file:///app/renderer-evil/ui.html', 'https://a.com/?x=lyra://', 'http://localhost:5173.evil.test/ui.html'])
+      expect(estVueInterne(u, dev), u).toBe(false)
+    expect(estVueInterne('file:///tmp/ui.html', ORIGINES)).toBe(false)
   })
 })

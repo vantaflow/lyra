@@ -1,11 +1,14 @@
 /** Logique du canal `sites:*`, sans Electron (testable) ; `installer.ts` la branche sur l'IPC. */
 import type { RegleSite, Settings } from '../../shared/types'
+import { expediteurAutorise, type OriginesUI } from '../ipc-origines'
 import { cleCanonique } from '../settings/sites'
 import type { Reglages } from '../settings/settings'
 
-/** Vue interne de Lyra (pages `lyra://` et interface) : seule destinataire des règles de site (styles et scripts perso). */
-export const estVueInterne = (url: string, dev: string | undefined = process.env.ELECTRON_RENDERER_URL): boolean =>
-  url.startsWith('lyra://') || (url.includes('ui.html') && (url.startsWith('file://') || (!!dev && url.startsWith(dev))))
+/**
+ * Vue interne de Lyra (pages `lyra://` et interface), seule destinataire des règles de site (styles et scripts perso) :
+ * même contrôle que l'expéditeur IPC (préfixe exact du renderer, jamais une adresse qui « contient » ui.html).
+ */
+export const estVueInterne = (url: string, origines: OriginesUI): boolean => expediteurAutorise(url, origines)
 
 export interface Vue {
   getURL(): string
@@ -14,6 +17,8 @@ export interface Vue {
 export interface DepsService<V extends Vue> {
   reglages: Reglages
   estPrivee(v: V): boolean
+  /** La vue est-elle une vue interne de Lyra ? (`estVueInterne` avec les origines de l'application) */
+  estInterne(v: V): boolean
   vues(): Iterable<V>
   envoyer(v: V, regles: Record<string, RegleSite>): void
 }
@@ -29,7 +34,7 @@ export function creerServiceSites<V extends Vue>(deps: DepsService<V>) {
   const desabonner = reglages.onChanged((s) => {
     if (s.sites === precedent) return
     precedent = s.sites
-    for (const v of deps.vues()) if (estVueInterne(v.getURL())) deps.envoyer(v, s.sites)
+    for (const v of deps.vues()) if (deps.estInterne(v)) deps.envoyer(v, s.sites)
   })
   return {
     desabonner,

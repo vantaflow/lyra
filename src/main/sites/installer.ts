@@ -1,7 +1,7 @@
 /** Canal `sites:*` : lecture et écriture des règles par site, et diffusion `sites:changed` aux vues internes. */
 import { ipcMain, webContents, type WebContents } from 'electron'
 import type { RegleSite } from '../../shared/types'
-import { envoyer, handle } from '../ipc'
+import { envoyer, estVueLyra, handle } from '../ipc'
 import type { Reglages } from '../settings/settings'
 import { creerReglesSites } from './regles'
 import { creerServiceSites } from './service'
@@ -17,6 +17,7 @@ export function installerSites(deps: DepsSites): void {
   const service = creerServiceSites<WebContents>({
     reglages: deps.reglages,
     estPrivee: deps.estPrivee,
+    estInterne: (wc) => estVueLyra(wc.getURL()),
     vues: () => webContents.getAllWebContents(),
     envoyer: (wc, regles) => envoyer(wc, 'sites:changed', regles)
   })

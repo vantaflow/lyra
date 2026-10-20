@@ -6,7 +6,8 @@ import { join } from 'node:path'
 import * as paths from './paths'
 import { definirFournisseurLangue } from '../shared/i18n'
 import { routeReglesSite } from '../shared/routeSite'
-import { handle, envoyer } from './ipc'
+import { handle, envoyer, estVueLyra } from './ipc'
+import { recoitPasserelles } from './passerelles/destinataires'
 import { creerReglages } from './settings/settings'
 import { installerProtocoleLyra } from './protocol/lyra'
 import { TabManager } from './tabs/TabManager'
@@ -441,7 +442,7 @@ void app.whenReady().then(async () => {
       // Chrome, overlay et pages internes (lyra://) ; jamais les pages web.
       for (const wc of webContents.getAllWebContents()) {
         const url = wc.getURL()
-        if (url.startsWith('lyra://') || url.includes('ui.html')) envoyer(wc, 'downloads:changed', undefined)
+        if (estVueLyra(url)) envoyer(wc, 'downloads:changed', undefined)
       }
     }
   })
@@ -632,8 +633,8 @@ void app.whenReady().then(async () => {
     sessions: sessionsProxy,
     surChangement: (etat) => {
       for (const wc of webContents.getAllWebContents()) {
-        const url = wc.getURL()
-        if (url.startsWith('lyra://') || url.includes('ui.html')) envoyer(wc, 'passerelles:changed', etat)
+        // Seules les pages lyra:// (Réglages › Réseau) l'affichent : ni les pages web, ni l'interface, ni les fenêtres privées.
+        if (recoitPasserelles(wc.getURL(), estPrivee(wc))) envoyer(wc, 'passerelles:changed', etat)
       }
       for (const m of onglets.values()) m.actualiser()
     }
@@ -806,7 +807,7 @@ void app.whenReady().then(async () => {
       // Jamais vers une fenêtre privée (la progression d'un import ne la concerne pas).
       for (const wc of webContents.getAllWebContents()) {
         const url = wc.isDestroyed() ? '' : wc.getURL()
-        if ((url.startsWith('lyra://') || url.includes('ui.html')) && !estPrivee(wc)) envoyer(wc, canal, data)
+        if (estVueLyra(url) && !estPrivee(wc)) envoyer(wc, canal, data)
       }
     },
     // E2e : installateurs simulés (aucun accès réseau) — « b… » échoue, le reste s'installe.
