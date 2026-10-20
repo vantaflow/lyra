@@ -57,7 +57,12 @@ export function installerTheme(deps: DepsTheme): GestionnaireTheme {
   // Écritures disque throttlées (60 ms) : la dernière valeur est écrite avant de quitter.
   app.on('will-quit', () => {
     gestionnaire.arreter()
-    reglages.vider()
+    // Une écriture qui échoue (disque plein, fichier verrouillé) ne doit jamais faire échouer la fermeture.
+    try {
+      reglages.vider()
+    } catch (err) {
+      console.warn('[reglages] écriture finale impossible :', err)
+    }
   })
   gestionnaire.demarrer()
   return gestionnaire

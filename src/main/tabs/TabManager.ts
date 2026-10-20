@@ -79,6 +79,8 @@ export interface OptionsTabs {
   retenirPopup?: (popup: { url: string; origine: string; etoileId: string }) => boolean
   /** Couleur dominante d'un favicon déjà en cache (« Le ciel prend la teinte du site actif ») ; `null` : aucune. */
   couleurFavicon?: (wc: WebContents, url: string) => Promise<string | null>
+  /** `apparence.capsuleAuto` : sans lui, aucun écouteur de souris n'est posé sur les pages. */
+  capsuleAuto?: () => boolean
   /** `Settings.raccourcis` courant (commande → accélérateur, vide = défaut) : les raccourcis de page suivent les réglages. */
   raccourcis?: () => Record<string, string>
   /** `Settings.gestes` courant : balayage (`swipe`, macOS) et clic molette suivent les réglages ; absent : aucun geste. */
@@ -263,6 +265,7 @@ export class TabManager {
   /** Ferme la page d'une vue : les extensions cessent d'abord de la suivre (le webContents doit encore exister). */
   private fermerVue(vue: WebContentsView): void {
     const wc = vue.webContents
+    this.suiviSouris.delete(wc)
     if (wc.isDestroyed()) return
     this.options.extensions?.retirer(wc)
     wc.close()
@@ -361,6 +364,22 @@ export class TabManager {
     for (const v of this.vues.values()) {
       const wc = v.webContents
       if (!wc.isDestroyed() && concerne(wc.getURL())) wc.reload()
+    }
+  }
+
+  private suiviSouris = new Map<WebContents, { abonne: boolean; ecouteur: (e: unknown, ev: unknown) => void }>()
+
+  /** Pose ou retire l'écouteur `input-event` des étoiles selon `apparence.capsuleAuto` (à rappeler quand ce réglage change). */
+  majSuiviSouris(): void {
+    const actif = this.options.capsuleAuto?.() === true
+    for (const [wc, s] of this.suiviSouris) {
+      if (wc.isDestroyed()) {
+        this.suiviSouris.delete(wc)
+        continue
+      }
+      if (actif && !s.abonne) wc.on('input-event', s.ecouteur as never)
+      else if (!actif && s.abonne) wc.off('input-event', s.ecouteur as never)
+      s.abonne = actif
     }
   }
 
@@ -728,14 +747,17 @@ export class TabManager {
     // « Masquer la capsule quand la souris ne bouge plus » : la page est une autre vue, le chrome ne voit pas ses mouvements.
     // Simple signal (10 par seconde au plus), sans aucune donnée de page ; `y` est compté depuis le haut réel de la capsule.
     let dernierMouvement = 0
-    wc.on('input-event', (_e, ev) => {
+    const surSouris = (_e: unknown, ev: { type: string; y?: number }): void => {
       if (ev.type !== 'mouseMove' || this.fenetre.win.isDestroyed()) return
       const maintenant = Date.now()
       if (maintenant - dernierMouvement < 100) return
       dernierMouvement = maintenant
       const page = this.fenetre.bounds().page
-      envoyer(this.fenetre.chrome.webContents, 'capsule:souris', { y: page.y + ((ev as { y?: number }).y ?? 0) - (page.y - CAPSULE) })
-    })
+      envoyer(this.fenetre.chrome.webContents, 'capsule:souris', { y: page.y + (ev.y ?? 0) - (page.y - CAPSULE) })
+    }
+    // Écouteur posé seulement si « Masquer la capsule… » est actif : sans lui, Electron n'a aucun évènement de souris à relayer.
+    this.suiviSouris.set(wc, { abonne: false, ecouteur: surSouris as never })
+    this.majSuiviSouris()
     wc.on('before-input-event', (_e, input) => {
       // Échap sort de Ne pas déranger (sauf en plein écran HTML : Échap y sert d'abord à en sortir). La page le reçoit aussi.
       if (input.type === 'keyDown' && input.key === 'Escape' && !input.isAutoRepeat && !input.control && !input.meta && !input.alt && !input.shift && !this.fenetre.estPleinEcran()) {

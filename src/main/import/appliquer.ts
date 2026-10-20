@@ -58,7 +58,7 @@ export interface CibleCiel {
   sauver(): void | Promise<void>
 }
 
-export type ReglagesLus = Pick<Settings, 'langue' | 'moteurParDefaut' | 'moteurChoisi' | 'sites' | 'moteursPerso' | 'import' | 'telechargements'>
+export type ReglagesLus = Pick<Settings, 'langue' | 'moteurParDefaut' | 'moteurChoisi' | 'sites' | 'moteursPerso' | 'import' | 'telechargements' | 'demarrage'>
 
 export interface CibleReglages {
   get(): ReglagesLus
@@ -285,7 +285,15 @@ function appliquerReglages(r: ReglagesImportes, plan: ResultatMoteurs | undefine
   const patch: Partial<Settings> = {}
 
   if (r.pageAccueil !== undefined) {
-    if (/^https?:\/\//i.test(r.pageAccueil)) {
+    const definie = actuel.demarrage.pageAccueil.trim()
+    if (/^https?:\/\//i.test(r.pageAccueil) && definie !== '') {
+      // Une page d'accueil déjà choisie n'est jamais écrasée (voir `accueilImporteConsomme`) : on le dit au lieu d'annoncer « appliquée ».
+      if (definie === r.pageAccueil) res.presents++
+      else {
+        res.ignores++
+        res.notes.push('Page d’accueil non appliquée (déjà définie).')
+      }
+    } else if (/^https?:\/\//i.test(r.pageAccueil)) {
       if (actuel.import.reglagesEnAttente.pageAccueil === r.pageAccueil) res.presents++
       else {
         patch.import = { extensionsEnAttente: actuel.import.extensionsEnAttente, reglagesEnAttente: { ...actuel.import.reglagesEnAttente, pageAccueil: r.pageAccueil } }

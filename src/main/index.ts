@@ -247,6 +247,7 @@ function creerFenetre(opts: { privee?: boolean; urlInitiale?: string } = {}, res
       surEchap: () => dnd.sortir(fenetre.id),
       basculerDnd: () => basculerDnd(fenetre.id),
       retenirPopup: (p) => dnd.retenirPopup(fenetre.id, p),
+      capsuleAuto: () => reglagesCourants().apparence.capsuleAuto,
       couleurFavicon: (wc, url) => (reglagesCourants().couleurs.cielTeinteParSite ? couleurFaviconEnCache(wc, url) : Promise.resolve(null)),
       // Jamais d'extensions en fenêtre privée.
       extensions:
@@ -1048,6 +1049,7 @@ void app.whenReady().then(async () => {
     const change = reglagesHorsSitesChanges(reglagesDiffuses, s)
     reglagesDiffuses = s
     if (!change) return
+    for (const tm of onglets.values()) tm.majSuiviSouris()
     manager.relayoutAll()
     for (const wc of webContents.getAllWebContents()) if (estVueLyra(wc.getURL())) envoyer(wc, 'settings:changed', { ...s, sites: {} })
   })
@@ -1065,7 +1067,7 @@ void app.whenReady().then(async () => {
   })
   app.on('will-quit', () => archiveur?.arreter())
   app.on('activate', () => {
-    if (BaseWindow.getAllWindows().length === 0) creerFenetre()
+    if (BaseWindow.getAllWindows().length === 0) ouvrirNouvelleFenetre()
   })
 })
 

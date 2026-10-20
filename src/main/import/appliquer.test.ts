@@ -10,7 +10,7 @@ import { COULEURS_GROUPE, ELEMENTS_IMPORT, indisponible, type DonneesImportees, 
 // ---------------------------------------------------------------------------------------------------------------------
 // Faux magasins
 
-type Reglages = Pick<Settings, 'langue' | 'moteurParDefaut' | 'moteurChoisi' | 'sites' | 'moteursPerso' | 'import' | 'telechargements'>
+type Reglages = Pick<Settings, 'langue' | 'moteurParDefaut' | 'moteurChoisi' | 'sites' | 'moteursPerso' | 'import' | 'telechargements' | 'demarrage'>
 
 const fusion = (a: any, b: any): any => {
   if (Array.isArray(b) || typeof b !== 'object' || b === null) return b
@@ -58,6 +58,7 @@ function faux(init: Partial<Reglages> = {}): Faux {
       moteursPerso: [],
       import: { extensionsEnAttente: [], reglagesEnAttente: {} },
       telechargements: { dossier: '/dl', demander: false },
+      demarrage: { restaurer: true, pageAccueil: '', nouvelleFenetre: 'vide' },
       ...init
     },
     cibles: undefined as never
@@ -511,6 +512,18 @@ describe('réglages', () => {
     const r2 = await appliquer(entree({ reglages: { pageAccueil: 'javascript:1' } }), g.cibles, OPTIONS)
     expect(g.reglages.import.reglagesEnAttente.pageAccueil).toBeUndefined()
     expect(r2.reglages.ignores).toBe(1)
+  })
+
+  it('page d’accueil déjà définie : signalée « non appliquée (déjà définie) », jamais comptée comme ajoutée', async () => {
+    const f = faux({ demarrage: { restaurer: true, pageAccueil: 'https://perso.example/', nouvelleFenetre: 'vide' } })
+    const r = await appliquer(entree({ reglages: { pageAccueil: 'https://accueil.example/' } }), f.cibles, OPTIONS)
+    expect(f.reglages.import.reglagesEnAttente.pageAccueil).toBeUndefined()
+    expect(r.reglages.ignores).toBe(1)
+    expect(r.reglages.ajoutes).toBe(0)
+    expect(r.reglages.notes.join(' ')).toMatch(/non appliquée \(déjà définie\)/)
+    expect(r.reglages.notes.join(' ')).not.toMatch(/Démarrage et sessions/)
+    const g = faux({ demarrage: { restaurer: true, pageAccueil: 'https://accueil.example/', nouvelleFenetre: 'vide' } })
+    expect((await appliquer(entree({ reglages: { pageAccueil: 'https://accueil.example/' } }), g.cibles, OPTIONS)).reglages.presents).toBe(1)
   })
 
   it('moteur par défaut : seulement si « réglages » est coché', async () => {
