@@ -199,3 +199,27 @@ describe('extension de fixture', () => {
     expect(readFileSync(join(FIXTURE, 'contenu.js'), 'utf8')).toContain("dataset.lyraExtension = 'ok'")
   })
 })
+
+describe('crochets de chargement', () => {
+  it('avantChargement puis apresChargement ; une exception est journalisée et ne bloque pas le chargement', async () => {
+    const e = ext('a')
+    installerDossier(e)
+    const appels: string[] = []
+    const journal: string[] = []
+    const chargeur = creerChargeur({
+      extensions: sessionSimulee().api,
+      registre: creerRegistre(reglagesSimules([e])),
+      base,
+      journal: (m) => journal.push(m),
+      avantChargement: (x) => {
+        appels.push(`avant:${x.nom}`)
+        throw new Error('boum')
+      },
+      apresChargement: (x) => appels.push(`apres:${x.nom}`)
+    })
+    const r = await chargeur.chargerAuDemarrage()
+    expect(r[0].ok).toBe(true)
+    expect(appels).toEqual(['avant:Ext a', 'apres:Ext a'])
+    expect(journal.some((m) => m.includes('préparation impossible'))).toBe(true)
+  })
+})

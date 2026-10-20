@@ -60,3 +60,29 @@ test('@reseau Dark Reader depuis addons.mozilla.org (xpi converti) agit sur une 
     await app.close()
   }
 })
+
+test('@reseau uBlock Origin (release GitHub, MV2) démarre sans erreur et le journal note la redondance avec les Boucliers', async () => {
+  test.setTimeout(120_000)
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const r = await fenetre.evaluate(() => window.lyra.invoke('extensions:installer', { source: 'ubo' }))
+    if (r.etat !== 'installee') throw new Error(JSON.stringify(r))
+    const journal = () => fenetre.evaluate((i) => window.lyra.invoke('extensions:journal', { id: i }), r.id)
+    await expect.poll(async () => (await journal())?.redondanceBoucliers, { timeout: 20_000 }).toBe(true)
+    // Laisse l'arrière-plan s'initialiser puis relève les appels stubés.
+    await new Promise((ok) => setTimeout(ok, 8000))
+    const j = (await journal())!
+    console.log('journal uBO :', JSON.stringify(j))
+    expect(j.noteBoucliers).toBe('blocage réseau assuré par les Boucliers')
+    expect(j.avertissementsChargement.filter((m) => m.startsWith('erreur'))).toEqual([])
+    // L'arrière-plan de uBO est allé au bout de son initialisation (vAPI défini, pas de TypeError sur browserAction).
+    expect(await app.evaluate(async ({ webContents }) => {
+      const w = webContents.getAllWebContents().find((x) => x.getType() === 'backgroundPage')
+      return w ? await w.executeJavaScript('typeof globalThis.vAPI === "object" && typeof vAPI.browserAction === "object"') : false
+    })).toBe(true)
+    const liste = await fenetre.evaluate(() => window.lyra.invoke('extensions:lister'))
+    expect(liste[0]).toMatchObject({ id: r.id, chargee: true })
+  } finally {
+    await app.close()
+  }
+})

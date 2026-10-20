@@ -116,6 +116,24 @@ export interface RapportConversion {
   refus?: string
 }
 
+/** Journal de compatibilité d'une extension (`userData/extensions/journal/<id>.json`). */
+export interface JournalExtension {
+  /** Avertissements au chargement et messages (warning/error) de la console de l'arrière-plan. */
+  avertissementsChargement: string[]
+  /** API absentes de Lyra, simulées par les stubs MV2, avec le nombre d'appels (« browserAction.setBadgeText » → 3). */
+  apiStubees: Record<string, number>
+  /** Permissions ou clés du manifest dont l'API n'existe ni dans Electron ni dans electron-chrome-extensions. */
+  apiManquantes: string[]
+  /** Raccourcis (`commands`) déjà déclarés par une autre extension. */
+  conflitsRaccourcis: string[]
+  /** L'extension déclare `webRequest` / `webRequestBlocking` : le blocage réseau est assuré par les Boucliers. */
+  redondanceBoucliers: boolean
+  /** Texte affiché quand `redondanceBoucliers` est vrai. */
+  noteBoucliers?: string
+  /** Rapport de conversion (extension Firefox convertie). */
+  conversion?: RapportConversion
+}
+
 /** « Une version Chrome existe » : id de l'extension sur le Chrome Web Store. */
 export interface SuggestionChrome {
   id: string

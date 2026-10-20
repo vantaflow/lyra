@@ -1,4 +1,4 @@
-import type { DecisionPermission, DownloadInfo, ExtensionInstallee, HistoryEntry, PasserellePerso, ResultatInstallation, Settings, SiteContourne, SkyState, Suggestion, TypePermission } from './types'
+import type { DecisionPermission, DownloadInfo, ExtensionInstallee, HistoryEntry, JournalExtension, PasserellePerso, ResultatInstallation, Settings, SiteContourne, SkyState, Suggestion, TypePermission } from './types'
 
 export interface RectIpc {
   x: number
@@ -142,6 +142,8 @@ export type Requetes = {
    */
   'extensions:installer': [{ source?: string; choisir?: 'fichier' | 'dossier' }, ResultatInstallation]
   /** Cherche et installe les mises à jour maintenant (ignore le réglage automatique). */
+  /** Journal de compatibilité d'une extension (undefined si inconnue). */
+  'extensions:journal': [{ id: string }, JournalExtension | undefined]
   'extensions:majTout': [void, { misesAJour: Array<{ id: string; nom: string; de: string; vers: string }>; erreurs: string[]; derniereVerification?: string }]
   'settings:set': [Partial<Settings>, Settings]
   'layout:get': [

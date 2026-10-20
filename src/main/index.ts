@@ -1,4 +1,5 @@
 import { app, BaseWindow, dialog, ipcMain, Notification as NotificationSysteme, webContents, type WebContents, type WebFrameMain, protocol, session, type Session } from 'electron'
+import { readFileSync } from 'node:fs'
 import { WindowManager } from './window/WindowManager'
 import type { Settings } from '../shared/types'
 import { join } from 'node:path'
@@ -38,6 +39,9 @@ import { creerInstallateurChrome } from './extensions/chrome'
 import { creerMiseAJour } from './extensions/miseAJour'
 import { creerInstallateurFirefox } from './extensions/firefox'
 import { svgVersPng } from './extensions/icones'
+import { appliquerStubs, type ShimsStubs } from './extensions/stubs'
+import { collecterStubs, creerJournal, enregistrerMessageConsole } from './extensions/journal'
+import type { RapportConversion } from '../shared/types'
 import { installerFixtures } from './extensions/fixturesTest'
 
 definirFournisseurLangue(() => app.getLocale())
@@ -535,11 +539,51 @@ void app.whenReady().then(async () => {
   if (process.env.LYRA_TEST === '1' && process.env.LYRA_EXTENSIONS_FIXTURES) {
     installerFixtures(process.env.LYRA_EXTENSIONS_FIXTURES, baseExtensions, registreExtensions)
   }
-  const chargeurExtensions = creerChargeur({ extensions: sessionLyra.extensions, registre: registreExtensions, base: baseExtensions })
-  const installateurChrome = creerInstallateurChrome({ base: baseExtensions, registre: registreExtensions, chargeur: chargeurExtensions })
   // Polyfill WebExtensions embarqué (webextension-polyfill 0.12.0, copié dans resources/extensions) : même convention que les listes des Boucliers.
-  const polyfillExtensions = join(app.isPackaged ? join(process.resourcesPath, 'resources') : join(app.getAppPath(), 'resources'), 'extensions/browser-polyfill.js')
-  const installateurFirefox = creerInstallateurFirefox({ base: baseExtensions, registre: registreExtensions, chargeur: chargeurExtensions, polyfill: polyfillExtensions, svgVersPng })
+  const dossierShims = join(app.isPackaged ? join(process.resourcesPath, 'resources') : join(app.getAppPath(), 'resources'), 'extensions')
+  const polyfillExtensions = join(dossierShims, 'browser-polyfill.js')
+  const shimsExtensions: ShimsStubs = { head: join(dossierShims, 'shim-head.js'), post: join(dossierShims, 'shim-post.js') }
+  // Journal de compatibilité : chargement (API manquantes, redondance), console des pages d'extension, comptage des API stubées.
+  const journalExtensions = creerJournal({ dossier: join(baseExtensions, 'journal') })
+  const pagesExtension = (): Electron.WebContents[] => webContents.getAllWebContents().filter((w) => w.getURL().startsWith('chrome-extension://'))
+  app.on('web-contents-created', (_e, wc) => {
+    wc.on('console-message', (d) => enregistrerMessageConsole(journalExtensions, wc.getURL() || d.sourceId, d.level, d.message))
+  })
+  const releveStubs = setInterval(() => void collecterStubs({ journal: journalExtensions, pages: pagesExtension }), 5000)
+  releveStubs.unref()
+  app.on('will-quit', () => clearInterval(releveStubs))
+  const lireJson = (chemin: string): Record<string, unknown> | undefined => {
+    try {
+      return JSON.parse(readFileSync(chemin, 'utf8')) as Record<string, unknown>
+    } catch {
+      return undefined
+    }
+  }
+  const chargeurExtensions = creerChargeur({
+    extensions: sessionLyra.extensions,
+    registre: registreExtensions,
+    base: baseExtensions,
+    // Extensions déjà installées avant la tâche 4 : stubs posés au premier chargement (marqueur manquant).
+    avantChargement: (_e, dossier) => {
+      const m = lireJson(join(dossier, 'manifest.json'))
+      if (m) appliquerStubs(dossier, m, shimsExtensions)
+    },
+    apresChargement: (e, dossier) => {
+      const manifest = lireJson(join(dossier, 'manifest.json'))
+      if (!manifest) return
+      const autres = registreExtensions
+        .lister()
+        .filter((x) => x.id !== e.id && x.active)
+        .flatMap((x) => {
+          const mx = lireJson(join(baseExtensions, x.dossier, 'manifest.json'))
+          return mx ? [{ nom: x.nom, manifest: mx }] : []
+        })
+      const conversion = lireJson(join(dossier, 'lyra-conversion.json')) as RapportConversion | undefined
+      journalExtensions.enregistrerChargement(e.id, { manifest, autres, ...(conversion ? { conversion } : {}) })
+    }
+  })
+  const installateurChrome = creerInstallateurChrome({ base: baseExtensions, registre: registreExtensions, chargeur: chargeurExtensions, shims: shimsExtensions })
+  const installateurFirefox = creerInstallateurFirefox({ base: baseExtensions, registre: registreExtensions, chargeur: chargeurExtensions, polyfill: polyfillExtensions, shims: shimsExtensions, svgVersPng })
   const miseAJourExtensions = creerMiseAJour({
     registre: registreExtensions,
     reglages,
@@ -556,6 +600,8 @@ void app.whenReady().then(async () => {
     installateur: installateurChrome,
     firefox: installateurFirefox,
     miseAJour: miseAJourExtensions,
+    journal: journalExtensions,
+    pagesExtension,
     modeTest: process.env.LYRA_TEST === '1',
     estPrivee: (wc) => {
       const f = manager.deWebContents(wc)

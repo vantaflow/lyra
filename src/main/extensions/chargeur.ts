@@ -17,6 +17,10 @@ export interface OptionsChargeur {
   /** `userData/extensions` : racine de tous les dossiers d'extensions. */
   base: string
   journal?: (message: string) => void
+  /** Appelé juste avant `loadExtension` (stubs MV2 si le marqueur manque) ; une exception est journalisée, jamais propagée. */
+  avantChargement?: (e: ExtensionInstallee, dossier: string) => void
+  /** Appelé après un chargement réussi (journal de compatibilité) ; une exception est journalisée, jamais propagée. */
+  apresChargement?: (e: ExtensionInstallee, dossier: string) => void
 }
 
 export interface ResultatChargement {
@@ -48,9 +52,19 @@ export function creerChargeur(o: OptionsChargeur): Chargeur {
     if (chargees.has(e.id)) return { id: e.id, ok: true }
     try {
       const chemin = dossierAbsolu(o.base, e.dossier)
+      try {
+        o.avantChargement?.(e, chemin)
+      } catch (err) {
+        journal(`${e.id} (${e.nom}) : préparation impossible — ${message(err)}`)
+      }
       const chargee = await o.extensions.loadExtension(chemin, { allowFileAccess: false })
       if (chargee.id !== e.id) journal(`${e.id} (${e.nom}) : Electron lui a attribué l'identifiant ${chargee.id}`)
       chargees.set(e.id, chargee.id)
+      try {
+        o.apresChargement?.(e, chemin)
+      } catch (err) {
+        journal(`${e.id} (${e.nom}) : journal de compatibilité impossible — ${message(err)}`)
+      }
       return { id: e.id, ok: true }
     } catch (err) {
       const erreur = message(err)

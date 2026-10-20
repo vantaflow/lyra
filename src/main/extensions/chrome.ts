@@ -10,6 +10,7 @@ import type { ExtensionInstallee, MagasinExtension, ResultatInstallation, Source
 import { DELAI_RESEAU_MS, requeteSure } from './reseau'
 import { copierDossier, extraireZip, idDepuisCle, verifierCrx3, MAX_ARCHIVE, ErreurArchive } from './archives'
 import type { Chargeur } from './chargeur'
+import { appliquerStubs, type ShimsStubs } from './stubs'
 import { dossierAbsolu, dossierRelatifValide, ID_EXTENSION, type Registre } from './registre'
 
 export { DELAI_RESEAU_MS }
@@ -133,6 +134,8 @@ export interface DepsInstallateurChrome {
   fetch?: typeof fetch
   maintenant?: () => Date
   journal?: (m: string) => void
+  /** Shims MV2 (resources/extensions) : absents, aucun stub n'est injecté. */
+  shims?: ShimsStubs
   /** Délai d'attente d'une requête, en ms (30 000 par défaut). */
   delaiMs?: number
 }
@@ -209,6 +212,14 @@ export function creerBaseInstallation(d: DepsInstallateurChrome) {
     if (m.key !== cle) {
       m.key = cle
       writeFileSync(join(racine, 'manifest.json'), JSON.stringify(m, null, 2))
+    }
+    // Couche de compatibilité MV2 : avant tout renommage, le dossier est encore celui d'attente.
+    if (d.shims) {
+      try {
+        appliquerStubs(racine, m as Record<string, unknown>, d.shims)
+      } catch (err) {
+        journal(`stubs MV2 non appliqués : ${message(err)}`)
+      }
     }
     const id = idDepuisCle(cle)
     if (o.idAttendu && id !== o.idAttendu) return echec(`le paquet n'est pas celui demandé (identifiant ${id} au lieu de ${o.idAttendu})`)

@@ -1,6 +1,7 @@
 import type { WebContents } from 'electron'
 import type { ResultatInstallation } from '../../shared/types'
 import { handle } from '../ipc'
+import { collecterStubs, type Journal, type PageExtension } from './journal'
 import type { Chargeur } from './chargeur'
 import { analyserSourceChrome, type InstallateurChrome } from './chrome'
 import { analyserSourceFirefox, type InstallateurFirefox } from './firefox'
@@ -12,6 +13,9 @@ export interface OptionsIpcExtensions {
   installateur: InstallateurChrome
   firefox: InstallateurFirefox
   miseAJour: MiseAJour
+  journal: Journal
+  /** Pages `chrome-extension://` ouvertes (arrière-plan, popup, options) : source du comptage des API stubées. */
+  pagesExtension: () => PageExtension[]
   /** Sélecteur natif (fichier .crx/.zip/.xpi ou dossier) ; undefined si l'utilisateur annule. */
   choisir: (sender: WebContents, quoi: 'fichier' | 'dossier') => Promise<string | undefined>
   /** L'expéditeur est-il dans une fenêtre privée ? (jamais d'installation depuis une fenêtre privée) */
@@ -30,7 +34,14 @@ export function installerExtensionsIpc(o: OptionsIpcExtensions): void {
   })
   handle('extensions:desinstaller', async (d) => {
     if (!d || typeof d.id !== 'string' || !ID_EXTENSION.test(d.id)) return false
-    return chargeur.desinstaller(d.id)
+    const ok = await chargeur.desinstaller(d.id)
+    if (ok) o.journal.supprimer(d.id)
+    return ok
+  })
+  handle('extensions:journal', async (d) => {
+    if (!d || typeof d.id !== 'string' || !ID_EXTENSION.test(d.id)) return undefined
+    await collecterStubs({ journal: o.journal, pages: o.pagesExtension }, d.id)
+    return o.journal.lire(d.id)
   })
   handle('extensions:installer', async (d, e): Promise<ResultatInstallation> => {
     if (o.estPrivee(e.sender)) return { etat: 'erreur', raison: "Les extensions ne s'installent pas depuis une fenêtre privée." }

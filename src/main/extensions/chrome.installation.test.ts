@@ -369,3 +369,30 @@ describe('uBlock Origin (release GitHub)', () => {
     expect(await inst.installerChrome('ubo')).toMatchObject({ etat: 'erreur' })
   })
 })
+
+describe('stubs MV2 à l\'installation', () => {
+  const RES = join(__dirname, '../../../resources/extensions')
+  const shims = { head: join(RES, 'shim-head.js'), post: join(RES, 'shim-post.js') }
+  const monterAvecShims = () => {
+    const registre = creerRegistre(reglagesSimules())
+    const s = sessionSimulee()
+    const chargeur = creerChargeur({ extensions: s.api, registre, base, journal: () => {} })
+    return { registre, inst: creerInstallateurChrome({ base, registre, chargeur, shims, journal: () => {} }) }
+  }
+
+  it('un zip MV2 reçoit les shims et le marqueur ; un zip MV3 non', async () => {
+    const { registre, inst } = monterAvecShims()
+    const mv2 = zipSync({ 'manifest.json': manifest({ manifest_version: 2, name: 'Vieille', background: { scripts: ['bg.js'] } }), 'bg.js': strToU8('//') })
+    const r = await inst.installerChrome(ecrire('mv2.zip', mv2))
+    expect(r.etat).toBe('installee')
+    const e = registre.lister()[0]
+    const m = JSON.parse(readFileSync(join(base, e.dossier, 'manifest.json'), 'utf8'))
+    expect(m.background.scripts).toEqual(['lyra-shim-head.js', 'lyra-shim-post.js', 'bg.js'])
+    expect(existsSync(join(base, e.dossier, 'lyra-stubs.json'))).toBe(true)
+
+    const mv3 = zipSync({ 'manifest.json': manifest({ name: 'Moderne', background: { service_worker: 'sw.js' } }), 'sw.js': strToU8('//') })
+    expect((await inst.installerChrome(ecrire('mv3.zip', mv3))).etat).toBe('installee')
+    const e3 = registre.lister().find((x) => x.nom === 'Moderne')!
+    expect(existsSync(join(base, e3.dossier, 'lyra-shim-head.js'))).toBe(false)
+  })
+})
