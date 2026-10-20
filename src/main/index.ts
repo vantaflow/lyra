@@ -55,6 +55,7 @@ import { origineDe, type Shields } from './shields/Shields'
 import type { DureeDnd } from '../shared/ipc'
 import { creerExtensions, type Extensions } from './extensions/Extensions'
 import { creerChargeur } from './extensions/chargeur'
+import { creerSynchroSites } from './extensions/regleSite'
 import { creerRegistre, migrerSourceUbo } from './extensions/registre'
 import { installerExtensionsIpc } from './extensions/ipc'
 import { creerInstallateurChrome } from './extensions/chrome'
@@ -711,6 +712,14 @@ void app.whenReady().then(async () => {
       return undefined
     }
   }
+  // Règle par site des extensions : exclusions écrites dans la copie chargée avant `loadExtension` ; rechargement si les motifs changent.
+  let rechargerExtension: (id: string) => Promise<unknown> = async () => undefined
+  const synchroSites = creerSynchroSites({
+    sites: () => reglages.getSettings().sites,
+    surChangement: (cb) => reglages.onChanged(cb),
+    chargees: () => registreExtensions.lister().filter((x) => x.active).map((x) => x.id),
+    recharger: (id) => rechargerExtension(id)
+  })
   const chargeurExtensions = creerChargeur({
     extensions: sessionLyra.extensions,
     // Comme Chrome : les étoiles qui montrent une page de l'extension se ferment avant son retrait (sous Windows, retirer
@@ -734,7 +743,8 @@ void app.whenReady().then(async () => {
     registre: registreExtensions,
     base: baseExtensions,
     // Extensions déjà installées avant la tâche 4 : stubs posés au premier chargement (marqueur manquant).
-    avantChargement: (_e, dossier) => {
+    avantChargement: (e, dossier) => {
+      synchroSites.preparer(e.id, dossier)
       const m = lireJson(join(dossier, 'manifest.json'))
       if (m) appliquerStubs(dossier, m, shimsExtensions)
     },
@@ -754,6 +764,7 @@ void app.whenReady().then(async () => {
       if (lu.avertissement) journalExtensions.avertissement(e.id, lu.avertissement)
     }
   })
+  rechargerExtension = (id) => chargeurExtensions.recharger(id)
   const installateurChrome = creerInstallateurChrome({ base: baseExtensions, registre: registreExtensions, chargeur: chargeurExtensions, shims: shimsExtensions })
   const installateurFirefox = creerInstallateurFirefox({ base: baseExtensions, registre: registreExtensions, chargeur: chargeurExtensions, polyfill: polyfillExtensions, shims: shimsExtensions, svgVersPng })
   const miseAJourExtensions = creerMiseAJour({

@@ -316,3 +316,18 @@ describe('crochets de chargement', () => {
     expect(journal.some((m) => m.includes('préparation impossible'))).toBe(true)
   })
 })
+
+describe('recharger', () => {
+  it('retire puis recharge une extension chargée ; rien si elle ne l’est pas ou est inactive', async () => {
+    const s = sessionSimulee()
+    const c = creerChargeur({ extensions: s.api, registre: creerRegistre(reglagesSimules([ext('a'), ext('b', { active: false })])), base })
+    expect(await c.recharger(id('a'))).toBeUndefined()
+    await c.chargerAuDemarrage()
+    s.appels.length = 0
+    expect(await c.recharger(id('a'))).toEqual({ id: id('a'), ok: true })
+    expect(s.appels).toEqual([`remove ${id('a')}`, `load ${join(base, id('a'), '1.0.0')} {"allowFileAccess":false}`])
+    s.appels.length = 0
+    expect(await c.recharger(id('b'))).toBeUndefined()
+    expect(s.appels).toEqual([])
+  })
+})

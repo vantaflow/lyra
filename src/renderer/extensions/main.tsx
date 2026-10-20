@@ -121,8 +121,7 @@ function LigneExtension(p: {
         {mode === 'sites' && (
           <div class="sites-regles">
             <span class="hint">
-              Exclure un site pour cette extension. Limite d'Electron : les scripts qu'une extension injecte ne peuvent pas être retirés site par site, la règle est
-              enregistrée dans les réglages (sites.&lt;site&gt;.extensions) sans arrêter les scripts déjà déclarés par le manifest.
+              Exclure un site pour cette extension : ses scripts de contenu n'y sont plus injectés (rechargez la page). Ses autres accès (permissions d'hôte, réseau) ne changent pas.
             </span>
             {exclus.map((o) => (
               <div class="ligne" key={o}>

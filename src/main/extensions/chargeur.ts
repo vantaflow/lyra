@@ -48,6 +48,8 @@ export interface Chargeur {
    * installation, mise à jour, activation et désinstallation d'une même extension ne s'entremêlent jamais. Une erreur ne bloque pas la suite.
    */
   verrou<T>(id: string, travail: () => Promise<T>): Promise<T>
+  /** Retire puis recharge une extension chargée (règle par site modifiée) sous son verrou ; sans effet si elle n'est pas chargée. */
+  recharger(id: string): Promise<ResultatChargement | undefined>
   lister(): Array<ExtensionInstallee & { chargee: boolean }>
 }
 
@@ -178,6 +180,14 @@ export function creerChargeur(o: OptionsChargeur): Chargeur {
       const e = o.registre.trouver(id)
       return e ? charger(e) : { id, ok: false, erreur: 'extension inconnue' }
     },
+
+    recharger: (id) =>
+      verrou(id, async () => {
+        const e = o.registre.trouver(id)
+        if (!e || !e.active || !chargees.has(id)) return undefined
+        await retirer(id)
+        return charger(e)
+      }),
 
     lister: () => o.registre.lister().map((e) => ({ ...e, chargee: chargees.has(e.id) }))
   }
