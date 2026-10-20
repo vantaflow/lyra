@@ -59,7 +59,7 @@ test("jamais en fenêtre privée : pas d'extension dans la session privée, inst
     // Installation, options et file d'import : refusées depuis la fenêtre privée.
     expect(await privee.evaluate(() => window.lyra.invoke('extensions:installer', { choisir: 'fichier' }))).toMatchObject({ etat: 'erreur' })
     expect(await privee.evaluate((i) => window.lyra.invoke('extensions:options', { id: i }), ext)).toBe(false)
-    await expect(privee.evaluate(() => window.lyra.invoke('extensions:consommerFile', { entrees: [{ id: 'x', nom: 'X', magasin: 'edge' }] }))).rejects.toThrow()
+    await expect(privee.evaluate(() => window.lyra.invoke('extensions:consommerFile', { confirmees: [] }))).rejects.toThrow()
 
     // lyra://extensions dans une fenêtre privée : bandeau.
     await privee.evaluate(() => window.lyra.invoke('tabs:open', { url: 'lyra://extensions' }))
@@ -79,14 +79,16 @@ test("file d'import : 5 entrées (une erreur, une imposée, une Edge), progressi
     const p = page(app, 'lyra://extensions')!
     await expect(p.getByRole('heading', { name: 'Installées — 1' })).toBeVisible()
 
+    // La file est lue par le processus principal (réglages) : la page ne l'envoie pas.
     const entrees = [
-      { id: id('a'), nom: 'Alpha', magasin: 'chrome' as const },
-      { id: id('b'), nom: 'Bravo (erreur)', magasin: 'chrome' as const },
-      { id: 'dark-reader', nom: 'Dark Reader', magasin: 'firefox' as const },
-      { id: id('d'), nom: 'Delta imposée', magasin: 'chrome' as const, imposee: true },
-      { id: 'edge-ext', nom: 'Echo (Edge)', magasin: 'edge' as const }
+      { id: id('a'), nom: 'Alpha', magasin: 'chrome' as const, actif: true, source: 'chrome' as const, date: 1 },
+      { id: id('b'), nom: 'Bravo (erreur)', magasin: 'chrome' as const, actif: true, source: 'chrome' as const, date: 2 },
+      { id: 'dark-reader', nom: 'Dark Reader', magasin: 'firefox' as const, actif: true, source: 'firefox' as const, date: 3 },
+      { id: id('d'), nom: 'Delta imposée', magasin: 'chrome' as const, actif: true, source: 'chrome' as const, date: 4, imposee: true },
+      { id: 'edge-ext', nom: 'Echo (Edge)', magasin: 'edge' as const, actif: true, source: 'edge' as const, date: 5 }
     ]
-    const r = await fenetre.evaluate((e) => window.lyra.invoke('extensions:consommerFile', { entrees: e }), entrees)
+    await fenetre.evaluate((e) => window.lyra.invoke('test:fileImport', e), entrees)
+    const r = await fenetre.evaluate(() => window.lyra.invoke('extensions:consommerFile'))
     expect(r.resultats.map((x) => x.etat)).toEqual(['installee', 'erreur', 'installee', 'a-confirmer', 'manuel'])
     expect(r.restantes.map((x) => x.nom)).toEqual(['Bravo (erreur)', 'Delta imposée'])
 
@@ -97,10 +99,15 @@ test("file d'import : 5 entrées (une erreur, une imposée, une Edge), progressi
     await expect(carte.getByText('Hors ligne (simulé).')).toBeVisible()
     await p.screenshot({ path: join(CAPTURES, 'capture-extensions-6.png') })
 
-    // L'imposée n'est installée que sur choix explicite.
-    const r2 = await fenetre.evaluate((e) => window.lyra.invoke('extensions:consommerFile', { entrees: e, confirmees: [e[0].id] }), [entrees[3]])
-    expect(r2.resultats[0].etat).toBe('installee')
-    expect(r2.restantes).toEqual([])
+    // Le processus principal a réécrit la file : les entrées restantes sont intactes (tous leurs champs).
+    expect(await fenetre.evaluate(() => window.lyra.invoke('test:fileImport'))).toEqual([entrees[1], entrees[3]])
+
+    // L'imposée n'est installée que sur choix explicite : un identifiant seul ne confirme rien, « Installer quand même » oui.
+    const sansCle = await fenetre.evaluate((i) => window.lyra.invoke('extensions:consommerFile', { confirmees: [i] }), id('d'))
+    expect(sansCle.resultats.find((x) => x.entree.nom === 'Delta imposée')!.etat).toBe('a-confirmer')
+    await p.getByRole('button', { name: 'Installer quand même Delta imposée' }).click()
+    await expect(carte.getByText('1 sur 2 réinstallées, 1 en erreur')).toBeVisible()
+    expect(await fenetre.evaluate(() => window.lyra.invoke('test:fileImport'))).toEqual([entrees[1]])
   } finally {
     await app.close()
   }

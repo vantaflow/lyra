@@ -6,7 +6,7 @@ import { collecterStubs, type Journal, type PageExtension } from './journal'
 import type { Chargeur } from './chargeur'
 import { analyserSourceChrome, type InstallateurChrome } from './chrome'
 import { analyserSourceFirefox, installateurFirefoxParId, type InstallateurFirefox } from './firefox'
-import { consommerFile } from './fileImport'
+import { traiterFile } from './fileImport'
 import type { InstallateursParId } from './file'
 import type { MiseAJour } from './miseAJour'
 import { ID_EXTENSION } from './registre'
@@ -28,6 +28,10 @@ export interface OptionsIpcExtensions {
   lireManifest: (e: ExtensionInstallee) => Record<string, unknown> | undefined
   /** Ouvre une page de l'extension dans une nouvelle étoile de la fenêtre de l'expéditeur. */
   ouvrirEtoile: (sender: WebContents, url: string) => void
+  /** `settings.import?.extensionsEnAttente` tel quel (absent tant que le jalon E n'est pas fusionné). */
+  lireFile: () => unknown
+  /** Remplace `settings.import.extensionsEnAttente` par les entrées restantes. */
+  ecrireFile: (restantes: unknown[]) => void
   /** Écrit `settings.sites[origine].extensions[id]`. */
   ecrireRegleSite: (origine: string, id: string, active: boolean) => void
   /** Envoie un évènement de la file d'import aux pages internes (lyra://) et à l'interface. */
@@ -101,37 +105,29 @@ export function installerExtensionsIpc(o: OptionsIpcExtensions): void {
     }
     return firefox ? o.firefox.installerFirefox(source) : o.installateur.installerChrome(source)
   })
-  // File d'import (jalon E) : l'appelant fournit la file et réécrit `restantes` ; jamais depuis une fenêtre privée.
+  // File d'import (jalon E) : le processus principal lit et réécrit lui-même la file ; la page ne transmet que `confirmees`.
   let fileEnCours = false
   handle('extensions:consommerFile', async (d, e) => {
     if (o.estPrivee(e.sender)) throw new Error("Les extensions ne s'installent pas depuis une fenêtre privée.")
-    if (!d || !Array.isArray(d.entrees) || d.entrees.length > 200) throw new Error('File invalide.')
     if (fileEnCours) throw new Error("Une file d'import est déjà en cours.")
-    const magasins = ['chrome', 'edge', 'firefox', 'inconnu']
-    const entrees = d.entrees.filter(
-      (x) => x && typeof x.id === 'string' && x.id.length <= 200 && typeof x.nom === 'string' && magasins.includes(x.magasin)
-    ).map((x) => ({
-      id: x.id,
-      nom: x.nom.slice(0, 120),
-      magasin: x.magasin,
-      ...(typeof x.actif === 'boolean' ? { actif: x.actif } : {}),
-      ...(x.imposee === true ? { imposee: true } : {})
-    }))
-    const confirmees = new Set(Array.isArray(d.confirmees) ? d.confirmees.filter((i): i is string => typeof i === 'string') : [])
     fileEnCours = true
     try {
-      const r = await consommerFile(entrees, {
-        installateurs: o.installateursFileTest ?? { chrome: (id) => o.installateur.installerChrome(id), firefox: installateurFirefoxParId(o.firefox) },
-        confirmees,
-        desactiver: (id) => chargeur.activer(id, false),
-        surProgression: (p) =>
-          o.diffuser('extensions:progressionFile', {
-            index: p.index,
-            total: p.total,
-            nom: p.entree.nom,
-            ...(p.resultat ? { etat: p.resultat.etat === 'choix' ? 'manuel' : p.resultat.etat, ...(p.resultat.etat === 'installee' ? {} : { raison: p.resultat.raison }) } : {})
-          })
-      })
+      const r = await traiterFile(
+        {
+          lire: o.lireFile,
+          ecrire: o.ecrireFile,
+          installateurs: o.installateursFileTest ?? { chrome: (id) => o.installateur.installerChrome(id), firefox: installateurFirefoxParId(o.firefox) },
+          desactiver: (id) => chargeur.activer(id, false),
+          surProgression: (p) =>
+            o.diffuser('extensions:progressionFile', {
+              index: p.index,
+              total: p.total,
+              nom: p.entree.nom,
+              ...(p.resultat ? { etat: p.resultat.etat === 'choix' ? 'manuel' : p.resultat.etat, ...(p.resultat.etat === 'installee' ? {} : { raison: p.resultat.raison }) } : {})
+            })
+        },
+        d?.confirmees
+      )
       o.diffuser('extensions:finFile', r)
       return r
     } finally {

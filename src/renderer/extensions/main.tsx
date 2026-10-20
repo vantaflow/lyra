@@ -233,6 +233,18 @@ function Page({ privee }: { privee: boolean }) {
       setOccupe(false)
     }
   }
+  // « Installer quand même » : l'utilisateur confirme une extension imposée ; le processus principal relit et réécrit la file.
+  const confirmerImposee = async (e: { id: string; magasin: string }): Promise<void> => {
+    setOccupe(true)
+    try {
+      setResultatFile(await window.lyra.invoke('extensions:consommerFile', { confirmees: [`${e.magasin}:${e.id}`] }))
+      await rafraichir()
+    } catch (err) {
+      setRetour({ texte: err instanceof Error ? err.message : String(err) })
+    } finally {
+      setOccupe(false)
+    }
+  }
   const toutMettreAJour = async (): Promise<void> => {
     setOccupe(true)
     try {
@@ -323,6 +335,11 @@ function Page({ privee }: { privee: boolean }) {
                 </span>
                 {r.raison && <span class="hint">{r.raison}</span>}
               </div>
+              {r.etat === 'a-confirmer' && (
+                <button class="btn" type="button" disabled={occupe} aria-label={`Installer quand même ${r.entree.nom}`} onClick={() => void confirmerImposee(r.entree)}>
+                  Installer quand même
+                </button>
+              )}
             </div>
           ))}
         </div>

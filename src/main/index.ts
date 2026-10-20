@@ -610,6 +610,7 @@ void app.whenReady().then(async () => {
       if (lu.avertissement) journalExtensions.avertissement(e.id, lu.avertissement)
     }
   })
+  const fileSimulee = process.env.LYRA_TEST === '1' && process.env.LYRA_FILE_SIMULEE === '1' ? { liste: [] as unknown[] } : undefined
   const installateurChrome = creerInstallateurChrome({ base: baseExtensions, registre: registreExtensions, chargeur: chargeurExtensions, shims: shimsExtensions })
   const installateurFirefox = creerInstallateurFirefox({ base: baseExtensions, registre: registreExtensions, chargeur: chargeurExtensions, polyfill: polyfillExtensions, shims: shimsExtensions, svgVersPng })
   const miseAJourExtensions = creerMiseAJour({
@@ -649,6 +650,13 @@ void app.whenReady().then(async () => {
       const f = manager.deWebContents(wc)
       return f !== undefined && privees.has(f.id)
     },
+    // File d'import du jalon E (`settings.import.extensionsEnAttente`) : absente tant que E n'est pas fusionné (file vide).
+    // E2e (`LYRA_FILE_SIMULEE`) : file tenue en mémoire (le validateur de ce jalon ignore `import`).
+    lireFile: () => (fileSimulee ? fileSimulee.liste : (reglages.getSettings() as unknown as { import?: { extensionsEnAttente?: unknown } }).import?.extensionsEnAttente),
+    ecrireFile: (restantes) => {
+      if (fileSimulee) fileSimulee.liste = restantes
+      else void reglages.setSettings({ import: { extensionsEnAttente: restantes } } as unknown as Partial<Settings>)
+    },
     lireManifest: (e) => lireJson(join(baseExtensions, e.dossier, 'manifest.json')),
     ouvrirEtoile: (wc, url) => ongletsDe(wc).ouvrir(url),
     ecrireRegleSite: (origine, id, active) => void reglages.setSettings({ sites: { [origine]: { extensions: { [id]: active } } } }),
@@ -677,6 +685,10 @@ void app.whenReady().then(async () => {
     })
     handle('test:endormir', (id) => ongletsCourants()?.endormir(id) ?? false)
     handle('test:livraisons', () => livraisonsTest)
+    handle('test:fileImport', (liste) => {
+      if (fileSimulee && Array.isArray(liste)) fileSimulee.liste = liste
+      return fileSimulee?.liste ?? []
+    })
   }
   handle('tabs:open', (d, e) => ongletsDe(e.sender).ouvrir(d.url, { parentId: d.parentId, actif: d.actif }))
   handle('tabs:close', (d, e) => ongletsDe(e.sender).fermer(d.id))

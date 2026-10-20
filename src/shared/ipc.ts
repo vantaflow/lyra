@@ -151,10 +151,11 @@ export type Requetes = {
   /** Journal de compatibilité d'une extension (undefined si inconnue). */
   'extensions:journal': [{ id: string }, JournalExtension | undefined]
   /**
-   * File d'import (jalon E) : installe les entrées en série ; les entrées imposées exigent leur identifiant dans `confirmees`.
-   * Rend un résultat par entrée et la file restante à réécrire.
+   * File d'import (jalon E) : le processus principal lit `settings.import.extensionsEnAttente`, installe les entrées en série et
+   * réécrit lui-même les restantes. Les entrées imposées exigent leur clé `magasin:id` dans `confirmees` (seule donnée de la page).
+   * Rend un résultat par entrée et la file restante.
    */
-  'extensions:consommerFile': [{ entrees: EntreeImport[]; confirmees?: string[] }, ResultatFile]
+  'extensions:consommerFile': [{ confirmees?: string[] } | undefined, ResultatFile]
   /** Cherche et installe les mises à jour maintenant (ignore le réglage automatique). */
   'extensions:majTout': [void, { misesAJour: Array<{ id: string; nom: string; de: string; vers: string }>; erreurs: string[]; derniereVerification?: string }]
   'settings:set': [Partial<Settings>, Settings]
@@ -271,6 +272,8 @@ export type Requetes = {
   'passerelles:warp': [void, EtatPasserelles]
   /** Test uniquement (LYRA_TEST=1) : charge une URL dans la vue de page. */
   'test:navigate': [string, void]
+  /** Sous `LYRA_TEST` + `LYRA_FILE_SIMULEE` : pose la file d'import (en mémoire, jalon E non fusionné) et rend celle qui reste. */
+  'test:fileImport': [unknown[] | undefined, unknown[]]
   'test:endormir': [string, boolean]
   /** Test uniquement (LYRA_TEST=1) : dernière URL demandée par la palette. */
   'test:lastNavigation': [void, string | null]
