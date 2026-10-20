@@ -114,6 +114,9 @@ test('Chrome « Khalil » : compteurs, import favoris + onglets, résumé, réim
 })
 
 test('export des favoris, paquet .lyra puis import par « Un fichier » ; phrase trop courte refusée', async () => {
+  // Deux lancements et deux dérivations de clé (création puis ouverture du paquet, attendue jusqu'à 20 s) : sous
+  // Windows le test dépasse les 30 s par défaut (22 s au run 39471673032, 30 s au run 39500586216).
+  test.setTimeout(90_000)
   const { app, fenetre } = await lancerLyra({ LYRA_IMPORT_RACINE: racine })
   try {
     const favoris = join(dossier, 'favoris.html')
