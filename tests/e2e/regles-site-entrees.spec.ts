@@ -216,3 +216,20 @@ test('panneau des Boucliers : niveau par site, sous-titre, scripts tiers, Statis
     await app.close()
   }
 })
+
+test('« Nouvelle règle » refuse les fichiers locaux (file://) avec un message, et le main aussi', async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    await fenetre.evaluate((u) => window.lyra.invoke('test:navigate', u), 'lyra://settings#/sites')
+    await expect.poll(() => app.windows().find((w) => w.url().startsWith('lyra://settings'))).toBeDefined()
+    const r = app.windows().find((w) => w.url().startsWith('lyra://settings'))!
+    await r.locator('#nouvelle-regle').click()
+    await r.locator('#nouvelle-regle-site').fill('file:///tmp/a.html')
+    await r.locator('#creer-regle').click()
+    await expect(r.locator('#erreur-nouvelle-regle')).toHaveText('Les règles par site ne s’appliquent pas aux fichiers locaux.')
+    await fenetre.evaluate(() => window.lyra.invoke('sites:ecrire', { cle: 'file://', regle: { zoom: 1.5 } }))
+    expect(Object.keys(await fenetre.evaluate(() => window.lyra.invoke('sites:lister')))).not.toContain('file://')
+  } finally {
+    await app.close()
+  }
+})

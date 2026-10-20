@@ -10,7 +10,10 @@ import { ElectronBlocker } from '@ghostery/adblocker-electron'
 describe('cleDe', () => {
   it('reconnaît origine, hôte et motif', () => {
     expect(cleDe('https://Exemple.net:8443')).toEqual({ type: 'origine', valeur: 'https://exemple.net:8443' })
-    expect(cleDe('file://')).toEqual({ type: 'origine', valeur: 'file://' })
+    // Les fichiers locaux n'ont pas de règle par site.
+    expect(cleDe('file://')).toBeNull()
+    expect(cleDe('file:///tmp/a.html')).toBeNull()
+    expect(cleCanonique('FILE://')).toBeNull()
     expect(cleDe('youtube.com')).toEqual({ type: 'hote', valeur: 'youtube.com' })
     expect(cleDe('*.exemple.net')).toEqual({ type: 'motif', valeur: 'exemple.net' })
   })
@@ -73,8 +76,8 @@ describe('resoudre', () => {
     const p = validerPatch({ sites: { '*.a.com': { extensions: { [a]: false, zzz: false, ['b'.repeat(32)]: 'non' } } } })
     expect(p.sites?.['*.a.com']).toEqual({ extensions: { [a]: false } })
   })
-  it('file:// et URL invalide', () => {
-    expect(resoudre({ 'file://': { zoom: 2 } }, 'file:///tmp/a.html').zoom).toBe(2)
+  it('file:// (aucune règle) et URL invalide', () => {
+    expect(resoudre({ 'file://': { zoom: 2 } }, 'file:///tmp/a.html').zoom).toBeUndefined()
     expect(resoudre({ 'file://': { zoom: 2 } }, 'n’importe quoi').zoom).toBeUndefined()
   })
   it('ResolveurSites : cache invalidé à chaque maj', () => {

@@ -18,7 +18,7 @@ describe('motifsExclusion', () => {
       'youtube.com': bloque(),
       '*.motif.fr': bloque()
     }
-    expect(motifsExclusion(sites, ID)).toEqual(['*://*.motif.fr/*', '*://youtube.com/*', 'file:///*', 'http://127.0.0.1:8080/*', 'https://exemple.fr/*'])
+    expect(motifsExclusion(sites, ID)).toEqual(['*://*.motif.fr/*', '*://youtube.com/*', 'http://127.0.0.1:8080/*', 'https://exemple.fr/*'])
   })
   it('ignore les autorisations, les autres extensions, les clés invalides et les règles sans extensions', () => {
     const sites = { 'a.fr': { extensions: { [ID]: true } }, 'b.fr': bloque(AUTRE), 'c.fr': { boucliers: 'strict' }, 'pas une clé !': bloque() } as Record<string, RegleSite>

@@ -51,7 +51,12 @@ export function installerExtensionsIpc(o: OptionsIpcExtensions): void {
   const info = (e: ExtensionInstallee & { chargee: boolean }): InfoExtension => {
     const manifest = o.lireManifest(e)
     const { dossier: _dossier, ...publique } = e
-    return { ...publique, aOptions: !!manifest && urlOptions(e.id, manifest) !== undefined, portee: manifest ? porteeDuManifest(manifest) : { tous: false, hotes: [] } }
+    return {
+      ...publique,
+      aOptions: !!manifest && urlOptions(e.id, manifest) !== undefined,
+      portee: manifest ? porteeDuManifest(manifest) : { tous: false, hotes: [] },
+      contenu: !!manifest && Array.isArray(manifest.content_scripts) && manifest.content_scripts.length > 0
+    }
   }
   handle('extensions:lister', () => chargeur.lister().map(info))
   handle('extensions:options', (d, e) => {

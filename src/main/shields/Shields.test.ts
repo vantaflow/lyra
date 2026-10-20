@@ -144,10 +144,10 @@ describe('Shields.attacher', () => {
     expect(envoyer(ses, requete('https://ads.exemple.test/pub.js', { referrer: 'https://autre.test/' }))).toEqual({})
   })
 
-  it('désactivation par file:// pour les pages locales', () => {
+  it('les pages locales (file://) n’ont pas de règle par site : le niveau par défaut s’applique', () => {
     reglages = { ...reglages, sites: { 'file://': { boucliers: false } } }
     const local = { webContents: { getURL: () => 'file:///tmp/pub.html' }, referrer: '' }
-    expect(envoyer(ses, requete('https://ads.exemple.test/pub.js', local))).toEqual({})
+    expect(envoyer(ses, requete('https://ads.exemple.test/pub.js', local))).toEqual({ cancel: true })
   })
 
   it('remplace le moteur à chaud', () => {

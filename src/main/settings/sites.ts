@@ -33,7 +33,8 @@ function origineCanonique(e: string): string | null {
 export function cleDe(entree: string): { type: TypeCle; valeur: string } | null {
   if (typeof entree !== 'string' || entree.length === 0 || entree.length > LONGUEUR_MAX) return null
   const e = entree.toLowerCase()
-  if (e === 'file://') return { type: 'origine', valeur: e }
+  // Pas de règle pour les fichiers locaux (`file:`) : ni scripts, ni cookies, ni extensions n'y ont de sens.
+  if (/^file:/i.test(e)) return null
   if (e.startsWith('*.')) {
     const h = normaliserHote(e.slice(2))
     return HOTE.test(h) ? { type: 'motif', valeur: h } : null

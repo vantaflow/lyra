@@ -4,6 +4,7 @@ import type { CandidatAmo, InfoExtension, JournalExtension, ProgressionFile, Res
 import '../ui/theme.css'
 import { demarrerTheme } from '../ui/themeVivant'
 import './extensions.css'
+import { bloqueePar } from '../../shared/blocageExtensions'
 import { depuis, ETAT_FILE, etatTexte, hoteDe, LIMITES, lignesJournal, origineTexte, porteeTexte, resumeFile, sitesExclus } from './texte'
 
 /** Couleurs des pastilles du design (Extensions.dc.html), attribuées d'après l'identifiant. */
@@ -35,7 +36,8 @@ function LigneExtension(p: {
   const [refus, setRefus] = useState('')
   const [refusOptions, setRefusOptions] = useState('')
   const incompatible = e.active && !e.chargee
-  const exclus = sitesExclus(p.sites, e.id)
+  // La règle par site n'agit que sur les scripts de contenu : sans eux, ni bouton « Sites » ni exclusions affichées.
+  const exclus = e.contenu ? sitesExclus(p.sites, e.id) : []
   const ouverte = mode !== undefined
   const lettre = e.nom.trim().charAt(0) || '?'
 
@@ -78,7 +80,7 @@ function LigneExtension(p: {
           Options
         </button>
       )}
-      {!incompatible && (
+      {!incompatible && e.contenu && (
         <button class="btn" type="button" disabled={bloque} aria-pressed={mode === 'sites'} onClick={() => p.surMode(mode === 'sites' ? undefined : 'sites')}>
           Sites
         </button>
@@ -118,19 +120,26 @@ function LigneExtension(p: {
           </span>
         )}
         {mode === 'journal' && <pre class="log">{lignesJournal(journal).join('\n')}</pre>}
-        {mode === 'sites' && (
+        {mode === 'sites' && e.contenu && (
           <div class="sites-regles">
             <span class="hint">
-              Exclure un site pour cette extension : ses scripts de contenu n'y sont plus injectés (rechargez la page). Ses autres accès (permissions d'hôte, réseau) ne changent pas.
+              Agit sur les scripts de la page ; le blocage réseau de l'extension continue. Exclure un site : ses scripts de contenu n'y sont plus injectés (rechargez la page).
             </span>
-            {exclus.map((o) => (
+            {exclus.map((o) => {
+              // État effectif : une règle plus large (motif `*.d.fr`) bloque aussi ce site, quoi que dise sa règle propre.
+              const par = bloqueePar(p.sites, o, e.id)
+              return (
               <div class="ligne" key={o}>
-                <span>{hoteDe(o)}</span>
+                <span>
+                  {hoteDe(o)}
+                  {par !== null && <span class="hint"> · Bloquée par {hoteDe(par)}</span>}
+                </span>
                 <button class="btn" type="button" disabled={bloque} onClick={() => void regle(o, true)}>
                   Réactiver
                 </button>
               </div>
-            ))}
+              )
+            })}
             <div class="ligne">
               <label class="libelle" for={`site-${e.id}`}>
                 Site à exclure

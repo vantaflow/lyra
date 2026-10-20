@@ -85,7 +85,7 @@ export function ShieldsPanel() {
             role="switch"
             aria-checked={actif}
             aria-label="Boucliers pour ce site"
-            disabled={interne || etat === null || etat.privee === true}
+            disabled={!siteWeb || etat === null || etat.privee === true}
             onClick={() => basculer(!actif)}
           >
             <i></i>
@@ -114,6 +114,7 @@ export function ShieldsPanel() {
             <span>Scripts tiers inconnus</span>
             <span class="pn-sous">{niveau === 'strict' && actif ? 'bloqués' : 'autorisés'}</span>
           </div>
+          {!interne && etat !== null && !siteWeb && <div class="pn-sous" role="note">Les règles par site ne s’appliquent pas aux fichiers locaux.</div>}
           {etat?.privee && !interne && <div class="pn-sous" role="note">Lecture seule : les règles par site ne peuvent pas être modifiées depuis une fenêtre privée.</div>}
           {erreur && (
             <div class="pn-sous" role="alert">

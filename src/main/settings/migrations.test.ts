@@ -17,8 +17,11 @@ describe('migrer', () => {
     const { settings, avertissements } = migrer(v1, defauts)
     expect(avertissements).toEqual([])
     expect(settings.version).toBe(2)
-    const { version: _v, ...reste } = v1 as Record<string, unknown>
+    // La règle `file://` de l'ancienne fixture est abandonnée : les fichiers locaux n'ont plus de règle par site.
+    const { version: _v, sites: sitesV1, ...reste } = v1 as Record<string, any>
     expect(settings).toMatchObject(reste)
+    const { 'file://': _f, ...sansFichier } = sitesV1
+    expect(settings.sites).toEqual(sansFichier)
     expect(settings.theme).toBe('sombre')
     expect(settings.apparence).toEqual(defauts.apparence)
     expect(settings.couleurs).toEqual(defauts.couleurs)
@@ -150,7 +153,8 @@ describe('export / import', () => {
   it('un export v1 (fixture) s\'importe', () => {
     const patch = patchImporte(v1, AUCUN_REP)
     expect(patch.theme).toBe('sombre')
-    expect(patch.sites).toEqual(v1.sites)
+    const { 'file://': _f, ...sansFichier } = v1.sites as Record<string, unknown>
+    expect(patch.sites).toEqual(sansFichier)
   })
 
   it('l\'export ne contient ni extensions.installees ni import', () => {

@@ -76,6 +76,7 @@ describe('validerPatch', () => {
         sites: {
           'https://www.youtube.com': { boucliers: false },
           'file://': { boucliers: false },
+          'file:///tmp/a.html': { boucliers: false },
           'http://[::1]:8080': { boucliers: true },
           'javascript:alert(1)': { boucliers: false },
           'https://a.fr/chemin': { boucliers: false },
@@ -86,7 +87,6 @@ describe('validerPatch', () => {
     ).toEqual({
       sites: {
         'https://www.youtube.com': { boucliers: false },
-        'file://': { boucliers: false },
         'http://[::1]:8080': { boucliers: true }
       }
     })

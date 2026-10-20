@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import type { ExtensionInstallee, RegleSite, ScriptPerso, Settings } from '../../shared/types'
+import { bloqueePar } from '../../shared/blocageExtensions'
 import { CLES_UA, CLE_UA_DEFAUT, estCleUa, libelleUa, majeurChrome, type CleUa } from '../../shared/ua-profils'
 import { cleCanonique } from '../../main/settings/sites'
 import { EditeurCode, EditeurScript } from './EditeurScript'
@@ -107,6 +108,9 @@ function Tableau({ sites, cles, choisie, installees, defaut }: { sites: Record<s
             const r = effective(sites, cle, defaut)
             const h = (c: Cellule, champ: Parameters<typeof vientDHeritage>[2]): Cellule => heritee(c, vientDHeritage(propre, r, champ))
             const p = pastille(cle)
+            // État effectif des extensions : une règle plus large qui en bloque une l'emporte.
+            const bloquees = installees.filter((e) => bloqueePar(sites, cle, e.id) !== null)
+            const rExt = bloquees.length > 0 ? { ...r, extensions: { ...(r.extensions ?? {}), ...Object.fromEntries(bloquees.map((e) => [e.id, false])) } } : r
             return (
               <tr key={cle} class={cle === choisie ? 'on' : undefined} data-site={cle} aria-current={cle === choisie ? 'true' : undefined} onClick={() => ouvrir(cle)}>
                 <td>
@@ -118,7 +122,7 @@ function Tableau({ sites, cles, choisie, installees, defaut }: { sites: Record<s
                 <td><Valeur c={heritee(celluleBoucliers(r), propre?.boucliers === undefined && boucliersHerites(sites, cle))} /></td>
                 <td><Valeur c={h(celluleCookies(r), 'cookies')} /></td>
                 <td><Valeur c={h(celluleScripts(r), 'scripts')} /></td>
-                <td><Valeur c={h(celluleExtensions(r, installees), 'extensions')} /></td>
+                <td><Valeur c={h(celluleExtensions(rExt, installees), 'extensions')} /></td>
                 <td><Valeur c={h(celluleZoom(r), 'zoom')} /></td>
                 <td><Valeur c={h(celluleDnd(r), 'exceptionDnd')} /></td>
                 <td><Valeur c={h(celluleStyle(r), 'style')} /></td>
@@ -191,11 +195,15 @@ function Detail({ cle, sites, focus, privee, installees, defaut }: { cle: string
   }
 
   // Extensions : liste ✓/✗ ; « Modifier » ouvre des cases, « Appliquer » écrit `false` pour les seules bloquées.
-  const exts = extensionsDuSite(eff, installees)
+  // État EFFECTIF : une règle plus large (motif `*.d.fr`, hôte) qui bloque l'extension l'emporte sur la règle du site.
+  const exts = extensionsDuSite(eff, installees).map((e) => {
+    const par = bloqueePar(sites, cle, e.id)
+    return { ...e, autorisee: e.autorisee && par === null, par }
+  })
   const [edition, setEdition] = useState(false)
   const [choix, setChoix] = useState<Record<string, boolean>>({})
   const ouvrirEdition = (): void => {
-    setChoix(Object.fromEntries(exts.map((e) => [e.id, e.autorisee])))
+    setChoix(Object.fromEntries(exts.filter((e) => e.par === null).map((e) => [e.id, e.autorisee])))
     setEdition(true)
   }
   const appliquerExtensions = async (): Promise<void> => {
@@ -261,11 +269,15 @@ function Detail({ cle, sites, focus, privee, installees, defaut }: { cle: string
         <Ligne reglage="sites.notifications" titre="Notifications">
           <Segments valeur={notifications} options={NOTIFICATIONS} surChange={(v) => void reglerNotifications(v)} />
         </Ligne>
-        <Ligne reglage="sites.extensions" titre="Extensions autorisées sur ce site" aide="Les autres ne voient pas la page" herite={herite('extensions')}>
+        <Ligne reglage="sites.extensions" titre="Extensions autorisées sur ce site" aide="Agit sur les scripts de la page ; le blocage réseau de l'extension continue" herite={herite('extensions')}>
           <div class="ext-site">
-            {exts.length === 0 && <span class="hint">Aucune extension active</span>}
+            {exts.length === 0 && <span class="hint">Aucune extension active avec des scripts de page</span>}
             {exts.map((e) =>
-              edition ? (
+              e.par !== null ? (
+                <span key={e.id} class="ext-etat non" data-ext={e.id}>
+                  {e.nom} ✗ <span class="hint">Bloquée par {e.par}</span>
+                </span>
+              ) : edition ? (
                 <label key={e.id} class="ext-choix">
                   <input type="checkbox" checked={choix[e.id] !== false} onChange={(ev) => setChoix({ ...choix, [e.id]: (ev.currentTarget as HTMLInputElement).checked })} />
                   {e.nom}
@@ -287,7 +299,7 @@ function Detail({ cle, sites, focus, privee, installees, defaut }: { cle: string
               </button>
             </>
           ) : (
-            <button class="btn modifier" type="button" id="ext-modifier" disabled={exts.length === 0} onClick={ouvrirEdition}>
+            <button class="btn modifier" type="button" id="ext-modifier" disabled={exts.filter((e) => e.par === null).length === 0} onClick={ouvrirEdition}>
               Modifier
             </button>
           )}
@@ -345,6 +357,10 @@ function NouvelleRegle({ existantes, defaut, fermer }: { existantes: Record<stri
   const champ = useRef<HTMLInputElement>(null)
   useEffect(() => champ.current?.focus(), [])
   const creer = async (): Promise<void> => {
+    if (/^\s*file:/i.test(saisie)) {
+      setErreur('Les règles par site ne s’appliquent pas aux fichiers locaux.')
+      return
+    }
     const cle = cleCanonique(siteDeSaisie(saisie))
     if (!cle) {
       setErreur('Entrez une origine (https://exemple.fr), un hôte (exemple.fr) ou un motif (*.exemple.fr).')
@@ -412,6 +428,13 @@ export function Sites() {
   const [privee, setPrivee] = useState(false)
   const [installees, setInstallees] = useState<ExtensionInstallee[]>([])
   const [defaut, setDefaut] = useState<Boucliers>('standard')
+  // Extensions dont le manifest a des content scripts : seules concernées par la règle par site.
+  const [avecScripts, setAvecScripts] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    const charger = (): void => void window.lyra.invoke('extensions:lister').then((l) => setAvecScripts(new Set(l.filter((x) => x.contenu).map((x) => x.id))), () => undefined)
+    charger()
+    return window.lyra.on('settings:changed', charger)
+  }, [])
   useEffect(() => {
     void window.lyra.invoke('sites:lister').then(setSites, () => setSites({}))
     const lire = (s: Settings): void => {
@@ -432,6 +455,7 @@ export function Sites() {
     }
   }, [])
 
+  const installeesConcernees = installees.filter((e) => avecScripts.has(e.id))
   const cible = decoderRoute(hash)
   const cles = sites ? Object.keys(sites).sort((a, b) => a.localeCompare(b, 'fr')) : []
   return (
@@ -465,8 +489,8 @@ export function Sites() {
               }}
             />
           )}
-          <Tableau sites={sites} cles={cles} choisie={cible?.cle ?? null} installees={installees} defaut={defaut} />
-          {cible && <Detail key={cible.cle} cle={cible.cle} sites={sites} focus={cible.style ? hash : null} privee={privee} installees={installees} defaut={defaut} />}
+          <Tableau sites={sites} cles={cles} choisie={cible?.cle ?? null} installees={installeesConcernees} defaut={defaut} />
+          {cible && <Detail key={cible.cle} cle={cible.cle} sites={sites} focus={cible.style ? hash : null} privee={privee} installees={installeesConcernees} defaut={defaut} />}
         </>
       )}
     </>

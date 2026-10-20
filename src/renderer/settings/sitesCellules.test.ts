@@ -198,7 +198,7 @@ describe('héritage et création (correction 14a/14b)', () => {
     expect(urlDeCle('https://x.fr:8443')).toBe('https://x.fr:8443')
     expect(urlDeCle('x.fr')).toBe('https://x.fr')
     expect(urlDeCle('*.x.fr')).toBe('https://sous.x.fr')
-    expect(urlDeCle('file://')).toBe('file:///')
+    expect(urlDeCle('file://')).toBe('')
     expect(urlDeCle('n’importe quoi')).toBe('')
   })
   it('héritage : valeur du motif, sans la règle propre', () => {

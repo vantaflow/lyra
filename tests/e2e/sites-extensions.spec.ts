@@ -32,6 +32,12 @@ test('Règles par site : colonne Extensions calculée (Toutes / Aucune / hérit�
     await expect(cellule(r, 'libre.fr')).toHaveText('Toutes')
     await expect(cellule(r, 'www.motif.fr')).toHaveText(/Aucune\s*hérité/)
 
+    // État effectif : le motif plus large l'emporte sur www.motif.fr, qui ne peut pas rétablir l'extension.
+    await r.locator('tr[data-site="www.motif.fr"]').click()
+    await expect(r.locator('[data-reglage="sites.extensions"]')).toContainText('Bloquée par *.motif.fr')
+    await expect(r.locator('[data-reglage="sites.extensions"]').getByRole('button', { name: 'Modifier' })).toBeDisabled()
+    await expect(r.locator('[data-reglage="sites.extensions"]')).toContainText("Agit sur les scripts de la page ; le blocage réseau de l'extension continue")
+
     // Détail du site bloqué : ✗, puis autoriser → la règle ne porte plus `extensions`.
     await r.locator('tr[data-site="bloque.fr"]').click()
     const ligne = r.locator('[data-reglage="sites.extensions"]')

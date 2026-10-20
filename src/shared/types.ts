@@ -271,6 +271,8 @@ export interface InfoExtension extends Omit<ExtensionInstallee, 'dossier'> {
   /** L'extension a une page d'options. */
   aOptions: boolean
   portee: PorteeExtension
+  /** Le manifest déclare des content scripts : seules ces extensions sont concernées par la règle par site. */
+  contenu: boolean
 }
 
 export interface HistoryEntry {
