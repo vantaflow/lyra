@@ -6,7 +6,6 @@ import './settings.css'
 import { Historique } from './Historique'
 import { Favoris } from './Favoris'
 import { Telechargements } from './Telechargements'
-import { General } from './General'
 import { ActionsReglages } from './ActionsReglages'
 import { Reseau } from './Reseau'
 import { Apropos } from './Apropos'
@@ -17,14 +16,12 @@ import { BouclierSection } from './BouclierSection'
 import { Couleurs } from './Couleurs'
 import { Sites } from './Sites'
 import { Raccourcis } from './Raccourcis'
-import { Emplacement } from './Emplacement'
 import { Confidentialite } from './Confidentialite'
 import { Dnd } from './Dnd'
 import { Demarrage } from './Demarrage'
 import { Styles } from './Styles'
 import { Sauvegarde } from './Sauvegarde'
 import { Gestes } from './Gestes'
-import { Labo } from './Labo'
 import { chercher, REPLI_LIGNE } from './recherche'
 import { routeDepuisHash, SECTIONS } from './sections'
 
@@ -39,6 +36,11 @@ function App() {
     return () => window.removeEventListener('hashchange', maj)
   }, [])
 
+  // Route `#/extensions` : la section n'a pas de contenu ici, elle renvoie vers lyra://extensions.
+  useEffect(() => {
+    if (route === 'extensions') location.replace('lyra://extensions')
+  }, [route])
+
   const [recherche, setRecherche] = useState('')
   const resultats = chercher(recherche)
   const filtre = recherche.trim() !== ''
@@ -50,6 +52,11 @@ function App() {
   const options = filtre ? [...visibles.map((s) => ({ id: s.id, section: s.id })), ...lignesTrouvees] : []
   const [actif, setActif] = useState(-1)
   const ouvrir = (o: { id: string; section: string }): void => {
+    // Les extensions se gèrent dans leur page : la section y renvoie.
+    if (o.section === 'extensions') {
+      location.href = 'lyra://extensions'
+      return
+    }
     // Un résultat de la vue courante (ex. une ligne du détail d'une règle ouvert) ne referme pas cette vue.
     const dejaLa = location.hash.startsWith(`#/${o.section}/`) && document.querySelector(`[data-reglage="${o.id}"]`) !== null
     if (!dejaLa) location.hash = `#/${o.section}`
@@ -81,7 +88,7 @@ function App() {
       document.querySelector('.trouve')?.classList.remove('trouve')
     }
   }, [cible])
-  const titre = SECTIONS.find((s) => s.id === route)?.libelle ?? (route === 'historique' ? 'Historique' : route === 'favoris' ? 'Favoris' : 'Général')
+  const titre = SECTIONS.find((s) => s.id === route)?.libelle ?? (route === 'historique' ? 'Historique' : route === 'favoris' ? 'Favoris' : SECTIONS[0].libelle)
   return (
     <div class="reglages">
       <nav class="nav" aria-label="Sections des réglages">
@@ -161,18 +168,14 @@ function App() {
             ) : (
               <h1 data-reglage={route} tabIndex={-1}>{titre}</h1>
             )}
-            {(route === 'general' || route === 'apparence') && <ActionsReglages />}
+            {route === 'apparence' && <ActionsReglages />}
           </div>
         )}
-        {route === 'general' && <General />}
         {route === 'apparence' && <Apparence />}
         {route === 'couleurs' && <Couleurs />}
         {route === 'palette' && <PaletteSection />}
         {route === 'boucliers' && <BouclierSection />}
         {route === 'sites' && <Sites />}
-        {route === 'extensions' && (
-          <Emplacement description="Les extensions se gèrent dans leur page." lien={{ href: 'lyra://extensions', libelle: 'Ouvrir les extensions' }} />
-        )}
         {route === 'confidentialite' && <Confidentialite />}
         {route === 'telechargements' && <Telechargements />}
         {route === 'raccourcis' && <Raccourcis />}
@@ -184,7 +187,6 @@ function App() {
         {route === 'apropos' && <Apropos />}
         {route === 'importer' && <PageImport />}
         {route === 'sauvegarde' && <Sauvegarde />}
-        {route === 'labo' && <Labo />}
         {route === 'historique' && <Historique />}
         {route === 'favoris' && <Favoris />}
       </main>

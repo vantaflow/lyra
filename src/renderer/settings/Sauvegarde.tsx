@@ -13,12 +13,6 @@ export function Sauvegarde() {
         </Ligne>
       </div>
 
-      <Titre>Profils</Titre>
-      <div class="card">
-        <Ligne reglage="sauvegarde.profils" titre="Plusieurs profils" aide="Annoncés pour la version 2 de Lyra">
-          <span class="tag">Bientôt</span>
-        </Ligne>
-      </div>
     </>
   )
 }

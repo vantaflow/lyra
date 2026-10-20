@@ -1,4 +1,4 @@
-/** Sommaire des réglages : 19 entrées, dans l'ordre et avec les libellés de Parametres.dc.html (module pur). */
+/** Sommaire des réglages : 17 entrées, dans l'ordre et avec les libellés de Parametres.dc.html (module pur). */
 export interface SectionReglages {
   id: string
   libelle: string
@@ -12,7 +12,6 @@ function section(id: string, libelle: string, motsCles: string[]): SectionReglag
 }
 
 export const SECTIONS: SectionReglages[] = [
-  section('general', 'Général', ['langue', 'interface', 'exporter', 'importer']),
   section('apparence', "Le ciel et l'apparence", ['ciel', 'position', 'largeur', 'étoiles', 'thème', 'sombre', 'clair', 'masqué']),
   section('couleurs', 'Couleurs et thèmes', ['couleur', 'thème', 'sombre', 'contraste', 'accent']),
   section('palette', 'Palette et recherche', ['moteur', 'recherche', 'palette', 'mot-clé']),
@@ -29,7 +28,6 @@ export const SECTIONS: SectionReglages[] = [
   section('reseau', 'Réseau et identité', ['proxy', 'dns', 'user-agent', 'réseau', 'identité']),
   section('importer', 'Importer et exporter', ['importer', 'exporter', 'navigateur', 'favoris']),
   section('sauvegarde', 'Sauvegarde et profils', ['sauvegarde', 'profil', 'synchronisation']),
-  section('labo', 'Labo', ['expérimental', 'bêta']),
   section('apropos', 'À propos', ['version', 'licence', 'mise à jour'])
 ]
 
@@ -39,8 +37,8 @@ const ROUTES_HORS_SOMMAIRE = ['historique', 'favoris']
 /** Hôtes lyra:// qui ouvrent directement une section (lyra://history → #/historique, lyra://shields → #/boucliers). */
 export const SECTION_DE_L_HOTE: Record<string, string> = { history: 'historique', bookmarks: 'favoris', downloads: 'telechargements', shields: 'boucliers' }
 
-/** Route courante : le hash (`#/historique`) prime, sinon l'hôte lyra://, sinon « general » (aussi pour une route inconnue). */
+/** Route courante : le hash (`#/historique`) prime, sinon l'hôte lyra://, sinon la première section (aussi pour une route inconnue, dont l'ancienne `#/general`). */
 export function routeDepuisHash(hash: string, hote: string): string {
-  const brute = hash.replace(/^#\/?/, '').split('/')[0] || SECTION_DE_L_HOTE[hote] || 'general'
-  return SECTIONS.some((s) => s.id === brute) || ROUTES_HORS_SOMMAIRE.includes(brute) ? brute : 'general'
+  const brute = hash.replace(/^#\/?/, '').split('/')[0] || SECTION_DE_L_HOTE[hote] || SECTIONS[0].id
+  return SECTIONS.some((s) => s.id === brute) || ROUTES_HORS_SOMMAIRE.includes(brute) ? brute : SECTIONS[0].id
 }

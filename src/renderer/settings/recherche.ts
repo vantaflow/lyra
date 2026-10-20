@@ -31,7 +31,6 @@ function ligne(section: string, reglage: string, libelle: string, motsCles: stri
  */
 export const INDEX: EntreeIndex[] = [
   ...SECTIONS.map((s) => ({ id: s.id, section: s.id, libelle: s.libelle, motsCles: [...s.motsCles, ...(SYNONYMES_SECTIONS[s.id] ?? [])] })),
-  ligne('general', 'langue', "Langue de l'interface", ['français', 'anglais', 'traduction']),
   ligne('apparence', 'revelerSurvol', 'Révéler le ciel masqué au survol du bord', ['ciel', 'masqué', 'bord']),
   ligne('apparence', 'largeur', 'Largeur du ciel', ['ciel', 'taille', 'pixels']),
   ligne('apparence', 'glisser', "Glisser l'en-tête du ciel vers un bord pour le déplacer", ['ciel', 'déplacer', 'position']),
@@ -72,7 +71,6 @@ export const INDEX: EntreeIndex[] = [
   ligne('couleurs', 'privee', 'Fenêtres privées', ['thème', 'privé', 'navigation privée']),
   ligne('couleurs', 'themeSite', 'Thème du site dans la page', ['prefers-color-scheme', 'sombre', 'sites']),
   ligne('boucliers', 'niveau', 'Niveau de protection', ['publicités', 'traqueurs', 'bloquer', 'bouclier']),
-  ligne('boucliers', 'genes', 'Masquer aussi les gênes', ['bandeaux', 'cookies', 'invitation']),
   ligne('boucliers', 'frequence', 'Mettre à jour les listes toutes les', ['fréquence', 'listes', 'jours']),
   ligne('boucliers', 'listes', 'Listes de blocage', ['mise à jour', 'filtres']),
   ligne('boucliers', 'sites', 'Boucliers site par site', ['règles par site', 'désactiver', 'strict', 'exception']),
@@ -117,9 +115,6 @@ export const INDEX: EntreeIndex[] = [
   ligne('styles', 'css', 'Feuille de style globale', ['css', 'style', 'tous les sites', 'personnalisé']),
   ligne('styles', 'scripts', 'Scripts globaux', ['javascript', 'script', 'tous les sites', 'personnalisé']),
   ligne('sauvegarde', 'exporter', 'Exporter et importer vos données', ['sauvegarde', 'réglages', 'favoris', 'copie']),
-  ligne('sauvegarde', 'profils', 'Plusieurs profils', ['profil', 'compte', 'version 2']),
-  ligne('labo', 'modeLecture', 'Mode lecture', ['expérimental', 'lecture', 'article', 'épuré']),
-  ligne('labo', 'popupsExtension', "Fenêtres des extensions sur la page", ['expérimental', 'extension', 'popup', 'overlay']),
   // Une ligne par commande serait dynamique (`reglage` calculé) : le tableau est indexé d'un bloc. Les libellés des commandes
   // n'y figurent pas : « zoom » ou « historique » ne doivent pas faire surgir cette section (e2e reglages.spec.ts).
   ligne('raccourcis', 'commandes', 'Raccourcis des commandes', ['combinaison', 'redéfinir', 'par défaut', 'réinitialiser'])

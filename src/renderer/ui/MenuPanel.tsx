@@ -59,7 +59,6 @@ export function MenuPanel({ ancre }: { ancre: AncreMenu | null }) {
           </span>
         </div>
         <Ligne label="Imprimer…" aide={raccourciDe('imprimer')} action="imprimer" />
-        <Ligne label="Mode lecture" aide="v2" />
         <div class="sep"></div>
         <Ligne label={`Règles pour ${ancre.hote || 'ce site'}`} action={ancre.regles ? 'regles-site' : undefined} />
         {ancre.basculable && (
