@@ -497,7 +497,7 @@ void app.whenReady().then(async () => {
   handle('settings:get', () => reglages.getSettings())
   handle('settings:set', (patch) => reglages.setSettings(patch))
   installerReglagesIpc(reglages)
-  installerTheme({ reglages })
+  installerTheme({ reglages, estPrivee })
   // Importation depuis un autre navigateur : les onglets importés vont toujours dans une fenêtre NORMALE.
   const cibleCiel = (m: TabManager): CibleCiel => ({
     constellations: () => m.constellations(),

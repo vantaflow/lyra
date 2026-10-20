@@ -1,7 +1,8 @@
 // Génère la table de `src/shared/fuseaux-soleil.ts` : `node scripts/generer-fuseaux-soleil.mjs > /tmp/table.txt`.
 // Méthode : équation du lever/coucher du Soleil (NOAA, « General Solar Position Calculations »,
 // https://gml.noaa.gov/grad/solcalc/calcdetails.html), évaluée au 15 de chaque mois (année 2026) pour la ville de référence de chaque fuseau.
-// Heures légales locales (heure d'été comprise), arrondies au quart d'heure. Aucun réseau, aucune géolocalisation à l'exécution de Lyra.
+// Heures en HEURE STANDARD du fuseau (sans heure d'été : décalage standard = le plus petit entre janvier et juillet), arrondies au quart d'heure ;
+// Lyra ajoute à l'exécution le décalage d'été courant, obtenu par Intl. Aucun réseau, aucune géolocalisation à l'exécution de Lyra.
 const VILLES = {
   'Europe/Paris': [48.85, 2.35], 'Europe/London': [51.51, -0.13], 'Europe/Berlin': [52.52, 13.4], 'Europe/Madrid': [40.42, -3.7],
   'Europe/Rome': [41.9, 12.5], 'Europe/Lisbon': [38.72, -9.14], 'Europe/Amsterdam': [52.37, 4.9], 'Europe/Brussels': [50.85, 4.35],
@@ -40,7 +41,7 @@ for (const [tz, [lat, lon]] of Object.entries(VILLES)) {
   for (let m = 0; m < 12; m++) {
     const date = new Date(Date.UTC(2026, m, 15, 12))
     const jour = Math.round((date - Date.UTC(2026, 0, 0)) / 86400000)
-    const off = decalageMinutes(tz, date)
+    const off = Math.min(decalageMinutes(tz, new Date(Date.UTC(2026, 0, 15, 12))), decalageMinutes(tz, new Date(Date.UTC(2026, 6, 15, 12))))
     const loc = (min) => (((min + off) % 1440) + 1440) % 1440
     mois.push([quart(loc(evenement(jour, lat, lon, true))), quart(loc(evenement(jour, lat, lon, false)))])
   }

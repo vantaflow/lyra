@@ -127,3 +127,29 @@ test('thème : « Le ciel prend la teinte du site actif » fond 18 % du theme-co
     await app.close()
   }
 })
+
+test('thème : en sombre, la première couleur lue sur lyra://settings (avant tout script de page) est déjà sombre', async () => {
+  test.setTimeout(60_000)
+  const { app, fenetre } = await lancerLyra()
+  try {
+    await poser(fenetre, { theme: 'sombre' })
+    const r = await ouvrirReglages(app, fenetre)
+    await expect.poll(() => fond(fenetre, '.carte')).toBe('rgb(23, 23, 42)')
+    // Lecture au plus tôt (DOMContentLoaded : après le module de la page, avant la réponse de `theme:effectif`) après un rechargement.
+    await r.addInitScript(() => {
+      document.addEventListener('DOMContentLoaded', () => {
+        const w = window as unknown as { __premier?: { page: string; fond: string } }
+        w.__premier = {
+          page: getComputedStyle(document.documentElement).getPropertyValue('--page').trim(),
+          fond: getComputedStyle(document.getElementById('app')!).backgroundColor
+        }
+      })
+    })
+    await r.reload()
+    await expect(r.locator('h1')).toBeVisible()
+    const premier = await r.evaluate(() => (window as unknown as { __premier?: { page: string; fond: string } }).__premier)
+    expect(premier).toEqual({ page: '#121214', fond: 'rgb(18, 18, 20)' })
+  } finally {
+    await app.close()
+  }
+})

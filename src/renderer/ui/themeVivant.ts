@@ -2,6 +2,7 @@
 // (`theme:variables`), posées ici sur <html> sans rechargement. theme.css garde les valeurs d'Indigo nuit pour le premier rendu.
 import { signal } from '@preact/signals'
 import type { ThemeDiffuse } from '../../shared/ipc'
+import { variablesValides } from '../../shared/variablesCss'
 
 /** Incrémenté à chaque thème appliqué : les composants qui lisent une variable calculée s'y abonnent. */
 export const versionTheme = signal(0)
@@ -12,24 +13,29 @@ export interface RacineTheme {
   setAttribute(nom: string, valeur: string): void
 }
 
-const NOM_VARIABLE = /^--[a-z0-9-]+$/
-/** Couleurs seulement : #hex ou rgb()/rgba() ; rien d'autre ne vient du canal (pas d'url(), pas de calc). */
-const VALEUR_COULEUR = /^(#[0-9a-fA-F]{3,8}|rgba?\([\d\s.,%]+\))$/
-
 /** Pose les variables du thème (celles du thème privé pour une vue privée) ; retire celles d'un thème précédent qui ont disparu. */
 export function appliquerTheme(racine: RacineTheme, theme: ThemeDiffuse, privee: boolean, posees: Set<string>): void {
   const variables = privee ? theme.privee : theme.variables
   const suivantes = new Set<string>()
-  for (const [nom, valeur] of Object.entries(variables)) {
-    if (!NOM_VARIABLE.test(nom) || !VALEUR_COULEUR.test(valeur)) continue
-    // Minuscules, comme les valeurs statiques de theme.css : même texte avant et après la diffusion.
-    racine.style.setProperty(nom, valeur.toLowerCase())
+  const appliquees: Record<string, string> = {}
+  // Minuscules, comme les valeurs statiques de theme.css : même texte avant et après la diffusion.
+  for (const [nom, valeur] of variablesValides(variables)) {
+    racine.style.setProperty(nom, valeur)
     suivantes.add(nom)
+    appliquees[nom] = valeur
   }
   for (const nom of posees) if (!suivantes.has(nom)) racine.style.removeProperty(nom)
   posees.clear()
   for (const nom of suivantes) posees.add(nom)
   racine.setAttribute('data-mode', theme.mode)
+  variablesCourantes = appliquees
+}
+
+let variablesCourantes: Record<string, string> = {}
+
+/** Variables du thème appliquées à cette vue (jeu privé compris), sans lire le style calculé : vide avant le premier thème. */
+export function variablesAppliquees(): Readonly<Record<string, string>> {
+  return variablesCourantes
 }
 
 /** À appeler une fois par vue : rattrape le thème courant, puis suit `theme:variables` et le passage en vue privée. */

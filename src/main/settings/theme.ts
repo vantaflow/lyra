@@ -100,6 +100,8 @@ export interface DepsGestionnaireTheme {
   horloge?: () => Date
   /** Fuseau IANA (défaut : celui du système). */
   fuseau?: () => string
+  /** `powerMonitor` : le thème est recalculé au retour de veille (l'horloge a pu sauter). */
+  energie?: { on(evenement: 'resume', cb: () => void): unknown; off(evenement: 'resume', cb: () => void): unknown }
   /** Envoie le thème à toutes les vues Lyra. */
   diffuser(theme: ThemeDiffuse): void
 }
@@ -126,12 +128,14 @@ export class GestionnaireTheme {
     if (this.demarre) return
     this.demarre = true
     this.deps.nativeTheme.on('updated', this.surMiseAJour)
+    this.deps.energie?.on('resume', this.surMiseAJour)
     this.recalculer()
   }
 
   arreter(): void {
     this.demarre = false
     this.deps.nativeTheme.off('updated', this.surMiseAJour)
+    this.deps.energie?.off('resume', this.surMiseAJour)
     this.desarmer()
   }
 

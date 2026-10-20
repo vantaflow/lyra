@@ -4,6 +4,7 @@ import type { Ref } from 'preact'
 import { racines, regrouper, reglerCiel } from './cielCommun'
 import { glisserEntete, largeurAuClavier, redimensionnerCiel } from './gestes'
 import { styleConstellation } from './teinteCiel'
+import { variablesAppliquees, versionTheme } from './themeVivant'
 import { boucliers, cielDeplacer, couleurParConstellation, cielLargeurAffichee, cielPosition, sky, telechargementActif } from './state'
 
 const mac = window.lyra.plateforme === 'darwin'
@@ -80,6 +81,7 @@ interface PropsSky {
 
 export function Sky({ revele = false, refCiel, surEntree, surSortie, surSortieFocus, largeur }: PropsSky = {}) {
   const { epinglees, sans, constellations } = regrouper(sky.value)
+  versionTheme.value // le ciel de référence des couleurs de constellation change avec le thème
   const touche = mac ? '⌘' : 'Ctrl'
 
   return (
@@ -149,7 +151,7 @@ export function Sky({ revele = false, refCiel, surEntree, surSortie, surSortieFo
           <Branche key={s.id} star={s} groupe={sans} />
         ))}
         {constellations.map(({ constellation: c, etoiles: groupe }) => (
-          <div key={c.id} style={styleConstellation(c.color, couleurParConstellation.value)}>
+          <div key={c.id} style={styleConstellation(c.color, couleurParConstellation.value, variablesAppliquees()['--ciel'])}>
             <div class="grp">
               <span>{c.name}</span>
               <span class="grp-n">{groupe.length}</span>

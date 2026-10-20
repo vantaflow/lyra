@@ -24,4 +24,10 @@ describe('expediteurAutorise', () => {
   it('en dev, prod seul ne suffit pas', () => {
     expect(expediteurAutorise('file:///app/out/renderer/ui.html', { dev: 'http://localhost:5173', prod })).toBe(false)
   })
+  it('une page web dont l’adresse mentionne ui.html n’est pas une vue Lyra (filtre de la diffusion du thème)', () => {
+    const o = { dev: 'http://localhost:5173', prod }
+    for (const url of ['https://exemple.test/ui.html', 'https://exemple.test/?x=ui.html', 'http://localhost:5173.evil.test/ui.html', 'file:///tmp/ui.html'])
+      expect(expediteurAutorise(url, o), url).toBe(false)
+    expect(expediteurAutorise('http://localhost:5173/ui.html#overlay', o)).toBe(true)
+  })
 })

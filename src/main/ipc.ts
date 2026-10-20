@@ -9,6 +9,9 @@ const origines = (): OriginesUI => ({
   prod: pathToFileURL(join(__dirname, '../renderer/')).href
 })
 
+/** L'adresse est celle d'une vue Lyra (interface, overlay, page lyra://) : jamais une page web, même si son adresse contient « ui.html ». */
+export const estVueLyra = (url: string): boolean => expediteurAutorise(url, origines())
+
 export function handle<K extends CanalRequete>(
   canal: K,
   fn: (data: Requetes[K][0], event: IpcMainInvokeEvent) => Requetes[K][1] | Promise<Requetes[K][1]>

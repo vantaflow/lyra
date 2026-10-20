@@ -3,7 +3,7 @@ import { reglagesParDefautD } from './defaults-d'
 import { THEMES, deriver } from '../../shared/themes'
 import { COULEURS_INDIGO_NUIT, type CouleursTheme, type ReglagesCouleurs } from '../../shared/types-reglages'
 import type { ThemeDiffuse } from '../../shared/ipc'
-import { heuresSoleil } from '../../shared/fuseaux-soleil'
+import { heuresSoleilLocales } from '../../shared/fuseaux-soleil'
 import { GestionnaireTheme, themeEffectif, variablesPrivees, type NativeThemeLike, type ReglagesTheme } from './theme'
 
 type ThemeReglage = ReglagesTheme['theme']
@@ -170,7 +170,7 @@ describe('GestionnaireTheme', () => {
     const g = new GestionnaireTheme(depsGestionnaire(reglage('programme', { passage: 'coucher' }), nt))
     g.demarrer()
     expect(diffusions.at(-1)!.mode).toBe('clair')
-    const { coucher, lever } = heuresSoleil(PARIS, 5)
+    const { coucher, lever } = heuresSoleilLocales(PARIS, MIDI, 5)
     // Un quart d'heure avant le coucher : toujours clair ; un quart d'heure après : sombre.
     vi.advanceTimersByTime((coucher - 12 - 0.25) * 3_600_000)
     expect(diffusions.at(-1)!.mode).toBe('clair')
@@ -216,6 +216,21 @@ describe('GestionnaireTheme', () => {
     g.recalculer()
     expect(vi.getTimerCount()).toBe(0)
     g.arreter()
+  })
+
+  it('retour de veille (powerMonitor resume) : recalcule tout de suite, même si la minuterie n’a pas sonné', () => {
+    const ecouteurs = new Set<() => void>()
+    const energie = { on: (_e: 'resume', cb: () => void) => void ecouteurs.add(cb), off: (_e: 'resume', cb: () => void) => void ecouteurs.delete(cb) }
+    const g = new GestionnaireTheme({ ...depsGestionnaire(reglage('programme', { passage: 'coucher' })), energie })
+    g.demarrer()
+    expect(diffusions.at(-1)!.mode).toBe('clair')
+    // L'ordinateur dort de midi à 23 h 30 : l'horloge saute sans que les minuteries aient tourné.
+    vi.setSystemTime(NUIT)
+    expect(ecouteurs.size).toBe(1)
+    ecouteurs.forEach((cb) => cb())
+    expect(diffusions.at(-1)!.mode).toBe('sombre')
+    g.arreter()
+    expect(ecouteurs.size).toBe(0)
   })
 
   it('arreter retire la minuterie et l’écouteur nativeTheme', () => {

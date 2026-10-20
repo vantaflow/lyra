@@ -6,6 +6,7 @@ import { glisserEntete } from './gestes'
 import { Epingle } from './Epingle'
 import { PiedActions } from './Sky'
 import { styleConstellation } from './teinteCiel'
+import { variablesAppliquees, versionTheme } from './themeVivant'
 import { cielDeplacer, couleurParConstellation, estTerne, etats, sky, titreEtoile } from './state'
 
 const mac = window.lyra.plateforme === 'darwin'
@@ -86,6 +87,7 @@ interface Props {
 /** Le ciel en bande de 56 px (CielHaut.dc.html, CielBas.dc.html) : étoiles en ligne, enfants en petits points reliés. */
 export function Bande({ revele = false, position, refCiel, surEntree, surSortie, surSortieFocus }: Props) {
   const { epinglees, sans, constellations } = regrouper(sky.value)
+  versionTheme.value // le ciel de référence des couleurs de constellation change avec le thème
   const defilement = useRef<HTMLElement | null>(null)
   const activeId = sky.value.activeId
   // L'étoile active reste dans la vue, même quand la bande défile.
@@ -127,7 +129,7 @@ export function Bande({ revele = false, position, refCiel, surEntree, surSortie,
         <Etoiles groupe={sans} />
         {constellations.map(({ constellation: c, etoiles: groupe }) => (
           // `display: contents` : le groupe ne change pas la mise en page, il porte seulement la couleur de la constellation.
-          <span key={c.id} style={{ display: 'contents', ...styleConstellation(c.color, couleurParConstellation.value) }}>
+          <span key={c.id} style={{ display: 'contents', ...styleConstellation(c.color, couleurParConstellation.value, variablesAppliquees()['--ciel']) }}>
             <span class="hg">{c.name}</span>
             <Etoiles groupe={groupe} />
           </span>

@@ -9,8 +9,15 @@ import { cielAppui, cielCible, cielMasque, cielPosition, cielRevele, cielTeinteP
 import { RappelDnd } from './Rappel'
 import { Overlay } from './Overlay'
 import { FindBar } from './FindBar'
-import { demarrerTheme, versionTheme } from './themeVivant'
-import { teinteDuCiel } from './teinteCiel'
+import { signal } from '@preact/signals'
+import { demarrerTheme, variablesAppliquees, versionTheme } from './themeVivant'
+import { creerLisseur, teinteDuCiel } from './teinteCiel'
+
+/** Teinte affichée, lissée : une page qui change vite de `theme-color` ne fait pas clignoter le ciel. */
+const teinteAffichee = signal<string | undefined>(undefined)
+const viserTeinte = creerLisseur<string | undefined>((v) => {
+  teinteAffichee.value = v
+})
 
 function App() {
   const winStyle = window.lyra.plateforme === 'win32' ? ' win' : window.lyra.plateforme === 'darwin' ? ' mac' : ''
@@ -21,10 +28,13 @@ function App() {
   // Les pastilles macOS sont dans le ciel (colonne à gauche, bande en haut) ; sinon la capsule leur laisse la place.
   const pastillesCapsule = mac && (masque || (position !== 'gauche' && position !== 'haut'))
   const cible = cielCible.value
-  // « Le ciel prend la teinte du site actif » : 18 % de la couleur de la page (theme-color, sinon favicon en cache) dans le fond du ciel.
+  // « Le ciel prend la teinte du site actif » : 18 % (ou moins, tant que les textes du ciel restent lisibles) de la couleur de la page ;
+  // jamais en fenêtre privée. Les variables viennent de `themeVivant` (aucune lecture du style calculé) ; un changement par seconde au plus.
   versionTheme.value
-  const cielBase = getComputedStyle(document.documentElement).getPropertyValue('--ciel').trim()
-  const teinte = teinteDuCiel(cielBase, etats.value[sky.value.activeId ?? ''], cielTeinteParSite.value)
+  const privee = document.documentElement.classList.contains('privee')
+  const cibleTeinte = teinteDuCiel(variablesAppliquees(), etats.value[sky.value.activeId ?? ''], { actif: cielTeinteParSite.value, privee })
+  useEffect(() => viserTeinte(cibleTeinte), [cibleTeinte])
+  const teinte = teinteAffichee.value
   // Révélé, la vue chrome ne couvre plus que le ciel : fond transparent autour pour laisser voir la page.
   useEffect(() => {
     document.documentElement.classList.toggle('revele', revele)
