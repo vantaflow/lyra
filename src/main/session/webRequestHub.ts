@@ -32,6 +32,32 @@ export interface SessionWeb {
   }
 }
 
+/** Les Boucliers passent en premier ; tout écouteur des règles par site (jalon D) passe après. */
+export const PRIORITE_BOUCLIERS = 50
+export const PRIORITE_APRES_BOUCLIERS = 100
+
+const HOTES_CRX = /^(clients2\.google\.com|clients2\.googleusercontent\.com|([^.]+\.)*gvt1\.com)$/i
+
+/**
+ * Extensions et téléchargement des paquets CRX : les Boucliers les laissent passer, les règles par site aussi.
+ * Pages et ressources des extensions (`chrome-extension://`, initiateur compris) et URL du protocole des icônes d'action
+ * (`crx://`) : jamais filtrées. Un initiateur `crx://` n'exempte rien (seule l'URL crx:// est celle de l'interface).
+ */
+export function estExempte(d: { url: string; initiatorOrigin?: string }): boolean {
+  if (/^(chrome-extension|crx):\/\//.test(d.url) || (d.initiatorOrigin?.startsWith('chrome-extension://') ?? false)) return true
+  try {
+    return HOTES_CRX.test(new URL(d.url).hostname)
+  } catch {
+    return false
+  }
+}
+
+/** Enveloppe d'un écouteur des règles par site : il ne voit jamais les requêtes exemptées. */
+export const apresBoucliers =
+  <D extends { url: string; initiatorOrigin?: string }, R>(fn: (d: D) => R | void) =>
+  (d: D): R | void =>
+    estExempte(d) ? undefined : fn(d)
+
 const TOUTES: WebRequestFilter = { urls: ['<all_urls>'] }
 const PRIORITE_PAR_DEFAUT = 100
 
@@ -50,40 +76,52 @@ function creerChaine<D, R extends object>(
   inscrire: (ecouteur: (d: D, cb: (r: R) => void) => void) => void
 ) {
   const entrees = new Map<string, Entree<D, R>>()
+  // Liste triée, recalculée seulement quand les inscriptions changent (et non à chaque requête).
+  let triees: Array<Entree<D, R>> | null = null
   let compteur = 0
   let inscrit = false
 
   const executer = (d: D, cb: (r: R) => void): void => {
-    let courant = d
     let sortie = {} as R
-    const triees = [...entrees.values()].sort((a, b) => a.priorite - b.priorite || a.ordre - b.ordre)
-    for (const e of triees) {
-      let r: R | void
-      try {
-        r = e.fn(courant)
-      } catch (err) {
-        console.error(`[webRequest] écouteur « ${e.id} » (${nom}) en échec, ignoré :`, err)
-        continue
+    // Quoi qu'il arrive dans la chaîne (écouteur, fusion, arrêt, tri), Electron reçoit un rappel, une seule fois.
+    try {
+      let courant = d
+      triees ??= [...entrees.values()].sort((a, b) => a.priorite - b.priorite || a.ordre - b.ordre)
+      for (const e of triees) {
+        let r: R | void
+        try {
+          r = e.fn(courant)
+        } catch (err) {
+          console.error(`[webRequest] écouteur « ${e.id} » (${nom}) en échec, ignoré :`, err)
+          continue
+        }
+        if (!r) continue
+        sortie = { ...sortie, ...r }
+        if (arret(r)) break
+        courant = suite(courant, r)
       }
-      if (!r) continue
-      sortie = { ...sortie, ...r }
-      if (arret(r)) break
-      courant = suite(courant, r)
+    } catch (err) {
+      console.error(`[webRequest] chaîne « ${nom} » en échec :`, err)
+    } finally {
+      cb(sortie)
     }
-    cb(sortie)
   }
 
   return {
     ajouter(id: string, fn: (d: D) => R | void, priorite = PRIORITE_PAR_DEFAUT): () => void {
       const entree: Entree<D, R> = { id, fn, priorite, ordre: compteur++ }
       entrees.set(id, entree)
+      triees = null
       if (!inscrit) {
         inscrit = true
         inscrire(executer)
       }
       return () => {
         // Ne retire que sa propre inscription : un remplaçant du même id reste en place.
-        if (entrees.get(id) === entree) entrees.delete(id)
+        if (entrees.get(id) === entree) {
+          entrees.delete(id)
+          triees = null
+        }
       }
     }
   }

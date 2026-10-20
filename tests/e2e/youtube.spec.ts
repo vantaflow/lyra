@@ -26,10 +26,19 @@ async function echantillonner(page: Page, n: number): Promise<string[]> {
 
 const pageYoutube = (app: ElectronApplication): Page | undefined => app.windows().find((w) => w.url().startsWith('https://www.youtube.com/'))
 
-test('@reseau YouTube : scriptlets avant la page, aucune pub sur 3 vidéos enchaînées', async () => {
-  test.setTimeout(180_000)
+/** Scénario commun : avec `ubo`, uBlock Origin (release GitHub, MV2 + stubs) est installé avant la navigation ; les Boucliers priment. */
+async function scenarioYoutube(ubo: boolean): Promise<void> {
   const { app, fenetre } = await lancerLyra()
   try {
+    // LYRA_E2E_STRICT=1 : même test avec une règle Boucliers « Strict » sur youtube.com et ses sous-domaines.
+    if (process.env.LYRA_E2E_STRICT === '1') {
+      for (const cle of ['youtube.com', '*.youtube.com']) await fenetre.evaluate((c) => window.lyra.invoke('sites:ecrire', { cle: c, regle: { boucliers: 'strict' } }), cle)
+    }
+    if (ubo) {
+      const r = await fenetre.evaluate(() => window.lyra.invoke('extensions:installer', { source: 'ubo' }))
+      if (r.etat !== 'installee') throw new Error(JSON.stringify(r))
+      console.log('[youtube] uBlock Origin chargé :', r.version)
+    }
     const id = await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), VIDEO)
     await expect.poll(() => pageYoutube(app), { timeout: 30_000 }).toBeDefined()
     const page = pageYoutube(app)!
@@ -66,4 +75,14 @@ test('@reseau YouTube : scriptlets avant la page, aucune pub sur 3 vidéos encha
   } finally {
     await app.close()
   }
+}
+
+test('@reseau YouTube : scriptlets avant la page, aucune pub sur 3 vidéos enchaînées', async () => {
+  test.setTimeout(180_000)
+  await scenarioYoutube(false)
+})
+
+test('@reseau YouTube avec uBlock Origin chargé : les Boucliers bloquent toujours, aucune pub', async () => {
+  test.setTimeout(240_000)
+  await scenarioYoutube(true)
 })

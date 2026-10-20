@@ -83,6 +83,7 @@ function Detail({ apercu, resultat }: { apercu?: ReponseApercuImport; resultat?:
                 </li>
               ))}
             </ul>
+            <span class="hint">Importées, elles attendent dans lyra://extensions (menu ⋯ › Extensions) : rien ne s'installe sans ton clic sur « Tout réinstaller ».</span>
           </div>
         </div>
       )}

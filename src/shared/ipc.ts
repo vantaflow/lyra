@@ -2,7 +2,7 @@ import type { DemandeExportFichier, DemandeExportPaquet, DemandeImportFichier, D
 import type { Compteurs, ElementImport, ExtensionImportee, Indisponible, OptionsApplication, ProfilDetecte, ResultatImport } from '../main/import/types'
 import type { Mode } from './contraste'
 import type { NomTheme } from './types-reglages'
-import type { DecisionPermission, DownloadInfo, HistoryEntry, PasserellePerso, RegleSite, Settings, SiteContourne, SkyState, Suggestion, TypePermission } from './types'
+import type { DecisionPermission, DownloadInfo, EntreeFileExtensions, HistoryEntry, InfoExtension, JournalExtension, PasserellePerso, ProgressionFile, RegleSite, ResultatFile, ResultatInstallation, Settings, SiteContourne, SkyState, Suggestion, TypePermission } from './types'
 
 export interface RectIpc {
   x: number
@@ -134,7 +134,7 @@ export interface EtatDnd {
   rappel: boolean
 }
 
-export type RouteOverlay = 'palette' | 'shields' | 'downloads' | 'menu' | 'permission'
+export type RouteOverlay = 'palette' | 'shields' | 'downloads' | 'menu' | 'permission' | 'extensions'
 
 /** Entrées actives du menu ⋯ de la capsule. */
 export type ActionMenu =
@@ -145,6 +145,7 @@ export type ActionMenu =
   | 'recherche'
   | 'imprimer'
   | 'devtools'
+  | 'extensions'
   | 'historique'
   | 'reglages'
 
@@ -177,6 +178,33 @@ export interface SkyChange {
 /** Requêtes renderer → main : canal → [données, réponse]. Complétée par les tâches suivantes. */
 export type Requetes = {
   'settings:get': [void, Settings]
+  /** Registre des extensions, avec l'état de chargement de chacune. */
+  'extensions:lister': [void, InfoExtension[]]
+  /** Active ou désactive à chaud ; faux si l'extension est inconnue ou ne se charge pas. */
+  'extensions:activer': [{ id: string; active: boolean }, boolean]
+  /** Retire l'extension, son dossier et son entrée du registre. */
+  'extensions:desinstaller': [{ id: string }, boolean]
+  /**
+   * Installe une extension Chrome : `source` = identifiant, URL du Chrome Web Store ou « ubo » ; `choisir` ouvre un sélecteur
+   * natif (fichier .crx/.zip ou dossier). Un chemin passé en `source` n'est accepté que sous `LYRA_TEST`.
+   */
+  'extensions:installer': [{ source?: string; choisir?: 'fichier' | 'dossier' }, ResultatInstallation]
+  /** Ouvre la page d'options de l'extension dans une nouvelle étoile ; faux si elle n'en a pas. */
+  'extensions:options': [{ id: string }, boolean]
+  /** Règle par site : `active: false` enregistre `settings.sites[origine].extensions[id] = false`. */
+  'extensions:regleSite': [{ id: string; origine: string; active: boolean }, boolean]
+  /** Panneau des extensions (icônes d'action) depuis le pied du ciel. */
+  'extensions:panel': [void, void]
+  /** Journal de compatibilité d'une extension (undefined si inconnue). */
+  'extensions:journal': [{ id: string }, JournalExtension | undefined]
+  /**
+   * File d'import (jalon E) : le processus principal lit `settings.import.extensionsEnAttente`, installe les entrées en série et
+   * réécrit lui-même les restantes. Les entrées imposées exigent leur clé `magasin:id` dans `confirmees` (seule donnée de la page).
+   * Rend un résultat par entrée et la file restante.
+   */
+  'extensions:consommerFile': [{ confirmees?: string[] } | undefined, ResultatFile]
+  /** Cherche et installe les mises à jour maintenant (ignore le réglage automatique). */
+  'extensions:majTout': [void, { misesAJour: Array<{ id: string; nom: string; de: string; vers: string }>; erreurs: string[]; derniereVerification?: string }]
   'settings:set': [Partial<Settings>, Settings]
   'layout:get': [
     void,
@@ -318,6 +346,8 @@ export type Requetes = {
   'passerelles:warp': [void, EtatPasserelles]
   /** Test uniquement (LYRA_TEST=1) : charge une URL dans la vue de page. */
   'test:navigate': [string, void]
+  /** Mode test (`enTest()`) : pose la file d'import des réglages (`import.extensionsEnAttente`) et rend celle qui reste. */
+  'test:fileImport': [unknown[] | undefined, unknown[]]
   'test:endormir': [string, boolean]
   /** Test uniquement (LYRA_TEST=1) : dernière URL demandée par la palette. */
   'test:lastNavigation': [void, string | null]
@@ -331,6 +361,10 @@ export type Evenements = {
   'sites:changed': Record<string, RegleSite>
   /** Main → vues Lyra (jamais une page web) : variables CSS du thème effectif, posées sur <html> sans rechargement. */
   'theme:variables': ThemeDiffuse
+  /** Main → page des extensions : progression de la file d'import (début et fin de chaque extension). */
+  'extensions:progressionFile': ProgressionFile
+  /** Main → page des extensions : la file d'import est terminée (résultat de chaque entrée, file restante). */
+  'extensions:finFile': ResultatFile
   /** Main → chrome : le ciel masqué est révélé (vue chrome élargie au-dessus de la page) ou retiré. */
   'ciel:revele': boolean
   /** Main → chrome : la souris bouge sur la page web ; `y` = hauteur du curseur depuis le haut de la capsule (la page est sous elle, donc ≥ 46). Aucune donnée de page. */

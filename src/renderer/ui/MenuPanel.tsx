@@ -82,6 +82,7 @@ export function MenuPanel({ ancre }: { ancre: AncreMenu | null }) {
         <Ligne label="Outils de développement" aide={raccourci('⌥ ⌘ I')} action="devtools" />
         <div class="sep"></div>
         <Ligne label="Historique" aide={raccourci('⌘ Y')} action="historique" />
+        <Ligne label="Extensions" action="extensions" />
         <Ligne label="Réglages" aide={raccourci('⌘ ,')} action="reglages" />
       </nav>
     </div>

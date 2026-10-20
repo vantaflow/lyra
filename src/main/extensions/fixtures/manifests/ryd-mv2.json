@@ -1,0 +1,17 @@
+{
+  "manifest_version": 2,
+  "name": "Return YouTube Dislike",
+  "version": "3.0.0.18",
+  "description": "Returns ability to see dislikes.",
+  "browser_specific_settings": { "gecko": { "id": "{762f9885-5a13-4abd-9c77-433dcd38b8fd}", "strict_min_version": "58.0" } },
+  "icons": { "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "permissions": ["activeTab", "storage", "scripting", "https://*.youtube.com/*", "https://returnyoutubedislikeapi.com/*"],
+  "content_security_policy": "script-src 'self'; object-src 'self'",
+  "background": { "scripts": ["background.js"] },
+  "content_scripts": [
+    { "matches": ["https://*.youtube.com/*"], "js": ["ryd.content-script.js"], "css": ["ryd.content-style.css"], "run_at": "document_start" }
+  ],
+  "browser_action": { "browser_style": true, "default_popup": "popup.html", "default_icon": "icons/icon48.png" },
+  "options_ui": { "page": "popup.html", "browser_style": true },
+  "web_accessible_resources": ["/ryd.script.js", "/ryd.script.js.map", "icons/icon48.png"]
+}

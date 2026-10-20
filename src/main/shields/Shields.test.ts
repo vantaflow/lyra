@@ -90,6 +90,11 @@ describe('Shields.attacher', () => {
     expect(shields.bloques(7)).toBe(0)
   })
 
+  it("l'exemption crx:// ne vaut que pour l'URL (icônes d'action) : un initiateur crx:// n'exempte pas une requête de pub", () => {
+    expect(envoyer(ses, requete('crx://extension-icon/abc/32/1'))).toEqual({})
+    expect(envoyer(ses, requete('https://ads.exemple.test/pub.js', { initiatorOrigin: 'crx://extension-icon' }))).toEqual({ cancel: true })
+  })
+
   it('ne bloque jamais la navigation principale', () => {
     expect(envoyer(ses, requete('https://ads.exemple.test/', { resourceType: 'mainFrame' }))).toEqual({})
   })
@@ -185,5 +190,52 @@ describe('origineDe', () => {
     expect(origineDe('https://www.youtube.com/watch?v=x')).toBe('https://www.youtube.com')
     expect(origineDe('file:///tmp/a.html')).toBe('file://')
     expect(origineDe('pas une url')).toBe('')
+  })
+})
+
+describe('Boucliers par site : trois niveaux', () => {
+  const avecRegle = (b: 'desactives' | 'standard' | 'strict'): Settings => ({ ...reglages, sites: { 'site.test': { boucliers: b } } })
+  const monter = (b: 'desactives' | 'standard' | 'strict') => {
+    const r = avecRegle(b)
+    const s = creerShields({ moteurInitial: moteurFixture(), reglages: () => r })
+    const f = fausseSession()
+    s.attacher(f)
+    return { s, f }
+  }
+  const script = (url: string): Record<string, unknown> => requete(url)
+
+  it('Strict : script tiers inconnu bloqué et compté, moteur standard toujours actif', () => {
+    const { s, f } = monter('strict')
+    expect(envoyer(f, script('https://tiers-inconnu.test/x.js'))).toEqual({ cancel: true })
+    expect(s.bloques(7)).toBe(1)
+    expect(envoyer(f, script('https://ads.exemple.test/pub.js'))).toEqual({ cancel: true })
+    expect(envoyer(f, script('https://cdn.jsdelivr.net/npm/x.js'))).toEqual({})
+    expect(envoyer(f, script('https://static.site.test/app.js'))).toEqual({})
+  })
+  it('Standard : le script tiers inconnu passe', () => {
+    const { f } = monter('standard')
+    expect(envoyer(f, script('https://tiers-inconnu.test/x.js'))).toEqual({})
+  })
+  it('Désactivés : rien n’est bloqué ni scriptlet ni style', () => {
+    const { s, f } = monter('desactives')
+    expect(envoyer(f, script('https://tiers-inconnu.test/x.js'))).toEqual({})
+    expect(envoyer(f, script('https://ads.exemple.test/pub.js'))).toEqual({})
+    expect(s.scriptlets('https://site.test/', 'https://site.test/')).toEqual([])
+  })
+  it('Strict : extensions et protocole CRX exemptés, Boucliers répondent {}', () => {
+    const { f } = monter('strict')
+    expect(envoyer(f, script('chrome-extension://abc/x.js'))).toEqual({})
+    expect(envoyer(f, requete('https://tiers-inconnu.test/x.js', { initiatorOrigin: 'chrome-extension://abc' }))).toEqual({})
+    expect(envoyer(f, script('https://clients2.google.com/service/update2/crx?x=1'))).toEqual({})
+  })
+  it('Strict : frame inconnue → autorisé', () => {
+    const { f } = monter('strict')
+    expect(envoyer(f, requete('https://tiers-inconnu.test/x.js', { webContents: { getURL: () => '' }, referrer: '' }))).toEqual({})
+    // Même cas sans référent ni webContents : la page est inconnue, la décision est « autorisé », pas l'URL du script.
+    expect(envoyer(f, requete('https://tiers-inconnu.test/x.js', { webContents: undefined, referrer: '' }))).toEqual({})
+  })
+  it('scriptlets : actifs en Standard et Strict, inactifs en Désactivés', () => {
+    const t = (b: 'desactives' | 'standard' | 'strict') => monter(b).s.estActif('https://site.test')
+    expect([t('standard'), t('strict'), t('desactives')]).toEqual([true, true, false])
   })
 })

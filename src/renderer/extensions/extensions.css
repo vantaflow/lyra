@@ -1,0 +1,284 @@
+/* Page lyra://extensions : valeurs copiées de docs/design/project/Extensions.dc.html (partie « page » ; le ciel est rendu par la vue chrome). */
+@font-face {
+  font-family: 'Manrope';
+  src: url('../fonts/Manrope-latin.woff2') format('woff2');
+  font-weight: 200 800;
+  font-display: swap;
+}
+html,
+body,
+#app {
+  margin: 0;
+  min-height: 100%;
+  background: #f7f7fb;
+}
+body {
+  font-family: Manrope, -apple-system, 'Segoe UI', system-ui, sans-serif;
+  color: #1c1c2e;
+  font-size: 14px;
+  line-height: 1.45;
+}
+a {
+  color: #4a48c4;
+}
+a:hover {
+  color: #2f2d8a;
+}
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px 28px 40px;
+  box-sizing: border-box;
+  max-width: 1040px;
+  width: 100%;
+  margin: 0 auto;
+}
+.entete {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.entete > div {
+  flex: 1;
+  min-width: 240px;
+}
+.entete h1 {
+  margin: 0;
+  font-size: 26px;
+  letter-spacing: -0.4px;
+}
+.entete p {
+  margin: 4px 0 0;
+  color: #6b6b80;
+}
+h2 {
+  margin: 6px 0 -6px;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6b6b80;
+}
+.card {
+  border: 1px solid #e6e6ee;
+  border-radius: 12px;
+  padding: 0 18px;
+  background: #fff;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  border-top: 1px solid #eeeef4;
+}
+.row:first-child {
+  border-top: 0;
+}
+.row.ouverte {
+  align-items: flex-start;
+  background: #f7f7fb;
+  margin: 0 -18px;
+  padding: 14px 18px;
+}
+.row.incompatible {
+  opacity: 0.9;
+}
+.hint {
+  color: #6b6b80;
+  font-size: 12.5px;
+}
+.tg {
+  position: relative;
+  width: 40px;
+  height: 24px;
+  border: 0;
+  border-radius: 12px;
+  padding: 0;
+  cursor: pointer;
+  flex: none;
+}
+.tg i {
+  position: absolute;
+  top: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.tg.on {
+  background: #5452c8;
+}
+.tg.on i {
+  right: 3px;
+}
+.tg.off {
+  background: #c9c9d6;
+}
+.tg.off i {
+  left: 3px;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid #d6d6e2;
+  border-radius: 9px;
+  background: #fff;
+  color: #1c1c2e;
+  font: 500 13px Manrope, sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn.pri {
+  background: #5452c8;
+  border-color: #5452c8;
+  color: #fff;
+}
+.btn.danger {
+  color: #8e2e22;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.inp {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #d6d6e2;
+  border-radius: 9px;
+  background: #f8f8fc;
+  font: 13px Manrope, sans-serif;
+  color: #1c1c2e;
+  box-sizing: border-box;
+  flex: 1;
+  min-width: 0;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tag.fixe {
+  width: 72px;
+  justify-content: center;
+}
+.tag.chrome {
+  background: #e6e6f7;
+  color: #2f2d8a;
+}
+.tag.firefox {
+  background: #fbefd8;
+  color: #8a5a10;
+}
+.tag.fichier {
+  background: #f3f3f9;
+  color: #6b6b80;
+}
+.tag.incompat {
+  background: #f3e3e1;
+  color: #8e2e22;
+}
+.ico {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 15px;
+  color: #fff;
+  flex: none;
+}
+.log {
+  font: 12.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: #f3f3f9;
+  border: 1px solid #e6e6ee;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #1c1c2e;
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+.corps {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.row.ouverte .corps {
+  gap: 8px;
+}
+.titre-ligne {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.libelle {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.fichier-texte {
+  flex: 1;
+  color: #3a3a50;
+}
+.bandeau {
+  border: 1px solid #fbefd8;
+  background: #fbefd8;
+  color: #8a5a10;
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-weight: 500;
+}
+.retour {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.candidat {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.candidat > span {
+  flex: 1;
+  min-width: 0;
+}
+.sites-regles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sites-regles .ligne {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sites-regles .ligne > span {
+  flex: 1;
+}
+.limites {
+  margin: 0;
+  padding: 14px 0 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #3a3a50;
+}

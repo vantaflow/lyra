@@ -115,16 +115,20 @@ export class ResolveurSites {
     }
     const sortie: Record<string, unknown> = {}
     let permissions: Partial<Record<TypePermission, 'autoriser' | 'refuser'>> | undefined
+    let extensions: Record<string, boolean> | undefined
     let boucliers: RegleEffective['boucliers'] | undefined
     for (const regle of regles) {
       for (const [k, v] of Object.entries(regle)) {
         if (v === undefined) continue
         if (k === 'boucliers') boucliers ??= tri(v as RegleSite['boucliers'])
         else if (k === 'permissions') permissions = { ...(v as object), ...permissions }
+        // Comme les permissions : la règle la plus précise l'emporte, extension par extension.
+        else if (k === 'extensions') extensions = { ...(v as Record<string, boolean>), ...extensions }
         else if (!(k in sortie)) sortie[k] = v
       }
     }
     if (permissions) sortie.permissions = permissions
+    if (extensions) sortie.extensions = extensions
     return { ...sortie, boucliers: boucliers ?? 'standard' } as RegleEffective
   }
 }

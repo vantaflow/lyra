@@ -7,12 +7,10 @@ import type { OnBeforeRequestListenerDetails, OnHeadersReceivedListenerDetails }
 import { fromElectronDetails, type ElectronBlocker } from '@ghostery/adblocker-electron'
 import { parse } from 'tldts-experimental'
 import type { Settings } from '../../shared/types'
-import { hubDe, type SessionWeb } from '../session/webRequestHub'
+import { hubDe, apresBoucliers, estExempte, PRIORITE_BOUCLIERS, PRIORITE_APRES_BOUCLIERS, type SessionWeb } from '../session/webRequestHub'
 import { resoudre } from '../settings/sites'
 import { Compteurs } from './compteurs'
-
-/** Les Boucliers passent avant les règles par site (priorité par défaut du hub : 100). */
-const PRIORITE_BOUCLIERS = 50
+import { bloqueScriptTiers } from './strict'
 
 type ReponseAvant = { cancel?: boolean; redirectURL?: string }
 type ReponseEntetes = { responseHeaders?: Record<string, string[] | string> }
@@ -81,8 +79,8 @@ export function origineDe(url: string): string {
   }
 }
 
-/** URL de la page de premier niveau qui a émis la requête (le référent d'une iframe ne compte pas). */
-function urlPremierNiveau(d: OnBeforeRequestListenerDetails | OnHeadersReceivedListenerDetails): string {
+/** Page de premier niveau qui a émis la requête, ou '' si elle est inconnue (service worker, webContents détruit sans référent). */
+function hautConnu(d: OnBeforeRequestListenerDetails | OnHeadersReceivedListenerDetails): string {
   if (d.resourceType === 'mainFrame') return d.url
   let url = ''
   try {
@@ -90,11 +88,13 @@ function urlPremierNiveau(d: OnBeforeRequestListenerDetails | OnHeadersReceivedL
   } catch {
     // webContents détruit
   }
-  return url || d.referrer || d.url
+  return url || d.referrer || ''
 }
 
-const estExtension = (d: { url: string; initiatorOrigin?: string }): boolean =>
-  d.url.startsWith('chrome-extension://') || (d.initiatorOrigin?.startsWith('chrome-extension://') ?? false)
+/** URL de la page de premier niveau (le référent d'une iframe ne compte pas) ; à défaut, l'URL de la requête. */
+const urlPremierNiveau = (d: OnBeforeRequestListenerDetails | OnHeadersReceivedListenerDetails): string => hautConnu(d) || d.url
+
+const estExtension = estExempte
 
 export function creerShields(opts: OptionsShields): Shields {
   let moteur = opts.moteurInitial
@@ -124,6 +124,22 @@ export function creerShields(opts: OptionsShields): Shields {
     compteurs.ajouter(d.webContentsId, d.url)
     if (d.webContentsId !== undefined) opts.onCompteur?.(d.webContentsId)
     cb(redirect ? { redirectURL: redirect.dataUrl } : { cancel: true })
+  }
+
+  /**
+   * Niveau « Strict » : en plus du moteur, un script tiers hors liste est bloqué (écouteur D, après les Boucliers).
+   * La règle et la 1re partie sont ceux de la page principale (spec) : une iframe tierce intégrée perd donc ses
+   * propres scripts tiers. Page inconnue (service worker) : décision explicite, on autorise.
+   */
+  const strict = (d: OnBeforeRequestListenerDetails): ReponseAvant | void => {
+    if (d.resourceType !== 'script') return
+    const haut = hautConnu(d)
+    if (haut === '') return
+    if (resoudre(opts.reglages().sites ?? {}, origineDe(haut)).boucliers !== 'strict') return
+    if (!bloqueScriptTiers(d.url, d.resourceType, haut)) return
+    compteurs.ajouter(d.webContentsId, d.url)
+    if (d.webContentsId !== undefined) opts.onCompteur?.(d.webContentsId)
+    return { cancel: true }
   }
 
   const entetes = (d: OnHeadersReceivedListenerDetails, cb: (r: ReponseEntetes) => void): void => {
@@ -164,6 +180,7 @@ export function creerShields(opts: OptionsShields): Shields {
     attacher(ses) {
       const hub = hubDe(ses)
       hub.onBeforeRequest('boucliers', enRetour(avant), PRIORITE_BOUCLIERS)
+      hub.onBeforeRequest('boucliers-strict', apresBoucliers(strict), PRIORITE_APRES_BOUCLIERS - 1)
       hub.onHeadersReceived('boucliers', enRetour(entetes), PRIORITE_BOUCLIERS)
     },
     remplacerMoteur(m) {

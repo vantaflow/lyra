@@ -30,6 +30,7 @@ export const COMMANDES: Commande[] = [
   { id: 'nouvelle-etoile', titre: 'Nouvelle étoile', aide: '⌘ T' },
   { id: 'fenetre-privee', titre: 'Nouvelle fenêtre privée', aide: '⌘ ⇧ N' },
   { id: 'reglages', titre: 'Réglages', aide: '⌘ ,' },
+  { id: 'extensions', titre: 'Extensions' },
   // Libellés de Panneaux.dc.html (« Ne pas déranger pendant 1 h », ⌘ ⇧ D) ; durées de la spec : 30 min, 1 h, jusqu'à l'arrêt.
   { id: 'dnd-60', titre: 'Ne pas déranger pendant 1 h', aide: '⌘ ⇧ D' },
   { id: 'dnd-30', titre: 'Ne pas déranger pendant 30 min' },

@@ -4,7 +4,8 @@
  *   reglages.json        réglages (sans thème, règles par site ni extensions, rangés ci-dessous)
  *   regles-sites.json    règles par site (`Settings.sites`)
  *   themes.json          `{ theme }`
- *   extensions.json      liste des extensions (identifiant, nom, magasin, état), jamais les binaires
+ *   extensions.json      `{ enAttente, installees }` : file d'import (identifiant, nom, magasin, état) et extensions installées
+ *                        (identifiant, nom, magasin, source, version, active), jamais les binaires ni les dossiers
  *   ciel.json            constellations, étoiles, épingles (format `lyra-ciel`)
  *   favoris.json         favoris et leurs dossiers
  *   historique.jsonl     une ligne par visite `{url,titre,date}`
@@ -13,7 +14,7 @@
  * Pur (sans Electron) : les sources sont injectées.
  */
 import { strToU8, unzipSync, zip } from 'fflate'
-import type { Settings, SkyState } from '../../shared/types'
+import type { ExtensionInstallee as SettingsExtension, Settings, SkyState } from '../../shared/types'
 import type { Favori } from '../bookmarks/Bookmarks'
 import type { ExtensionImportee, Visite } from '../import/types'
 import { cielDepuisJson, cielsVersJson, type CielFichier } from './ciel'
@@ -38,6 +39,16 @@ export interface CookieSauvegarde {
   sameSite?: 'unspecified' | 'no_restriction' | 'lax' | 'strict'
   /** Secondes depuis 1970 ; absent : cookie de session. */
   expirationDate?: number
+}
+
+/** Extension installée, telle que listée dans `extensions.json` (`installees`) : de quoi la retrouver, jamais ses fichiers. */
+export interface ExtensionPaquet {
+  id: string
+  nom: string
+  magasin: SettingsExtension['magasin']
+  source: SettingsExtension['source']
+  version: string
+  active: boolean
 }
 
 export interface SourcesPaquet {
@@ -93,11 +104,15 @@ const compresser = (fichiers: Record<string, Uint8Array>): Promise<Uint8Array> =
 /** Le zip en clair (pour les tests et pour le chiffrement). L'historique est écrit par lots, avec une pause entre deux lots. */
 export async function construireZip(src: SourcesPaquet, opts: { pause?: () => Promise<void>; date?: Date } = {}): Promise<Uint8Array> {
   const pause = opts.pause ?? pauseParDefaut
-  const { sites, theme, import: fileImport, ...reste } = sansSecrets(src.reglages) as Settings & { import: Settings['import'] }
+  const { sites, theme, import: fileImport, extensions: registre, ...reste } = sansSecrets(src.reglages) as Settings & { import: Settings['import'] }
   void fileImport
-  const extensions: ExtensionImportee[] = (src.reglages.import?.extensionsEnAttente ?? []).map((e) => ({ id: e.id, nom: e.nom, magasin: e.magasin, actif: e.actif, ...(e.imposee ? { imposee: true } : {}) }))
+  // Le registre des extensions (dossiers locaux compris) n'entre pas dans reglages.json : seule la mise à jour automatique y reste.
+  const reglagesSansRegistre = { ...reste, extensions: { majAuto: registre?.majAuto ?? true } }
+  const enAttente: ExtensionImportee[] = (src.reglages.import?.extensionsEnAttente ?? []).map((e) => ({ id: e.id, nom: e.nom, magasin: e.magasin, actif: e.actif, ...(e.imposee ? { imposee: true } : {}) }))
+  const installees: ExtensionPaquet[] = (src.reglages.extensions?.installees ?? []).map((e) => ({ id: e.id, nom: e.nom, magasin: e.magasin, source: e.source, version: e.version, active: e.active }))
+  const extensions = { enAttente, installees }
   const fichiers: Record<string, Uint8Array> = {
-    'reglages.json': strToU8(JSON.stringify(reste, null, 2)),
+    'reglages.json': strToU8(JSON.stringify(reglagesSansRegistre, null, 2)),
     'regles-sites.json': strToU8(JSON.stringify(sites ?? {}, null, 2)),
     'themes.json': strToU8(JSON.stringify({ theme })),
     'extensions.json': strToU8(JSON.stringify(extensions, null, 2)),
@@ -126,7 +141,7 @@ export async function construireZip(src: SourcesPaquet, opts: { pause?: () => Pr
     date: (opts.date ?? new Date()).toISOString(),
     contenu: [...Object.keys(fichiers)].sort(),
     cookies: src.cookies !== undefined,
-    comptes: { favoris: src.favoris.length, visites, etoiles: src.ciels?.reduce((n, c) => n + c.stars.length, 0) ?? 0, extensions: extensions.length, cookies: src.cookies?.length ?? 0 }
+    comptes: { favoris: src.favoris.length, visites, etoiles: src.ciels?.reduce((n, c) => n + c.stars.length, 0) ?? 0, extensions: new Set([...enAttente.map((e) => `${e.magasin}:${e.id}`), ...installees.map((e) => `${e.magasin}:${e.id}`)]).size, cookies: src.cookies?.length ?? 0 }
   }
   fichiers['manifest.json'] = strToU8(JSON.stringify(manifest, null, 2))
   await pause()
@@ -253,7 +268,22 @@ export async function lirePaquet(donnees: Uint8Array, phrase: string): Promise<C
 
   const liste = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
   const favoris = liste(json('favoris.json')).map(favoriValide).filter((f): f is Favori => f !== null)
-  const extensions = liste(json('extensions.json')).slice(0, MAX_EXTENSIONS).map(extensionValide).filter((e): e is ExtensionImportee => e !== null)
+  const brutExt = json('extensions.json')
+  const enAttente = liste(estObjet(brutExt) ? brutExt.enAttente : brutExt) // ancien format : tableau seul
+  const extensions = enAttente.slice(0, MAX_EXTENSIONS).map(extensionValide).filter((e): e is ExtensionImportee => e !== null)
+  // Extensions installées : celles du catalogue (Chrome Web Store, AMO) vont dans la file d'import pour réinstallation (jamais
+  // d'installation silencieuse : l'utilisateur confirme dans lyra://extensions) ; les locales ne se réinstallent pas.
+  for (const e of liste(estObjet(brutExt) ? brutExt.installees : undefined).slice(0, MAX_EXTENSIONS)) {
+    if (!estObjet(e) || typeof e.id !== 'string' || !e.id || typeof e.nom !== 'string') continue
+    const nom = e.nom.slice(0, 200)
+    const magasin = e.source === 'cws' ? 'chrome' : e.source === 'amo' ? 'firefox' : undefined
+    if (!magasin) {
+      avertissements.push(`L'extension « ${nom} » est locale (installée depuis un fichier ou un dossier) : non réinstallable, à remettre à la main.`)
+      continue
+    }
+    const valide = extensionValide({ id: e.id, nom, magasin, actif: e.active !== false })
+    if (valide && !extensions.some((x) => x.id === valide.id && x.magasin === valide.magasin) && extensions.length < MAX_EXTENSIONS) extensions.push(valide)
+  }
   let ciel: CielFichier | undefined
   const cielTexte = texte('ciel.json')
   if (cielTexte !== undefined) {

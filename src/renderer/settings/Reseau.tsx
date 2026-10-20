@@ -51,7 +51,12 @@ export function Reseau() {
   const [port, setPort] = useState('')
   const [occupe, setOccupe] = useState(false)
   const [persoMsg, setPersoMsg] = useState('')
+  const [majAuto, setMajAuto] = useState<boolean | null>(null)
 
+  useEffect(() => {
+    void window.lyra.invoke('settings:get').then((v) => setMajAuto(v.extensions.majAuto))
+    return window.lyra.on('settings:changed', (v) => setMajAuto(v.extensions.majAuto))
+  }, [])
   useEffect(() => {
     void window.lyra.invoke('passerelles:etat').then((v) => {
       setE(v)
@@ -238,6 +243,13 @@ export function Reseau() {
             Utiliser Cloudflare WARP (127.0.0.1:40000)
           </button>
         </div>
+      </div>
+
+      <Titre>Extensions</Titre>
+      <div class="card">
+        <Ligne titre="Mettre à jour les extensions automatiquement (toutes les 6 h)" aide="Vérifie le Chrome Web Store, addons.mozilla.org et uBlock Origin ; « Tout mettre à jour » reste disponible dans lyra://extensions">
+          <Interrupteur actif={majAuto ?? true} libelle="Mise à jour automatique des extensions" surChange={(majAuto) => void window.lyra.invoke('settings:set', { extensions: { majAuto } } as unknown as Partial<Settings>)} />
+        </Ligne>
       </div>
 
       <div class="avertissement">
