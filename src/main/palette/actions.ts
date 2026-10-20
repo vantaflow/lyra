@@ -17,7 +17,7 @@ export interface DepsPalette {
   favoris: Bookmarks
   creerFenetre(opts: { privee?: boolean }): void
   /** La fenêtre de cet onglet est privée (la palette n'y propose pas l'historique ni les favoris, sauf réglage). */
-  privee?(tabs: TabManager): boolean
+  privee(tabs: TabManager): boolean
   /** Déplace le ciel (démasqué) à la position donnée. */
   deplacerCiel(position: 'gauche' | 'droite' | 'haut' | 'bas'): void
   /** Ne pas déranger est actif dans la fenêtre de cet onglet. */
@@ -60,7 +60,7 @@ export function installerPalette(deps: DepsPalette): void {
       etoiles: sky.stars,
       activeId: sky.activeId ?? undefined,
       constellations: sky.constellations,
-      historique: suggestionsDuProfilAutorisees(deps.privee?.(tabs) === true, deps.reglages().palette) ? historiquePalette(deps, texte) : [],
+      historique: suggestionsDuProfilAutorisees(deps.privee(tabs), deps.reglages().palette) ? historiquePalette(deps, texte) : [],
       moteurParDefaut: deps.reglages().moteurParDefaut,
       moteurs: moteursDisponibles(deps.reglages()),
       // Démasqué seulement : masqué, « à gauche » est une vraie commande (elle réaffiche le ciel).

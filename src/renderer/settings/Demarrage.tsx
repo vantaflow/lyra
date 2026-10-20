@@ -64,7 +64,8 @@ export function Demarrage() {
           </p>
         )}
         <Ligne reglage="demarrage.nouvelleFenetre" titre="Nouvelle fenêtre" aide="Bientôt : choisir ce que montre une nouvelle fenêtre">
-          <Segments valeur={s.demarrage.nouvelleFenetre} options={[...FENETRES]} />
+          {/* Aucun choix n'est mis en avant : la valeur enregistrée n'a pas encore d'effet (une nouvelle fenêtre ouvre le nouvel onglet). */}
+          <Segments<string> valeur="" options={[...FENETRES]} />
         </Ligne>
       </div>
     </>

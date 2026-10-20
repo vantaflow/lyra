@@ -15,7 +15,14 @@ export interface DepsConfidentialite {
 /** Délai maximal de l'effacement à la fermeture : Lyra ne reste jamais bloqué à la sortie. */
 const DELAI_FERMETURE_MS = 5000
 
-export function installerConfidentialite(deps: DepsConfidentialite): { aLaFermeture(): Promise<void> } {
+export interface Confidentialite {
+  /** Une fenêtre vient de s'ouvrir : des données à effacer peuvent être apparues. */
+  fenetreOuverte(): void
+  /** Dernière fenêtre fermée ou sortie : efface selon les cases cochées, une seule fois par ouverture. */
+  aLaFermeture(): Promise<void>
+}
+
+export function installerConfidentialite(deps: DepsConfidentialite): Confidentialite {
   const actions: ActionsEffacement = {
     historique: () => deps.historique.effacer(),
     cookies: async () => {
@@ -31,10 +38,21 @@ export function installerConfidentialite(deps: DepsConfidentialite): { aLaFermet
   handle('confidentialite:purger', async () => {
     await effacerMaintenant(actions)
   })
+  // Dernière fenêtre fermée (macOS garde l'application ouverte) puis sortie : une seule exécution, la sortie attend celle en cours.
+  let aEffacer = true
+  let enCours: Promise<void> = Promise.resolve()
   return {
-    async aLaFermeture() {
-      const delai = new Promise<void>((ok) => setTimeout(ok, DELAI_FERMETURE_MS).unref())
-      await Promise.race([effacerALaFermeture(deps.reglages.getSettings().confidentialite, actions), delai])
+    fenetreOuverte() {
+      aEffacer = true
+    },
+    aLaFermeture() {
+      if (aEffacer) {
+        aEffacer = false
+        const delai = new Promise<void>((ok) => setTimeout(ok, DELAI_FERMETURE_MS).unref())
+        const choix = deps.reglages.getSettings().confidentialite
+        enCours = Promise.race([effacerALaFermeture(choix, actions).then(() => undefined), delai])
+      }
+      return enCours
     }
   }
 }

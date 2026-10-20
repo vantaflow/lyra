@@ -290,6 +290,15 @@ describe('import', () => {
     expect(validerPatch({ import: { reglagesEnAttente: { pageAccueil: 'x'.repeat(3000) } } })).toEqual({})
   })
 
+  it("reglagesEnAttente.pageAccueil : seulement http(s) sans espace (jamais javascript:, file:, data:), comme demarrage.pageAccueil", () => {
+    for (const u of ['javascript:alert(1)', 'file:///etc/passwd', 'data:text/html,<b>x</b>', 'https://a b', 'lyra://settings', 'about:blank', '']) {
+      expect(validerPatch({ import: { reglagesEnAttente: { pageAccueil: u } } }), u).toEqual({})
+    }
+    expect(validerPatch({ import: { reglagesEnAttente: { pageAccueil: 'http://a.fr/x?y=1' } } })).toEqual({
+      import: { reglagesEnAttente: { pageAccueil: 'http://a.fr/x?y=1' } }
+    })
+  })
+
   it('clés inconnues sous import ignorées', () => {
     expect(validerPatch({ import: { zzz: 1 } })).toEqual({})
   })

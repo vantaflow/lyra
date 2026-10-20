@@ -98,7 +98,7 @@ export const INDEX: EntreeIndex[] = [
   ligne('sauvegarde', 'exporter', 'Exporter et importer vos données', ['sauvegarde', 'réglages', 'favoris', 'copie']),
   ligne('sauvegarde', 'profils', 'Plusieurs profils', ['profil', 'compte', 'version 2']),
   ligne('labo', 'modeLecture', 'Mode lecture', ['expérimental', 'lecture', 'article', 'épuré']),
-  ligne('labo', 'popupsExtension', "Fenêtres des extensions dans l'overlay", ['expérimental', 'extension', 'popup', 'overlay'])
+  ligne('labo', 'popupsExtension', "Fenêtres des extensions sur la page", ['expérimental', 'extension', 'popup', 'overlay'])
 ]
 
 /** Lignes parfois absentes de la page (affichées sous condition) : la recherche saute alors à la ligne qui les commande. */

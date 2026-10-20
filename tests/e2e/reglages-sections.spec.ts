@@ -1,8 +1,23 @@
 import { test, expect, type ElectronApplication, type Page } from '@playwright/test'
-import { mkdtempSync } from 'node:fs'
+import { createServer, type Server } from 'node:http'
+import type { AddressInfo } from 'node:net'
+import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { lancerLyra } from './helpers'
+
+// Petit serveur http local : une page à titre reconnaissable pour chaque chemin.
+let serveur: Server
+let BASE = ''
+test.beforeAll(async () => {
+  serveur = createServer((q, r) => {
+    r.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+    r.end(`<!doctype html><title>Zorglub ${q.url}</title><p>${q.url}</p>`)
+  })
+  await new Promise<void>((ok) => serveur.listen(0, '127.0.0.1', ok))
+  BASE = `http://127.0.0.1:${(serveur.address() as AddressInfo).port}`
+})
+test.afterAll(() => serveur.close())
 
 const page = (app: ElectronApplication, debut: string): Page | undefined => app.windows().find((w) => w.url().startsWith(debut))
 const menu = (app: ElectronApplication, id: string): Promise<void> =>
@@ -207,7 +222,7 @@ test('Styles et scripts et Labo : contrôles inertes, mention « bientôt »', a
     await expect(r.getByText(/Bientôt/).first()).toBeVisible()
     await r.evaluate(() => { location.hash = '#/labo' })
     await expect(r.getByRole('switch', { name: 'Mode lecture' })).toBeDisabled()
-    await expect(r.getByRole('switch', { name: "Fenêtres des extensions dans l'overlay" })).toBeDisabled()
+    await expect(r.getByRole('switch', { name: "Fenêtres des extensions sur la page" })).toBeDisabled()
     await r.evaluate(() => { location.hash = '#/sauvegarde' })
     await expect(r.locator('.card a.btn')).toHaveAttribute('href', '#/importer')
   } finally {
@@ -222,6 +237,82 @@ test('Palette : « Suggestions en fenêtre privée » écrit palette.suggestions
     const r = await ouvrirReglages(app, fenetre, 'palette')
     await r.getByRole('switch', { name: 'Suggestions en fenêtre privée' }).click()
     await expect.poll(async () => (await reglages(fenetre)).palette.suggestionsEnPrivee).toBe(true)
+  } finally {
+    await app.close()
+  }
+})
+
+test("Démarrage : une page d'accueil réglée s'ouvre au démarrage suivant (même userData), pas le nouvel onglet", async () => {
+  const userData = mkdtempSync(join(tmpdir(), 'lyra-e2e-accueil-'))
+  let { app, fenetre } = await lancerLyra({ LYRA_USER_DATA: userData })
+  try {
+    await fenetre.evaluate((u) => window.lyra.invoke('settings:set', { demarrage: { pageAccueil: u, restaurer: false } } as never), `${BASE}/accueil`)
+    await expect.poll(async () => (await reglages(fenetre)).demarrage.pageAccueil).toBe(`${BASE}/accueil`)
+  } finally {
+    await app.close()
+  }
+  ;({ app, fenetre } = await lancerLyra({ LYRA_USER_DATA: userData }, { premierLancement: true }))
+  try {
+    await expect.poll(() => page(app, `${BASE}/accueil`)).toBeDefined()
+    expect(page(app, 'lyra://newtab')).toBeUndefined()
+  } finally {
+    await app.close()
+  }
+})
+
+test("Démarrage : une page d'accueil javascript: écrite à la main dans settings.json est ignorée (nouvel onglet)", async () => {
+  const userData = mkdtempSync(join(tmpdir(), 'lyra-e2e-accueil-mal-'))
+  writeFileSync(join(userData, 'settings.json'), JSON.stringify({ version: 2, demarrage: { restaurer: false, pageAccueil: 'javascript:alert(1)' } }))
+  const { app, fenetre } = await lancerLyra({ LYRA_USER_DATA: userData })
+  try {
+    expect((await reglages(fenetre)).demarrage.pageAccueil).toBe('')
+    expect(page(app, 'lyra://newtab')).toBeDefined()
+  } finally {
+    await app.close()
+  }
+})
+
+test("Palette : une fenêtre privée ne propose ni l'historique ni les favoris du profil normal (côté principal), sauf réglage", async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), `${BASE}/profil`)
+    await expect
+      .poll(async () => (await fenetre.evaluate(() => window.lyra.invoke('history:search', { texte: 'zorglub' }))).length)
+      .toBeGreaterThan(0)
+    // La page n'est plus ouverte : seule une étoile ouverte masquerait l'entrée d'historique.
+    await fenetre.evaluate((u) => window.lyra.invoke('test:navigate', u), `${BASE}/ailleurs`)
+    await fenetre.evaluate((u) => window.lyra.invoke('bookmarks:toggle', { url: u, title: 'Favori du profil' }), `${BASE}/favori`)
+    const types = (f: Page) => f.evaluate(async () => (await window.lyra.invoke('palette:suggest', { texte: 'profil' })).map((s) => s.type))
+    // Fenêtre normale : proposés.
+    const normales = await types(fenetre)
+    expect(normales).toContain('historique')
+    expect(normales).toContain('favori')
+
+    await app.evaluate(({ Menu }) => Menu.getApplicationMenu()!.getMenuItemById('fenetre-privee')!.click())
+    await expect.poll(() => app.windows().find((p) => p.url().includes('ui.html') && p.url().includes('#privee'))).toBeDefined()
+    const privee = app.windows().find((p) => p.url().includes('ui.html') && p.url().includes('#privee'))!
+    const enPrivee = await types(privee)
+    expect(enPrivee).not.toContain('historique')
+    expect(enPrivee).not.toContain('favori')
+
+    // Réglage activé : proposés aussi en privé.
+    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { palette: { suggestionsEnPrivee: true } } as never))
+    await expect.poll(async () => await types(privee)).toContain('favori')
+    expect(await types(privee)).toContain('historique')
+  } finally {
+    await app.close()
+  }
+})
+
+test("Confidentialité (macOS) : fermer la dernière fenêtre efface déjà les cookies, sans quitter l'application", async () => {
+  test.skip(process.platform !== 'darwin', "ailleurs, la dernière fenêtre fermée quitte l'application (couvert par le test de fermeture)")
+  const { app, fenetre } = await lancerLyra()
+  try {
+    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { confidentialite: { effacerCookies: true } } as never))
+    await poserCookie(app, 'derniere-fenetre')
+    expect(await nombreCookies(app)).toBe(1)
+    await app.evaluate(({ BaseWindow }) => BaseWindow.getAllWindows().forEach((w) => w.close()))
+    await expect.poll(() => nombreCookies(app)).toBe(0)
   } finally {
     await app.close()
   }

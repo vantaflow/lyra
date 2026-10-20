@@ -5,6 +5,11 @@ export const NOUVEL_ONGLET = 'lyra://newtab'
 /** Adresses acceptées : http, https ou lyra://, sans espace ni caractère de contrôle (jamais javascript:, file:, data:…). */
 const ADRESSE = /^(https?|lyra):\/\/[^\s\u0000-\u001f]+$/i
 
+/** Adresse web (http ou https) sans espace ni caractère de contrôle : la seule qu'un import de navigateur peut proposer. */
+export function adresseWebValide(v: string): boolean {
+  return /^https?:\/\/[^\s\u0000-\u001f]+$/i.test(v)
+}
+
 /** Vide (= le nouvel onglet) ou une adresse http, https ou lyra://. */
 export function adresseAccueilValide(v: string): boolean {
   return v === '' || ADRESSE.test(v)

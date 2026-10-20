@@ -45,7 +45,7 @@ import { couleurFaviconEnCache } from './theme/couleurFavicon'
 import { reglagesHorsSitesChanges } from './sites/service'
 import { resoudre } from './settings/sites'
 import { Dnd, type NotificationRetenue } from './dnd/Dnd'
-import { installerConfidentialite } from './confidentialite/installer'
+import { installerConfidentialite, type Confidentialite } from './confidentialite/installer'
 import { NOUVEL_ONGLET, pageDeDemarrage, restaurerSession } from '../shared/accueil'
 import { origineDe, type Shields } from './shields/Shields'
 import type { DureeDnd } from '../shared/ipc'
@@ -176,6 +176,8 @@ function etatSession(): { version: 1; fenetres: FenetreSession[] } | null {
 }
 
 let enFermeture = false
+/** Effacement à la fermeture (Confidentialité) : branché au démarrage, prévenu à chaque nouvelle fenêtre. */
+let confidentialite: Confidentialite | undefined
 
 function sauverSession(): void {
   if (enFermeture) return
@@ -198,6 +200,8 @@ function ongletsDe(wc: WebContents): TabManager {
 
 function creerFenetre(opts: { privee?: boolean; urlInitiale?: string } = {}, restauration?: FenetreSession): BaseWindow {
   const fenetre = manager.creerFenetre(opts)
+  // Une fenêtre privée n'écrit rien dans `persist:lyra` : seul le profil normal remet l'effacement à faire.
+  if (!opts.privee) confidentialite?.fenetreOuverte()
   // Fenêtre privée : session mémoire à elle (cookies, cache, stockage jetés à la fermeture).
   // Toujours créée, jamais de repli sur `persist:lyra` : la première navigation attend l'équipement (démarrage compris).
   const sesPrivee = opts.privee ? session.fromPartition(partitionPrivee(fenetre.id)) : undefined
@@ -393,7 +397,7 @@ void app.whenReady().then(async () => {
   handle('history:search', ({ texte, limite }) => hist.rechercher(texte, limite))
   handle('history:delete', ({ url }) => hist.supprimer(url))
   handle('history:clear', () => hist.effacer())
-  const confidentialite = installerConfidentialite({ reglages, historique: hist, sessions: () => [session.fromPartition('persist:lyra')] })
+  confidentialite = installerConfidentialite({ reglages, historique: hist, sessions: () => [session.fromPartition('persist:lyra')] })
   handle('history:frequent', ({ n }) => hist.frequents(n))
   // Fenêtre privée : jamais de favori écrit (le bouton y est désactivé) ; l'état renvoyé reste celui du favori existant.
   handle('bookmarks:toggle', (f, e) => (estPrivee(e.sender) ? favoris.existe(f.url) : favoris.toggle(f)))
@@ -937,7 +941,7 @@ void app.whenReady().then(async () => {
     sessionStore?.vider()
     enFermeture = true
     // « Effacer à la fermeture » (Confidentialité) avant d'attendre les écritures de l'historique.
-    void confidentialite.aLaFermeture().then(() => hist.attendre()).finally(() => app.quit())
+    void (confidentialite?.aLaFermeture() ?? Promise.resolve()).then(() => hist.attendre()).finally(() => app.quit())
   })
   // Les règles par site (jusqu'à 10 000) ont leur évènement `sites:changed` : jamais rediffusées ici.
   let reglagesDiffuses: Settings = reglages.getSettings()
@@ -959,4 +963,6 @@ void app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+  // macOS garde l'application ouverte sans fenêtre : l'effacement à la fermeture a lieu dès la dernière fenêtre fermée.
+  else void confidentialite?.aLaFermeture()
 })

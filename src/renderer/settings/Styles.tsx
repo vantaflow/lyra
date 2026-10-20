@@ -13,11 +13,11 @@ export function Styles() {
         <div class="row wrap">
           <div class="lbl" data-reglage="styles.css" tabIndex={-1}>
             <span>Feuille de style globale</span>
-            <span class="hint">Bientôt : appliquée à chaque page avant son premier rendu</span>
+            <span class="hint">Bientôt : appliquée à chaque page que vous ouvrez</span>
           </div>
           <textarea class="zone-code" aria-label="Feuille de style globale" spellcheck={false} disabled value={s.styles.css} />
         </div>
-        <Ligne reglage="styles.scripts" titre="Scripts globaux" aide="Bientôt : exécutés dans chaque page, dans un monde isolé">
+        <Ligne reglage="styles.scripts" titre="Scripts globaux" aide="Bientôt : exécutés dans chaque page que vous ouvrez">
           <button class="btn" type="button" disabled>
             Ajouter un script
           </button>

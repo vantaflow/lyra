@@ -14,8 +14,8 @@ export function Labo() {
         <Ligne reglage="labo.modeLecture" titre="Mode lecture" aide="Bientôt : une vue épurée des articles, prévue pour la version 2">
           <Interrupteur actif={s.labo['mode-lecture'] === true} libelle="Mode lecture" inerte />
         </Ligne>
-        <Ligne reglage="labo.popupsExtension" titre="Fenêtres des extensions dans l'overlay" aide="Bientôt : afficher les fenêtres des extensions au-dessus de la page">
-          <Interrupteur actif={s.labo['popups-extension'] === true} libelle="Fenêtres des extensions dans l'overlay" inerte />
+        <Ligne reglage="labo.popupsExtension" titre="Fenêtres des extensions sur la page" aide="Bientôt : les afficher par-dessus la page, sans fenêtre à part">
+          <Interrupteur actif={s.labo['popups-extension'] === true} libelle="Fenêtres des extensions sur la page" inerte />
         </Ligne>
       </div>
       <p class="note">Ces fonctions ne sont pas terminées : elles peuvent changer ou disparaître.</p>
