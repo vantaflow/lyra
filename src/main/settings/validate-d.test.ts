@@ -166,3 +166,16 @@ describe('couleurs : heures du passage « À une heure fixe »', () => {
     expect(validerPatch({ couleurs: { heureClair: h } })).toEqual({})
   })
 })
+
+describe('couleurs.depart, couleurs.reference et couleurs.corrigerContraste', () => {
+  it('valeurs valides', () => {
+    const c = { depart: 'foret', reference: couleurs13(), corrigerContraste: false }
+    expect(validerPatch({ couleurs: c })).toEqual({ couleurs: c })
+    expect(validerPatch({ couleurs: { reference: null, corrigerContraste: true } })).toEqual({ couleurs: { reference: null, corrigerContraste: true } })
+  })
+  it('valeurs invalides ignorées', () => {
+    expect(validerPatch({ couleurs: { depart: 'arc-en-ciel' } })).toEqual({})
+    expect(validerPatch({ couleurs: { corrigerContraste: 'oui' } })).toEqual({})
+    expect(validerPatch({ couleurs: { reference: { accent: { clair: 'rouge' } } } })).toEqual({})
+  })
+})

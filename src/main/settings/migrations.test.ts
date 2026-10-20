@@ -6,6 +6,7 @@ import { migrer } from './migrations'
 import { reglagesParDefaut } from './defaults'
 import { creerReglages } from './settings'
 import { TAILLE_MAX_IMPORT, patchImporte, reglagesExportables, serialiserReglages } from './import'
+import { COULEURS_INDIGO_NUIT } from '../../shared/types-reglages'
 import v1 from './fixtures/settings-v1.json'
 
 const defauts = reglagesParDefaut('/dl')
@@ -161,6 +162,27 @@ describe('export / import', () => {
   it('l\'import ignore extensions.installees et import', () => {
     const patch = patchImporte({ theme: 'clair', import: { extensionsEnAttente: [], reglagesEnAttente: { pageAccueil: 'https://a.fr' } }, extensions: { installees: [{ id: 'x' }] } }, AUCUN_REP) as Record<string, unknown>
     expect(patch).toEqual({ theme: 'clair' })
+  })
+})
+
+describe('couleurs.depart, reference et corrigerContraste : migration et aller-retour', () => {
+  it('d\'anciens réglages sans ces champs reçoivent les défauts', () => {
+    const { settings, avertissements } = migrer({ ...v1, couleurs: { actif: 'foret' } }, defauts)
+    expect(avertissements).toEqual([])
+    expect(settings.couleurs).toMatchObject({ actif: 'foret', depart: 'indigo-nuit', reference: null, corrigerContraste: true })
+  })
+  it('des valeurs invalides retombent sur les défauts avec un avertissement', () => {
+    const r = migrer({ ...v1, couleurs: { depart: 'rose', corrigerContraste: 'peut-être' } }, defauts)
+    expect(r.settings.couleurs).toMatchObject({ depart: 'indigo-nuit', corrigerContraste: true })
+    expect(r.avertissements.length).toBeGreaterThan(0)
+  })
+  it('survivent à l\'export puis à l\'import', () => {
+    const ref = structuredClone(defauts.couleurs.personnalisees ?? COULEURS_INDIGO_NUIT)
+    ref.accent.clair = '#112233'
+    const { settings } = migrer({ ...v1, couleurs: { depart: 'foret', reference: ref, personnalisees: ref, corrigerContraste: false } }, defauts)
+    expect(settings.couleurs).toMatchObject({ depart: 'foret', reference: ref, corrigerContraste: false })
+    const patch = patchImporte(JSON.parse(serialiserReglages(settings)), AUCUN_REP)
+    expect(migrer(patch, defauts).settings.couleurs).toMatchObject({ depart: 'foret', reference: ref, corrigerContraste: false })
   })
 })
 

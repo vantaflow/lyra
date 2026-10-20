@@ -1,5 +1,6 @@
 import { test, expect, type ElectronApplication, type Page } from '@playwright/test'
 import { lancerLyra } from './helpers'
+import { COULEURS_INDIGO_NUIT } from '../../src/shared/types-reglages'
 
 const trouver = (app: { windows(): Page[] }, debut: string): Page | undefined => app.windows().find((w) => w.url().startsWith(debut))
 const variable = (p: Page, nom: string): Promise<string> => p.evaluate((n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), nom)
@@ -122,7 +123,7 @@ test('couleurs : « Avec le système » et « Jamais » modifient theme, en phas
   }
 })
 
-test('couleurs : « À une heure fixe » est active, montre la plage et l\'écrit ; le contraste reste « bientôt »', async () => {
+test('couleurs : « À une heure fixe » est active, montre la plage et l\'écrit', async () => {
   test.setTimeout(90_000)
   const { app, fenetre } = await lancerLyra()
   try {
@@ -141,10 +142,6 @@ test('couleurs : « À une heure fixe » est active, montre la plage et l\'écri
     await expect.poll(async () => (await lire(fenetre)).couleurs.heureClair).toBe('06:15')
     await r.locator('.seg button', { hasText: 'Jamais' }).click()
     await expect(r.getByLabel('Début du mode sombre')).toHaveCount(0)
-
-    const contraste = r.locator('.row', { hasText: 'Contraste insuffisant ?' })
-    await expect(contraste.getByRole('switch', { name: 'Vérifier le contraste' })).toBeDisabled()
-    await expect(contraste).toContainText('bientôt')
   } finally {
     await app.close()
   }
@@ -222,6 +219,14 @@ test('couleurs : éditer depuis un thème prêt demande confirmation avant de re
     }
     await champ()
     await expect(r.getByText('Remplacer Mes couleurs par une copie de Forêt ?')).toBeVisible()
+    // Le focus passe à « Remplacer » ; Échap = Annuler.
+    await expect(r.getByRole('button', { name: 'Remplacer' })).toBeFocused()
+    await r.keyboard.press('Escape')
+    await expect(r.getByText('Remplacer Mes couleurs par une copie de Forêt ?')).toHaveCount(0)
+    await r.waitForTimeout(300)
+    expect((await lire(fenetre)).couleurs.actif).toBe('foret')
+    await champ()
+    await expect(r.getByText('Remplacer Mes couleurs par une copie de Forêt ?')).toBeVisible()
     await r.getByRole('button', { name: 'Annuler' }).click()
     await expect(r.getByText('Remplacer Mes couleurs par une copie de Forêt ?')).toHaveCount(0)
     await r.waitForTimeout(300)
@@ -238,6 +243,68 @@ test('couleurs : éditer depuis un thème prêt demande confirmation avant de re
     expect(fin.personnalisees!['ciel-fond'].clair).toBe('#204060')
     expect(fin.personnalisees!.accent.clair).not.toBe('#010203')
     await expect(r.locator('.th', { hasText: 'Mes couleurs' })).toContainText('modifié')
+  } finally {
+    await app.close()
+  }
+})
+
+const contrasteLigne = (r: Page) => r.locator('.row', { hasText: 'Contraste insuffisant ?' })
+
+test('couleurs : un texte trop pâle est ajusté sans clic dans la vue UI, l\'étiquette le dit, la couleur choisie reste', async () => {
+  test.setTimeout(90_000)
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const r = await ouvrirCouleurs(app, fenetre)
+    await expect(contrasteLigne(r)).toContainText('Lyra vérifie chaque paire texte/fond (4,5:1) et corrige la couleur du texte')
+    await expect(contrasteLigne(r)).not.toContainText('bientôt')
+    const interrupteur = contrasteLigne(r).getByRole('switch', { name: 'Corriger le contraste' })
+    await expect(interrupteur).toBeEnabled()
+    await expect(interrupteur).toHaveAttribute('aria-checked', 'true')
+    // Thème par défaut : aucune paire fautive, aucune étiquette.
+    await expect(r.locator('.contraste-etiquette')).toHaveCount(0)
+
+    const perso = structuredClone(COULEURS_INDIGO_NUIT)
+    perso['ciel-texte'].clair = '#3A3A60'
+    await fenetre.evaluate((p) => window.lyra.invoke('settings:set', { couleurs: { actif: 'mes-couleurs', personnalisees: p, reference: p } } as never), perso)
+    const etiquette = r.locator('.row', { hasText: 'Ciel — texte' }).locator('.contraste-etiquette[data-mode="clair"]')
+    await expect(etiquette).toHaveText(/^Ajustée : \d,\d:1 → 4,\d:1$/)
+    await expect(r.locator('.contraste-etiquette')).toHaveCount(1)
+    // Diffusée : la variable de la vue UI est corrigée (≥ 4,5:1), la valeur choisie reste affichée et enregistrée.
+    await expect.poll(() => variable(fenetre, '--ciel-texte')).not.toBe('#3a3a60')
+    const ratio = await fenetre.evaluate(() => {
+      const lum = (hex: string): number => {
+        const [R, G, B] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
+        return 0.2126 * R + 0.7152 * G + 0.0722 * B
+      }
+      const v = (n: string): string => getComputedStyle(document.documentElement).getPropertyValue(n).trim()
+      const [a, b] = [lum(v('--ciel-texte')), lum(v('--ciel'))].sort((x, y) => y - x)
+      return (a + 0.05) / (b + 0.05)
+    })
+    expect(ratio).toBeGreaterThanOrEqual(4.5)
+    await expect(r.getByRole('button', { name: 'Ciel — texte, clair : #3A3A60', exact: true })).toBeVisible()
+    expect((await lire(fenetre)).couleurs.personnalisees!['ciel-texte'].clair).toBe('#3A3A60')
+  } finally {
+    await app.close()
+  }
+})
+
+test('couleurs : correction désactivée, la couleur choisie est diffusée telle quelle et l\'étiquette indique le contraste', async () => {
+  test.setTimeout(90_000)
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const r = await ouvrirCouleurs(app, fenetre)
+    const perso = structuredClone(COULEURS_INDIGO_NUIT)
+    perso['ciel-texte'].clair = '#3A3A60'
+    await fenetre.evaluate((p) => window.lyra.invoke('settings:set', { couleurs: { actif: 'mes-couleurs', personnalisees: p, reference: p } } as never), perso)
+    await expect.poll(() => variable(fenetre, '--ciel-texte')).not.toBe('#3a3a60')
+    await contrasteLigne(r).getByRole('switch', { name: 'Corriger le contraste' }).click()
+    await expect.poll(async () => (await lire(fenetre)).couleurs.corrigerContraste).toBe(false)
+    await expect.poll(() => variable(fenetre, '--ciel-texte')).toBe('#3a3a60')
+    await expect.poll(() => variable(r, '--ciel-texte')).toBe('#3a3a60')
+    await expect(r.locator('.row', { hasText: 'Ciel — texte' }).locator('.contraste-etiquette[data-mode="clair"]')).toHaveText(/^Contraste \d,\d:1$/)
+    // Réactivé : de nouveau corrigée.
+    await contrasteLigne(r).getByRole('switch', { name: 'Corriger le contraste' }).click()
+    await expect.poll(() => variable(fenetre, '--ciel-texte')).not.toBe('#3a3a60')
   } finally {
     await app.close()
   }

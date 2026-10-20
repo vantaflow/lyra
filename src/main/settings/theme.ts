@@ -3,7 +3,7 @@
 import type { ThemeDiffuse } from '../../shared/ipc'
 import { estDansPlage, prochaineEcheanceHeure } from '../../shared/heure-sombre'
 import { estNuit, prochainChangement } from '../../shared/fuseaux-soleil'
-import type { Mode } from '../../shared/contraste'
+import { corrigerPalette, type Mode } from '../../shared/contraste'
 import { THEMES, deriver } from '../../shared/themes'
 import { COULEURS_INDIGO_NUIT, type CleCouleur, type CouleursTheme, type NomTheme, type ReglagesCouleurs } from '../../shared/types-reglages'
 import type { Settings } from '../../shared/types'
@@ -66,11 +66,16 @@ function modeDe(r: ReglagesTheme, ctx: ContexteTheme): Mode {
   }
 }
 
+/** Palette diffusée : texte des six paires ramené à 4,5:1 quand `couleurs.corrigerContraste` est actif (la couleur enregistrée reste intacte). */
+function palette(couleurs: CouleursTheme, mode: Mode, corriger: boolean): CouleursTheme {
+  return corriger ? corrigerPalette(couleurs, mode).couleurs : couleurs
+}
+
 /** Mode, thème et variables CSS effectifs (pur). */
 export function themeEffectif(r: ReglagesTheme, ctx: ContexteTheme): ThemeEffectif {
   const mode = modeDe(r, ctx)
   const { actif, personnalisees } = r.couleurs
-  return { mode, nom: actif, variables: deriver(couleursDe(actif, personnalisees), mode) }
+  return { mode, nom: actif, variables: deriver(palette(couleursDe(actif, personnalisees), mode, r.couleurs.corrigerContraste), mode) }
 }
 
 /** Éléments du ciel : en fenêtre privée, le ciel garde ses couleurs « clair » dans les deux modes (il est déjà sombre par nature). */
@@ -84,7 +89,7 @@ export function variablesPrivees(couleurs: ReglagesCouleurs, mode: Mode): Record
   const base = couleursDe(couleurs.privee, couleurs.personnalisees)
   const ciel = structuredClone(base) as CouleursTheme
   for (const k of CLES_CIEL) ciel[k].sombre = base[k].clair
-  return deriver(ciel, mode)
+  return deriver(palette(ciel, mode, couleurs.corrigerContraste), mode)
 }
 
 /** Sous-ensemble de `nativeTheme` utilisé (injecté : le module reste testable sans Electron). */

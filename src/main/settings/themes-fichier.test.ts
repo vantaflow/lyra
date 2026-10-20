@@ -8,7 +8,7 @@ describe('import d\'un thème', () => {
     const reglages = { setSettings: vi.fn() }
     const r = importerTheme(exporterTheme('Crépuscule', THEMES.foret.couleurs), reglages)
     expect(r).toEqual({ nom: 'Crépuscule' })
-    expect(reglages.setSettings).toHaveBeenCalledWith({ couleurs: { actif: 'mes-couleurs', personnalisees: THEMES.foret.couleurs } })
+    expect(reglages.setSettings).toHaveBeenCalledWith({ couleurs: { actif: 'mes-couleurs', personnalisees: THEMES.foret.couleurs, reference: THEMES.foret.couleurs } })
   })
   it('refuse un thème invalide avec un message, sans rien écrire', () => {
     const reglages = { setSettings: vi.fn() }

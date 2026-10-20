@@ -89,6 +89,10 @@ export interface ReglagesCouleurs {
   personnalisees: CouleursTheme | null
   /** Thème prêt dont « Mes couleurs » est la copie de départ (« modifié » se mesure par rapport à lui). */
   depart: NomTheme
+  /** Thème importé servant de référence à « modifié » (prioritaire sur `depart`) ; null : `depart`. */
+  reference: CouleursTheme | null
+  /** Corrige automatiquement toute paire texte/fond sous 4,5:1 dans les variables diffusées (jamais la couleur enregistrée). */
+  corrigerContraste: boolean
   cielTeinteParSite: boolean
   couleurParConstellation: boolean
   prefersColorScheme: boolean

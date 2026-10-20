@@ -1,4 +1,5 @@
 // Modèle pur de l'écran « Couleurs et thèmes » : « Mes couleurs » modifié, copie d'un thème avant édition, segments « Passer en sombre ».
+import { SEUIL, rapport, PAIRES } from '../../shared/contraste'
 import { THEMES } from '../../shared/themes'
 import { COULEURS_INDIGO_NUIT, type CleCouleur, type CouleursTheme, type NomTheme, type ReglagesCouleurs } from '../../shared/types-reglages'
 import type { Settings } from '../../shared/types'
@@ -13,18 +14,18 @@ export function couleursAffichees(c: Pick<ReglagesCouleurs, 'actif' | 'personnal
 const memes = (a: CouleursTheme, b: CouleursTheme): boolean =>
   (Object.keys(COULEURS_INDIGO_NUIT) as CleCouleur[]).every((k) => a[k].clair.toUpperCase() === b[k].clair.toUpperCase() && a[k].sombre.toUpperCase() === b[k].sombre.toUpperCase())
 
-/** « Mes couleurs » est « modifié » dès qu'une valeur diffère de celle du thème de départ (`couleurs.depart`). */
-export function estModifie(personnalisees: CouleursTheme | null, depart: NomTheme): boolean {
-  return personnalisees !== null && !memes(personnalisees, THEMES[depart].couleurs)
+/** « Mes couleurs » est « modifié » dès qu'une valeur diffère de la référence : le thème importé (`couleurs.reference`), à défaut le thème de départ (`couleurs.depart`). */
+export function estModifie(personnalisees: CouleursTheme | null, depart: NomTheme, reference: CouleursTheme | null = null): boolean {
+  return personnalisees !== null && !memes(personnalisees, reference ?? THEMES[depart].couleurs)
 }
 
-type EtatCouleurs = Pick<ReglagesCouleurs, 'actif' | 'personnalisees' | 'depart'>
+type EtatCouleurs = Pick<ReglagesCouleurs, 'actif' | 'personnalisees' | 'depart' | 'reference'>
 
 /** Réglage à écrire quand on change une couleur : copie du thème affiché dans « Mes couleurs » (le thème prêt reste intact), qui en devient le départ. */
-export function modifierCouleur(c: EtatCouleurs, cle: CleCouleur, mode: ModeCouleur, hex: string): { actif: 'mes-couleurs'; personnalisees: CouleursTheme; depart: NomTheme } {
+export function modifierCouleur(c: EtatCouleurs, cle: CleCouleur, mode: ModeCouleur, hex: string): { actif: 'mes-couleurs'; personnalisees: CouleursTheme; depart: NomTheme; reference: CouleursTheme | null } {
   const copie = structuredClone(couleursAffichees(c)) as CouleursTheme
   copie[cle][mode] = hex.toUpperCase()
-  return { actif: 'mes-couleurs', personnalisees: copie, depart: c.actif === 'mes-couleurs' ? c.depart : c.actif }
+  return { actif: 'mes-couleurs', personnalisees: copie, depart: c.actif === 'mes-couleurs' ? c.depart : c.actif, reference: c.actif === 'mes-couleurs' ? c.reference : null }
 }
 
 /** Vrai si la première édition depuis un thème prêt remplacerait une personnalisation de « Mes couleurs » différente de ce thème. */
@@ -92,4 +93,28 @@ export function creerLimiteur<T>(delaiMs: number, ecrire: (v: T) => void): { pou
       envoyer()
     }
   }
+}
+
+/** Rapport affiché avec une décimale et une virgule, arrondi vers le bas : « 4,5 » n'est jamais montré pour un rapport sous le seuil. */
+export function formaterRatio(r: number): string {
+  return (Math.floor(r * 10 + 1e-9) / 10).toFixed(1).replace('.', ',')
+}
+
+export type EtiquettesContraste = Partial<Record<CleCouleur, Partial<Record<ModeCouleur, string>>>>
+
+/**
+ * Étiquettes informatives des lignes de texte dont la paire est sous 4,5:1, par mode :
+ * « Ajustée : 3,1:1 → 4,5:1 » quand Lyra corrige, « Contraste 3,1:1 » quand la correction est désactivée.
+ */
+export function etiquettesContraste(couleurs: CouleursTheme, corriger: boolean): EtiquettesContraste {
+  const sortie: EtiquettesContraste = {}
+  for (const mode of ['clair', 'sombre'] as const) {
+    for (const { texte, fond } of PAIRES) {
+      const r = rapport(couleurs[texte][mode], couleurs[fond][mode])
+      if (r >= SEUIL) continue
+      const apres = formaterRatio(Math.max(r, SEUIL))
+      ;(sortie[texte] ??= {})[mode] = corriger ? `Ajustée : ${formaterRatio(r)}:1 → ${apres}:1` : `Contraste ${formaterRatio(r)}:1`
+    }
+  }
+  return sortie
 }

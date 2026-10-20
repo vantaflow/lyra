@@ -3,7 +3,7 @@ import { CLES_COULEURS, THEMES } from '../../shared/themes'
 import { NOMS_THEMES, type CleCouleur, type CouleursTheme, type NomTheme } from '../../shared/types-reglages'
 import { Interrupteur, Ligne, Segments, Selecteur, Titre } from './controles'
 import {
-  apercuTheme, couleursAffichees, creerLimiteur, ecraseraPersonnalisation, estModifie, hexValide, modifierCouleur, patchPassage, segmentPassage, SEGMENTS_PASSAGE, type ModeCouleur
+  apercuTheme, couleursAffichees, creerLimiteur, ecraseraPersonnalisation, estModifie, etiquettesContraste, type EtiquettesContraste, hexValide, modifierCouleur, patchPassage, segmentPassage, SEGMENTS_PASSAGE, type ModeCouleur
 } from './couleursModele'
 import { PlageSombre } from './PlageSombre'
 import { useReglages } from './reglages'
@@ -64,24 +64,34 @@ function Hex({ valeur, libelle, surChange }: { valeur: string; libelle: string; 
 }
 
 /** Ligne du tableau : définie hors de `Couleurs` pour que les champs en cours d'édition survivent aux rendus. */
-function LigneCouleur(p: { reglage: string; cle: CleCouleur; couleurs: CouleursTheme; changer: (cle: CleCouleur, mode: ModeCouleur) => (hex: string) => void }) {
+function LigneCouleur(p: { reglage: string; cle: CleCouleur; couleurs: CouleursTheme; etiquettes: EtiquettesContraste; changer: (cle: CleCouleur, mode: ModeCouleur) => (hex: string) => void }) {
   const def = CLES_COULEURS.find((x) => x.cle === p.cle)!
+  const cellule = (mode: ModeCouleur) => (
+    <span class="cellule-mode">
+      <Hex valeur={p.couleurs[p.cle][mode]} libelle={`${def.libelle}, ${mode}`} surChange={p.changer(p.cle, mode)} />
+      {p.etiquettes[p.cle]?.[mode] && (
+        <span class="contraste-etiquette" data-mode={mode} title={`Contraste, ${mode}`}>
+          {p.etiquettes[p.cle]![mode]}
+        </span>
+      )}
+    </span>
+  )
   return (
     <Ligne reglage={p.reglage} titre={def.libelle} aide={AIDES[p.cle]}>
-      <Hex valeur={p.couleurs[p.cle].clair} libelle={`${def.libelle}, clair`} surChange={p.changer(p.cle, 'clair')} />
-      <Hex valeur={p.couleurs[p.cle].sombre} libelle={`${def.libelle}, sombre`} surChange={p.changer(p.cle, 'sombre')} />
+      {cellule('clair')}
+      {cellule('sombre')}
     </Ligne>
   )
 }
 
-type Ecriture = { actif: 'mes-couleurs'; personnalisees: CouleursTheme; depart: NomTheme }
+type Ecriture = { actif: 'mes-couleurs'; personnalisees: CouleursTheme; depart: NomTheme; reference: CouleursTheme | null }
 type Edition = { cle: CleCouleur; mode: ModeCouleur; hex: string }
 
 export function Couleurs() {
   const [s, regler] = useReglages()
   const [message, setMessage] = useState('')
   // Valeurs en cours de réglage (sélecteur natif) : affichées tout de suite, écrites toutes les 60 ms puis à la fin.
-  const [locales, setLocales] = useState<{ personnalisees: CouleursTheme; depart: NomTheme } | null>(null)
+  const [locales, setLocales] = useState<{ personnalisees: CouleursTheme; depart: NomTheme; reference: CouleursTheme | null } | null>(null)
   // Première édition depuis un thème prêt qui remplacerait une personnalisation : en attente de confirmation.
   const [aConfirmer, setAConfirmer] = useState<Edition | null>(null)
   const limiteur = useMemo(
@@ -92,19 +102,32 @@ export function Couleurs() {
     []
   )
   useEffect(() => () => limiteur.vider(), [limiteur])
+  // Confirmation : le focus passe à « Remplacer » à l'ouverture, Échap = Annuler.
+  const remplacer = useRef<HTMLButtonElement>(null)
+  const ouverte = aConfirmer !== null
+  useEffect(() => {
+    if (!ouverte) return
+    remplacer.current?.focus()
+    const surTouche = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setAConfirmer(null)
+    }
+    window.addEventListener('keydown', surTouche)
+    return () => window.removeEventListener('keydown', surTouche)
+  }, [ouverte])
   // L'affichage local s'efface quand le réglage enregistré l'a rattrapé.
   useEffect(() => {
-    if (locales && s && JSON.stringify(s.couleurs.personnalisees) === JSON.stringify(locales.personnalisees) && s.couleurs.depart === locales.depart) setLocales(null)
+    if (locales && s && JSON.stringify(s.couleurs.personnalisees) === JSON.stringify(locales.personnalisees) && s.couleurs.depart === locales.depart && JSON.stringify(s.couleurs.reference) === JSON.stringify(locales.reference)) setLocales(null)
   }, [s, locales])
   if (!s) return null
   const c = s.couleurs
-  const etat = locales ? { actif: 'mes-couleurs' as const, personnalisees: locales.personnalisees, depart: locales.depart } : { actif: c.actif, personnalisees: c.personnalisees, depart: c.depart }
+  const etat = locales ? { actif: 'mes-couleurs' as const, personnalisees: locales.personnalisees, depart: locales.depart, reference: locales.reference } : { actif: c.actif, personnalisees: c.personnalisees, depart: c.depart, reference: c.reference }
   const affichees = couleursAffichees(etat)
-  const modifie = estModifie(etat.personnalisees, etat.depart)
+  const modifie = estModifie(etat.personnalisees, etat.depart, etat.reference)
+  const etiquettes = etiquettesContraste(affichees, c.corrigerContraste)
 
   const ecrire = (e: Edition): void => {
     const patch = modifierCouleur(etat, e.cle, e.mode, e.hex)
-    setLocales({ personnalisees: patch.personnalisees, depart: patch.depart })
+    setLocales({ personnalisees: patch.personnalisees, depart: patch.depart, reference: patch.reference })
     limiteur.pousser(patch)
   }
   const changer = (cle: CleCouleur, mode: ModeCouleur) => (hex: string): void => {
@@ -149,6 +172,7 @@ export function Couleurs() {
         <div class="couleurs-confirmation" role="alertdialog" aria-label="Remplacer Mes couleurs">
           <span>Remplacer Mes couleurs par une copie de {THEMES[c.actif].nom} ?</span>
           <button
+            ref={remplacer}
             class="btn pri"
             type="button"
             onClick={() => {
@@ -156,7 +180,7 @@ export function Couleurs() {
               setAConfirmer(null)
               // Remplacement confirmé : la copie part du thème affiché, sans la personnalisation précédente.
               const patch = modifierCouleur({ ...etat, personnalisees: null }, e.cle, e.mode, e.hex)
-              setLocales({ personnalisees: patch.personnalisees, depart: patch.depart })
+              setLocales({ personnalisees: patch.personnalisees, depart: patch.depart, reference: patch.reference })
               limiteur.pousser(patch)
             }}
           >
@@ -202,22 +226,21 @@ export function Couleurs() {
           <span class="hint colonne-mode">Clair</span>
           <span class="hint colonne-mode">Sombre</span>
         </div>
-        <LigneCouleur reglage="couleurs.cielFond" cle="ciel-fond" couleurs={affichees} changer={changer} />
-        <LigneCouleur reglage="couleurs.cielTexte" cle="ciel-texte" couleurs={affichees} changer={changer} />
-        <LigneCouleur reglage="couleurs.etoileActive" cle="etoile-active" couleurs={affichees} changer={changer} />
-        <LigneCouleur reglage="couleurs.etoileActiveFond" cle="etoile-active-fond" couleurs={affichees} changer={changer} />
-        <LigneCouleur reglage="couleurs.etoiles" cle="etoiles" couleurs={affichees} changer={changer} />
-        <LigneCouleur reglage="couleurs.etoilesEndormies" cle="etoiles-endormies" couleurs={affichees} changer={changer} />
-        <LigneCouleur reglage="couleurs.lignes" cle="lignes" couleurs={affichees} changer={changer} />
-        <LigneCouleur reglage="couleurs.capsuleFond" cle="capsule-fond" couleurs={affichees} changer={changer} />
-        <LigneCouleur reglage="couleurs.capsuleTexte" cle="capsule-texte" couleurs={affichees} changer={changer} />
-        <LigneCouleur reglage="couleurs.accent" cle="accent" couleurs={affichees} changer={changer} />
-        <LigneCouleur reglage="couleurs.boucliers" cle="boucliers" couleurs={affichees} changer={changer} />
-        <LigneCouleur reglage="couleurs.pagesFond" cle="pages-fond" couleurs={affichees} changer={changer} />
-        <LigneCouleur reglage="couleurs.nouvelOngletCiel" cle="nouvel-onglet-ciel" couleurs={affichees} changer={changer} />
-        <Ligne reglage="couleurs.contraste" titre="Contraste insuffisant ?" aide="Lyra vérifie chaque paire texte/fond (4,5:1) et propose une correction">
-          <span class="bientot">bientôt</span>
-          <Interrupteur actif libelle="Vérifier le contraste" inerte />
+        <LigneCouleur reglage="couleurs.cielFond" cle="ciel-fond" couleurs={affichees} etiquettes={etiquettes} changer={changer} />
+        <LigneCouleur reglage="couleurs.cielTexte" cle="ciel-texte" couleurs={affichees} etiquettes={etiquettes} changer={changer} />
+        <LigneCouleur reglage="couleurs.etoileActive" cle="etoile-active" couleurs={affichees} etiquettes={etiquettes} changer={changer} />
+        <LigneCouleur reglage="couleurs.etoileActiveFond" cle="etoile-active-fond" couleurs={affichees} etiquettes={etiquettes} changer={changer} />
+        <LigneCouleur reglage="couleurs.etoiles" cle="etoiles" couleurs={affichees} etiquettes={etiquettes} changer={changer} />
+        <LigneCouleur reglage="couleurs.etoilesEndormies" cle="etoiles-endormies" couleurs={affichees} etiquettes={etiquettes} changer={changer} />
+        <LigneCouleur reglage="couleurs.lignes" cle="lignes" couleurs={affichees} etiquettes={etiquettes} changer={changer} />
+        <LigneCouleur reglage="couleurs.capsuleFond" cle="capsule-fond" couleurs={affichees} etiquettes={etiquettes} changer={changer} />
+        <LigneCouleur reglage="couleurs.capsuleTexte" cle="capsule-texte" couleurs={affichees} etiquettes={etiquettes} changer={changer} />
+        <LigneCouleur reglage="couleurs.accent" cle="accent" couleurs={affichees} etiquettes={etiquettes} changer={changer} />
+        <LigneCouleur reglage="couleurs.boucliers" cle="boucliers" couleurs={affichees} etiquettes={etiquettes} changer={changer} />
+        <LigneCouleur reglage="couleurs.pagesFond" cle="pages-fond" couleurs={affichees} etiquettes={etiquettes} changer={changer} />
+        <LigneCouleur reglage="couleurs.nouvelOngletCiel" cle="nouvel-onglet-ciel" couleurs={affichees} etiquettes={etiquettes} changer={changer} />
+        <Ligne reglage="couleurs.contraste" titre="Contraste insuffisant ?" aide="Lyra vérifie chaque paire texte/fond (4,5:1) et corrige la couleur du texte">
+          <Interrupteur actif={c.corrigerContraste} libelle="Corriger le contraste" surChange={(corrigerContraste) => regler({ couleurs: { corrigerContraste } })} />
         </Ligne>
       </div>
 

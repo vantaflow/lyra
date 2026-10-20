@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { reglagesParDefautD } from './defaults-d'
 import { THEMES, deriver } from '../../shared/themes'
+import { rapport } from '../../shared/contraste'
 import { COULEURS_INDIGO_NUIT, type CouleursTheme, type ReglagesCouleurs } from '../../shared/types-reglages'
 import type { ThemeDiffuse } from '../../shared/ipc'
 import { heuresSoleilLocales } from '../../shared/fuseaux-soleil'
@@ -297,5 +298,42 @@ describe('« À une heure fixe » (couleurs.passage = heure)', () => {
     g.recalculer()
     expect(diffusions.at(-1)!.mode).toBe('sombre')
     g.arreter()
+  })
+})
+
+describe('correction automatique du contraste (couleurs.corrigerContraste)', () => {
+  const pale = (): CouleursTheme => {
+    const p: CouleursTheme = structuredClone(COULEURS_INDIGO_NUIT)
+    p['ciel-texte'].clair = '#3A3A60' // sur #15152E : sous 4,5:1
+    p.accent.clair = '#DDDDFF' // sur la page blanche : très pâle
+    return p
+  }
+  const avec = (corrigerContraste: boolean): ReglagesTheme => reglage('clair', { actif: 'mes-couleurs', personnalisees: pale(), corrigerContraste })
+
+  it('actif : la variable diffusée atteint 4,5:1 et la couleur enregistrée reste intacte', () => {
+    const r = avec(true)
+    const avant = JSON.stringify(r.couleurs.personnalisees)
+    const v = themeEffectif(r, ctx(false)).variables
+    expect(rapport(v['--ciel-texte'], v['--ciel'])).toBeGreaterThanOrEqual(4.5)
+    expect(rapport(v['--accent'], v['--page'])).toBeGreaterThanOrEqual(4.5)
+    expect(v['--ciel-texte']).not.toBe('#3A3A60')
+    expect(JSON.stringify(r.couleurs.personnalisees)).toBe(avant)
+  })
+  it('désactivé : la valeur choisie est diffusée telle quelle', () => {
+    const v = themeEffectif(avec(false), ctx(false)).variables
+    expect(v['--ciel-texte']).toBe('#3A3A60')
+    expect(v['--accent']).toBe('#DDDDFF')
+  })
+  it('actif, thème par défaut en clair : variables identiques à deriver (aucune paire fautive)', () => {
+    const e = themeEffectif(reglage('clair'), ctx(false))
+    expect(e.variables).toEqual(deriver(COULEURS_INDIGO_NUIT, 'clair'))
+  })
+  it('les fenêtres privées sont corrigées de la même façon', () => {
+    const p = pale()
+    p['ciel-texte'].clair = '#2A2A50'
+    const v = variablesPrivees(couleurs({ privee: 'mes-couleurs', personnalisees: p, corrigerContraste: true }), 'clair')
+    expect(rapport(v['--ciel-texte'], v['--ciel'])).toBeGreaterThanOrEqual(4.5)
+    const brut = variablesPrivees(couleurs({ privee: 'mes-couleurs', personnalisees: p, corrigerContraste: false }), 'clair')
+    expect(brut['--ciel-texte']).toBe('#2A2A50')
   })
 })

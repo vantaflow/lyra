@@ -140,7 +140,17 @@
 .hex .hex-champ[aria-invalid='true'] {
   color: var(--danger);
 }
-.bientot {
-  font-size: 11.5px;
-  color: var(--texte-secondaire);
+.cellule-mode {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.contraste-etiquette {
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: var(--attention-fond);
+  color: var(--attention-texte);
+  font-size: 11px;
+  white-space: nowrap;
 }

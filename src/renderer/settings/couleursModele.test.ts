@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { COULEURS_INDIGO_NUIT, type ReglagesCouleurs } from '../../shared/types-reglages'
 import { THEMES } from '../../shared/themes'
-import { apercuTheme, creerLimiteur, couleursAffichees, ecraseraPersonnalisation, estModifie, hexValide, modifierCouleur, patchPassage, segmentPassage } from './couleursModele'
+import { COULEURS_INDIGO_NUIT as INDIGO } from '../../shared/types-reglages'
+import { apercuTheme, etiquettesContraste, formaterRatio, creerLimiteur, couleursAffichees, ecraseraPersonnalisation, estModifie, hexValide, modifierCouleur, patchPassage, segmentPassage } from './couleursModele'
 
 const base: ReglagesCouleurs = {
   actif: 'indigo-nuit',
@@ -11,6 +12,8 @@ const base: ReglagesCouleurs = {
   heureClair: '07:00',
   personnalisees: null,
   depart: 'indigo-nuit',
+  reference: null,
+  corrigerContraste: true,
   cielTeinteParSite: false,
   couleurParConstellation: true,
   prefersColorScheme: true
@@ -133,5 +136,45 @@ describe('écritures throttlées', () => {
     expect(ecrire).toHaveBeenLastCalledWith('b')
     vi.advanceTimersByTime(200)
     expect(ecrire).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('référence de « Mes couleurs » (thème importé)', () => {
+  it('un thème importé est la référence : pas « modifié » juste après, « modifié » dès qu\'on change une couleur', () => {
+    const importe = structuredClone(THEMES.foret.couleurs)
+    importe.accent.clair = '#123456'
+    expect(estModifie(importe, 'indigo-nuit')).toBe(true)
+    expect(estModifie(importe, 'indigo-nuit', importe)).toBe(false)
+    const p = modifierCouleur({ ...base, actif: 'mes-couleurs', personnalisees: importe, reference: importe }, 'accent', 'clair', '#654321')
+    expect(p.reference).toEqual(importe)
+    expect(estModifie(p.personnalisees, p.depart, p.reference)).toBe(true)
+  })
+  it('éditer depuis un thème prêt remplace la référence par ce thème', () => {
+    const p = modifierCouleur({ ...base, actif: 'foret', reference: structuredClone(INDIGO) }, 'accent', 'clair', '#654321')
+    expect(p.reference).toBeNull()
+    expect(p.depart).toBe('foret')
+  })
+})
+
+describe('étiquettes de contraste', () => {
+  const pale = structuredClone(INDIGO)
+  pale['ciel-texte'].clair = '#3A3A60'
+  it('formaterRatio : virgule française, arrondi vers le bas (jamais « 4,5 » pour 4,46)', () => {
+    expect(formaterRatio(3.14)).toBe('3,1')
+    expect(formaterRatio(4.46)).toBe('4,4')
+    expect(formaterRatio(4.5)).toBe('4,5')
+  })
+  it('correction active : « Ajustée : a → b » sur la ligne du texte, au bon mode', () => {
+    const e = etiquettesContraste(pale, true)
+    expect(e['ciel-texte']?.clair).toMatch(/^Ajustée : \d,\d:1 → 4,\d:1$/)
+    expect(e['ciel-texte']?.sombre).toBeUndefined()
+    expect(e['ciel-fond']).toBeUndefined()
+  })
+  it('correction désactivée : « Contraste a:1 »', () => {
+    expect(etiquettesContraste(pale, false)['ciel-texte']?.clair).toMatch(/^Contraste \d,\d:1$/)
+  })
+  it('Indigo nuit : aucune étiquette', () => {
+    expect(etiquettesContraste(INDIGO, true)).toEqual({})
+    expect(etiquettesContraste(INDIGO, false)).toEqual({})
   })
 })
