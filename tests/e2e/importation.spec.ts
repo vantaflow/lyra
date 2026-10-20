@@ -131,12 +131,28 @@ test('export des favoris, paquet .lyra puis import par « Un fichier » ; phrase
     // Phrase de passe courte : refusée avec un message, aucun fichier.
     await r.getByRole('button', { name: 'Créer le paquet…' }).click()
     await r.locator('#phrase-paquet').fill('court')
+    await r.locator('#phrase-paquet-confirmation').fill('court')
     await r.getByRole('button', { name: 'Créer', exact: true }).click()
     await expect(r.locator('#message-export')).toContainText('au moins 8 caractères')
     expect(existsSync(paquet)).toBe(false)
 
-    // Paquet complet.
+    // Deux phrases différentes : bouton désactivé, message, aucun fichier.
     await r.locator('#phrase-paquet').fill('phrase de passe e2e solide')
+    await r.locator('#phrase-paquet-confirmation').fill('une autre phrase de passe')
+    await expect(r.locator('#phrases-differentes-paquet')).toHaveText('Les deux phrases ne correspondent pas.')
+    await expect(r.locator('#valider-paquet')).toBeDisabled()
+    expect(existsSync(paquet)).toBe(false)
+
+    // Sauvegarde automatique : même contrôle.
+    await r.locator('#choisir-dossier').click()
+    await r.locator('#phrase-auto').fill('phrase de passe e2e solide')
+    await r.locator('#phrase-auto-confirmation').fill('différente')
+    await expect(r.locator('#phrases-differentes-auto')).toBeVisible()
+    await expect(r.locator('#valider-auto')).toBeDisabled()
+    await r.locator('#choisir-dossier').click()
+
+    // Paquet complet.
+    await r.locator('#phrase-paquet-confirmation').fill('phrase de passe e2e solide')
     await r.getByRole('button', { name: 'Créer', exact: true }).click()
     await expect.poll(() => existsSync(paquet)).toBe(true)
     await expect(r.locator('#message-export')).toContainText('Paquet Lyra')

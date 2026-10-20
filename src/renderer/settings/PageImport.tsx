@@ -434,7 +434,9 @@ function Exporter() {
   const [occupe, setOccupe] = useState(false)
   const [phrase, setPhrase] = useState('')
   const [paquet, setPaquet] = useState(false)
+  const [confirmation, setConfirmation] = useState('')
   const [phraseAuto, setPhraseAuto] = useState('')
+  const [confirmationAuto, setConfirmationAuto] = useState('')
   const [auto, setAuto] = useState(false)
   const [etat, setEtat] = useState<EtatSauvegardeAutoIpc | null>(null)
 
@@ -470,6 +472,7 @@ function Exporter() {
         setEtat(r.etat)
         setAuto(false)
         setPhraseAuto('')
+        setConfirmationAuto('')
         setMessage({ erreur: false, texte: 'Sauvegarde automatique activée.' })
       } else if (r.erreur !== 'annule') setMessage({ erreur: true, texte: r.message })
     } catch (e) {
@@ -520,15 +523,25 @@ function Exporter() {
               Phrase de passe (8 caractères au moins)
             </label>
             <input id="phrase-paquet" class="inp" type="password" autocomplete="off" value={phrase} onInput={(ev) => setPhrase((ev.currentTarget as HTMLInputElement).value)} />
+            <label for="phrase-paquet-confirmation" class="hint">
+              Confirmer la phrase de passe
+            </label>
+            <input id="phrase-paquet-confirmation" class="inp" type="password" autocomplete="off" value={confirmation} onInput={(ev) => setConfirmation((ev.currentTarget as HTMLInputElement).value)} />
+            {phrase !== confirmation && phrase !== '' && (
+              <span class="hint alerte" id="phrases-differentes-paquet" role="alert">
+                Les deux phrases ne correspondent pas.
+              </span>
+            )}
             <button
               class="btn pri"
               type="button"
               id="valider-paquet"
-              disabled={occupe}
+              disabled={occupe || phrase !== confirmation}
               onClick={() =>
                 void exporter(() => window.lyra.invoke('export:paquet', { phrase }), 'Paquet Lyra').then((ok) => {
                   if (ok) {
                     setPhrase('')
+                    setConfirmation('')
                     setPaquet(false)
                   }
                 })
@@ -560,7 +573,16 @@ function Exporter() {
               Phrase de passe du paquet (8 caractères au moins)
             </label>
             <input id="phrase-auto" class="inp" type="password" autocomplete="off" value={phraseAuto} onInput={(ev) => setPhraseAuto((ev.currentTarget as HTMLInputElement).value)} />
-            <button class="btn pri" type="button" id="valider-auto" disabled={occupe} onClick={() => void activerAuto()}>
+            <label for="phrase-auto-confirmation" class="hint">
+              Confirmer la phrase de passe
+            </label>
+            <input id="phrase-auto-confirmation" class="inp" type="password" autocomplete="off" value={confirmationAuto} onInput={(ev) => setConfirmationAuto((ev.currentTarget as HTMLInputElement).value)} />
+            {phraseAuto !== confirmationAuto && phraseAuto !== '' && (
+              <span class="hint alerte" id="phrases-differentes-auto" role="alert">
+                Les deux phrases ne correspondent pas.
+              </span>
+            )}
+            <button class="btn pri" type="button" id="valider-auto" disabled={occupe || phraseAuto !== confirmationAuto} onClick={() => void activerAuto()}>
               Activer
             </button>
           </div>
