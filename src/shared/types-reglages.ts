@@ -82,6 +82,10 @@ export interface ReglagesCouleurs {
   /** Thème des fenêtres privées. */
   privee: NomTheme
   passage: 'systeme' | 'coucher' | 'heure' | 'jamais'
+  /** « À une heure fixe » : début de la plage sombre, `HH:MM` (24 h, heure locale). */
+  heureSombre: string
+  /** « À une heure fixe » : fin de la plage sombre (retour au clair), `HH:MM`. Début = fin : toujours sombre. */
+  heureClair: string
   personnalisees: CouleursTheme | null
   cielTeinteParSite: boolean
   couleurParConstellation: boolean

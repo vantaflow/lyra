@@ -37,6 +37,7 @@ export const INDEX: EntreeIndex[] = [
   ligne('apparence', 'largeur', 'Largeur du ciel', ['ciel', 'taille', 'pixels']),
   ligne('apparence', 'glisser', "Glisser l'en-tête du ciel vers un bord pour le déplacer", ['ciel', 'déplacer', 'position']),
   ligne('apparence', 'theme', 'Thème', ['clair', 'sombre', 'système', 'apparence']),
+  ligne('couleurs', 'heure', 'Sombre de … à … (à une heure fixe)', ['passer en sombre', 'heure', 'plage', 'nuit', 'horaire', 'minuit']),
   ligne('boucliers', 'niveau', 'Niveau de protection', ['publicités', 'traqueurs', 'bloquer', 'bouclier']),
   ligne('boucliers', 'genes', 'Masquer aussi les gênes', ['bandeaux', 'cookies', 'invitation']),
   ligne('boucliers', 'frequence', 'Mettre à jour les listes toutes les', ['fréquence', 'listes', 'jours']),

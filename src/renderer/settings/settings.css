@@ -450,3 +450,21 @@ body,
   outline: none;
   transition: background 0.3s;
 }
+
+/* Plage sombre « À une heure fixe » (sous le segment « Passer en sombre ») */
+.plage-sombre {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--texte-doux);
+  font: 13px 'Manrope', sans-serif;
+}
+.champ-heure {
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--bordure-champ);
+  border-radius: 8px;
+  background: var(--champ-fond);
+  color: var(--texte);
+  font: 13px 'Manrope', sans-serif;
+}

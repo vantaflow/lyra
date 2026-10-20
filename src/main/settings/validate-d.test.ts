@@ -156,3 +156,13 @@ describe('RegleSite étendue', () => {
     expect(validerPatch({ sites: { [o]: { ua: '' } } })).toEqual({})
   })
 })
+
+describe('couleurs : heures du passage « À une heure fixe »', () => {
+  it.each(['00:00', '07:00', '21:30', '23:59'])('accepte %s', (h) => {
+    expect(validerPatch({ couleurs: { heureSombre: h, heureClair: h } })).toEqual({ couleurs: { heureSombre: h, heureClair: h } })
+  })
+  it.each(['24:00', '7:00', '21:60', '21h00', 21, null, ''])('refuse %j', (h) => {
+    expect(validerPatch({ couleurs: { heureSombre: h } })).toEqual({})
+    expect(validerPatch({ couleurs: { heureClair: h } })).toEqual({})
+  })
+})

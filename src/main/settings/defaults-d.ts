@@ -19,6 +19,8 @@ export function reglagesParDefautD(): ReglagesD {
       actif: 'indigo-nuit',
       privee: 'aurore',
       passage: 'systeme',
+      heureSombre: '21:00',
+      heureClair: '07:00',
       personnalisees: null,
       cielTeinteParSite: false,
       couleurParConstellation: true,

@@ -1,4 +1,5 @@
 /** Valideurs du jalon D (schéma v2) : blocs de réglages et champs de règle de site. */
+import { HEURE_VALIDE } from '../../shared/heure-sombre'
 import { CLES_COULEUR, COULEURS_INDIGO_NUIT, NOMS_THEMES } from '../../shared/types-reglages'
 
 export type Obj = Record<string, unknown>
@@ -141,6 +142,8 @@ export const SCHEMA_D: Schema = {
     actif: nomTheme,
     privee: nomTheme,
     passage: enumeration('systeme', 'coucher', 'heure', 'jamais'),
+    heureSombre: texte(5, HEURE_VALIDE),
+    heureClair: texte(5, HEURE_VALIDE),
     personnalisees,
     cielTeinteParSite: booleen,
     couleurParConstellation: booleen,

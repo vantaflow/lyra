@@ -1,6 +1,7 @@
 // Thème effectif : mode (clair / sombre) tiré d'une seule source de vérité, variables CSS à diffuser, thème des fenêtres privées.
 // Module sans Electron : `nativeTheme` est injecté (voir `NativeThemeLike`), l'horloge aussi (tests).
 import type { ThemeDiffuse } from '../../shared/ipc'
+import { estDansPlage, prochaineEcheanceHeure } from '../../shared/heure-sombre'
 import { estNuit, prochainChangement } from '../../shared/fuseaux-soleil'
 import type { Mode } from '../../shared/contraste'
 import { THEMES, deriver } from '../../shared/themes'
@@ -37,9 +38,9 @@ export function suitLeSysteme(r: ReglagesTheme): boolean {
   return r.theme === 'systeme' || (r.theme === 'programme' && r.couleurs.passage === 'systeme')
 }
 
-/** Passage « Au coucher du soleil » : le mode dépend de l'heure. */
+/** Passages « Au coucher du soleil » et « À une heure fixe » : le mode dépend de l'heure. */
 export function estProgramme(r: ReglagesTheme): boolean {
-  return r.theme === 'programme' && r.couleurs.passage === 'coucher'
+  return r.theme === 'programme' && (r.couleurs.passage === 'coucher' || r.couleurs.passage === 'heure')
 }
 
 function modeDe(r: ReglagesTheme, ctx: ContexteTheme): Mode {
@@ -54,7 +55,9 @@ function modeDe(r: ReglagesTheme, ctx: ContexteTheme): Mode {
           return ctx.systemeSombre ? 'sombre' : 'clair'
         case 'coucher':
           return estNuit(ctx.maintenant, ctx.fuseau) ? 'sombre' : 'clair'
-        // « À une heure fixe » (`heure`) n'est pas encore pilotable (tâche 8b) : clair, comme « Jamais ».
+        // « À une heure fixe » : sombre de `heureSombre` à `heureClair` (à cheval sur minuit si besoin ; égales : toujours sombre).
+        case 'heure':
+          return estDansPlage(ctx.maintenant, r.couleurs.heureSombre, r.couleurs.heureClair, ctx.fuseau) ? 'sombre' : 'clair'
         default:
           return 'clair'
       }
@@ -189,12 +192,14 @@ export class GestionnaireTheme {
     this.minuteur = undefined
   }
 
-  /** Minuterie jusqu'au prochain coucher ou lever, seulement pour « Au coucher du soleil ». */
+  /** Minuterie jusqu'au prochain coucher/lever (« Au coucher du soleil ») ou début/fin de plage (« À une heure fixe »). */
   private armer(r: ReglagesTheme): void {
     this.desarmer()
     if (!this.demarre || !estProgramme(r)) return
     const maintenant = this.horloge()
-    const attente = prochainChangement(maintenant, this.fuseau()).getTime() - maintenant.getTime() + MARGE_MS
+    const { passage, heureSombre, heureClair } = r.couleurs
+    const echeance = passage === 'heure' ? prochaineEcheanceHeure(maintenant, heureSombre, heureClair, this.fuseau()) : prochainChangement(maintenant, this.fuseau())
+    const attente = echeance.getTime() - maintenant.getTime() + MARGE_MS
     this.minuteur = setTimeout(() => this.recalculer(), Math.max(MARGE_MS, Math.min(attente, ATTENTE_MAX_MS)))
     this.minuteur.unref?.()
   }

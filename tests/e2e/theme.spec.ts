@@ -153,3 +153,27 @@ test('thème : en sombre, la première couleur lue sur lyra://settings (avant to
     await app.close()
   }
 })
+
+test('thème : « À une heure fixe » bascule à l’heure dite (horloge de test), sombre de 21:00 à 07:00', async () => {
+  test.setTimeout(90_000)
+  // 20 h 59 min 53 s à Paris : la bascule survient quelques secondes plus tard, sans toucher aux réglages.
+  const { app, fenetre } = await lancerLyra({ LYRA_TEST_HORLOGE: '2026-06-21T20:59:53+02:00', TZ: 'Europe/Paris' })
+  try {
+    const mode = (): Promise<string | null> => fenetre.evaluate(() => document.documentElement.getAttribute('data-mode'))
+    const source = (): Promise<string> => app.evaluate(({ nativeTheme }) => nativeTheme.themeSource)
+    await poser(fenetre, { theme: 'programme', couleurs: { passage: 'heure', heureSombre: '21:00', heureClair: '07:00' } })
+    await expect.poll(mode).toBe('clair')
+    await expect.poll(mode, { timeout: 20_000 }).toBe('sombre')
+    expect(await source()).toBe('dark')
+    // Début = fin : toujours sombre ; plage de jour qui ne couvre pas l'heure : clair.
+    await poser(fenetre, { couleurs: { heureSombre: '08:00', heureClair: '09:00' } })
+    await expect.poll(mode).toBe('clair')
+    await poser(fenetre, { couleurs: { heureClair: '08:00' } })
+    await expect.poll(mode).toBe('sombre')
+    // Valeur invalide refusée : la plage garde ses heures.
+    await poser(fenetre, { couleurs: { heureSombre: '25:00' } })
+    expect(await fenetre.evaluate(() => window.lyra.invoke('settings:get').then((s) => s.couleurs.heureSombre))).toBe('08:00')
+  } finally {
+    await app.close()
+  }
+})

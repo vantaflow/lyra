@@ -2,12 +2,24 @@
 import { app, ipcMain, nativeTheme, powerMonitor, webContents, type WebContents } from 'electron'
 import { envoyer, estVueLyra, handle } from '../ipc'
 import type { Reglages } from '../settings/settings'
+import { enTest } from '../modeTest'
 import { GestionnaireTheme, type NativeThemeLike } from '../settings/theme'
 
 export interface DepsTheme {
   reglages: Reglages
   /** La fenêtre de cette vue est privée : elle reçoit le thème privé. */
   estPrivee(wc: WebContents): boolean
+}
+
+/**
+ * Horloge de test : `LYRA_TEST_HORLOGE` (date ISO) fixe l'heure de départ, qui continue ensuite d'avancer en temps réel.
+ * Réservée aux tests (`enTest()`) ; sinon (ou date invalide) l'horloge du système.
+ */
+export function horlogeDeTest(env: NodeJS.ProcessEnv = process.env, test: boolean = enTest()): (() => Date) | undefined {
+  const depart = test ? Date.parse(env.LYRA_TEST_HORLOGE ?? '') : NaN
+  if (Number.isNaN(depart)) return undefined
+  const decalage = depart - Date.now()
+  return () => new Date(Date.now() + decalage)
 }
 
 export function installerTheme(deps: DepsTheme): GestionnaireTheme {
@@ -19,6 +31,7 @@ export function installerTheme(deps: DepsTheme): GestionnaireTheme {
     },
     nativeTheme: nativeTheme as unknown as NativeThemeLike,
     energie: powerMonitor,
+    horloge: horlogeDeTest(),
     // Toutes les vues dans la même boucle d'évènements : elles appliquent les variables dans la même image.
     diffuser: (theme) => {
       for (const wc of webContents.getAllWebContents()) if (estVueLyra(wc.getURL())) envoyer(wc, 'theme:variables', theme)

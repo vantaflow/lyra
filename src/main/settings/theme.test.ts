@@ -26,7 +26,7 @@ describe('themeEffectif : une seule source de vérité (theme + passage)', () =>
     ['programme', 'systeme', true, 'sombre'],
     ['programme', 'systeme', false, 'clair'],
     ['programme', 'jamais', true, 'clair'],
-    ['programme', 'heure', true, 'clair'], // reconnu, non pilotable avant la tâche 8b
+    ['programme', 'heure', true, 'clair'], // midi, plage 21:00 → 07:00 : clair, le système est ignoré
     ['programme', 'heure', false, 'clair']
   ] as const)('theme=%s passage=%s système sombre=%s → %s', (theme, passage, systemeSombre, attendu) => {
     expect(themeEffectif(reglage(theme, { passage }), ctx(systemeSombre)).mode).toBe(attendu)
@@ -242,5 +242,60 @@ describe('GestionnaireTheme', () => {
     const n = diffusions.length
     nt.emettre()
     expect(diffusions).toHaveLength(n)
+  })
+})
+
+describe('« À une heure fixe » (couleurs.passage = heure)', () => {
+  beforeEach(() => vi.useFakeTimers({ now: MIDI }))
+  afterEach(() => vi.useRealTimers())
+  const heure = (hhmm: string): Date => new Date(`2026-06-21T${hhmm}:00+02:00`)
+  const r = (sombre = '21:00', clair = '07:00'): ReglagesTheme => reglage('programme', { passage: 'heure', heureSombre: sombre, heureClair: clair })
+
+  it.each([
+    ['avant la plage', '20:59', 'clair'],
+    ['au début', '21:00', 'sombre'],
+    ['pendant, avant minuit', '23:30', 'sombre'],
+    ['pendant, après minuit', '03:00', 'sombre'],
+    ['à la fin', '07:00', 'clair'],
+    ['après la plage', '12:00', 'clair']
+  ] as const)('plage à cheval sur minuit, %s (%s) → %s', (_n, h, attendu) => {
+    expect(themeEffectif(r(), ctx(true, heure(h))).mode).toBe(attendu)
+  })
+  it('plage dans la journée', () => {
+    expect(themeEffectif(r('13:00', '15:00'), ctx(false, heure('14:00'))).mode).toBe('sombre')
+    expect(themeEffectif(r('13:00', '15:00'), ctx(true, heure('16:00'))).mode).toBe('clair')
+  })
+  it('début = fin : toujours sombre', () => {
+    expect(themeEffectif(r('08:00', '08:00'), ctx(false, heure('12:00'))).mode).toBe('sombre')
+  })
+  it('par défaut : 21:00 → 07:00', () => {
+    expect(reglagesParDefautD().couleurs).toMatchObject({ heureSombre: '21:00', heureClair: '07:00' })
+  })
+  it('bascule à l’heure dite avec l’horloge simulée, themeSource inclus, puis revient à l’heure de fin', () => {
+    vi.setSystemTime(heure('20:50'))
+    const nt = nativeSimule()
+    const g = new GestionnaireTheme(depsGestionnaire(r(), nt))
+    g.demarrer()
+    expect(diffusions.at(-1)!.mode).toBe('clair')
+    vi.advanceTimersByTime(9 * 60_000)
+    expect(diffusions.at(-1)!.mode).toBe('clair') // 20:59
+    vi.advanceTimersByTime(2 * 60_000)
+    expect(diffusions.at(-1)!.mode).toBe('sombre') // 21:01
+    expect(nt.themeSource).toBe('dark')
+    vi.advanceTimersByTime(10 * 3_600_000) // 07:01
+    expect(diffusions.at(-1)!.mode).toBe('clair')
+    expect(nt.themeSource).toBe('light')
+    g.arreter()
+  })
+  it('changer d’heure de début réarme la minuterie et recalcule', () => {
+    vi.setSystemTime(heure('12:00'))
+    courant = r()
+    const g = new GestionnaireTheme(depsGestionnaire(courant))
+    g.demarrer()
+    expect(vi.getTimerCount()).toBe(1)
+    courant = r('11:00', '13:00')
+    g.recalculer()
+    expect(diffusions.at(-1)!.mode).toBe('sombre')
+    g.arreter()
   })
 })
