@@ -235,3 +235,20 @@ test('téléchargements : aucune trace (URL) en privé dans la liste ni dans tel
     await app.close()
   }
 })
+
+test('passerelles : ajouter et basculerSite sont refusés depuis une fenêtre privée, acceptés depuis une normale', async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const privee = await ouvrirPrivee(app)
+    const sites = (): Promise<string[]> => fenetre.evaluate(() => window.lyra.invoke('passerelles:etat')).then((e) => e.sites.map((s) => s.hote))
+    await privee.evaluate(() => window.lyra.invoke('passerelles:ajouter', { hote: 'prive-ajout.fr' }))
+    await privee.evaluate(() => window.lyra.invoke('passerelles:basculerSite', { hote: 'prive-bascule.fr' }))
+    expect(await sites()).toEqual([])
+    // Fenêtre normale : mêmes appels, écrits.
+    await fenetre.evaluate(() => window.lyra.invoke('passerelles:ajouter', { hote: 'normal-ajout.fr' }))
+    await fenetre.evaluate(() => window.lyra.invoke('passerelles:basculerSite', { hote: 'normal-bascule.fr' }))
+    expect(await sites()).toEqual(['normal-ajout.fr', 'normal-bascule.fr'])
+  } finally {
+    await app.close()
+  }
+})

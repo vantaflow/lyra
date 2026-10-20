@@ -470,7 +470,7 @@ void app.whenReady().then(async () => {
     }
   })
   passerelles = pass
-  installerPasserellesIpc(pass)
+  installerPasserellesIpc(pass, estPrivee)
   // Le PAC initial est en place avant toute fenêtre (une étoile restaurée ne part pas en direct).
   await pass.demarrer()
   if (process.env.LYRA_TEST === '1') {

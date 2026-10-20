@@ -451,6 +451,8 @@ export class Passerelles implements CrochetsPasserelles {
     const r = this.deps.reseau()
     if (!r.sites.some((s) => s.hote === hote)) {
       if (r.sites.length >= MAX_SITES) throw new Error('Liste pleine (500 sites)')
+      // Ajout explicite : lève le délai de grâce (l'échec suivant cherche une passerelle sans attendre).
+      this.echecRecherche = undefined
       this.deps.ecrireSites([...r.sites, { hote, origine, date: this.deps.maintenant() }])
     }
     return this.etat()
@@ -704,7 +706,9 @@ export class Passerelles implements CrochetsPasserelles {
 
   /** Tant qu'un PAC est appliqué, relit le proxy système toutes les 60 s (résolution locale, sans requête). */
   private veillerSysteme(): void {
-    if (typeof this.applique === 'string' && this.deps.proxySysteme) {
+    // État inconnu (échec de setProxy) : la veille est réarmée pour réappliquer sans attendre un autre événement.
+    const veiller = this.applique === undefined || (typeof this.applique === 'string' && this.deps.proxySysteme !== undefined)
+    if (veiller) {
       if (this.annulerVeille) return
       this.annulerVeille = this.deps.planifier(() => {
         this.annulerVeille = undefined

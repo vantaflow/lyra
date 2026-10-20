@@ -646,6 +646,38 @@ describe('Passerelles — relecture finale', () => {
     expect(p.etat().pret).toBe(1)
   })
 
+  it('3. un ajout explicite lève le délai de grâce', async () => {
+    const { p, env } = monter({ sites: [site('a.fr')] })
+    env.trouves = []
+    p.demarrer()
+    await p.rechercher()
+    await p.attendre()
+    expect(env.appels.trouver).toBe(1)
+    env.trouves = [P2]
+    p.ajouter('b.fr')
+    await p.attendre()
+    // Le prochain échec sur un site contourné cherche aussitôt une passerelle.
+    expect(await p.surEchec(7, 'https://a.fr/', -130)).toEqual({ action: 'recharger' })
+    expect(env.appels.trouver).toBe(2)
+    await p.attendre()
+  })
+
+  it('2. la veille du proxy système est réarmée après un échec de setProxy', async () => {
+    const { p, env } = monter({ sites: [site('a.fr')] })
+    // Deux applications au démarrage (PAC initial, puis fin de la recherche) : les deux échouent.
+    env.sessions[0].echecs = 2
+    await p.demarrer()
+    await p.attendre()
+    const veilles = (): typeof env.minuteurs => env.minuteurs.filter((m) => m.ms === 60_000 && !m.annule)
+    expect(env.sessions[0].proxys).toEqual([])
+    expect(veilles().length).toBe(1)
+    veilles()[0].fn()
+    await p.attendre()
+    expect(evaluer(env.sessions[0], 'https://a.fr/')).toMatch(/PROXY|SOCKS/)
+    // Appliquée : la veille de relecture continue (une nouvelle minuterie).
+    expect(veilles().length).toBe(2)
+  })
+
   it('3. « Réessayer » lève le délai de grâce', async () => {
     const { p, env } = monter({ sites: [site('a.fr')] })
     env.trouves = []
