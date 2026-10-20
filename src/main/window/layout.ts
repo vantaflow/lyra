@@ -41,9 +41,14 @@ export const DND_HAUTEUR = DND_CROISSANT.height
  */
 export const BOUTONS_FENETRE = { largeur: 150, hauteur: 32 }
 
-/** Largeur de la vue chrome pour un rappel dont la pastille mesure `largeur` px. */
+/**
+ * Largeur de la vue chrome pour un rappel dont la pastille mesure `largeur` px. Mesure absente, nulle, négative ou non
+ * finie (rappel pas encore posé) : repli, jamais une vue vide ou NaN.
+ */
 export const largeurRappel = (largeur?: number): number =>
-  largeur === undefined ? DND_RAPPEL_REPLI : Math.ceil(largeur) + DND_PASTILLE.droite + DND_PASTILLE.ombre
+  largeur === undefined || !Number.isFinite(largeur) || largeur <= 0
+    ? DND_RAPPEL_REPLI
+    : Math.ceil(largeur) + DND_PASTILLE.droite + DND_PASTILLE.ombre
 
 export interface Layout {
   chrome: Rect
@@ -97,11 +102,15 @@ export function computeLayout(
   if (dnd) {
     // Ni ciel ni capsule : la page occupe tout, la vue chrome se réduit au rappel / croissant (haut droite), sans
     // jamais toucher les boutons de fenêtre (Windows) : le bouton « quitter » du rappel n'est pas près de « Fermer ».
+    // Calcul direct, sans dépendre d'une remesure : la zone ne varie qu'avec la mesure de la pastille (dont la largeur
+    // ne dépend pas de la vue), x ≥ 0 et largeur > 0 (une vue vide serait cachée : plus rien à cliquer ni à mesurer).
     const z = dnd.rappel ? { width: largeurRappel(dnd.largeur), height: DND_HAUTEUR } : DND_CROISSANT
-    const dispo = Math.max(0, width - boutons)
-    const w = Math.min(dispo, z.width)
-    const h = Math.min(height, z.height)
-    return { chrome: { x: dispo - w, y: 0, width: w, height: h }, page: fenetre, overlay: fenetre }
+    const reserve = Math.max(0, Number.isFinite(boutons) ? boutons : 0)
+    // Fenêtre trop étroite pour loger le croissant à gauche des boutons : la réserve est abandonnée.
+    const dispo = width - reserve >= DND_CROISSANT.width ? width - reserve : width
+    const w = Math.max(1, Math.min(dispo, z.width))
+    const h = Math.max(1, Math.min(height, z.height))
+    return { chrome: { x: Math.max(0, dispo - w), y: 0, width: w, height: h }, page: fenetre, overlay: fenetre }
   }
 
   const horizontal = ciel.position === 'haut' || ciel.position === 'bas'
