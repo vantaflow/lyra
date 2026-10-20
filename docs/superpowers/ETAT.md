@@ -59,7 +59,7 @@ Spec docs/superpowers/specs/2026-10-19-lyra-design-cycle2.md, plan docs/superpow
 **Jalon C terminé** (60487c0..12fa69e) : relecture finale de toute la branche puis une vague de corrections (12fa69e : Ne pas déranger ne lit plus les permissions du profil normal en privé, ⌘ \ sans état latent, aperçu de largeur libéré à la fermeture, ancienne largeur bornée, case « souvenir » masquée en privé, échec d'équipement privé = fenêtre fermée, PAC attendu 5 s au plus, nouvel onglet privé fermé par défaut). Vérifié : typecheck, vitest 416, Playwright 89/89 ; CI macOS et Windows (voir le dernier run de main).
 
 Reste, à reprendre plus tard :
-- téléchargements privés : aucun panneau ne les montre (pas même celui de la fenêtre privée) — liste en mémoire propre à la fenêtre avant une release ;
+- ✅ téléchargements privés (branche `release-prep`) : liste en mémoire propre à chaque fenêtre privée, affichée dans son seul panneau, jamais écrite sur disque, effacée à la fermeture (les téléchargements en cours sont annulés) ;
 - palette d'une fenêtre privée : propose l'historique et les favoris du profil normal (lecture seule) — à trancher au jalon D ;
 - exceptions de certificat globales (une exception accordée en privé vaut pour la session de l'application) ;
 - iframe `about:blank` initiale sans preload (notifications non surchargées) ;
@@ -80,7 +80,8 @@ Reste, à reprendre plus tard :
 **Jalon E terminé** (relecture finale de toute la branche puis une vague de corrections 9ef20c5..63cc955 : filtre des secrets qui retirait `reseau.passerelles`, paquet avec toutes les fenêtres normales, confirmation de la phrase de passe, un seul `enTest()` = `LYRA_TEST` ET application non empaquetée pour toutes les capacités de test, README). Vérifié : typecheck, vitest 891+, Playwright 100/100, `dist:mac` et `@paquet` 2/2 (asar : lecteur, `sql-wasm.wasm`, `fflate`).
 
 Reste, à reprendre :
-- avant une release : un import réel dans l'application installée (l'application empaquetée ignore les profils de test) ; chien de garde du lecteur (aucun message pendant N minutes → arrêt) ; case « cookies » du paquet dans l'interface ;
+- avant une release : un import réel dans l'application installée (marche à suivre ci-dessous) ; case « cookies » du paquet dans l'interface ;
+- ✅ chien de garde du lecteur (branche `release-prep`, `src/main/import/processus.ts`) : 2 min sans message (décompte suspendu pendant l'application d'un lot) → lecteur tué, éléments restants `Indisponible` (« Le lecteur ne répond plus… ») ; `detecter` et `apercu` : 60 s au plus, erreur lisible ; délais injectables (`creerProcessus(fork, delais)`) ;
 - options d'import non proposées dans l'interface : une fenêtre par fenêtre importée, « faire de X le moteur par défaut », extensions imposées ;
 - mineurs détaillés dans le ledger SDD du jalon E (copie : `docs/superpowers/ledgers/jalon-e.md`).
 
@@ -98,7 +99,24 @@ Relecture finale (Opus) puis corrections : fenêtre privée sans aucune action d
 
 Limites assumées (dites dans l'interface) : la règle par site des extensions est enregistrée mais Electron ne retire pas les scripts ; permissions optionnelles refusées ; `declarativeNetRequest` partiel.
 
-Reste, à reprendre : source `ubo` dans le registre (un zip local nommé « uBlock Origin » peut remplacer uBO, sur choix de l'utilisateur) ; mineurs M5-M15 de la relecture finale (doublons de code, extraire le démarrage des extensions d'`index.ts`, résidus `.attente-`/`.tmp-`, `chrome.tabs.update` hors `will-navigate`, conflit de raccourcis) ; `settings:export` exporte le registre et `settings:import` n'a pas de garde en fenêtre privée.
+Reste, à reprendre : (point 3 de `release-prep` non fait ici : repris par une autre session) source `ubo` dans le registre (un zip local nommé « uBlock Origin » peut remplacer uBO, sur choix de l'utilisateur) ; mineurs M5-M15 de la relecture finale (doublons de code, extraire le démarrage des extensions d'`index.ts`, résidus `.attente-`/`.tmp-`, `chrome.tabs.update` hors `will-navigate`, conflit de raccourcis) ; `settings:export` exporte le registre et `settings:import` n'a pas de garde en fenêtre privée.
+
+## Import réel dans l'application installée — marche à suivre (à faire à la main)
+
+L'application empaquetée ignore les profils de test : seul un vrai import valide la chaîne complète. Je n'ai lu aucun vrai profil.
+
+1. Dans le worktree à jour : `npm run dist:mac`, puis ouvrir `dist/Lyra-<version>-arm64.dmg` et glisser Lyra dans Applications (quitter d'abord toute autre instance de Lyra).
+2. Fermer Chrome (le profil est verrouillé tant qu'il tourne ; Lyra lit une copie, mais un Chrome ouvert peut avoir des écritures en attente). Safari : donner à Lyra l'« Accès complet au disque » (Réglages Système → Confidentialité et sécurité) si l'aperçu signale un accès refusé, puis relancer Lyra.
+3. Lancer Lyra, ouvrir `lyra://settings` → « Importer et exporter », choisir Chrome (puis, dans un second temps, Safari), garder l'aperçu et cocher tout ce qui est proposé.
+4. Vérifier après l'import :
+   - favoris : dossiers et barre conservés, pas de doublons si on relance l'import ;
+   - historique : visites présentes dans la palette et dans `lyra://history` (dates plausibles), l'import ne se bloque pas (le chien de garde arrête un lecteur muet après 2 min) ;
+   - onglets : ouverts en constellations (une par couleur de groupe), endormis, sans charger les pages ;
+   - extensions : arrivées dans la file de `lyra://extensions`, rien d'installé sans confirmation ;
+   - moteurs de recherche : mots-clés importés, moteur par défaut inchangé ;
+   - tout élément illisible affiche une raison claire (verrou, accès refusé…), jamais d'écran figé.
+5. Refaire l'import une seconde fois (dédoublonnage), puis tester une fenêtre privée : l'import y est refusé.
+6. Noter tout écart ici ou dans un ticket avant la release.
 
 ## Jalon D — réglages complets, règles par site, couleurs (en cours)
 
