@@ -16,6 +16,9 @@ import type { Compteurs, ElementImport, ExtensionImportee, Indisponible, ProfilD
 /** Taille des lots d'historique envoyés au main. */
 export const TAILLE_LOT = 2000
 
+/** Lots d'historique en vol (envoyés, non encore acquittés par `suite`) : contre-pression vers le main. */
+export const LOTS_EN_VOL = 2
+
 export interface ResumeHistorique {
   pages: number
   visites: number
@@ -26,6 +29,8 @@ export type MessageVersLecteur =
   | { type: 'apercu'; profil: ProfilDetecte; elements: readonly ElementImport[]; depuisJours?: number | null }
   | { type: 'lire'; profil: ProfilDetecte; params: ParametresLecture; elements: readonly ElementImport[] }
   | { type: 'annuler' }
+  /** Accusé du main : un lot d'historique est appliqué, le suivant peut partir. */
+  | { type: 'suite' }
 
 /** Valeur d'un élément lu : l'historique n'est jamais renvoyé en entier (voir `lot`), seulement son résumé. */
 export type MessageDuLecteur =
@@ -90,6 +95,16 @@ export interface LecteurImport {
 export function creerLecteur(port: Port, lecteurs: Lecteurs = LECTEURS_REELS): LecteurImport {
   const abandon = new AbortController()
   const envoyer = (m: MessageDuLecteur): void => port.postMessage(m)
+  let enVol = 0
+  let reveil: (() => void) | undefined
+  abandon.signal.addEventListener('abort', () => reveil?.())
+  /** Envoie un lot puis attend, si besoin, qu'il reste moins de `LOTS_EN_VOL` lots non acquittés (ou l'abandon). */
+  async function envoyerLot(visites: Visite[]): Promise<void> {
+    if (abandon.signal.aborted) return // le main n'attend plus rien
+    envoyer({ type: 'lot', element: 'historique', visites })
+    enVol++
+    while (enVol >= LOTS_EN_VOL && !abandon.signal.aborted) await new Promise<void>((r) => (reveil = r))
+  }
   const surProgression = (p: Progression): void => envoyer({ type: 'progression', element: p.element, fait: p.fait })
 
   const optionsDe = (params: ParametresLecture, extra: Partial<OptionsLecture> = {}): OptionsLecture => ({
@@ -129,14 +144,14 @@ export function creerLecteur(port: Port, lecteurs: Lecteurs = LECTEURS_REELS): L
       if (abandon.signal.aborted) valeur = annule()
       else if (flux) {
         valeur = await lecteurs
-          .parcourirHistorique(profil, optionsDe(params, { surProgression }), (visites) => envoyer({ type: 'lot', element: 'historique', visites }))
+          .parcourirHistorique(profil, optionsDe(params, { surProgression }), envoyerLot)
           .catch((e: unknown) => versIndisponible(e))
       } else {
         const h = donnees.historique
         if (!h || estIndisponible(h)) valeur = h ?? indisponible('Élément non lu.')
         else {
           const taille = params.tailleLot ?? TAILLE_LOT
-          for (let i = 0; i < h.length; i += taille) envoyer({ type: 'lot', element: 'historique', visites: h.slice(i, i + taille) })
+          for (let i = 0; i < h.length && !abandon.signal.aborted; i += taille) await envoyerLot(h.slice(i, i + taille))
           valeur = { pages: h.length, visites: h.reduce((s, v) => s + v.visites, 0) }
         }
       }
@@ -175,9 +190,13 @@ export function creerLecteur(port: Port, lecteurs: Lecteurs = LECTEURS_REELS): L
 
   async function traiter(m: MessageVersLecteur): Promise<void> {
     try {
-      switch (m.type) {
+      switch (m?.type) {
         case 'annuler':
           abandon.abort()
+          return
+        case 'suite':
+          enVol = Math.max(0, enVol - 1)
+          reveil?.()
           return
         case 'detecter':
           envoyer({ type: 'profils', profils: await lecteurs.detecter().catch(() => []) })
@@ -188,6 +207,8 @@ export function creerLecteur(port: Port, lecteurs: Lecteurs = LECTEURS_REELS): L
         case 'apercu':
           await apercu(m)
           break
+        default:
+          return // message inconnu : ignoré, sans `fin`
       }
     } catch {
       // Les lectures ne lèvent pas ; un échec d'envoi ne doit pas empêcher la fin.
@@ -199,7 +220,7 @@ export function creerLecteur(port: Port, lecteurs: Lecteurs = LECTEURS_REELS): L
   port.on('message', (e) => {
     const m = e.data as MessageVersLecteur
     const t = traiter(m)
-    if (m.type !== 'annuler') derniere = t
+    if (m?.type === 'detecter' || m?.type === 'lire' || m?.type === 'apercu') derniere = t
   })
 
   return { traiter, fini: () => derniere }

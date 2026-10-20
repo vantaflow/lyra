@@ -4,7 +4,7 @@
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { creerLecteur } from './protocole'
+import { LOTS_EN_VOL, creerLecteur } from './protocole'
 import type { Lecteurs, MessageDuLecteur, MessageVersLecteur, Port } from './protocole'
 import { ErreurImport, estIndisponible } from './types'
 import type { ProfilDetecte, Visite } from './types'
@@ -14,8 +14,11 @@ const FIXTURES = fileURLToPath(new URL('./fixtures/chromium', import.meta.url))
 class FauxPort implements Port {
   envoyes: MessageDuLecteur[] = []
   private ecouteur?: (e: { data: unknown }) => void
+  /** Le main acquitte chaque lot aussitôt (désactivé dans les tests de contre-pression). */
+  autoAcquitter = true
   postMessage(m: MessageDuLecteur): void {
     this.envoyes.push(m)
+    if (m.type === 'lot' && this.autoAcquitter) queueMicrotask(() => this.recevoir({ type: 'suite' }))
   }
   on(_: 'message', cb: (e: { data: unknown }) => void): void {
     this.ecouteur = cb
@@ -180,6 +183,82 @@ describe('lire', () => {
       element: 'historique',
       valeur: { indisponible: true, raison: 'Lecture annulée.', code: 'annule' }
     })
+  })
+})
+
+const tick = (): Promise<void> => new Promise((r) => setTimeout(r, 0))
+
+describe('contre-pression', () => {
+  const profilFlux = (): ProfilDetecte => profil()
+  it('jamais plus de LOTS_EN_VOL lots non acquittés ; chaque « suite » libère le suivant', async () => {
+    const port = new FauxPort()
+    port.autoAcquitter = false
+    const l = creerLecteur(
+      port,
+      lecteursFaux({
+        parcourirHistorique: async (_p, _o, surLot) => {
+          for (let i = 0; i < 5; i++) await surLot(visites(1, i))
+          return { pages: 5, visites: 10 }
+        }
+      })
+    )
+    port.recevoir({ type: 'lire', profil: profilFlux(), params: {}, elements: ['historique'] })
+    const lots = (): number => port.envoyes.filter((m) => m.type === 'lot').length
+    await tick()
+    expect(lots()).toBe(LOTS_EN_VOL)
+    for (let attendu = LOTS_EN_VOL; attendu < 5; attendu++) {
+      port.recevoir({ type: 'suite' })
+      await tick()
+      expect(lots()).toBe(attendu + 1)
+    }
+    expect(types(port)).not.toContain('fin')
+    port.recevoir({ type: 'suite' })
+    await l.fini()
+    expect(types(port).at(-1)).toBe('fin')
+  })
+
+  it('Safari : les lots redécoupés sont aussi bornés', async () => {
+    const port = new FauxPort()
+    port.autoAcquitter = false
+    const l = creerLecteur(port, lecteursFaux({ lireProfil: async () => ({ donnees: { historique: visites(9000) }, compteurs: {} }) }))
+    port.recevoir({ type: 'lire', profil: profil('safari'), params: {}, elements: ['historique'] })
+    await tick()
+    expect(port.envoyes.filter((m) => m.type === 'lot')).toHaveLength(LOTS_EN_VOL)
+    port.recevoir({ type: 'annuler' })
+    await l.fini()
+    expect(types(port).at(-1)).toBe('fin')
+  })
+
+  it('l’abandon pendant l’attente débloque le lecteur : historique annule', async () => {
+    const port = new FauxPort()
+    port.autoAcquitter = false
+    const l = creerLecteur(
+      port,
+      lecteursFaux({
+        parcourirHistorique: async (_p, o, surLot) => {
+          for (let i = 0; i < 10; i++) await surLot(visites(1, i))
+          return o.signal?.aborted ? { indisponible: true, raison: 'Lecture annulée.', code: 'annule' } : { pages: 10, visites: 20 }
+        }
+      })
+    )
+    port.recevoir({ type: 'lire', profil: profilFlux(), params: {}, elements: ['historique'] })
+    await tick()
+    port.recevoir({ type: 'annuler' })
+    await l.fini()
+    expect(port.envoyes.filter((m) => m.type === 'lot')).toHaveLength(LOTS_EN_VOL)
+    expect((port.envoyes.find((m) => m.type === 'element') as { valeur: { code: string } }).valeur.code).toBe('annule')
+    expect(types(port).at(-1)).toBe('fin')
+  })
+})
+
+describe('message inconnu', () => {
+  it('ignoré : aucune réponse, pas de fin', async () => {
+    const port = new FauxPort()
+    creerLecteur(port, lecteursFaux())
+    port.recevoir({ type: 'nimporte' } as unknown as MessageVersLecteur)
+    port.recevoir(undefined as unknown as MessageVersLecteur)
+    await tick()
+    expect(port.envoyes).toEqual([])
   })
 })
 

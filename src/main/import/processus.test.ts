@@ -158,6 +158,57 @@ describe('lire', () => {
   })
 })
 
+describe('surLot asynchrone', () => {
+  const lot = (i: number): MessageDuLecteur => ({ type: 'lot', element: 'historique', visites: [{ url: `u${i}`, titre: 't', date: 1, visites: 1 }] })
+  const tick = (): Promise<void> => new Promise((r) => setTimeout(r, 0))
+
+  it('« suite » n’est envoyé qu’une fois surLot résolu, dans l’ordre', async () => {
+    const { enfant, p } = enfantEtProcessus()
+    let liberer!: () => void
+    const promesse = p.lire(profil, {}, ['historique'], { surLot: () => new Promise<void>((r) => (liberer = r)) })
+    enfant.dire(lot(1))
+    await tick()
+    expect(enfant.recus.filter((m) => m.type === 'suite')).toHaveLength(0)
+    liberer()
+    await tick()
+    expect(enfant.recus.filter((m) => m.type === 'suite')).toHaveLength(1)
+    enfant.dire({ type: 'fin' })
+    await promesse
+  })
+
+  it('rejet de surLot : lecture arrêtée, éléments restants Indisponible avec la raison, rien de non géré', async () => {
+    const { enfant, p } = enfantEtProcessus()
+    const els: Array<[string, unknown]> = []
+    const promesse = p.lire(profil, {}, ['historique', 'favoris'], {
+      surLot: async () => {
+        throw new Error('disque plein')
+      },
+      surElement: (e, v) => void els.push([e, v])
+    })
+    enfant.dire(lot(1))
+    enfant.dire(lot(2))
+    await promesse
+    expect(enfant.tue).toBe(true)
+    expect(enfant.recus.filter((m) => m.type === 'suite')).toHaveLength(0)
+    expect(els.map(([e]) => e)).toEqual(['historique', 'favoris'])
+    expect((els[0][1] as { raison: string }).raison).toContain('disque plein')
+  })
+
+  it('surLot synchrone qui lève : même arrêt propre', async () => {
+    const { enfant, p } = enfantEtProcessus()
+    const els: string[] = []
+    const promesse = p.lire(profil, {}, ['historique'], {
+      surLot: () => {
+        throw new Error('x')
+      },
+      surElement: (e) => void els.push(e)
+    })
+    enfant.dire(lot(1))
+    await promesse
+    expect(els).toEqual(['historique'])
+  })
+})
+
 describe('worker.ts', () => {
   it('n’importe pas Electron', () => {
     const source = readFileSync(fileURLToPath(new URL('./worker.ts', import.meta.url)), 'utf8')

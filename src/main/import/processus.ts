@@ -30,8 +30,8 @@ export interface ResultatApercu {
 
 export interface OptionsLectureProcessus {
   surProgression?: (p: Progression) => void
-  /** Un lot de visites (2 000 au plus) ; peut être asynchrone, mais le lecteur n'attend pas (pas de contre-pression). */
-  surLot?: (visites: Visite[]) => void
+  /** Un lot de visites (2 000 au plus) ; attendu avant d'acquitter (`suite`) : le lecteur n'a jamais plus de `LOTS_EN_VOL` lots non acquittés. Un rejet arrête la lecture (éléments restants `Indisponible`). */
+  surLot?: (visites: Visite[]) => void | Promise<void>
   /** Résultat d'un élément : sa valeur, ou `Indisponible` ; historique : `{ pages, visites }` (les visites sont dans les lots). */
   surElement?: (element: ElementImport, valeur: unknown) => void
   /** Firefox, avec `moteurs` : moteur par défaut déclaré par le profil. */
@@ -53,13 +53,29 @@ const DELAI_ABANDON = 3000
 
 type Issue = 'fin' | 'arret' | 'abandon'
 
-function piloter(fork: Fork, message: MessageVersLecteur, surMessage: (m: MessageDuLecteur) => void, signal?: AbortSignal, delaiAbandon = DELAI_ABANDON): Promise<Issue> {
-  if (signal?.aborted) return Promise.resolve('abandon')
-  return new Promise<Issue>((resolve) => {
+interface Controle {
+  /** Envoie un message au lecteur (accusé `suite`). */
+  repondre(message: MessageVersLecteur): void
+}
+
+/**
+ * Pilote un enfant. Les messages sont traités l'un après l'autre : `surMessage` peut être asynchrone, et son rejet
+ * arrête proprement la lecture (`erreur` renvoyée, enfant tué).
+ */
+function piloter(
+  fork: Fork,
+  message: MessageVersLecteur,
+  surMessage: (m: MessageDuLecteur, c: Controle) => void | Promise<void>,
+  signal?: AbortSignal,
+  delaiAbandon = DELAI_ABANDON
+): Promise<{ issue: Issue; erreur?: unknown }> {
+  if (signal?.aborted) return Promise.resolve({ issue: 'abandon' })
+  return new Promise((resolve) => {
     let enfant: Enfant
     let minuteur: ReturnType<typeof setTimeout> | undefined
     let fini = false
-    const terminer = (issue: Issue): void => {
+    let file: Promise<void> = Promise.resolve()
+    const terminer = (issue: Issue, erreur?: unknown): void => {
       if (fini) return
       fini = true
       if (minuteur) clearTimeout(minuteur)
@@ -69,7 +85,7 @@ function piloter(fork: Fork, message: MessageVersLecteur, surMessage: (m: Messag
       } catch {
         // déjà arrêté
       }
-      resolve(issue)
+      resolve({ issue, erreur })
     }
     const surAbandon = (): void => {
       if (fini) return
@@ -80,24 +96,44 @@ function piloter(fork: Fork, message: MessageVersLecteur, surMessage: (m: Messag
       }
       minuteur = setTimeout(() => terminer('abandon'), delaiAbandon)
     }
+    const enfiler = (tache: () => void | Promise<void>): void => {
+      file = file.then(async () => {
+        if (fini) return
+        try {
+          await tache()
+        } catch (erreur) {
+          terminer('arret', erreur)
+        }
+      })
+    }
+    const controle: Controle = {
+      repondre: (m) => {
+        if (fini) return
+        try {
+          enfant.postMessage(m)
+        } catch {
+          // enfant mort : `exit` tranche
+        }
+      }
+    }
     try {
       enfant = fork()
-    } catch {
-      resolve('arret')
+    } catch (erreur) {
+      resolve({ issue: 'arret', erreur })
       return
     }
     enfant.on('message', (m) => {
-      if (fini) return
-      if (m.type === 'fin') terminer(signal?.aborted ? 'abandon' : 'fin')
-      else surMessage(m)
+      if (m.type === 'fin') enfiler(() => terminer(signal?.aborted ? 'abandon' : 'fin'))
+      else enfiler(() => surMessage(m, controle))
     })
-    enfant.on('exit', () => terminer('arret'))
+    enfant.on('exit', () => enfiler(() => terminer('arret')))
     signal?.addEventListener('abort', surAbandon, { once: true })
     enfant.postMessage(message)
   })
 }
 
 const arret = (): Indisponible => indisponible(RAISON_ARRET, 'annule')
+const echec = (e: unknown): Indisponible => indisponible(`Application interrompue : ${e instanceof Error ? e.message : String(e)}`)
 const abandonne = (): Indisponible => indisponible('Lecture annulée.', 'annule')
 
 export function creerProcessus(fork: Fork): Processus {
@@ -112,7 +148,7 @@ export function creerProcessus(fork: Fork): Processus {
 
     async apercu(profil, elements, depuisJours, opts = {}) {
       let resultat: ResultatApercu | undefined
-      const issue = await piloter(
+      const { issue } = await piloter(
         fork,
         { type: 'apercu', profil, elements, depuisJours },
         (m) => {
@@ -128,12 +164,16 @@ export function creerProcessus(fork: Fork): Processus {
 
     async lire(profil, params, elements, opts = {}) {
       const vus = new Set<ElementImport>()
-      const issue = await piloter(
+      const { issue, erreur } = await piloter(
         fork,
         { type: 'lire', profil, params, elements },
-        (m) => {
+        async (m, c) => {
           if (m.type === 'progression') opts.surProgression?.({ element: m.element, fait: m.fait })
-          else if (m.type === 'lot') opts.surLot?.(m.visites)
+          else if (m.type === 'lot') {
+            // Accusé seulement une fois le lot appliqué : c'est lui qui borne les lots en vol côté lecteur.
+            await opts.surLot?.(m.visites)
+            c.repondre({ type: 'suite' })
+          }
           else if (m.type === 'moteurParDefautFirefox') opts.surMoteurParDefautFirefox?.(m.valeur)
           else if (m.type === 'element') {
             vus.add(m.element)
@@ -145,7 +185,7 @@ export function creerProcessus(fork: Fork): Processus {
       )
       for (const element of elements) {
         if (vus.has(element)) continue
-        opts.surElement?.(element, issue === 'arret' ? arret() : abandonne())
+        opts.surElement?.(element, erreur !== undefined ? echec(erreur) : issue === 'arret' ? arret() : abandonne())
       }
     }
   }
