@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Variante lisible aux petites tailles (16 à 64 px) : traits épaissis, étoiles agrandies, poussière d'étoiles retirée. -->
+  <rect width="1024" height="1024" rx="225" fill="#15152E"/>
+  <g stroke="#9C9CF0" stroke-width="30" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M580,184 L480,400 L645,444 L580,184"/><path d="M480,400 L379,778"/><path d="M645,444 L566,840"/><path d="M379,778 L566,840"/>
+  </g>
+  <g fill="#F4F4FF"><circle cx="480" cy="400" r="48"/><circle cx="645" cy="444" r="48"/><circle cx="379" cy="778" r="52"/><circle cx="566" cy="840" r="52"/></g>
+  <circle cx="580" cy="184" r="104" fill="#F4C56A" opacity=".2"/>
+  <circle cx="580" cy="184" r="76" fill="#F4C56A"/>
+</svg>

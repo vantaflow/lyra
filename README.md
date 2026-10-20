@@ -75,7 +75,7 @@ npm run dev          # lance Lyra en mode développement
 npm run typecheck && npm test && npm run e2e
 npm run dist:mac     # paquet macOS dans release/
 npm run dist:win     # installateur Windows (depuis macOS, sans Wine)
-node scripts/icone.mjs   # régénère build/icon.png depuis build/icon.svg
+node scripts/icone.mjs   # régénère build/icon.png, build/icon.ico (16 à 256 px) et le favicon des pages lyra:// depuis build/icon.svg et build/icon-small.svg
 LYRA_E2E_PAQUET=1 npx playwright test --grep @paquet   # teste l'app empaquetée (après dist)
 ```
 

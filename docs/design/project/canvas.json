@@ -126,6 +126,14 @@
       "w": 1440,
       "h": 1100,
       "title": "Passerelles pour les sites bloqués"
+    },
+    "Icone.dc.html": {
+      "x": 0,
+      "y": 8840,
+      "w": 1440,
+      "h": 760,
+      "title": "Icône de l'application",
+      "expand": "fill"
     }
   },
   "order": [
@@ -143,7 +151,8 @@
     "Panneaux.dc.html",
     "Couleurs.dc.html",
     "Composants.dc.html",
-    "Passerelles.dc.html"
+    "Passerelles.dc.html",
+    "Icone.dc.html"
   ],
   "notes": {
     "titre": {
@@ -201,6 +210,13 @@
       "w": 380,
       "text": "Passerelles (cycle 2) : les sites de la liste passent toujours par une passerelle (proxy), les autres en direct. Seulement https par les passerelles publiques (TLS de bout en bout). Détection automatique des sites bloqués, passerelle personnelle prioritaire, rotation si une passerelle tombe.",
       "fill": "teal"
+    },
+    "icone": {
+      "x": 1520,
+      "y": 8840,
+      "w": 380,
+      "text": "Icône : constellation de la Lyre sur fond nuit, Véga en or. Variante aux traits épaissis de 16 à 64 px (favicon des pages lyra://, .ico Windows). Générées par scripts/icone.mjs depuis build/icon.svg et build/icon-small.svg.",
+      "fill": "blue"
     }
   },
   "designSystems": []

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Lyra — icône de l'application</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Manrope,-apple-system,"Segoe UI",system-ui,sans-serif;color:#1C1C2E}
+.cel{display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+.cel span{font-size:12px;color:#6B6B80}
+</style>
+</helmet>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- Grande icône : build/icon.svg (constellation de la Lyre, Véga en or) -->
+    <symbol id="lyra-grand" viewBox="0 0 1024 1024">
+      <rect width="1024" height="1024" rx="225" fill="#15152E"/>
+  <g stroke="#9C9CF0" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".85">
+    <path d="M580,184 L480,400 L645,444 L580,184"/><path d="M480,400 L379,778"/><path d="M645,444 L566,840"/><path d="M379,778 L566,840"/>
+  </g>
+  <g fill="#B8B8F5" opacity=".6"><circle cx="190" cy="210" r="5"/><circle cx="820" cy="190" r="4"/><circle cx="860" cy="420" r="5"/><circle cx="170" cy="640" r="4"/><circle cx="250" cy="830" r="5"/><circle cx="760" cy="800" r="4"/><circle cx="900" cy="700" r="3"/><circle cx="120" cy="380" r="3"/></g>
+  <g fill="#F4F4FF"><circle cx="480" cy="400" r="14"/><circle cx="645" cy="444" r="14"/><circle cx="379" cy="778" r="15"/><circle cx="566" cy="840" r="15"/></g>
+  <circle cx="580" cy="184" r="48" fill="#F4C56A" opacity=".18"/>
+  <circle cx="580" cy="184" r="26" fill="#F4C56A"/>
+    </symbol>
+    <!-- Variante lisible de 16 à 64 px : build/icon-small.svg (traits épaissis, étoiles agrandies) -->
+    <symbol id="lyra-petit" viewBox="0 0 1024 1024">
+      <rect width="1024" height="1024" rx="225" fill="#15152E"/>
+  <g stroke="#9C9CF0" stroke-width="30" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M580,184 L480,400 L645,444 L580,184"/><path d="M480,400 L379,778"/><path d="M645,444 L566,840"/><path d="M379,778 L566,840"/>
+  </g>
+  <g fill="#F4F4FF"><circle cx="480" cy="400" r="48"/><circle cx="645" cy="444" r="48"/><circle cx="379" cy="778" r="52"/><circle cx="566" cy="840" r="52"/></g>
+  <circle cx="580" cy="184" r="104" fill="#F4C56A" opacity=".2"/>
+  <circle cx="580" cy="184" r="76" fill="#F4C56A"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div style="width:100%;min-height:100vh;display:flex;flex-direction:column;background:#FFFFFF;font-size:14px;line-height:1.45">
+  <header style="padding:28px 40px 22px;border-bottom:1px solid #ECECF1;display:flex;flex-direction:column;gap:6px">
+    <h1 style="margin:0;font-size:24px;letter-spacing:-.3px">Icône de Lyra</h1>
+    <p style="margin:0;color:#6B6B80;max-width:820px">La constellation de la Lyre sur fond nuit (#15152E), Véga en or (#F4C56A). Carré aux angles arrondis (rx 225 sur 1024). Aux petites tailles (16 à 64 px, favicon des pages lyra://, icône Windows jusqu'à 48 px), une variante aux traits épaissis remplace le tracé fin. Dans l'interface, la marque reste le mot « Lyra » en Instrument Serif italique.</p>
+  </header>
+  <div style="flex:1;display:flex;flex-wrap:wrap">
+    <section style="flex:1;min-width:0;background:#FFFFFF;color:#1C1C2E;padding:36px 40px;display:flex;flex-direction:column;gap:28px">
+  <div style="display:flex;align-items:flex-end;gap:36px;flex-wrap:wrap">
+    <div class="cel"><svg viewBox="0 0 1024 1024" width="256" height="256" role="img" aria-label="Icône de Lyra, 256 px"><use href="#lyra-grand"/></svg><span style="color:#6B6B80">Grande — 1024 px (source), ici à 256 px</span></div>
+    <div style="display:flex;align-items:flex-end;gap:28px"><div class="cel"><svg viewBox="0 0 1024 1024" width="64" height="64" role="img" aria-label="Icône de Lyra, 64 px"><use href="#lyra-petit"/></svg><span>64 px</span></div><div class="cel"><svg viewBox="0 0 1024 1024" width="32" height="32" role="img" aria-label="Icône de Lyra, 32 px"><use href="#lyra-petit"/></svg><span>32 px</span></div><div class="cel"><svg viewBox="0 0 1024 1024" width="16" height="16" role="img" aria-label="Icône de Lyra, 16 px"><use href="#lyra-petit"/></svg><span>16 px</span></div></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <svg viewBox="0 0 1024 1024" width="16" height="16" role="img" aria-label="Icône de Lyra, 16 px"><use href="#lyra-petit"/></svg><span style="font:italic 400 22px 'Instrument Serif',serif;letter-spacing:.2px">Lyra</span><span style="font-size:12.5px;color:#6B6B80">favicon d'une page lyra:// et marque dans l'interface</span>
+  </div>
+</section>
+    <section style="flex:1;min-width:0;background:#07071A;color:#E8E8F4;padding:36px 40px;display:flex;flex-direction:column;gap:28px">
+  <div style="display:flex;align-items:flex-end;gap:36px;flex-wrap:wrap">
+    <div class="cel"><svg viewBox="0 0 1024 1024" width="256" height="256" role="img" aria-label="Icône de Lyra, 256 px"><use href="#lyra-grand"/></svg><span style="color:#9E9EC8">Grande — 1024 px (source), ici à 256 px</span></div>
+    <div style="display:flex;align-items:flex-end;gap:28px"><div class="cel"><svg viewBox="0 0 1024 1024" width="64" height="64" role="img" aria-label="Icône de Lyra, 64 px"><use href="#lyra-petit"/></svg><span>64 px</span></div><div class="cel"><svg viewBox="0 0 1024 1024" width="32" height="32" role="img" aria-label="Icône de Lyra, 32 px"><use href="#lyra-petit"/></svg><span>32 px</span></div><div class="cel"><svg viewBox="0 0 1024 1024" width="16" height="16" role="img" aria-label="Icône de Lyra, 16 px"><use href="#lyra-petit"/></svg><span>16 px</span></div></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <svg viewBox="0 0 1024 1024" width="16" height="16" role="img" aria-label="Icône de Lyra, 16 px"><use href="#lyra-petit"/></svg><span style="font:italic 400 22px 'Instrument Serif',serif;letter-spacing:.2px">Lyra</span><span style="font-size:12.5px;color:#9E9EC8">favicon d'une page lyra:// et marque dans l'interface</span>
+  </div>
+</section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

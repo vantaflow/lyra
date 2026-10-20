@@ -1,4 +1,4 @@
-import { BaseWindow, WebContentsView, type WebContents } from 'electron'
+import { app, BaseWindow, WebContentsView, type WebContents } from 'electron'
 import { join } from 'node:path'
 import { PRELOAD_UI } from '../preloads'
 import { BOUTONS_FENETRE, FENETRE_MIN, bornerLargeur, computeLayout, positionFeux, type DndLayout, type Layout } from './layout'
@@ -6,6 +6,7 @@ import type { Settings } from '../../shared/types'
 import type { RouteOverlay } from '../../shared/ipc'
 import { envoyer } from '../ipc'
 import { optionsFenetreCachee, prefsPageCachee } from '../modeTest'
+import { cheminIcone, optionIconeFenetre } from '../icone'
 
 /** Ciel du thème Aurore (fenêtres privées), cf. docs/design/project/Couleurs.dc.html. */
 const CIEL_PRIVE = '#2A1540'
@@ -90,6 +91,8 @@ export class WindowManager {
       // Derrière le ciel révélé et la page : jamais de blanc quand la vue chrome change de taille.
       backgroundColor: privee ? CIEL_PRIVE : '#15152E',
       ...optionsFenetreCachee(),
+      // Fenêtre et barre des tâches (Windows, Linux) ; macOS prend l'icône du paquet.
+      ...optionIconeFenetre(process.platform, cheminIcone(app.isPackaged, process.resourcesPath, app.getAppPath())),
       ...(process.platform === 'darwin'
         ? { titleBarStyle: 'hidden' as const, trafficLightPosition: positionFeux(this.lireCiel()) }
         : {}),
