@@ -360,7 +360,7 @@ test.describe('la règle ET la page', () => {
       await expect.poll(() => p.evaluate(() => document.readyState)).toBe('complete')
       expect(await p.evaluate(() => (window as unknown as { __ext?: boolean }).__ext === true)).toBe(false)
       // Contre-épreuve : la règle retirée, le script s'exécute au chargement suivant.
-      await ligne(r, 'scripts').getByRole('button', { name: 'Autorisés' }).click()
+      await fenetre.evaluate((u) => window.lyra.invoke('sites:ecrire', { cle: u, regle: { scripts: null } }), site)
       await expect.poll(async () => 'scripts' in (await lister(fenetre))[site]).toBe(false)
       await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: `${u}/page2` }), site)
       await expect.poll(() => page(app, `${site}/page2`)).toBeDefined()

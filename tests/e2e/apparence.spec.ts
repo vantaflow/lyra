@@ -143,10 +143,10 @@ test('apparence : lignes de constellation et icônes des sites', async () => {
     await expect(fenetre.locator('.ciel.sans-lignes')).toBeVisible()
     await ecrire(fenetre, { apparence: { relierEnfants: true } })
     await expect(fenetre.locator('.ciel.sans-lignes')).toHaveCount(0)
-    expect(await fenetre.locator('.star .dot').count()).toBeGreaterThan(0)
+    await expect.poll(() => fenetre.locator('.star .dot').count()).toBeGreaterThan(0)
     await ecrire(fenetre, { apparence: { iconesSites: true } })
     // Aucun favicon connu pour le nouvel onglet : le point reste.
-    expect(await fenetre.locator('.star .dot').count()).toBeGreaterThan(0)
+    await expect.poll(() => fenetre.locator('.star .dot').count()).toBeGreaterThan(0)
   } finally {
     await app.close()
   }

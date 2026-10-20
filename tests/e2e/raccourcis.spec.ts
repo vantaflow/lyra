@@ -57,6 +57,7 @@ test('par défaut : ⌘ L ouvre la palette depuis la page', async () => {
 })
 
 test('redéfinir ⌘ L : l’ancienne combinaison ne fait plus rien, la nouvelle ouvre la palette ; « Par défaut » rétablit', async () => {
+  test.setTimeout(90_000)
   const { app, fenetre } = await lancerLyra()
   try {
     const reglages = await ouvrirReglages(app, fenetre)

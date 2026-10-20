@@ -118,6 +118,7 @@ async function collecter(app: ElectronApplication, fenetre: Page, avant?: (p: Pa
 }
 
 test('thème clair par défaut : les couleurs calculées de toutes les vues Lyra sont celles de la référence', async () => {
+  test.skip(process.platform !== 'darwin' && process.env.LYRA_REF_ECRIRE !== '1', 'référence générée sous macOS (classes .mac, pastilles)')
   test.setTimeout(120_000)
   const { app, fenetre } = await lancerLyra({ LYRA_IMPORT_RACINE: racine })
   try {
