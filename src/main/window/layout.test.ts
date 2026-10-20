@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { BANDE, CAPSULE, DND_CROISSANT, DND_HAUTEUR, DND_RAPPEL_REPLI, largeurRappel, FENETRE_MIN, LARGEUR_MAX, RAIL, computeLayout, positionFeux } from './layout'
+import { BANDE, BOUTONS_FENETRE, CAPSULE, DND_CROISSANT, DND_HAUTEUR, DND_PASTILLE, DND_RAPPEL_REPLI, largeurRappel, FENETRE_MIN, LARGEUR_MAX, RAIL, computeLayout, positionFeux } from './layout'
 
 const taille = { width: 1280, height: 800 }
 const fenetre = { x: 0, y: 0, width: 1280, height: 800 }
@@ -119,6 +119,26 @@ describe('computeLayout : Ne pas déranger', () => {
   it('petite fenêtre : la zone reste dans la fenêtre', () => {
     const l = computeLayout({ width: 300, height: 60 }, ciel('gauche'), false, false, { rappel: true })
     expect(l.chrome).toEqual({ x: 0, y: 0, width: 300, height: 60 })
+  })
+  it('Windows : le rappel et le croissant se posent à gauche des boutons de fenêtre, avec la réserve de la capsule (150 px)', () => {
+    expect(BOUTONS_FENETRE).toEqual({ largeur: 150, hauteur: 32 })
+    for (const dnd of [{ rappel: true, largeur: 470.4 }, { rappel: true }, { rappel: false }]) {
+      const l = computeLayout(taille, ciel('gauche'), false, false, dnd, BOUTONS_FENETRE.largeur)
+      const z = dnd.rappel ? largeurRappel(dnd.largeur) : DND_CROISSANT.width
+      expect(l.page).toEqual(fenetre)
+      expect(l.chrome).toEqual({ x: 1280 - 150 - z, y: 0, width: z, height: DND_HAUTEUR })
+      // La pastille (à 16 px du bord droit de la vue) laisse au moins 28 px aux boutons natifs (3 × 46 px).
+      const droitePastille = l.chrome.x + l.chrome.width - DND_PASTILLE.droite
+      expect(1280 - 138 - droitePastille).toBeGreaterThanOrEqual(28)
+    }
+  })
+  it('Windows, petite fenêtre : la zone reste à gauche des boutons et dans la fenêtre', () => {
+    const l = computeLayout({ width: 500, height: 60 }, ciel('gauche'), false, false, { rappel: true }, 150)
+    expect(l.chrome).toEqual({ x: 0, y: 0, width: 350, height: 60 })
+  })
+  it('macOS (sans boutons à réserver) : le design est inchangé', () => {
+    const l = computeLayout(taille, ciel('gauche'), false, false, { rappel: false }, 0)
+    expect(l.chrome).toEqual({ x: 1280 - DND_CROISSANT.width, y: 0, width: DND_CROISSANT.width, height: DND_CROISSANT.height })
   })
   it("plein écran HTML l'emporte : le chrome disparaît", () => {
     const l = computeLayout(taille, ciel('gauche'), true, false, { rappel: true })
