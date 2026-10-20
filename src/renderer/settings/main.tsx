@@ -14,6 +14,7 @@ import { Apparence } from './Apparence'
 import { PaletteSection } from './PaletteSection'
 import { BouclierSection } from './BouclierSection'
 import { Couleurs } from './Couleurs'
+import { Raccourcis } from './Raccourcis'
 import { Emplacement } from './Emplacement'
 import { chercher, REPLI_LIGNE } from './recherche'
 import { routeDepuisHash, SECTIONS } from './sections'
@@ -163,7 +164,7 @@ function App() {
         )}
         {route === 'confidentialite' && <Emplacement description="Effacer l'historique, cookies et données de site." />}
         {route === 'telechargements' && <Telechargements />}
-        {route === 'raccourcis' && <Emplacement description="Raccourcis clavier de Lyra." />}
+        {route === 'raccourcis' && <Raccourcis />}
         {route === 'gestes' && <Emplacement description="Gestes de souris et molette." />}
         {route === 'nepasderanger' && <Emplacement description="Silence des notifications et exceptions par site." />}
         {route === 'demarrage' && <Emplacement description="Page de démarrage et restauration des sessions." />}

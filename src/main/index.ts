@@ -202,6 +202,7 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
       rechercheUrl: (texte) => urlDeRecherche(moteurParId(reglagesCourants().moteurParDefaut, moteursDisponibles(reglagesCourants())), texte),
       // Fenêtre privée : ni détection automatique ni proposition d'ajout (rien n'est écrit dans les réglages).
       passerelles: passerelles?.crochets({ privee: opts.privee === true }),
+      raccourcis: () => reglagesCourants().raccourcis,
       surEchap: () => dnd.sortir(fenetre.id),
       basculerDnd: () => basculerDnd(fenetre.id),
       retenirPopup: (p) => dnd.retenirPopup(fenetre.id, p),
@@ -678,7 +679,7 @@ void app.whenReady().then(async () => {
     if (privees.has(m.fenetreId)) return
     if (/^(https?|file):/i.test(url) && wc) favoris.toggle({ url, title: wc.getTitle() || url })
   }
-  installerMenu(ongletsCourants, {
+  const menuApp = installerMenu(ongletsCourants, {
     nouvelleFenetre: () => creerFenetre(),
     nouvelleFenetrePrivee: () => creerFenetre({ privee: true }),
     basculerFavori,
@@ -698,7 +699,9 @@ void app.whenReady().then(async () => {
       const patch: Record<string, unknown> = { ciel: { masque: !masque } }
       reglages.setSettings(patch as Partial<Settings>)
     }
-  })
+  }, () => reglages.getSettings().raccourcis)
+  // Raccourcis redéfinis : le menu est reconstruit (différé, seulement si un accélérateur a changé).
+  reglages.onChanged(() => menuApp.planifier())
   // Les Boucliers sont prêts avant la première fenêtre : aucune page ne se charge sans eux.
   const boucliers: Shields = await demarrerBoucliers({
     reglages,

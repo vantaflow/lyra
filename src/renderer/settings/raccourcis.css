@@ -1,0 +1,42 @@
+/* Raccourcis clavier : combinaisons cliquables dans le style des lignes voisines (aucun design dédié). */
+.touche {
+  min-width: 96px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--bordure-champ);
+  border-radius: 8px;
+  background: var(--champ-fond);
+  color: var(--texte);
+  font: 600 12.5px 'Manrope', sans-serif;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  cursor: pointer;
+  flex: none;
+}
+.touche:hover {
+  border-color: var(--accent);
+}
+.touche.perso {
+  color: var(--accent);
+}
+.touche.capture {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 0 3px var(--teinte-accent);
+  outline: none;
+}
+.touche.fixe {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pilule);
+  border-color: transparent;
+  color: var(--texte-secondaire);
+  cursor: default;
+}
+.touche-refus {
+  margin: 0;
+  padding: 0 0 12px;
+  font-size: 12.5px;
+  color: var(--danger);
+}
