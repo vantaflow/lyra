@@ -214,9 +214,9 @@ export type Requetes = {
   'sky:get': [void, SkyChange]
   'shields:get': [void, EtatBoucliers]
   'shields:toggleSite': [{ origine: string; actif: boolean }, void]
-  /** Règles par site (clé : origine, hôte nu ou motif `*.hôte`). Écriture refusée en fenêtre privée. */
+  /** Règles par site (clé : origine, hôte nu ou motif `*.hôte`, enregistrée sous forme canonique ; un champ à `null` est retiré). Écriture refusée en fenêtre privée. */
   'sites:lister': [void, Record<string, RegleSite>]
-  'sites:ecrire': [{ cle: string; regle: RegleSite }, void]
+  'sites:ecrire': [{ cle: string; regle: { [C in keyof RegleSite]?: RegleSite[C] | null } }, void]
   'sites:supprimer': [string, void]
   'shields:stats': [void, StatsBoucliers]
   /** Relit les listes de blocage maintenant ; renvoie les statistiques à jour. */

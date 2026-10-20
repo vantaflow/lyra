@@ -49,6 +49,8 @@ export type BouclierSite = boolean | 'desactives' | 'standard' | 'strict'
 /** Ajouts de D à `RegleSite` (`boucliers` y est élargi, voir `types.ts`). */
 export interface RegleSiteD {
   scriptletsYoutube?: boolean
+  /** Niveau des Boucliers avant leur désactivation sur ce site (rétabli à la réactivation). */
+  bouclierAvant?: 'standard' | 'strict'
   cookies?: 'tous' | 'premiere-partie' | 'bloques' | 'session'
   scripts?: 'autorises' | 'bloques'
   lectureAuto?: 'autoriser' | 'sans-son' | 'bloquer'

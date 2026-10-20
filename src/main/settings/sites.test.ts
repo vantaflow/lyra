@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { cleDe, resoudre, ResolveurSites } from './sites'
+import { cleDe, cleCanonique, resoudre, ResolveurSites, desactiverBoucliers, reactiverBoucliers } from './sites'
 import { validerSettings, validerPatch } from './validate'
 import { reglagesParDefaut } from './defaults'
 import { fusion } from './store'
@@ -95,5 +95,56 @@ describe('cohérence entre consommateurs', () => {
     expect(r.boucliers).toBe('desactives')
     expect([r.zoom, r.exceptionDnd, r.permissions?.camera]).toEqual([1.5, true, 'autoriser'])
     expect(shields.estActif('https://exemple.net')).toBe(true)
+  })
+})
+
+describe('clés canoniques', () => {
+  it('forme canonique : minuscules, port par défaut et point final retirés', () => {
+    expect(cleCanonique('A.com')).toBe('a.com')
+    expect(cleCanonique('A.com.')).toBe('a.com')
+    expect(cleCanonique('https://A.com:443')).toBe('https://a.com')
+    expect(cleCanonique('http://a.com:80/')).toBeNull()
+    expect(cleCanonique('http://a.com:8080')).toBe('http://a.com:8080')
+    expect(cleCanonique('https://a.com.')).toBe('https://a.com')
+    expect(cleCanonique('*.A.com.')).toBe('*.a.com')
+    expect(cleCanonique('https://-a')).toBeNull()
+    expect(cleCanonique('https://.a')).toBeNull()
+  })
+  it('https://a.com:443 correspond à https://a.com', () => {
+    expect(resoudre({ 'https://a.com:443': { zoom: 2 } }, 'https://a.com/').zoom).toBe(2)
+  })
+  it('validation : formes canoniques enregistrées, collision = dernière gagne', () => {
+    const v = validerSettings({ sites: { 'A.com': { zoom: 2 }, 'a.com': { zoom: 1.5 }, 'https://B.com:443': { zoom: 2 } } }, reglagesParDefaut(''))
+    expect(v.sites).toEqual({ 'a.com': { zoom: 1.5 }, 'https://b.com': { zoom: 2 } })
+  })
+})
+
+describe('boucliers : désactiver puis réactiver', () => {
+  const cycle = (sites: Record<string, RegleSite>, origine: string, cle: string): Record<string, RegleSite> => {
+    let s = fusion(sites, { [cle]: desactiverBoucliers(sites, origine).ecrire }) as Record<string, RegleSite>
+    expect(resoudre(s, origine).boucliers).toBe('desactives')
+    const { ecrire, retirer } = reactiverBoucliers(s, origine)
+    const r = { ...(s[cle] ?? {}) } as Record<string, unknown>
+    for (const k of retirer) delete r[k]
+    s = { ...s, [cle]: fusion(r, ecrire) as RegleSite }
+    if (Object.keys(s[cle]).length === 0) delete s[cle]
+    return s
+  }
+  it('Strict venant d’un motif est retrouvé, sans règle exacte résiduelle', () => {
+    const base = { '*.exemple.net': { boucliers: 'strict' as const } }
+    const s = cycle(base, 'https://a.exemple.net', 'https://a.exemple.net')
+    expect(resoudre(s, 'https://a.exemple.net').boucliers).toBe('strict')
+    expect(s['https://a.exemple.net']).toBeUndefined()
+  })
+  it('Strict exact est retrouvé', () => {
+    const s = cycle({ 'https://a.com': { boucliers: 'strict' } }, 'https://a.com', 'https://a.com')
+    expect(s['https://a.com']).toEqual({ boucliers: 'strict' })
+  })
+  it('standard par défaut : plus aucune règle', () => {
+    expect(cycle({}, 'https://a.com', 'https://a.com')).toEqual({})
+  })
+  it('motif désactivé : la réactivation écrit standard dans la règle exacte', () => {
+    const s = cycle({ '*.a.com': { boucliers: 'desactives' } }, 'https://x.a.com', 'https://x.a.com')
+    expect(s['https://x.a.com']).toEqual({ boucliers: 'standard' })
   })
 })

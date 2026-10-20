@@ -8,6 +8,7 @@ import type { Settings } from '../../shared/types'
 import type { EtatBoucliers, StatsBoucliers } from '../../shared/ipc'
 import { handle } from '../ipc'
 import { enTest } from '../modeTest'
+import { cleCanonique, desactiverBoucliers, reactiverBoucliers } from '../settings/sites'
 import type { Reglages } from '../settings/settings'
 import type { TabManager } from '../tabs/TabManager'
 import { construireMoteur, mettreAJour, type OptionsMoteur, type ResultatMoteur } from './engine'
@@ -135,7 +136,16 @@ export async function demarrerBoucliers(deps: DepsBoucliers): Promise<Shields> {
     const tm = deps.ongletsDe(e.sender)
     // Fenêtre privée : aucune règle par site n'est écrite ; le panneau l'indique.
     if (deps.privee?.(tm)) return
-    deps.reglages.setSettings({ sites: { [origine]: { boucliers: actif ? 'standard' : 'desactives' } } } as Partial<Settings>)
+    const cle = cleCanonique(origine)
+    if (!cle) return
+    const sites = deps.reglages.getSettings().sites
+    if (actif) {
+      const { ecrire, retirer } = reactiverBoucliers(sites, origine)
+      deps.reglages.retirerChampsSite(cle, retirer)
+      if (Object.keys(ecrire).length) deps.reglages.setSettings({ sites: { [cle]: ecrire } } as Partial<Settings>)
+    } else {
+      deps.reglages.setSettings({ sites: { [cle]: desactiverBoucliers(sites, origine).ecrire } } as Partial<Settings>)
+    }
     const wc = tm.wcActif()
     // La page est rechargée pour appliquer le changement (réseau et scriptlets).
     if (wc && origineDe(wc.getURL()) === origine) wc.reload()

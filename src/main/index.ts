@@ -38,6 +38,7 @@ import type { Passerelles } from './passerelles/Passerelles'
 import { creerPasserelles } from './passerelles/electron'
 import { installerPasserellesIpc } from './passerelles/ipc'
 import { installerSites } from './sites/installer'
+import { reglagesHorsSitesChanges } from './sites/service'
 import { resoudre } from './settings/sites'
 import { Dnd, type NotificationRetenue } from './dnd/Dnd'
 import { origineDe, type Shields } from './shields/Shields'
@@ -729,7 +730,7 @@ void app.whenReady().then(async () => {
   // Les règles par site (jusqu'à 10 000) ont leur évènement `sites:changed` : jamais rediffusées ici.
   let reglagesDiffuses: Settings = reglages.getSettings()
   reglages.onChanged((s) => {
-    const change = (Object.keys(s) as Array<keyof Settings>).some((k) => k !== 'sites' && s[k] !== reglagesDiffuses[k])
+    const change = reglagesHorsSitesChanges(reglagesDiffuses, s)
     reglagesDiffuses = s
     if (!change) return
     manager.relayoutAll()

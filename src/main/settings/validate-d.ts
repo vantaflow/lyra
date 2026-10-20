@@ -108,6 +108,7 @@ export function champsRegleSiteD(regle: Obj): Obj {
   const valideurs: Schema = {
     boucliers: boucliersSite,
     scriptletsYoutube: booleen,
+    bouclierAvant: enumeration('standard', 'strict'),
     cookies: enumeration('tous', 'premiere-partie', 'bloques', 'session'),
     scripts: enumeration('autorises', 'bloques'),
     lectureAuto: enumeration('autoriser', 'sans-son', 'bloquer'),

@@ -3,7 +3,7 @@ import { fusion } from './store'
 import { hoteValide, octets } from '../passerelles/liste'
 import { SCHEMA_D, booleen, champsRegleSiteD, entier, enumeration, estObjet, pixels, propre, texte, type Obj, type Schema } from './validate-d'
 import { migrer } from './migrations'
-import { cleDe } from './sites'
+import { cleCanonique } from './sites'
 
 export type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K] }
 
@@ -28,8 +28,9 @@ function sites(v: unknown): Obj | undefined {
   const sortie: Obj = {}
   let n = 0
   for (const [origine, regle] of Object.entries(v)) {
-    if (n >= MAX_SITES) break
-    if (!cleDe(origine) || !estObjet(regle)) continue
+    const cle = cleCanonique(origine)
+    if (!cle || !estObjet(regle)) continue
+    if (n >= MAX_SITES && !(cle in sortie)) continue
     const champs: Obj = {}
     Object.assign(champs, champsRegleSiteD(regle))
     const perms = permissions(propre(regle, 'permissions'))
@@ -40,8 +41,10 @@ function sites(v: unknown): Obj | undefined {
     const exceptionDnd = booleen(propre(regle, 'exceptionDnd'))
     if (exceptionDnd !== undefined) champs.exceptionDnd = exceptionDnd
     if (Object.keys(champs).length === 0) continue
-    sortie[origine] = champs
-    n++
+    // Deux clés qui se confondent (casse, port par défaut, point final) : la dernière écrite gagne.
+    if (cle in sortie) delete sortie[cle]
+    else n++
+    sortie[cle] = champs
   }
   return Object.keys(sortie).length > 0 ? sortie : undefined
 }

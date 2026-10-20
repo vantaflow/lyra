@@ -68,4 +68,13 @@ describe('réglages', () => {
     r.setSettings({ theme: 'clair' })
     expect(r.getSettings().sites['a.com']).toBeUndefined()
   })
+
+  it('retirerChampsSite : retrait de zoom, règle supprimée quand elle devient vide', () => {
+    const r = creer()
+    r.setSettings({ sites: { 'a.com': { zoom: 2, cookies: 'bloques' } } })
+    r.retirerChampsSite('a.com', ['zoom'])
+    expect(r.getSettings().sites['a.com']).toEqual({ cookies: 'bloques' })
+    r.retirerChampsSite('a.com', ['cookies'])
+    expect(r.getSettings().sites['a.com']).toBeUndefined()
+  })
 })

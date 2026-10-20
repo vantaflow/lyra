@@ -1,9 +1,9 @@
-/** Canal `sites:*` : lecture et écriture des règles par site, et diffusion `sites:changed`. */
+/** Canal `sites:*` : lecture et écriture des règles par site, et diffusion `sites:changed` aux vues internes. */
 import { webContents, type WebContents } from 'electron'
 import type { RegleSite } from '../../shared/types'
 import { envoyer, handle } from '../ipc'
-import { cleDe } from '../settings/sites'
 import type { Reglages } from '../settings/settings'
+import { creerServiceSites } from './service'
 
 export interface DepsSites {
   reglages: Reglages
@@ -12,23 +12,13 @@ export interface DepsSites {
 }
 
 export function installerSites(deps: DepsSites): void {
-  const { reglages } = deps
-  let precedent = reglages.getSettings().sites
-  reglages.onChanged((s) => {
-    if (s.sites === precedent) return
-    precedent = s.sites
-    for (const wc of webContents.getAllWebContents()) envoyer(wc, 'sites:changed', s.sites)
+  const service = creerServiceSites<WebContents>({
+    reglages: deps.reglages,
+    estPrivee: deps.estPrivee,
+    vues: () => webContents.getAllWebContents(),
+    envoyer: (wc, regles) => envoyer(wc, 'sites:changed', regles)
   })
-
-  handle('sites:lister', () => reglages.getSettings().sites)
-  handle('sites:ecrire', (d, e) => {
-    if (deps.estPrivee(e.sender)) return
-    if (typeof d?.cle !== 'string' || !cleDe(d.cle) || typeof d.regle !== 'object' || d.regle === null) return
-    reglages.setSettings({ sites: { [d.cle]: d.regle as RegleSite } })
-  })
-  handle('sites:supprimer', (cle, e) => {
-    if (deps.estPrivee(e.sender)) return
-    if (typeof cle !== 'string' || !Object.hasOwn(reglages.getSettings().sites, cle)) return
-    reglages.supprimerSite(cle)
-  })
+  handle('sites:lister', () => service.lister())
+  handle('sites:ecrire', (d, e) => service.ecrire(d as { cle: string; regle: Record<string, unknown> }, e.sender))
+  handle('sites:supprimer', (cle, e) => service.supprimer(cle, e.sender))
 }

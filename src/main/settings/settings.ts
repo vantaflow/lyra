@@ -11,6 +11,8 @@ export interface Reglages {
   supprimerPersonnelle(): Settings
   /** Retire la règle d'un site (un patch ne peut pas supprimer de clé). */
   supprimerSite(cle: string): Settings
+  /** Retire des champs d'une règle de site ; la règle disparaît si elle devient vide. */
+  retirerChampsSite(cle: string, champs: readonly string[]): Settings
   /** Équivalent de l'évènement `settings:changed` ; renvoie la fonction de désabonnement. */
   onChanged(cb: (s: Settings) => void): () => void
 }
@@ -35,6 +37,14 @@ export function creerReglages(chemin: string, dossierTelechargements: string): R
       store.remplacer((s) => {
         const { [cle]: _retiree, ...sites } = s.sites
         return { ...s, sites }
+      }),
+    retirerChampsSite: (cle, champs) =>
+      store.remplacer((s) => {
+        const regle = Object.hasOwn(s.sites, cle) ? s.sites[cle] : undefined
+        if (!regle) return s
+        const reste = Object.fromEntries(Object.entries(regle).filter(([k]) => !champs.includes(k)))
+        const { [cle]: _ancienne, ...autres } = s.sites
+        return { ...s, sites: Object.keys(reste).length ? { ...autres, [cle]: reste } : autres }
       }),
     onChanged: (cb) => store.onChange(cb)
   }

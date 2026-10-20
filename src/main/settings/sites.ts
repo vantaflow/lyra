@@ -11,20 +11,45 @@ export type TypeCle = 'origine' | 'hote' | 'motif'
 export type RegleEffective = Omit<RegleSite, 'boucliers'> & { boucliers: 'desactives' | 'standard' | 'strict' }
 
 const HOTE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/
-const ORIGINE = /^(https?):\/\/(([a-z0-9.-]+)|\[[0-9a-f:]+\])(:\d{1,5})?$/
 const LONGUEUR_MAX = 300
 
-/** Classe une clé de règle ; `null` si elle n'est ni une origine, ni un hôte, ni un motif `*.hôte`. */
+/** Hôte en minuscules, sans point final. */
+const normaliserHote = (h: string): string => h.toLowerCase().replace(/\.$/, '')
+
+/** Origine canonique (`new URL().origin`, port par défaut retiré, sans point final) ; `null` si ce n'en est pas une. */
+function origineCanonique(e: string): string | null {
+  if (!/^https?:\/\/[^/?#@\\\s]+$/i.test(e)) return null
+  try {
+    const u = new URL(e)
+    const h = normaliserHote(u.hostname)
+    if (!(HOTE.test(h) || /^\[[0-9a-f:]+\]$/.test(h))) return null
+    return `${u.protocol}//${h}${u.port ? `:${u.port}` : ''}`
+  } catch {
+    return null
+  }
+}
+
+/** Classe une clé de règle ; `null` si elle n'est ni une origine, ni un hôte, ni un motif `*.hôte`. `valeur` est canonique. */
 export function cleDe(entree: string): { type: TypeCle; valeur: string } | null {
   if (typeof entree !== 'string' || entree.length === 0 || entree.length > LONGUEUR_MAX) return null
   const e = entree.toLowerCase()
   if (e === 'file://') return { type: 'origine', valeur: e }
   if (e.startsWith('*.')) {
-    const h = e.slice(2)
+    const h = normaliserHote(e.slice(2))
     return HOTE.test(h) ? { type: 'motif', valeur: h } : null
   }
-  if (e.includes('://')) return ORIGINE.test(e) && !/\.\./.test(e) ? { type: 'origine', valeur: e } : null
-  return HOTE.test(e) ? { type: 'hote', valeur: e } : null
+  if (e.includes('://')) {
+    const o = origineCanonique(e)
+    return o ? { type: 'origine', valeur: o } : null
+  }
+  const h = normaliserHote(e)
+  return HOTE.test(h) ? { type: 'hote', valeur: h } : null
+}
+
+/** Forme canonique d'une clé (celle qui est enregistrée) ; `null` si invalide. */
+export function cleCanonique(entree: string): string | null {
+  const c = cleDe(entree)
+  return c ? (c.type === 'motif' ? `*.${c.valeur}` : c.valeur) : null
 }
 
 function origineEtHote(url: string): { origine: string; hote: string } | null {
@@ -32,7 +57,8 @@ function origineEtHote(url: string): { origine: string; hote: string } | null {
     const u = new URL(url)
     if (u.protocol === 'file:') return { origine: 'file://', hote: '' }
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
-    return { origine: u.origin.toLowerCase(), hote: u.hostname.toLowerCase() }
+    const hote = normaliserHote(u.hostname)
+    return { origine: `${u.protocol}//${hote}${u.port ? `:${u.port}` : ''}`, hote }
   } catch {
     return null
   }
@@ -117,4 +143,29 @@ export function resoudre(sites: Record<string, RegleSite>, url: string): RegleEf
     resolveurs.set(cible, r)
   }
   return r.resoudre(url)
+}
+
+/** Boucliers désactivés sur un site : la règle exacte garde l'ancien niveau (`bouclierAvant`) pour la réactivation. */
+export function desactiverBoucliers(sites: Record<string, RegleSite>, origine: string): { ecrire: RegleSite } {
+  const avant = resoudre(sites, origine).boucliers
+  return { ecrire: { boucliers: 'desactives', ...(avant === 'strict' ? { bouclierAvant: avant } : {}) } }
+}
+
+/**
+ * Boucliers réactivés : on retire `boucliers` de la règle exacte si le reste des règles ne désactive pas le site ;
+ * sinon on y écrit le niveau mémorisé (`standard` par défaut). `bouclierAvant` est toujours retiré.
+ * Un niveau mémorisé différent de celui que donnent les autres règles est restauré dans la règle exacte.
+ */
+export function reactiverBoucliers(sites: Record<string, RegleSite>, origine: string): { ecrire: RegleSite; retirer: Array<keyof RegleSite> } {
+  const cle = cleCanonique(origine)
+  const exacte = (cle && sites[cle]) || {}
+  const { boucliers: _b, bouclierAvant: _a, ...reste } = exacte
+  const sans = { ...sites, ...(cle ? { [cle]: reste } : {}) }
+  const autres = resoudre(sans, origine).boucliers
+  const memorise = exacte.bouclierAvant
+  const retirer: Array<keyof RegleSite> = ['bouclierAvant']
+  if (autres === 'desactives') return { ecrire: { boucliers: memorise ?? 'standard' }, retirer }
+  if (memorise && memorise !== autres) return { ecrire: { boucliers: memorise }, retirer }
+  retirer.push('boucliers')
+  return { ecrire: {}, retirer }
 }
