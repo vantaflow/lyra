@@ -429,7 +429,8 @@ void app.whenReady().then(async () => {
   handle('history:delete', ({ url }) => hist.supprimer(url))
   handle('history:clear', () => hist.effacer())
   confidentialite = installerConfidentialite({ reglages, historique: hist, sessions: () => [session.fromPartition('persist:lyra')] })
-  handle('history:frequent', ({ n }) => hist.frequents(n))
+  // Fenêtre privée : aucun site fréquent n'est révélé (le nouvel onglet privé n'en affiche pas, le canal le refuse aussi).
+  handle('history:frequent', ({ n }, e) => (estPrivee(e.sender) ? [] : hist.frequents(n)))
   // Fenêtre privée : jamais de favori écrit (le bouton y est désactivé) ; l'état renvoyé reste celui du favori existant.
   handle('bookmarks:toggle', (f, e) => (estPrivee(e.sender) ? favoris.existe(f.url) : favoris.toggle(f)))
   handle('fenetre:privee', (_d, e) => estPrivee(e.sender))

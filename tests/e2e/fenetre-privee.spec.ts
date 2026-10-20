@@ -117,6 +117,9 @@ test('historique : une visite en privé n’est pas écrite ; une visite normale
       .poll(() => fenetre.evaluate(() => window.lyra.invoke('history:search', { texte: 'histo-normale' })).then((r) => r.length))
       .toBe(1)
     expect(await fenetre.evaluate(() => window.lyra.invoke('history:search', { texte: 'histo-privee' }))).toEqual([])
+    // Sites fréquents : lus en fenêtre normale, jamais révélés à une fenêtre privée (même appelés directement).
+    expect((await fenetre.evaluate(() => window.lyra.invoke('history:frequent', { n: 8 }))).map((h) => h.url)).toContain(`${BASE}/histo-normale`)
+    expect(await privee.evaluate(() => window.lyra.invoke('history:frequent', { n: 8 }))).toEqual([])
   } finally {
     await app.close()
   }

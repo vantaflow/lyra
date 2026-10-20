@@ -4,6 +4,7 @@ import { envoyer, estVueLyra, handle } from '../ipc'
 import type { Reglages } from '../settings/settings'
 import { enTest } from '../modeTest'
 import { GestionnaireTheme, type NativeThemeLike } from '../settings/theme'
+import { themeInitial } from './initial'
 
 export interface DepsTheme {
   reglages: Reglages
@@ -45,7 +46,7 @@ export function installerTheme(deps: DepsTheme): GestionnaireTheme {
       return
     }
     const t = gestionnaire.effectif()
-    e.returnValue = { mode: t.mode, variables: deps.estPrivee(e.sender) ? t.privee : t.variables }
+    e.returnValue = themeInitial(t, deps.estPrivee(e.sender), reglages.getSettings().apparence)
   })
   let precedent = JSON.stringify([reglages.getSettings().theme, reglages.getSettings().couleurs])
   reglages.onChanged((s) => {
