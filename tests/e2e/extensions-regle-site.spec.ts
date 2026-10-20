@@ -26,6 +26,9 @@ test.beforeAll(async () => {
 test.afterAll(() => Promise.all(serveurs.map((s) => new Promise<void>((ok) => s.close(() => ok())))))
 
 const pageDe = (app: ElectronApplication, debut: string): Page | undefined => app.windows().find((w) => w.url().startsWith(debut))
+/** Recharge la page d'URL donnée ; la vue peut être recréée par le rechargement de l'extension : on reprend la poignée à chaque essai. */
+const recharger = (app: ElectronApplication, url: string): Promise<void> =>
+  expect.poll(async () => { try { await pageDe(app, url)!.reload(); return true } catch { return false } }, { timeout: 20_000 }).toBe(true)
 const marqueur = (p: Page): Promise<string | undefined> => p.evaluate(() => document.documentElement.dataset.lyraExtension)
 
 test("la règle { [id]: false } d'un site retire les scripts de contenu de l'extension, la lever les rétablit, un autre site reste marqué", async () => {
@@ -53,17 +56,17 @@ test("la règle { [id]: false } d'un site retire les scripts de contenu de l'ext
     // Blocage de l'origine A : après rechargement de la page, plus de marqueur ; B reste marquée.
     expect(await fenetre.evaluate(([id, o]) => window.lyra.invoke('extensions:regleSite', { id, origine: o, active: false }), [ID, `http://127.0.0.1:${ports[0]}`])).toBe(true)
     await attendreRechargee(true)
-    await a.reload()
-    await a.waitForLoadState('domcontentloaded')
-    expect(await marqueur(a)).toBeUndefined()
-    await b.reload()
-    await expect.poll(() => marqueur(b)).toBe('ok')
+    await recharger(app, urlA)
+    await expect.poll(async () => { const p = pageDe(app, urlA); return p ? (await p.evaluate(() => document.readyState).catch(() => '')) : '' }).toBe('complete')
+    expect(await marqueur(pageDe(app, urlA)!)).toBeUndefined()
+    await recharger(app, urlB)
+    await expect.poll(async () => { const p = pageDe(app, urlB); return p ? await marqueur(p).catch(() => undefined) : undefined }).toBe('ok')
 
     // Règle levée : A de nouveau marquée.
     expect(await fenetre.evaluate(([id, o]) => window.lyra.invoke('extensions:regleSite', { id, origine: o, active: true }), [ID, `http://127.0.0.1:${ports[0]}`])).toBe(true)
     await attendreRechargee(false)
-    await a.reload()
-    await expect.poll(() => marqueur(a)).toBe('ok')
+    await recharger(app, urlA)
+    await expect.poll(async () => { const p = pageDe(app, urlA); return p ? await marqueur(p).catch(() => undefined) : undefined }).toBe('ok')
   } finally {
     await app.close()
   }

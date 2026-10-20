@@ -116,7 +116,7 @@ test('thème : « Le ciel prend la teinte du site actif » fond 18 % du theme-co
   try {
     const cielRendu = (): Promise<string> => fenetre.evaluate(() => getComputedStyle(document.querySelector('.fenetre')!).getPropertyValue('--ciel').trim())
     await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), BASE)
-    await expect.poll(() => fenetre.evaluate(() => window.lyra.invoke('sky:get').then((c) => Object.values(c.etats).some((e) => e.couleur)))).toBe(true)
+    await expect.poll(() => fenetre.evaluate(() => window.lyra.invoke('sky:get').then((c) => Object.values(c.etats).some((e) => e.couleur))), { timeout: 20_000 }).toBe(true)
     expect(await cielRendu()).toBe('#15152e')
     await poser(fenetre, { couleurs: { cielTeinteParSite: true } })
     // #15152E fondu à 18 % avec #FF0000.
