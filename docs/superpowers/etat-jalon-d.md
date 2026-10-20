@@ -112,4 +112,11 @@ Non faits :
 
 ## Vérification finale (tâche 22)
 
-<!--VERIF-->
+Typecheck : vert. Vitest `--no-file-parallelism` : 154 fichiers, 2040 tests verts. Build : vert.
+
+Playwright (un spec à la fois, fenêtres cachées), sur le build du commit précédant la correction d'`apparence.spec` :
+
+- Verts : categories 3, ciel-masque 6, ciel-position 6, ciel-ronde2 6, couleurs 10, etoiles 6, export 4, extensions-finition 6, extensions-firefox 1, extensions-installer 1, extensions-mv2 1, extensions-page 3, extensions-regle-site 1, extensions 2, fenetre-privee 12, gestes 2, historique 2, import 3, importation 4, layout 1, ne-pas-deranger 11, newtab 4, page 9, palette 6, passerelles 4, raccourcis 5, reglages-palette 8, reglages-sections 17, reglages 6, regles-site-entrees 6, session 4, settings 1, shields 4, sites-extensions 2, sites-page 7, sites-reseau 8, sites 9, sky 3, smoke 1, tabs 4, telechargements 3.
+- `apparence` : 9 verts, 1 échec (« lignes de constellation et icônes des sites ») : test périmé par le favicon des pages lyra:// (l'icône remplace le point) ; test corrigé, **non relancé**.
+- **Non exécutés (arrêt demandé)** : theme-tokens, theme, youtube (normal, @reseau, @reseau + LYRA_E2E_STRICT=1), extensions-reseau (@reseau), passerelles (@reseau), relance d'apparence. `paquet` (@paquet) exige `dist` : hors périmètre.
+
