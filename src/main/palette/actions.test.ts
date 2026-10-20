@@ -13,7 +13,7 @@ const historique = { rechercher: vi.fn(() => [{ url: 'https://histo.test/', titl
 function suggerer(privee: boolean, suggestionsEnPrivee = false): { type: string; url?: string }[] {
   const reglages = reglagesParDefaut('/dl')
   reglages.palette.suggestionsEnPrivee = suggestionsEnPrivee
-  const tabs = { snapshot: () => ({ sky: { stars: [], constellations: [], activeId: null } }), fenetreId: 7 }
+  const tabs = { snapshot: () => ({ sky: { stars: [], constellations: [], activeId: null } }), fenetreId: 7, wcActif: () => null }
   installerPalette({
     ongletsDe: () => tabs,
     reglages: () => reglages,
@@ -46,5 +46,37 @@ describe('palette:suggest en fenêtre privée', () => {
     const types = suggerer(true, true).map((s) => s.type)
     expect(types).toContain('favori')
     expect(types).toContain('historique')
+  })
+})
+
+describe('commande « Règles de ce site »', () => {
+  const installer = (url: string) => {
+    const reglages = reglagesParDefaut('/dl')
+    const tabs = {
+      snapshot: () => ({ sky: { stars: [], constellations: [], activeId: null } }),
+      wcActif: () => ({ getURL: () => url }),
+      fermerOverlay: vi.fn(),
+      ouvrir: vi.fn()
+    }
+    installerPalette({ ongletsDe: () => tabs, reglages: () => reglages, historique, favoris, privee: () => false, dndActif: () => false } as unknown as DepsPalette)
+    const proposee = (handlers.get('palette:suggest')!({ texte: '>règles de ce site' }, { sender: {} }) as { id?: string }[]).some((s) => s.id === 'regles-site')
+    const lancer = (): unknown => handlers.get('palette:go')!({ suggestion: { type: 'commande', id: 'regles-site', titre: 'Règles de ce site' }, texte: '' }, { sender: {} })
+    return { tabs, proposee, lancer }
+  }
+
+  it('sur un site : proposée, ouvre la route des règles de son origine', () => {
+    const { tabs, proposee, lancer } = installer('http://127.0.0.1:4321/page?x=1')
+    expect(proposee).toBe(true)
+    lancer()
+    expect(tabs.ouvrir).toHaveBeenCalledWith('lyra://settings#/sites/http%3A%2F%2F127.0.0.1%3A4321')
+  })
+
+  it('hors site (lyra://, extension) : ni proposée ni ouverte', () => {
+    for (const url of ['lyra://newtab', 'chrome-extension://abcdefghijklmnopabcdefghijklmnop/p.html', 'file:///x.html']) {
+      const { tabs, proposee, lancer } = installer(url)
+      expect(proposee, url).toBe(false)
+      lancer()
+      expect(tabs.ouvrir, url).not.toHaveBeenCalled()
+    }
   })
 })

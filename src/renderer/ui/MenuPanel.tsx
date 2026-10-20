@@ -61,7 +61,7 @@ export function MenuPanel({ ancre }: { ancre: AncreMenu | null }) {
         <Ligne label="Imprimer…" aide={raccourciDe('imprimer')} action="imprimer" />
         <Ligne label="Mode lecture" aide="v2" />
         <div class="sep"></div>
-        <Ligne label={`Règles pour ${ancre.hote || 'ce site'}`} />
+        <Ligne label={`Règles pour ${ancre.hote || 'ce site'}`} action={ancre.regles ? 'regles-site' : undefined} />
         {ancre.basculable && (
           <button class="mi" type="button" role="menuitem" onClick={basculer}>
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -78,7 +78,7 @@ export function MenuPanel({ ancre }: { ancre: AncreMenu | null }) {
             </span>
           </div>
         )}
-        <Ligne label="Style perso pour ce site" />
+        <Ligne label="Style perso pour ce site" action={ancre.regles ? 'style-site' : undefined} />
         <Ligne label="Outils de développement" aide={raccourciDe('outils')} action="devtools" />
         <div class="sep"></div>
         <Ligne label="Historique" aide={raccourciDe('historique')} action="historique" />

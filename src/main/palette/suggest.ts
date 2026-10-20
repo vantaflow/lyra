@@ -18,6 +18,8 @@ export interface ContexteSuggestion {
   positionCiel?: 'gauche' | 'droite' | 'haut' | 'bas'
   /** Ne pas déranger est actif : « Quitter … » remplace les commandes d'entrée. */
   dnd?: boolean
+  /** La page active est un site http(s) : la commande « Règles de ce site » est proposée. */
+  site?: boolean
 }
 
 export interface Commande {
@@ -31,6 +33,8 @@ export const COMMANDES: Commande[] = [
   { id: 'fenetre-privee', titre: 'Nouvelle fenêtre privée', aide: '⌘ ⇧ N' },
   { id: 'reglages', titre: 'Réglages', aide: '⌘ ,' },
   { id: 'extensions', titre: 'Extensions' },
+  // Seulement sur un site http(s) (ctx.site) : elle ouvre le détail de ses règles dans les réglages.
+  { id: 'regles-site', titre: 'Règles de ce site' },
   // Libellés de Panneaux.dc.html (« Ne pas déranger pendant 1 h », ⌘ ⇧ D) ; durées de la spec : 30 min, 1 h, jusqu'à l'arrêt.
   { id: 'dnd-60', titre: 'Ne pas déranger pendant 1 h', aide: '⌘ ⇧ D' },
   { id: 'dnd-30', titre: 'Ne pas déranger pendant 30 min' },
@@ -126,6 +130,7 @@ function ligneEtoile(s: Star, ctx: ContexteSuggestion): Suggestion {
 
 function lignesCommandes(filtre: string, ctx: ContexteSuggestion): Suggestion[] {
   return COMMANDES.filter((c) => c.id !== `ciel-${ctx.positionCiel}`)
+    .filter((c) => c.id !== 'regles-site' || ctx.site === true)
     .filter((c) => (c.id === 'dnd-sortir' ? ctx.dnd === true : !(ctx.dnd && c.id.startsWith('dnd-'))))
     .filter((c) => !filtre || correspond(filtre, c.titre))
     .map((c) => ({

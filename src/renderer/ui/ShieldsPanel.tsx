@@ -44,6 +44,7 @@ export function ShieldsPanel() {
   }
 
   const interne = etat !== null && etat.origine === ''
+  const siteWeb = /^https?:/.test(etat?.origine ?? '')
   const actif = etat?.actif ?? false
   const n = etat?.bloques ?? 0
 
@@ -127,7 +128,16 @@ export function ShieldsPanel() {
         </details>
 
         <div class="pn-liens">
-          <a href="#" onClick={(e) => e.preventDefault()}>Règles de ce site</a>
+          <a
+            href="#"
+            aria-disabled={siteWeb ? undefined : true}
+            onClick={(e) => {
+              e.preventDefault()
+              if (siteWeb) void window.lyra.invoke('menu:action', { action: 'regles-site' })
+            }}
+          >
+            Règles de ce site
+          </a>
           <span aria-hidden="true">·</span>
           <a href="#" onClick={(e) => e.preventDefault()}>Statistiques</a>
           <span aria-hidden="true">·</span>
