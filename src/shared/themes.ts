@@ -82,7 +82,7 @@ export const THEMES: Record<NomTheme, Theme> = {
   aurore: { nom: 'Aurore', couleurs: construire({ ciel: '#2A1540', page: '#FFFFFF', texte: '#1C1C2E' }) },
   'clair-total': { nom: 'Clair total', couleurs: construire({ ciel: '#ECECF3', page: '#FFFFFF', texte: '#1C1C2E' }), cielClair: true },
   'nuit-complete': { nom: 'Nuit complète', couleurs: construire({ ciel: '#0E0E1E', page: '#121214', texte: '#E6E6EA', toujoursSombre: true }) },
-  'mes-couleurs': { nom: 'Mes couleurs', couleurs: COULEURS_INDIGO_NUIT }
+  'mes-couleurs': { nom: 'Mes couleurs', couleurs: structuredClone(COULEURS_INDIGO_NUIT) }
 }
 
 function rgba(hex: string, alpha: number): string {
@@ -90,23 +90,60 @@ function rgba(hex: string, alpha: number): string {
   return `rgba(${n(1)},${n(3)},${n(5)},${alpha})`
 }
 
+/** Valeurs de `theme.css` / `Composants.dc.html` en clair pour Indigo nuit : les formules de `deriver` y sont calées (écart par canal). */
+const CIBLES_INDIGO_CLAIR: Record<string, string> = {
+  '--texte-secondaire': '#6B6B80',
+  '--trait': '#E6E6EE',
+  '--pilule': '#F3F3F9',
+  '--libelles-ciel': '#8E8EBE',
+  '--libelles-groupe': '#7F7FB0'
+}
+
+/** Formules brutes (sans calage ni correction) des variables dérivées par mélange. */
+function formules(couleurs: CouleursTheme, mode: Mode): Record<string, string> {
+  const c = (k: CleCouleur): string => couleurs[k][mode]
+  const texte = c('capsule-texte')
+  const page = c('pages-fond')
+  return {
+    '--texte-secondaire': melanger(texte, page, 0.38),
+    '--trait': melanger(page, texte, 0.08),
+    '--pilule': melanger(c('capsule-fond'), texte, 0.05),
+    '--libelles-ciel': melanger(c('etoiles'), c('ciel-fond'), 0.18),
+    '--libelles-groupe': melanger(c('etoiles'), c('ciel-fond'), 0.3)
+  }
+}
+
+function canaux(hex: string): number[] {
+  return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+}
+
+/** `hex` décalé de l'écart par canal entre `cible` et `reference`. */
+function caler(hex: string, reference: string, cible: string): string {
+  const [h, r, t] = [canaux(hex), canaux(reference), canaux(cible)]
+  return '#' + h.map((v, i) => Math.max(0, Math.min(255, v + t[i] - r[i])).toString(16).padStart(2, '0')).join('').toUpperCase()
+}
+
+const REFERENCE_CLAIR = formules(COULEURS_INDIGO_NUIT, 'clair')
+
 /**
- * Variables CSS d'un mode : les 13 éléments (noms de `CLES_COULEURS`) et les variables dérivées utilisées par le reste de l'interface
- * (valeurs de `Composants.dc.html` retrouvées par mélange à partir des éléments).
+ * Variables CSS d'un mode : les 13 éléments (noms de `CLES_COULEURS`) et les variables dérivées utilisées par le reste de l'interface.
+ * En clair, les formules sont calées pour retrouver exactement `theme.css` sur Indigo nuit ; texte secondaire (4,5:1 sur la page),
+ * libellés du ciel et de groupe (3:1 sur le ciel) sont ensuite corrigés pour rester lisibles dans tous les thèmes.
  */
 export function deriver(couleurs: CouleursTheme, mode: Mode): Record<string, string> {
   const c = (k: CleCouleur): string => couleurs[k][mode]
   const vars: Record<string, string> = {}
   for (const { cle, variable } of CLES_COULEURS) vars[variable] = c(cle)
-  const texte = c('capsule-texte')
-  const page = c('pages-fond')
-  vars['--texte'] = texte
-  vars['--texte-secondaire'] = melanger(texte, page, 0.38)
-  vars['--trait'] = melanger(page, texte, 0.08)
-  vars['--pilule'] = melanger(c('capsule-fond'), texte, 0.05)
-  vars['--attention'] = luminance(page) > SEUIL_CIEL_CLAIR ? '#8A5A10' : '#F4C56A'
-  vars['--libelles-ciel'] = melanger(c('etoiles'), c('ciel-fond'), 0.18)
-  vars['--bouclier-ciel'] = corriger(c('boucliers'), c('ciel-fond'), SEUIL)
+  const brut = formules(couleurs, mode)
+  const v = (nom: string): string => (mode === 'clair' ? caler(brut[nom], REFERENCE_CLAIR[nom], CIBLES_INDIGO_CLAIR[nom]) : brut[nom])
+  vars['--texte'] = c('capsule-texte')
+  vars['--texte-secondaire'] = corriger(v('--texte-secondaire'), c('pages-fond'), SEUIL)
+  vars['--trait'] = v('--trait')
+  vars['--pilule'] = v('--pilule')
+  vars['--attention'] = luminance(c('pages-fond')) > SEUIL_CIEL_CLAIR ? '#8A5A10' : '#F4C56A'
+  vars['--libelles-ciel'] = corriger(v('--libelles-ciel'), c('ciel-fond'), 3)
+  vars['--libelles-groupe'] = corriger(v('--libelles-groupe'), c('ciel-fond'), 3)
+  vars['--bouclier-ciel'] = corriger(couleurs.boucliers.sombre, c('ciel-fond'), SEUIL)
   vars['--ligne-selection'] = rgba(c('etoile-active'), 0.7)
   return vars
 }

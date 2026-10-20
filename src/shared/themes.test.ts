@@ -1,3 +1,5 @@
+import { readFileSync, writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { COULEURS_INDIGO_NUIT, CLES_COULEUR, NOMS_THEMES, type CouleursTheme } from './types-reglages'
 import { rapport, verifier, luminance } from './contraste'
@@ -97,21 +99,61 @@ describe('deriver', () => {
     expect(v['--texte']).toBe('#E8E8F4')
     expect(v['--page']).toBe('#121214')
   })
-  it('valeurs dérivées proches de Composants.dc.html en clair', () => {
+  it('Indigo nuit en clair : exactement les valeurs de theme.css et du design', () => {
     const v = deriver(THEMES['indigo-nuit'].couleurs, 'clair')
-    expect(rapport(v['--texte-secondaire'], '#6B6B80')).toBeLessThan(1.15)
-    expect(rapport(v['--trait'], '#E6E6EE')).toBeLessThan(1.05)
-    expect(rapport(v['--pilule'], '#F3F3F9')).toBeLessThan(1.03)
+    const attendu: Record<string, string> = {
+      '--ciel': '#15152e', '--etoile-active': '#f4c56a', '--etoiles': '#a8a8d8', '--etoiles-endormies': '#4e4e7a', '--lignes': '#3b3b70',
+      '--accent': '#5452c8', '--bouclier': '#1e7f6c', '--page': '#f7f7fb', '--texte': '#1c1c2e', '--texte-secondaire': '#6b6b80',
+      '--trait': '#e6e6ee', '--pilule': '#f3f3f9', '--attention': '#8a5a10', '--libelles-ciel': '#8e8ebe', '--libelles-groupe': '#7f7fb0',
+      '--bouclier-ciel': '#5fd3b3', '--ligne-selection': 'rgba(244,197,106,0.7)'
+    }
+    for (const [nom, val] of Object.entries(attendu)) expect(v[nom].toLowerCase(), nom).toBe(val)
   })
-  it('--bouclier-ciel est lisible sur le ciel', () => {
+  it('--bouclier-ciel part de Boucliers sombre et n’est corrigé que si nécessaire', () => {
     for (const mode of ['clair', 'sombre'] as const) {
       const v = deriver(THEMES['indigo-nuit'].couleurs, mode)
+      expect(v['--bouclier-ciel']).toBe('#5FD3B3')
       expect(rapport(v['--bouclier-ciel'], v['--ciel'])).toBeGreaterThanOrEqual(4.5)
     }
   })
-  it('--libelles-ciel et --attention restent lisibles pour un ciel clair', () => {
-    const v = deriver(THEMES.sable.couleurs, 'clair')
-    expect(rapport(v['--libelles-ciel'], v['--ciel'])).toBeGreaterThanOrEqual(3)
+  for (const nom of NOMS_THEMES) {
+    for (const mode of ['clair', 'sombre'] as const) {
+      it(`${nom} (${mode}) : texte secondaire ≥ 4,5:1 sur la page, libellés ≥ 3:1 sur le ciel`, () => {
+        const v = deriver(THEMES[nom].couleurs, mode)
+        expect(rapport(v['--texte-secondaire'], v['--page'])).toBeGreaterThanOrEqual(4.5)
+        expect(rapport(v['--libelles-ciel'], v['--ciel'])).toBeGreaterThanOrEqual(3)
+        expect(rapport(v['--libelles-groupe'], v['--ciel'])).toBeGreaterThanOrEqual(3)
+        expect(rapport(v['--bouclier-ciel'], v['--ciel'])).toBeGreaterThanOrEqual(4.5)
+      })
+    }
+  }
+})
+
+describe('objets partagés', () => {
+  it('COULEURS_INDIGO_NUIT est gelé en profondeur et Mes couleurs en est une copie', () => {
+    expect(Object.isFrozen(COULEURS_INDIGO_NUIT)).toBe(true)
+    expect(Object.isFrozen(COULEURS_INDIGO_NUIT.accent)).toBe(true)
+    expect(THEMES['mes-couleurs'].couleurs).toEqual(COULEURS_INDIGO_NUIT)
+    expect(THEMES['mes-couleurs'].couleurs).not.toBe(COULEURS_INDIGO_NUIT)
+    expect(Object.isFrozen(THEMES['mes-couleurs'].couleurs)).toBe(false)
+  })
+})
+
+describe('README des palettes', () => {
+  const chemin = resolve(__dirname, '../../docs/design/README.md')
+  const genere = (): string => {
+    const lignes = ['encre', 'foret', 'sable', 'aurore', 'clair-total', 'nuit-complete'].map((n) => {
+      const c = THEMES[n as keyof typeof THEMES].couleurs
+      return `| ${THEMES[n as keyof typeof THEMES].nom} | ` + CLES_COULEUR.map((k) => (c[k].clair === c[k].sombre ? c[k].clair : `${c[k].clair}/${c[k].sombre}`)).join(' | ') + ' |'
+    })
+    return ['| Thème | ' + CLES_COULEURS.map((k) => k.libelle).join(' | ') + ' |', '|' + '---|'.repeat(CLES_COULEURS.length + 1), ...lignes].join('\n')
+  }
+  it('le tableau de docs/design/README.md vient de THEMES (UPDATE_README=1 le régénère)', () => {
+    const lu = readFileSync(chemin, 'utf8')
+    const re = /(<!-- palettes:début -->\n)[\s\S]*?(\n<!-- palettes:fin -->)/
+    expect(re.test(lu)).toBe(true)
+    if (process.env.UPDATE_README) writeFileSync(chemin, lu.replace(re, (_m, d: string, f: string) => d + genere() + f))
+    else expect(lu.match(re)![0]).toBe(`<!-- palettes:début -->\n${genere()}\n<!-- palettes:fin -->`)
   })
 })
 

@@ -16,8 +16,13 @@ export const CLES_COULEUR: readonly CleCouleur[] = [
 /** Une couleur `#RRGGBB` en clair et en sombre pour chaque élément. */
 export type CouleursTheme = Record<CleCouleur, { clair: string; sombre: string }>
 
+function gelerProfond<T extends object>(o: T): T {
+  for (const v of Object.values(o)) if (v && typeof v === 'object') gelerProfond(v)
+  return Object.freeze(o)
+}
+
 /** Valeurs du thème « Indigo nuit » (design) : base qui complète un « Mes couleurs » incomplet. */
-export const COULEURS_INDIGO_NUIT: CouleursTheme = {
+export const COULEURS_INDIGO_NUIT: CouleursTheme = gelerProfond({
   'ciel-fond': { clair: '#15152E', sombre: '#0E0E1E' },
   'ciel-texte': { clair: '#C9C9EA', sombre: '#C9C9EA' },
   'etoile-active': { clair: '#F4C56A', sombre: '#F4C56A' },
@@ -31,7 +36,7 @@ export const COULEURS_INDIGO_NUIT: CouleursTheme = {
   boucliers: { clair: '#1E7F6C', sombre: '#5FD3B3' },
   'pages-fond': { clair: '#F7F7FB', sombre: '#121214' },
   'nouvel-onglet-ciel': { clair: '#0F0F26', sombre: '#090916' }
-}
+})
 
 export interface ScriptPerso {
   nom: string
