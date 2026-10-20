@@ -344,17 +344,18 @@ test('cookies « Session seulement » : cookies de session pendant l’exécutio
   expect(tous.apres).toEqual(['127.0.0.1:premier', '127.0.0.1:tiers', 'localhost:premier', 'localhost:tiers'])
 
   const session = await cookiesApresRedemarrage('session')
-  // Pendant l'exécution : les cookies posés sous la page du site (le sien ET le cookie tiers de localhost) sont des cookies de session (ni Expires ni Max-Age) ;
-  // le cookie que localhost avait posé lors de sa propre visite reste un cookie persistant ; le cookie tiers antérieur du site aussi (jusqu'à la purge).
+  // Pendant l'exécution : seul le cookie posé par le site lui-même est un cookie de session (ni Expires ni Max-Age) ; le cookie tiers de localhost
+  // garde sa durée (c'est un autre site, qui peut avoir ses propres règles) ; le cookie que localhost avait posé lors de sa propre visite aussi,
+  // et le cookie tiers antérieur du site reste persistant (jusqu'à la purge).
   expect(session.pendant).toEqual([
     { cle: '127.0.0.1:premier', session: true },
     { cle: '127.0.0.1:tiers', session: false },
     { cle: 'localhost:premier', session: false },
-    { cle: 'localhost:tiers', session: true }
+    { cle: 'localhost:tiers', session: false }
   ])
-  // Au lancement suivant : plus rien du site de la règle (cookie de session non restauré, cookie persistant antérieur purgé) ni le cookie tiers de session ;
-  // le cookie de l'autre domaine posé ailleurs (localhost:premier) n'a PAS été purgé.
-  expect(session.apres).toEqual(['localhost:premier'])
+  // Au lancement suivant : plus rien du site de la règle (cookie de session non restauré, cookie persistant antérieur purgé) ;
+  // les cookies de l'autre domaine (posés ailleurs, ou en tiers sous la page) n'ont PAS été purgés.
+  expect(session.apres).toEqual(['localhost:premier', 'localhost:tiers'])
 })
 
 const motifSafari = /Version\/\d+\.\d+ Safari\/605\.1\.15$/
