@@ -1,10 +1,11 @@
 import type { Settings } from '../../shared/types'
 import { langueActive } from '../../shared/i18n'
+import { reglagesParDefautD } from './defaults-d'
 
 /** Réglages par défaut ; le dossier de téléchargements est fourni par l'appelant. */
 export function reglagesParDefaut(dossierTelechargements: string): Settings {
   return {
-    version: 1,
+    version: 2,
     langue: langueActive(),
     theme: 'systeme',
     moteurParDefaut: 'duckduckgo',
@@ -15,6 +16,7 @@ export function reglagesParDefaut(dossierTelechargements: string): Settings {
     sites: {},
     moteursPerso: [],
     import: { extensionsEnAttente: [], reglagesEnAttente: {} },
-    reseau: { passerelles: true, auto: true, sites: [] }
+    reseau: { passerelles: true, auto: true, sites: [] },
+    ...reglagesParDefautD()
   }
 }

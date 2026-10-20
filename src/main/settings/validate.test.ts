@@ -123,7 +123,9 @@ describe('validerPatch', () => {
 describe('validerSettings', () => {
   it('JSON de mauvaise forme : défauts', () => {
     expect(validerSettings('x', defauts)).toEqual(defauts)
-    expect(validerSettings({ theme: 42, version: 9, zzz: 1 }, defauts)).toEqual(defauts)
+    expect(validerSettings({ theme: 42, version: 9 }, defauts)).toEqual(defauts)
+    // Un réglage inconnu est conservé tel quel (voir migrations.test.ts).
+    expect(validerSettings({ zzz: 1 }, defauts)).toEqual({ ...defauts, zzz: 1 })
   })
 
   it('fusionne les champs valides sur les défauts', () => {

@@ -9,7 +9,7 @@ import type { Settings, SkyState } from '../../shared/types'
 import type { Favori } from '../bookmarks/Bookmarks'
 import { appliquer, type CiblesImport } from '../import/appliquer'
 import type { OptionsApplication, Visite } from '../import/types'
-import { patchImporte } from '../settings/import'
+import { patchImporte, reglagesExportables } from '../settings/import'
 import { ErreurPaquet } from './chiffrement'
 import { cielDepuisJson, cielVersFichier, cielVersOnglets } from './ciel'
 import type { AccesCookies } from './cookies'
@@ -99,7 +99,7 @@ export async function exporterCiel(chemin: string, deps: DepsOperations): Promis
 
 /** Le même JSON que « Exporter les réglages » (`settings:export`). */
 export async function exporterReglages(chemin: string, deps: DepsOperations): Promise<{ compte: number }> {
-  await ecrireAtomique(chemin, JSON.stringify(deps.reglages.getSettings(), null, 2))
+  await ecrireAtomique(chemin, JSON.stringify(reglagesExportables(deps.reglages.getSettings()), null, 2))
   return { compte: 1 }
 }
 

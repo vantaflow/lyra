@@ -4,11 +4,11 @@ import { readFile, writeFile } from 'node:fs/promises'
 import type { Settings } from '../../shared/types'
 import { handle } from '../ipc'
 import type { Reglages } from './settings'
-import { patchImporte } from './import'
+import { patchImporte, reglagesExportables } from './import'
 
 const TAILLE_MAX_IMPORT = 1_000_000
 
-const THEMES: Record<Settings['theme'], 'system' | 'light' | 'dark'> = { systeme: 'system', clair: 'light', sombre: 'dark' }
+const THEMES: Record<Settings['theme'], 'system' | 'light' | 'dark'> = { systeme: 'system', clair: 'light', sombre: 'dark', programme: 'system' }
 
 /** Le thème des réglages devient celui d'Electron (prefers-color-scheme des pages comprise). */
 export function appliquerTheme(theme: Settings['theme']): void {
@@ -33,7 +33,7 @@ export function installerReglagesIpc(reglages: Reglages): void {
       filters: [{ name: 'JSON', extensions: ['json'] }]
     })
     if (r.canceled || !r.filePath) return false
-    await writeFile(r.filePath, JSON.stringify(reglages.getSettings(), null, 2), 'utf8')
+    await writeFile(r.filePath, JSON.stringify(reglagesExportables(reglages.getSettings()), null, 2), 'utf8')
     return true
   })
 

@@ -12,7 +12,7 @@ function creer() {
 describe('réglages', () => {
   it('valeurs par défaut de la spec', () => {
     const s = creer().getSettings()
-    expect(s.version).toBe(1)
+    expect(s.version).toBe(2)
     expect(s.theme).toBe('systeme')
     expect(s.moteurParDefaut).toBe('duckduckgo')
     expect(s.moteurChoisi).toBe(false)

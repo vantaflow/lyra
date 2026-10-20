@@ -1,23 +1,10 @@
 import type { Settings } from '../../shared/types'
 import { fusion } from './store'
 import { hoteValide, octets } from '../passerelles/liste'
+import { SCHEMA_D, booleen, champsRegleSiteD, entier, enumeration, estObjet, pixels, propre, texte, type Obj, type Schema } from './validate-d'
+import { migrer } from './migrations'
 
 export type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K] }
-
-type Obj = Record<string, unknown>
-const estObjet = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v)
-const propre = (o: Obj, k: string): unknown => (Object.hasOwn(o, k) ? o[k] : undefined)
-
-const enumeration = <T extends string>(...valeurs: T[]) => (v: unknown): T | undefined =>
-  valeurs.find((x) => x === v)
-const booleen = (v: unknown): boolean | undefined => (typeof v === 'boolean' ? v : undefined)
-const entier = (min: number, max: number) => (v: unknown): number | undefined =>
-  typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max ? v : undefined
-/** Entier strict (pixels) : une largeur de 250,5 est refusée. */
-const pixels = (min: number, max: number) => (v: unknown): number | undefined =>
-  typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max ? v : undefined
-const texte = (max: number, motif?: RegExp) => (v: unknown): string | undefined =>
-  typeof v === 'string' && v.length > 0 && v.length <= max && (!motif || motif.test(v)) ? v : undefined
 
 /** Origine acceptée comme clé de règle de site : http(s)://hôte[:port] ou file://. */
 const ORIGINE = /^(https?:\/\/([a-z0-9.-]+|\[[0-9a-f:]+\])(:\d{1,5})?|file:\/\/)$/i
@@ -36,7 +23,7 @@ function permissions(v: unknown): Obj | undefined {
   return Object.keys(sortie).length > 0 ? sortie : undefined
 }
 
-/** sites : { origine: { boucliers?, permissions?, zoom?, exceptionDnd? } } ; champs et entrées invalides ignorés. */
+/** sites : { origine: { boucliers?, permissions?, zoom?, exceptionDnd?, + champs de D } } ; champs et entrées invalides ignorés. */
 function sites(v: unknown): Obj | undefined {
   if (!estObjet(v)) return undefined
   const sortie: Obj = {}
@@ -45,8 +32,7 @@ function sites(v: unknown): Obj | undefined {
     if (n >= MAX_SITES) break
     if (origine.length > 300 || !ORIGINE.test(origine) || !estObjet(regle)) continue
     const champs: Obj = {}
-    const boucliers = booleen(propre(regle, 'boucliers'))
-    if (boucliers !== undefined) champs.boucliers = boucliers
+    Object.assign(champs, champsRegleSiteD(regle))
     const perms = permissions(propre(regle, 'permissions'))
     if (perms) champs.permissions = perms
     const zoom = entier(0.25, 5)(propre(regle, 'zoom'))
@@ -144,11 +130,9 @@ function extensionsEnAttente(v: unknown): unknown[] | undefined {
   return v.length > 0 && gardees.length === 0 ? undefined : gardees
 }
 
-type Schema = { [k: string]: ((v: unknown) => unknown) | Schema }
-
 const SCHEMA: Schema = {
   langue: texte(16, /^[A-Za-z]{2,3}([-_][A-Za-z0-9]+)?$/),
-  theme: enumeration('systeme', 'clair', 'sombre'),
+  theme: enumeration('systeme', 'clair', 'sombre', 'programme'),
   moteurParDefaut: texte(100),
   moteurChoisi: booleen,
   ciel: {
@@ -180,7 +164,8 @@ const SCHEMA: Schema = {
     auto: booleen,
     sites: sitesContournes,
     personnelle
-  }
+  },
+  ...SCHEMA_D
 }
 
 function filtrer(brut: unknown, schema: Schema): Obj {
@@ -204,15 +189,50 @@ export function validerPatch(brut: unknown): DeepPartial<Settings> {
   return filtrer(brut, SCHEMA) as DeepPartial<Settings>
 }
 
-/** Réglages complets : défauts + champs valides du JSON brut. */
 /** Fichier relu : une ancienne largeur du ciel hors bornes ou décimale est arrondie et bornée, pas rejetée. */
-function largeurRamenee(brut: unknown): unknown {
+export function largeurRamenee(brut: unknown): unknown {
   if (!estObjet(brut) || !estObjet(brut.ciel)) return brut
   const l = brut.ciel.largeur
   if (typeof l !== 'number' || !Number.isFinite(l)) return brut
   return { ...brut, ciel: { ...brut.ciel, largeur: Math.min(420, Math.max(200, Math.round(l))) } }
 }
 
+/** Réglages complets : migration vers le schéma courant (défauts + champs valides + réglages inconnus conservés). */
 export function validerSettings(brut: unknown, defauts: Settings): Settings {
-  return fusion(defauts, validerPatch(largeurRamenee(brut)))
+  return migrer(brut, defauts).settings
+}
+
+/** Réglages inconnus du schéma (clés absentes de `SCHEMA`, y compris dans un bloc connu), à conserver tels quels. */
+export function inconnus(brut: unknown, schema: Schema = SCHEMA): Obj {
+  const sortie: Obj = {}
+  if (!estObjet(brut)) return sortie
+  for (const [cle, v] of Object.entries(brut)) {
+    const regle = Object.hasOwn(schema, cle) ? schema[cle] : undefined
+    if (regle === undefined) {
+      if (cle !== 'version' && cle !== '__proto__' && cle !== 'constructor' && cle !== 'prototype') sortie[cle] = v
+    } else if (typeof regle !== 'function') {
+      const sous = inconnus(v, regle)
+      if (Object.keys(sous).length > 0) sortie[cle] = sous
+    }
+  }
+  return sortie
+}
+
+/** Clés connues du schéma présentes dans le brut mais rejetées par la validation. */
+export function clesRejetees(brut: unknown, valide: Obj, schema: Schema = SCHEMA, prefixe = ''): string[] {
+  if (!estObjet(brut)) return []
+  const rejetees: string[] = []
+  for (const [cle, regle] of Object.entries(schema)) {
+    const v = propre(brut, cle)
+    if (v === undefined) continue
+    const ok = propre(valide, cle)
+    if (typeof regle === 'function') {
+      if (ok === undefined) rejetees.push(prefixe + cle)
+    } else if (!estObjet(v)) {
+      rejetees.push(prefixe + cle)
+    } else {
+      rejetees.push(...clesRejetees(v, estObjet(ok) ? ok : {}, regle, `${prefixe}${cle}.`))
+    }
+  }
+  return rejetees
 }

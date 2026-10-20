@@ -1,5 +1,8 @@
 /** Types partagés entre processus (purs, sans dépendance à Electron). */
 import type { NavigateurSource } from '../main/import/types'
+import type { BouclierSite, ReglagesD, RegleSiteD } from './types-reglages'
+
+export * from './types-reglages'
 
 export interface Star {
   id: string
@@ -26,10 +29,10 @@ export interface SkyState {
   pinned: string[]
 }
 
-export interface Settings {
-  version: 1
+export interface Settings extends ReglagesD {
+  version: 2
   langue: string
-  theme: 'systeme' | 'clair' | 'sombre'
+  theme: 'systeme' | 'clair' | 'sombre' | 'programme'
   moteurParDefaut: string
   moteurChoisi: boolean
   ciel: {
@@ -115,9 +118,9 @@ export type TypePermission = 'camera' | 'micro' | 'notifications' | 'geolocalisa
 export type DecisionPermission = 'autoriser' | 'refuser'
 export const TYPES_PERMISSION: readonly TypePermission[] = ['camera', 'micro', 'notifications', 'geolocalisation', 'presse-papiers']
 
-export interface RegleSite {
-  /** false : Boucliers désactivés sur ce site. Absent : actifs. */
-  boucliers?: boolean
+export interface RegleSite extends RegleSiteD {
+  /** false ou 'desactives' : Boucliers désactivés sur ce site ; 'standard' ou 'strict' : niveau. Absent : actifs (écriture canonique : tri-état). */
+  boucliers?: BouclierSite
   /** Décisions mémorisées pour ce site ; absent : on demande. */
   permissions?: Partial<Record<TypePermission, DecisionPermission>>
   /** Facteur de zoom mémorisé (0.25 à 5) ; absent : 100 %. */

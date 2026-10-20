@@ -133,7 +133,9 @@ describe('export / import de fichiers (vrais magasins, sans Electron)', () => {
     const a = monde('a')
     a.reglages.setSettings({ theme: 'sombre', sites: { 'https://x.fr': { zoom: 2 } } })
     await exporterReglages(a.chemin('r.json'), a.deps)
-    expect(JSON.parse(readFileSync(a.chemin('r.json'), 'utf8'))).toEqual(a.reglages.getSettings())
+    // Le même fichier que « Exporter les réglages » : sans `import` (usage local).
+    const { import: _local, ...exportable } = a.reglages.getSettings()
+    expect(JSON.parse(readFileSync(a.chemin('r.json'), 'utf8'))).toEqual(exportable)
     const b = monde('b')
     const rep = await importerFichier({ type: 'reglages', chemin: a.chemin('r.json') }, b.cibles, b.deps, OPTIONS)
     expect(rep.ok && rep.reglages).toBe(true)
