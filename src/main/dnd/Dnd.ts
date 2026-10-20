@@ -184,7 +184,12 @@ export class Dnd {
     return true
   }
 
-  /** Retient une popup (`window.open` avec features) ; faux si elle doit s'ouvrir normalement. Une même adresse du même site n'est gardée qu'une fois. */
+  /**
+   * Retient une popup (`window.open` avec features de fenêtre, `about:blank` compris : motif des pop-under) ; faux si
+   * elle doit s'ouvrir normalement (mode inactif, site en exception). Un Maj+clic sur un lien n'est pas une popup
+   * (voir `estVraiePopup`). Une même adresse du même site n'est gardée qu'une fois ; à la sortie, elle est rouverte
+   * en étoile d'arrière-plan si elle a une adresse web.
+   */
   retenirPopup(fenetre: number, p: PopupRetenue): boolean {
     const f = this.fenetres.get(fenetre)
     if (!f || this.deps.exception(p.origine)) return false

@@ -19,9 +19,14 @@ export interface DndLayout {
   rappel: boolean
 }
 
-/** Zone de la vue chrome en mode Ne pas déranger : rappel complet (pilule + ombre) ou croissant seul. */
-export const DND_RAPPEL = { width: 720, height: 100 }
-export const DND_CROISSANT = { width: 84, height: 84 }
+/**
+ * Zone de la vue chrome en mode Ne pas déranger : la surface du rappel complet ou du croissant seul, ombre comprise
+ * (pastille de 36 px à 14 px du haut et 16 px de la droite, ombre `0 4px 12px`). Tout ce qui dépasse bloquerait les
+ * clics de la page : la vue chrome ne doit rien couvrir d'autre. La largeur du rappel (≈ 470 px au plus court)
+ * garde de la place pour son texte le plus long (50 notifications, 10 fenêtres, plus d'une heure).
+ */
+export const DND_RAPPEL = { width: 720, height: 68 }
+export const DND_CROISSANT = { width: 68, height: 68 }
 
 export interface Layout {
   chrome: Rect
