@@ -12,19 +12,106 @@
 }
 
 :root {
+  /* Les 13 éléments du thème et leurs dérivées (src/shared/themes.ts, `deriver`) : valeurs d'Indigo nuit en clair.
+     Le test tests/e2e/theme-tokens.spec.ts et src/shared/themes.test.ts vérifient que ces valeurs restent celles de `deriver`. */
   --ciel: #15152e;
+  --ciel-texte: #c9c9ea;
   --etoile-active: #f4c56a;
+  --etoile-active-fond: #262650;
   --etoiles: #a8a8d8;
   --etoiles-endormies: #4e4e7a;
   --lignes: #3b3b70;
+  --capsule-fond: #ffffff;
+  --capsule-texte: #1c1c2e;
   --accent: #5452c8;
-  --bouclier: #5fd3b3;
+  --bouclier: #1e7f6c;
   --page: #f7f7fb;
+  --nouvel-onglet-ciel: #0f0f26;
   --texte: #1c1c2e;
   --texte-secondaire: #6b6b80;
+  --trait: #e6e6ee;
+  --pilule: #f3f3f9;
+  --attention: #8a5a10;
+  --libelles-ciel: #8e8ebe;
+  --libelles-groupe: #7f7fb0;
+  --bouclier-ciel: #5fd3b3;
+  --ligne-selection: rgba(244, 197, 106, 0.7);
+  /* Teintes des pages Lyra qui n'ont pas de variable de thème : valeur claire = couleur d'origine ; en sombre elles
+     reprennent une variable existante (aucune valeur nouvelle), voir le bloc suivant. */
+  --bordure-champ: #d6d6e2;
+  --separateur: #eeeef4;
+  --teinte-accent: #e6e6f7;
+  --teinte-accent-texte: #2f2d8a;
+  --texte-doux: #3a3a50;
+  --survol: #eeeef6;
+  --survol-menu: #f1f1f8;
+  --champ-fond: #f8f8fc;
+  --texte-discret: #8a8aa6;
+  --texte-url: #8a8aa0;
+  --texte-icone: #4a4a66;
+  --texte-inactif: #b8b8cc;
+  --piste: #c9c9d6;
+  --danger: #8e2e22;
+  --danger-fond: #fbe9e6;
+  --attention-fond: #fbefd8;
+  --attention-texte: #6b4a10;
+  --succes-fond: #ddf5ec;
+  --succes-texte: #146a52;
+  --favori: #d99a12;
+  --lien: #4a48c4;
+  --fenetre-fond: #e9e9f3;
 }
 
-/* Thème Aurore des fenêtres privées (docs/design/project/Couleurs.dc.html) : seul le ciel change. */
+/* Mode sombre : valeurs d'Indigo nuit (`deriver(COULEURS_INDIGO_NUIT, 'sombre')`). Posé par l'attribut data-mode="sombre" de <html>. */
+:root[data-mode='sombre'] {
+  --ciel: #0e0e1e;
+  --ciel-texte: #c9c9ea;
+  --etoile-active: #f4c56a;
+  --etoile-active-fond: #1e1e3c;
+  --etoiles: #a8a8d8;
+  --etoiles-endormies: #44446a;
+  --lignes: #33335e;
+  --capsule-fond: #17172a;
+  --capsule-texte: #e8e8f4;
+  --accent: #8b8af0;
+  --bouclier: #5fd3b3;
+  --page: #121214;
+  --nouvel-onglet-ciel: #090916;
+  --texte: #e8e8f4;
+  --texte-secondaire: #97979f;
+  --trait: #232326;
+  --pilule: #212134;
+  --attention: #f4c56a;
+  --libelles-ciel: #8c8cb7;
+  --libelles-groupe: #7a7aa0;
+  --bouclier-ciel: #5fd3b3;
+  --ligne-selection: rgba(244, 197, 106, 0.7);
+  --bordure-champ: var(--trait);
+  --separateur: var(--trait);
+  --teinte-accent: var(--pilule);
+  --teinte-accent-texte: var(--accent);
+  --texte-doux: var(--texte);
+  --survol: var(--pilule);
+  --survol-menu: var(--pilule);
+  --champ-fond: var(--pilule);
+  --texte-discret: var(--texte-secondaire);
+  --texte-url: var(--texte-secondaire);
+  --texte-icone: var(--texte-secondaire);
+  --texte-inactif: var(--libelles-groupe);
+  --piste: var(--texte-secondaire);
+  --danger: var(--attention);
+  --danger-fond: var(--pilule);
+  --attention-fond: var(--pilule);
+  --attention-texte: var(--attention);
+  --succes-fond: var(--pilule);
+  --succes-texte: var(--bouclier);
+  --favori: var(--etoile-active);
+  --lien: var(--accent);
+  --fenetre-fond: var(--page);
+}
+
+/* Thème Aurore des fenêtres privées (docs/design/project/Couleurs.dc.html) : seul le ciel change (valeur statique d'Aurore
+   en attendant les variables du thème privé). Après le bloc sombre : la fenêtre privée garde son ciel dans les deux modes. */
 :root.privee {
   --ciel: #2a1540;
 }
@@ -45,10 +132,10 @@ body,
   height: 100%;
   min-height: 100vh;
   display: flex;
-  background: #e9e9f3;
+  background: var(--fenetre-fond);
   font-size: 14px;
   line-height: 1.45;
-  color: #1c1c2e;
+  color: var(--texte);
 }
 .fenetre button {
   font-family: inherit;
@@ -161,7 +248,7 @@ body,
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: #c9c9ea;
+  color: var(--ciel-texte);
   font: 13px/1 'Manrope', -apple-system, 'Segoe UI', system-ui, sans-serif;
   width: 100%;
   text-align: left;
@@ -175,7 +262,7 @@ body,
   color: #fff;
 }
 .star.active {
-  background: #262650;
+  background: var(--etoile-active-fond);
   color: #fff;
 }
 .star .dot {
@@ -189,7 +276,7 @@ body,
   background: var(--etoile-active);
   box-shadow:
     0 0 0 3px rgba(244, 197, 106, 0.22),
-    0 0 14px rgba(244, 197, 106, 0.7);
+    0 0 14px var(--ligne-selection);
 }
 .star.terne:not(.active) {
   opacity: 0.72;
@@ -255,7 +342,7 @@ body,
   font-size: 10.5px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #7f7fb0;
+  color: var(--libelles-groupe);
   padding: 12px 8px 4px;
   font-weight: 600;
 }
@@ -296,7 +383,7 @@ body,
   border: 0;
   border-radius: 9px;
   background: transparent;
-  color: var(--bouclier);
+  color: var(--bouclier-ciel);
   font: 600 12.5px 'Manrope', sans-serif;
   cursor: pointer;
 }
@@ -335,7 +422,7 @@ body,
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--capsule-fond);
   border-radius: 12px 0 0 12px;
   overflow: hidden;
 }
@@ -350,7 +437,7 @@ body,
   height: 46px;
   padding: 0 10px;
   box-sizing: border-box;
-  border-bottom: 1px solid #eeeef4;
+  border-bottom: 1px solid var(--separateur);
   flex-wrap: wrap;
   overflow: hidden;
   flex: none;
@@ -375,20 +462,20 @@ body,
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: #4a4a66;
+  color: var(--texte-icone);
   cursor: pointer;
   padding: 0;
 }
 .cb:hover {
-  background: #eeeef6;
-  color: #1c1c2e;
+  background: var(--survol);
+  color: var(--texte);
 }
 .cb.favori,
 .cb.favori:hover {
-  color: #d99a12;
+  color: var(--favori);
 }
 .cb[disabled] {
-  color: #b8b8cc;
+  color: var(--texte-inactif);
   cursor: default;
 }
 .cb[disabled]:hover {
@@ -402,22 +489,22 @@ body,
   padding: 0 14px 0 12px;
   border: 0;
   border-radius: 16px;
-  background: #f3f3f9;
-  color: #1c1c2e;
+  background: var(--pilule);
+  color: var(--texte);
   font: 500 13.5px 'Manrope', sans-serif;
   cursor: pointer;
   max-width: 100%;
   white-space: nowrap;
 }
 .pilule.discrete {
-  color: #8e8ebe;
+  color: var(--libelles-ciel);
 }
 .pilule .chemin {
-  color: #8a8aa6;
+  color: var(--texte-discret);
   font-weight: 400;
 }
 .pilule .alerte {
-  color: #8e2e22;
+  color: var(--danger);
 }
 
 /* ---- Palette ⌘ L (fidèle à docs/design/project/Panneaux.dc.html) ---- */
@@ -439,7 +526,7 @@ html.overlay #app {
   width: min(640px, calc(100vw - 32px));
   max-height: calc(100vh - 12vh - 24px);
   box-sizing: border-box;
-  background: #15152e;
+  background: var(--ciel);
   border-radius: 16px;
   padding: 10px;
   box-shadow: 0 30px 80px rgba(10, 10, 40, 0.45);
@@ -467,7 +554,7 @@ html.overlay #app {
   font: 17px 'Manrope', sans-serif;
 }
 .pal-champ input::placeholder {
-  color: #7f7fb0;
+  color: var(--libelles-groupe);
 }
 .pal-liste {
   overflow-y: auto;
@@ -504,7 +591,7 @@ html.overlay #app {
   cursor: pointer;
 }
 .pal.on {
-  background: #262650;
+  background: var(--etoile-active-fond);
   color: #fff;
 }
 .pal .k {
@@ -527,7 +614,7 @@ html.overlay #app {
   text-overflow: ellipsis;
 }
 .pal .h {
-  color: #7f7fb0;
+  color: var(--libelles-groupe);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -535,7 +622,7 @@ html.overlay #app {
   font-size: 10.5px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #7f7fb0;
+  color: var(--libelles-groupe);
   font-weight: 600;
   padding: 10px 12px 4px;
 }
@@ -545,13 +632,13 @@ html.overlay #app {
   gap: 14px;
   flex: none;
   padding: 10px 12px 4px;
-  color: #7f7fb0;
+  color: var(--libelles-groupe);
   font-size: 12px;
 }
 
 /* ---- Pied du ciel : bouclier désactivé ---- */
 .boucliers.off {
-  color: #8a8aa6;
+  color: var(--texte-discret);
 }
 
 /* ---- Panneau des Boucliers (fidèle à docs/design/project/Panneaux.dc.html) ---- */
@@ -564,7 +651,7 @@ html.overlay #app {
   position: absolute;
   width: min(360px, calc(100vw - 24px));
   box-sizing: border-box;
-  background: #fff;
+  background: var(--capsule-fond);
   color: var(--texte);
   border-radius: 14px;
   box-shadow: 0 20px 60px rgba(20, 20, 46, 0.18);
@@ -590,7 +677,7 @@ html.overlay #app {
   text-overflow: ellipsis;
 }
 .pn-sous {
-  color: #6b6b80;
+  color: var(--texte-secondaire);
   font-size: 12.5px;
 }
 .tg {
@@ -609,17 +696,17 @@ html.overlay #app {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--capsule-fond);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 .tg.on {
-  background: #1e7f6c;
+  background: var(--bouclier);
 }
 .tg.on i {
   right: 3px;
 }
 .tg.off {
-  background: #c9c9d6;
+  background: var(--piste);
 }
 .tg.off i {
   left: 3px;
@@ -635,17 +722,17 @@ html.overlay #app {
   text-align: center;
 }
 .pn-compteurs > div {
-  background: #f3f3f9;
+  background: var(--pilule);
   border-radius: 10px;
   padding: 10px 6px;
 }
 .pn-n {
   font-size: 22px;
   font-weight: 700;
-  color: #1e7f6c;
+  color: var(--bouclier);
 }
 .pn-l {
-  color: #6b6b80;
+  color: var(--texte-secondaire);
   font-size: 12px;
 }
 .pn-options {
@@ -664,37 +751,37 @@ html.overlay #app {
 }
 .pn-seg {
   display: inline-flex;
-  border: 1px solid #d6d6e2;
+  border: 1px solid var(--bordure-champ);
   border-radius: 8px;
   overflow: hidden;
 }
 .pn-seg button {
   padding: 5px 10px;
   border: 0;
-  background: #f8f8fc;
-  color: #3a3a50;
+  background: var(--champ-fond);
+  color: var(--texte-doux);
   font: 13px 'Manrope', sans-serif;
   cursor: pointer;
 }
 .pn-seg button.on {
-  background: #1e7f6c;
-  color: #fff;
+  background: var(--bouclier);
+  color: var(--capsule-fond);
 }
 .pn-seg button:disabled {
   cursor: default;
 }
 .pn-details {
   font-size: 12.5px;
-  color: #3a3a50;
+  color: var(--texte-doux);
 }
 .pn-details summary {
   cursor: pointer;
-  color: #4a48c4;
+  color: var(--lien);
 }
 .pn-liste {
   padding-top: 8px;
   font: 12px ui-monospace, Menlo, monospace;
-  color: #6b6b80;
+  color: var(--texte-secondaire);
   line-height: 1.7;
   max-height: 180px;
   overflow: auto;
@@ -711,11 +798,11 @@ html.overlay #app {
   font-size: 12.5px;
 }
 .pn-liens a {
-  color: #4a48c4;
+  color: var(--lien);
   text-decoration: none;
 }
 .pn-liens span {
-  color: #d6d6e2;
+  color: var(--bordure-champ);
 }
 
 /* ---- Point d'activité du bouton Téléchargements ---- */
@@ -739,7 +826,7 @@ html.overlay #app {
   position: absolute;
   width: min(360px, calc(100vw - 24px));
   box-sizing: border-box;
-  background: #fff;
+  background: var(--capsule-fond);
   color: var(--texte);
   border-radius: 14px;
   box-shadow: 0 20px 60px rgba(20, 20, 46, 0.18);
@@ -780,16 +867,16 @@ html.overlay #app {
 .dl-barre {
   height: 4px;
   border-radius: 2px;
-  background: #eeeef4;
+  background: var(--separateur);
   margin: 6px 0;
 }
 .dl-barre > div {
   height: 100%;
   border-radius: 2px;
-  background: #5452c8;
+  background: var(--accent);
 }
 .dl-etat {
-  color: #6b6b80;
+  color: var(--texte-secondaire);
   font-size: 12px;
 }
 .dl-btn {
@@ -797,10 +884,10 @@ html.overlay #app {
   align-items: center;
   height: 28px;
   padding: 0 10px;
-  border: 1px solid #d6d6e2;
+  border: 1px solid var(--bordure-champ);
   border-radius: 9px;
-  background: #fff;
-  color: #1c1c2e;
+  background: var(--capsule-fond);
+  color: var(--texte);
   font: 500 13px 'Manrope', sans-serif;
   cursor: pointer;
 }
@@ -808,21 +895,21 @@ html.overlay #app {
   display: flex;
   justify-content: space-between;
   padding-top: 6px;
-  border-top: 1px solid #eeeef4;
+  border-top: 1px solid var(--separateur);
   font-size: 12.5px;
 }
 .dl-pied a {
-  color: #4a48c4;
+  color: var(--lien);
   text-decoration: none;
 }
 .dl-pied a.discret {
-  color: #6b6b80;
+  color: var(--texte-secondaire);
 }
 .dl-vide {
   margin: 0;
   padding: 8px 0;
   font-size: 13px;
-  color: #6b6b80;
+  color: var(--texte-secondaire);
 }
 
 /* ---- Menu ⋯ de la capsule (fidèle à docs/design/project/Panneaux.dc.html, section « Menu ⋯ de la capsule ») ---- */
@@ -833,7 +920,7 @@ html.overlay #app {
   max-height: calc(100vh - 80px);
   overflow-y: auto;
   box-sizing: border-box;
-  background: #fff;
+  background: var(--capsule-fond);
   color: var(--texte);
   border-radius: 14px;
   box-shadow: 0 20px 60px rgba(20, 20, 46, 0.18);
@@ -851,7 +938,7 @@ html.overlay #app {
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: #1c1c2e;
+  color: var(--texte);
   font: 13.5px 'Manrope', -apple-system, 'Segoe UI', system-ui, sans-serif;
   text-align: left;
   text-decoration: none;
@@ -866,27 +953,27 @@ html.overlay #app {
 .mi.mi-refus {
   height: auto;
   min-height: 34px;
-  color: #8e2e22;
+  color: var(--danger);
   font-size: 12.5px;
 }
 .mi.mi-refus .mi-texte {
   white-space: normal;
 }
 .mi:hover {
-  background: #f1f1f8;
+  background: var(--survol-menu);
 }
 .mi[aria-disabled='true'] {
   cursor: default;
 }
 .mi .h {
   margin-left: auto;
-  color: #8a8aa6;
+  color: var(--texte-discret);
   font-size: 12px;
 }
 .sep {
   height: 1px;
   flex: none;
-  background: #eeeef4;
+  background: var(--separateur);
   margin: 6px 8px;
 }
 .zoom-ligne {
@@ -901,15 +988,15 @@ html.overlay #app {
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: #3a3a50;
+  color: var(--texte-doux);
   font: 600 13px 'Manrope', sans-serif;
   cursor: pointer;
 }
 .zb:hover {
-  background: #e6e6f7;
+  background: var(--teinte-accent);
 }
 .zb-pct {
-  color: #8a8aa6;
+  color: var(--texte-discret);
   font-weight: 500;
   font-size: 12px;
 }
@@ -919,17 +1006,17 @@ html.overlay #app {
   gap: 8px;
   height: 32px;
   padding: 0 12px;
-  border: 1px solid #d6d6e2;
+  border: 1px solid var(--bordure-champ);
   border-radius: 9px;
-  background: #fff;
-  color: #1c1c2e;
+  background: var(--capsule-fond);
+  color: var(--texte);
   font: 500 13px 'Manrope', sans-serif;
   cursor: pointer;
 }
 .btn.pri {
-  background: #5452c8;
-  border-color: #5452c8;
-  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--capsule-fond);
 }
 
 /* ---- Demande de permission : carte sous la pilule ---- */
@@ -945,7 +1032,7 @@ html.overlay #app {
   pointer-events: auto;
   width: min(360px, calc(100% - 24px));
   box-sizing: border-box;
-  background: #fff;
+  background: var(--capsule-fond);
   color: var(--texte);
   border-radius: 14px;
   box-shadow: 0 20px 60px rgba(20, 20, 46, 0.18);
@@ -965,7 +1052,7 @@ html.overlay #app {
   align-items: center;
   gap: 8px;
   font-size: 12.5px;
-  color: #6b6b80;
+  color: var(--texte-secondaire);
 }
 .perm-actions {
   display: flex;
@@ -988,8 +1075,8 @@ html.overlay #app {
   height: 34px;
   padding: 0 4px 0 12px;
   box-sizing: border-box;
-  background: #fff;
-  border: 1px solid #eeeef4;
+  background: var(--capsule-fond);
+  border: 1px solid var(--separateur);
   border-radius: 10px;
   box-shadow: 0 6px 20px rgba(20, 20, 46, 0.12);
   -webkit-app-region: no-drag;
@@ -1005,16 +1092,16 @@ html.overlay #app {
   border: 0;
   outline: none;
   background: transparent;
-  color: #1c1c2e;
+  color: var(--texte);
   font: 13.5px 'Manrope', sans-serif;
 }
 .findbar input::placeholder {
-  color: #8a8aa6;
+  color: var(--texte-discret);
 }
 .findbar-n {
   min-width: 36px;
   text-align: right;
-  color: #8a8aa6;
+  color: var(--texte-discret);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
@@ -1027,8 +1114,8 @@ html.overlay #app {
 .pilule .zoom-ind {
   padding: 1px 6px;
   border-radius: 8px;
-  background: #e6e6f7;
-  color: #2f2d8a;
+  background: var(--teinte-accent);
+  color: var(--teinte-accent-texte);
   font-size: 11.5px;
   font-weight: 600;
 }
@@ -1051,12 +1138,12 @@ html.overlay #app {
   border: 0;
   padding: 0;
   border-radius: 2px;
-  background: #f4c56a;
-  box-shadow: 0 0 10px rgba(244, 197, 106, 0.7);
+  background: var(--etoile-active);
+  box-shadow: 0 0 10px var(--ligne-selection);
   cursor: pointer;
 }
 .poignee:focus-visible {
-  outline: 2px solid #f4c56a;
+  outline: 2px solid var(--etoile-active);
   outline-offset: 3px;
 }
 /* Sous les boutons de fenêtre de macOS, la capsule laisse la place aux pastilles. */
@@ -1074,7 +1161,7 @@ html.revele #app,
   background: transparent;
 }
 .fenetre.revele .capsule {
-  background: #fff;
+  background: var(--capsule-fond);
 }
 .voile {
   position: fixed;
@@ -1247,7 +1334,7 @@ html.revele #app,
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: #c9c9ea;
+  color: var(--ciel-texte);
   font: 13px/1 'Manrope', -apple-system, 'Segoe UI', system-ui, sans-serif;
   max-width: 150px;
   cursor: pointer;
@@ -1259,7 +1346,7 @@ html.revele #app,
   color: #fff;
 }
 .hs.active {
-  background: #262650;
+  background: var(--etoile-active-fond);
   color: #fff;
 }
 .hs .dot {
@@ -1273,7 +1360,7 @@ html.revele #app,
   background: var(--etoile-active);
   box-shadow:
     0 0 0 3px rgba(244, 197, 106, 0.22),
-    0 0 14px rgba(244, 197, 106, 0.7);
+    0 0 14px var(--ligne-selection);
 }
 .hs.dim {
   color: #8686b4;
@@ -1318,7 +1405,7 @@ html.revele #app,
 }
 .hc.active b {
   background: var(--etoile-active);
-  box-shadow: 0 0 8px rgba(244, 197, 106, 0.7);
+  box-shadow: 0 0 8px var(--ligne-selection);
 }
 .hc.dim b {
   background: var(--etoiles-endormies);
@@ -1327,7 +1414,7 @@ html.revele #app,
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #7f7fb0;
+  color: var(--libelles-groupe);
   font-weight: 600;
   padding: 0 4px 0 8px;
   white-space: nowrap;
@@ -1425,7 +1512,7 @@ html.revele #app,
   z-index: 50;
   pointer-events: none;
   background: rgba(244, 197, 106, 0.28);
-  border: 2px solid #f4c56a;
+  border: 2px solid var(--etoile-active);
   box-sizing: border-box;
   border-radius: 10px;
 }
@@ -1457,7 +1544,7 @@ html.revele #app,
 .fenetre.glisse,
 .fenetre.glisse .page-zone,
 .fenetre.glisse .carte {
-  background: #e9e9f3;
+  background: var(--fenetre-fond);
 }
 /* Pendant le glisser, plus aucune zone de déplacement de la fenêtre : elle avalerait le relâchement et annulerait le glisser. */
 .fenetre.appui * {

@@ -1,7 +1,7 @@
 /* Réseau et identité : passerelles (Passerelles.dc.html) */
 .sous-titre {
   margin: 4px 0 16px;
-  color: #6b6b80;
+  color: var(--texte-secondaire);
 }
 .sr {
   position: absolute;
@@ -19,20 +19,20 @@
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
-  background: #f3f3f9;
-  color: #6b6b80;
+  background: var(--pilule);
+  color: var(--texte-secondaire);
 }
 .tag.ok {
-  background: #ddf5ec;
-  color: #146a52;
+  background: var(--succes-fond);
+  color: var(--succes-texte);
 }
 .tag.ko {
-  background: #fbe9e6;
-  color: #8e2e22;
+  background: var(--danger-fond);
+  color: var(--danger);
 }
 .tag.detecte {
-  background: #e6e6f7;
-  color: #2f2d8a;
+  background: var(--teinte-accent);
+  color: var(--teinte-accent-texte);
 }
 .relais {
   display: inline-flex;
@@ -41,8 +41,8 @@
   width: 22px;
   height: 22px;
   border-radius: 7px;
-  background: #e6e6f7;
-  color: #5452c8;
+  background: var(--teinte-accent);
+  color: var(--accent);
   flex: none;
 }
 .site strong {
@@ -52,17 +52,17 @@
   flex: 1;
   height: 34px;
   padding: 0 12px;
-  border: 1px solid #d6d6e2;
+  border: 1px solid var(--bordure-champ);
   border-radius: 9px;
-  background: #f8f8fc;
+  background: var(--champ-fond);
   font: 13px 'Manrope', sans-serif;
-  color: #1c1c2e;
+  color: var(--texte);
   box-sizing: border-box;
   min-width: 0;
 }
 .inp:focus {
   outline: none;
-  border-color: #5452c8;
+  border-color: var(--accent);
 }
 .inp.port {
   flex: none;
@@ -78,7 +78,7 @@
   margin: 0;
   padding: 0 0 12px;
   font-size: 12.5px;
-  color: #8e2e22;
+  color: var(--danger);
 }
 .card .btn {
   white-space: nowrap;
@@ -90,8 +90,8 @@
   margin-top: 16px;
   padding: 12px 14px;
   border-radius: 10px;
-  background: #fbefd8;
-  color: #6b4a10;
+  background: var(--attention-fond);
+  color: var(--attention-texte);
   font-size: 12.5px;
   line-height: 1.5;
 }

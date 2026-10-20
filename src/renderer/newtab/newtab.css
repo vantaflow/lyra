@@ -2,7 +2,7 @@
 html,
 body,
 #app {
-  background: #0f0f26;
+  background: var(--nouvel-onglet-ciel);
   min-height: 100vh;
   position: relative;
   overflow: hidden;
@@ -85,7 +85,7 @@ body,
   border: 0;
   border-radius: 10px;
   background: #2a2a55;
-  color: #c9c9ea;
+  color: var(--ciel-texte);
   font: 500 12.5px 'Manrope', sans-serif;
   cursor: pointer;
 }
@@ -109,7 +109,7 @@ body,
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: #c9c9ea;
+  color: var(--ciel-texte);
   font: 500 13px 'Manrope', sans-serif;
   text-align: left;
   cursor: pointer;
@@ -136,7 +136,7 @@ body,
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #7f7fb0;
+  color: var(--libelles-groupe);
   font-weight: 600;
 }
 .chips {
@@ -168,10 +168,10 @@ body,
   border-radius: 50%;
 }
 .chip .nb {
-  color: #7f7fb0;
+  color: var(--libelles-groupe);
 }
 .chip.inerte {
-  color: #8e8ebe;
+  color: var(--libelles-ciel);
 }
 .sites {
   display: flex;
@@ -188,7 +188,7 @@ body,
   width: 92px;
   border: 0;
   background: transparent;
-  color: #c9c9ea;
+  color: var(--ciel-texte);
   font: 12.5px 'Manrope', sans-serif;
   cursor: pointer;
   padding: 8px 4px;
@@ -219,7 +219,7 @@ body,
   display: flex;
   align-items: center;
   gap: 14px;
-  color: #7f7fb0;
+  color: var(--libelles-groupe);
   font-size: 12.5px;
   flex-wrap: wrap;
 }
@@ -227,7 +227,7 @@ body,
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #5fd3b3;
+  color: var(--bouclier-ciel);
 }
 .pied .souple {
   flex: 1;
@@ -312,8 +312,8 @@ body,
   padding: 0 22px;
   border: 0;
   border-radius: 12px;
-  background: #5452c8;
-  color: #fff;
+  background: var(--accent);
+  color: var(--capsule-fond);
   font: 600 14px 'Manrope', sans-serif;
   cursor: pointer;
 }

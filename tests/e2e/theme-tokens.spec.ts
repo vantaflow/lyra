@@ -118,3 +118,72 @@ test('thème clair par défaut : les couleurs calculées de toutes les vues Lyra
     await app.close()
   }
 })
+
+const SOMBRE = (p: Page): Promise<void> => p.evaluate(() => document.documentElement.setAttribute('data-mode', 'sombre'))
+
+const lumi = (rgb: string): number | null => {
+  const m = rgb.match(/rgba?\((\d+), (\d+), (\d+)(?:, ([\d.]+))?\)/)
+  if (!m || (m[4] !== undefined && Number(m[4]) === 0)) return null
+  const [r, g, b] = [m[1], m[2], m[3]].map((x) => {
+    const c = Number(x) / 255
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+test('mode sombre : la capsule vaut rgb(23,23,42) et la page rgb(18,18,20), plus aucune surface claire', async () => {
+  test.setTimeout(120_000)
+  const { app, fenetre } = await lancerLyra()
+  try {
+    await SOMBRE(fenetre)
+    const fonds = await fenetre.evaluate(() => ({
+      carte: getComputedStyle(document.querySelector('.carte')!).backgroundColor,
+      capsule: getComputedStyle(document.querySelector('.capsule')!).backgroundColor,
+      ciel: getComputedStyle(document.querySelector('.ciel')!).backgroundColor
+    }))
+    expect(fonds.carte).toBe('rgb(23, 23, 42)')
+    expect(fonds.ciel).toBe('rgb(14, 14, 30)')
+    // La capsule est transparente sur la carte (fond de capsule) : texte lisible en sombre.
+    expect(await fenetre.evaluate(() => getComputedStyle(document.querySelector('.capsule')!).color)).toBe('rgb(232, 232, 244)')
+
+    const clairs: string[] = []
+    for (const [url, prefixe, route] of [
+      ['lyra://settings', 'lyra://settings', 'general'],
+      ['lyra://settings', 'lyra://settings', 'apparence'],
+      ['lyra://settings', 'lyra://settings', 'reseau'],
+      ['lyra://settings', 'lyra://settings', 'importer'],
+      ['lyra://history', 'lyra://history', ''],
+      ['lyra://downloads', 'lyra://downloads', '']
+    ] as const) {
+      const p = await aller(app, fenetre, route ? `${url}#/${route}` : url, prefixe)
+      if (route) await p.evaluate((r) => { location.hash = `#/${r}` }, route)
+      await expect(p.locator('h1')).toBeVisible()
+      await SOMBRE(p)
+      await expect.poll(() => p.evaluate(() => getComputedStyle(document.getElementById('app')!).backgroundColor)).toBe('rgb(18, 18, 20)')
+      expect(await p.evaluate(() => getComputedStyle(document.getElementById('app')!).color)).toBe('rgb(232, 232, 244)')
+      const surfaces = await p.evaluate(() =>
+        Array.from(document.body.querySelectorAll('*')).map((e) => ({ cle: e.tagName.toLowerCase() + '.' + (e.getAttribute('class') ?? ''), fond: getComputedStyle(e).backgroundColor }))
+      )
+      // L'étoile active des aperçus de position est ambre par design (Étoile active), pas une surface.
+      for (const s of surfaces) if (s.fond !== 'rgb(244, 197, 106)' && (lumi(s.fond) ?? 0) > 0.5) clairs.push(`${route || url} ${s.cle} ${s.fond}`)
+    }
+    expect(clairs).toEqual([])
+
+    // Page d'erreur : fond de page sombre, carte à la couleur de la capsule.
+    const id = (await fenetre.evaluate(() => window.lyra.invoke('sky:get'))).sky.activeId!
+    await fenetre.evaluate((i) => window.lyra.invoke('tabs:navigate', { id: i, url: 'file:///nexiste/pas.html' }), id)
+    await expect.poll(() => trouver(app, 'lyra://erreur')?.url()).toContain('lyra://erreur')
+    const e = trouver(app, 'lyra://erreur')!
+    await expect(e.locator('h1')).toBeVisible()
+    await SOMBRE(e)
+    await expect.poll(() => e.evaluate(() => getComputedStyle(document.getElementById('app')!).backgroundColor)).toBe('rgb(18, 18, 20)')
+    expect(await e.evaluate(() => getComputedStyle(document.querySelector('.erreur-carte')!).backgroundColor)).toBe('rgb(23, 23, 42)')
+
+    // Nouvel onglet et ciel : suivent les variables sombres.
+    const n = await aller(app, fenetre, 'lyra://newtab', 'lyra://newtab')
+    await SOMBRE(n)
+    await expect.poll(() => n.evaluate(() => getComputedStyle(document.getElementById('app')!).backgroundColor)).toBe('rgb(9, 9, 22)')
+  } finally {
+    await app.close()
+  }
+})

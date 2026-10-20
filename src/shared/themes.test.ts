@@ -99,15 +99,22 @@ describe('deriver', () => {
     expect(v['--texte']).toBe('#E8E8F4')
     expect(v['--page']).toBe('#121214')
   })
-  it('Indigo nuit en clair : exactement les valeurs de theme.css et du design', () => {
-    const v = deriver(THEMES['indigo-nuit'].couleurs, 'clair')
-    const attendu: Record<string, string> = {
-      '--ciel': '#15152e', '--etoile-active': '#f4c56a', '--etoiles': '#a8a8d8', '--etoiles-endormies': '#4e4e7a', '--lignes': '#3b3b70',
-      '--accent': '#5452c8', '--bouclier': '#1e7f6c', '--page': '#f7f7fb', '--texte': '#1c1c2e', '--texte-secondaire': '#6b6b80',
-      '--trait': '#e6e6ee', '--pilule': '#f3f3f9', '--attention': '#8a5a10', '--libelles-ciel': '#8e8ebe', '--libelles-groupe': '#7f7fb0',
-      '--bouclier-ciel': '#5fd3b3', '--ligne-selection': 'rgba(244,197,106,0.7)'
-    }
-    for (const [nom, val] of Object.entries(attendu)) expect(v[nom].toLowerCase(), nom).toBe(val)
+  /** Déclarations `--nom: valeur` du premier bloc dont le sélecteur est exactement `selecteur` dans theme.css. */
+  const lireBloc = (selecteur: string): Record<string, string> => {
+    const css = readFileSync(resolve(__dirname, '../renderer/ui/theme.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    const debut = css.indexOf(`${selecteur} {`)
+    expect(debut, selecteur).toBeGreaterThanOrEqual(0)
+    const bloc = css.slice(debut, css.indexOf('}', debut))
+    return Object.fromEntries([...bloc.matchAll(/(--[a-z-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].replace(/\s+/g, '').toLowerCase()]))
+  }
+  it.each([
+    ['clair', ':root'],
+    ['sombre', ":root[data-mode='sombre']"]
+  ] as const)('Indigo nuit en %s : deriver retombe exactement sur les valeurs de theme.css (lues dans le fichier)', (mode, selecteur) => {
+    const css = lireBloc(selecteur)
+    const v = deriver(THEMES['indigo-nuit'].couleurs, mode)
+    expect(Object.keys(v).length).toBeGreaterThanOrEqual(22)
+    for (const [nom, val] of Object.entries(v)) expect(css[nom], nom).toBe(val.replace(/\s+/g, '').toLowerCase())
   })
   it('--bouclier-ciel part de Boucliers sombre et n’est corrigé que si nécessaire', () => {
     for (const mode of ['clair', 'sombre'] as const) {

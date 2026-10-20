@@ -65,7 +65,7 @@ test('réglages : thème sombre → une page web voit prefers-color-scheme: dark
   }
 })
 
-test('pages internes à fond clair : #app lisible sur réglages, historique et téléchargements', async () => {
+test('pages internes, thème clair par défaut : #app = rgb(247, 247, 251) sur réglages, historique et téléchargements', async () => {
   const { app, fenetre } = await lancerLyra()
   try {
     for (const url of ['lyra://settings', 'lyra://history', 'lyra://downloads']) {

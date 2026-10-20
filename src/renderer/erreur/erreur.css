@@ -1,8 +1,8 @@
 html,
 body,
 #app {
-  background: #f7f7fb;
-  color: #1c1c2e;
+  background: var(--page);
+  color: var(--texte);
   height: 100%;
 }
 .erreur {
@@ -17,8 +17,8 @@ body,
 .erreur-carte {
   width: min(480px, 100%);
   box-sizing: border-box;
-  background: #fff;
-  border: 1px solid #e6e6ee;
+  background: var(--capsule-fond);
+  border: 1px solid var(--trait);
   border-radius: 14px;
   box-shadow: 0 20px 60px rgba(20, 20, 46, 0.1);
   padding: 32px 32px 28px;
@@ -34,12 +34,12 @@ body,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #e6e6f7;
-  color: #5452c8;
+  background: var(--teinte-accent);
+  color: var(--accent);
 }
 .erreur-icone.danger {
-  background: #fbe9e6;
-  color: #8e2e22;
+  background: var(--danger-fond);
+  color: var(--danger);
 }
 .erreur h1 {
   margin: 8px 0 0;
@@ -50,15 +50,15 @@ body,
   margin: 0;
   font-size: 13.5px;
   line-height: 1.5;
-  color: #6b6b80;
+  color: var(--texte-secondaire);
 }
 .erreur-url {
   max-width: 100%;
   box-sizing: border-box;
   padding: 8px 12px;
   border-radius: 9px;
-  background: #f3f3f9;
-  color: #3a3a50;
+  background: var(--pilule);
+  color: var(--texte-doux);
   font-size: 12.5px;
   word-break: break-all;
 }
@@ -74,21 +74,21 @@ body,
   gap: 8px;
   height: 34px;
   padding: 0 14px;
-  border: 1px solid #d6d6e2;
+  border: 1px solid var(--bordure-champ);
   border-radius: 9px;
-  background: #fff;
-  color: #1c1c2e;
+  background: var(--capsule-fond);
+  color: var(--texte);
   font: 500 13px 'Manrope', sans-serif;
   cursor: pointer;
 }
 .btn.pri {
-  background: #5452c8;
-  border-color: #5452c8;
-  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--capsule-fond);
 }
 .erreur-refus {
   margin: 0;
   font-size: 12.5px;
   line-height: 1.5;
-  color: #8e2e22;
+  color: var(--danger);
 }

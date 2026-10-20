@@ -9,5 +9,5 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["electron.vite.config.ts", "vitest.config.mts"]
+  "include": ["electron.vite.config.ts", "vitest.config.mts", "scripts/**/*.test.ts"]
 }
