@@ -125,6 +125,9 @@ const sansWww = (h: string): string => {
 const memePerso = (a?: PasserellePerso, b?: PasserellePerso): boolean =>
   a === b || (!!a && !!b && a.type === b.type && a.hote === b.hote && a.port === b.port)
 
+/** Attente maximale de l'application du PAC aux sessions. */
+export const DELAI_PAC_MAX_MS = 5000
+
 export class Passerelles implements CrochetsPasserelles {
   private pool: Candidat[] = []
   private poolPerso = false
@@ -191,6 +194,19 @@ export class Passerelles implements CrochetsPasserelles {
   async attendre(): Promise<void> {
     while (this.taches.size > 0) await Promise.allSettled([...this.taches])
     await this.file
+  }
+
+  /**
+   * Résolue quand le PAC voulu est appliqué à toutes les sessions (connexions ouvertes fermées). Un ajout suivi
+   * aussitôt d'un rechargement l'attend : sinon la fermeture des connexions interrompt la navigation (-3, ignoré).
+   */
+  pacApplique(): Promise<void> {
+    // Un setProxy bloqué ne fige pas l'interface : au-delà du délai, on continue.
+    let minuteur: ReturnType<typeof setTimeout> | undefined
+    const delai = new Promise<void>((ok) => {
+      minuteur = setTimeout(ok, DELAI_PAC_MAX_MS)
+    })
+    return Promise.race([this.file, delai]).finally(() => clearTimeout(minuteur))
   }
 
   arreter(): void {
@@ -451,6 +467,8 @@ export class Passerelles implements CrochetsPasserelles {
     const r = this.deps.reseau()
     if (!r.sites.some((s) => s.hote === hote)) {
       if (r.sites.length >= MAX_SITES) throw new Error('Liste pleine (500 sites)')
+      // Ajout explicite : lève le délai de grâce (l'échec suivant cherche une passerelle sans attendre).
+      this.echecRecherche = undefined
       this.deps.ecrireSites([...r.sites, { hote, origine, date: this.deps.maintenant() }])
     }
     return this.etat()
@@ -689,9 +707,24 @@ export class Passerelles implements CrochetsPasserelles {
     return this.file
   }
 
+  /**
+   * Met une session créée après coup (fenêtre privée) au même état que les autres : le PAC appliqué, ou le proxy
+   * système. Rien n'est détecté ni écrit ; la session doit aussi figurer dans `deps.sessions()` pour les mises à jour.
+   */
+  attacherSession(s: SessionProxy): Promise<void> {
+    this.file = this.file
+      .then(async () => {
+        await s.setProxy(typeof this.applique === 'string' ? { mode: 'pac_script', pacScript: pacDataUrl(this.applique) } : { mode: 'system' })
+      })
+      .catch(() => undefined)
+    return this.file
+  }
+
   /** Tant qu'un PAC est appliqué, relit le proxy système toutes les 60 s (résolution locale, sans requête). */
   private veillerSysteme(): void {
-    if (typeof this.applique === 'string' && this.deps.proxySysteme) {
+    // État inconnu (échec de setProxy) : la veille est réarmée pour réappliquer sans attendre un autre événement.
+    const veiller = this.applique === undefined || (typeof this.applique === 'string' && this.deps.proxySysteme !== undefined)
+    if (veiller) {
       if (this.annulerVeille) return
       this.annulerVeille = this.deps.planifier(() => {
         this.annulerVeille = undefined

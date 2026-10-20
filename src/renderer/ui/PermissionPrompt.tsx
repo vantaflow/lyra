@@ -37,6 +37,11 @@ export function PermissionPrompt({ visible }: { visible: boolean }) {
   const [souvenir, setSouvenir] = useState(false)
   const [ciel, setCiel] = useState<Settings['ciel'] | undefined>()
 
+  // Fenêtre privée : rien n'est mémorisé, la case n'est pas proposée (par défaut masquée tant que le main n'a pas répondu).
+  const [privee, setPrivee] = useState(true)
+  useEffect(() => {
+    void window.lyra.invoke('fenetre:privee').then(setPrivee, () => setPrivee(true))
+  }, [])
   useEffect(() => {
     void window.lyra.invoke('settings:get').then((r) => setCiel(r.ciel))
     const off = window.lyra.on('settings:changed', (r) => setCiel(r.ciel))
@@ -75,10 +80,12 @@ export function PermissionPrompt({ visible }: { visible: boolean }) {
           <div id="perm-texte" class="perm-texte">
             <strong>{nomDuSite(demande.origine)}</strong> souhaite {phraseDemande(demande.types)}
           </div>
-          <label class="perm-souvenir">
-            <input type="checkbox" checked={souvenir} onChange={(e) => setSouvenir(e.currentTarget.checked)} />
-            Se souvenir pour ce site
-          </label>
+          {!privee && (
+            <label class="perm-souvenir">
+              <input type="checkbox" checked={souvenir} onChange={(e) => setSouvenir(e.currentTarget.checked)} />
+              Se souvenir pour ce site
+            </label>
+          )}
           <div class="perm-actions">
             <button class="btn" type="button" onClick={() => repondre('refuser', souvenir)}>
               Refuser

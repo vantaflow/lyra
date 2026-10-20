@@ -6,10 +6,8 @@
 // mode le main la livre, et un clic sur la notification livrée est rejoué ici (`click`) si la page est toujours là.
 //
 // Écrit en JavaScript pur dans une chaîne : il s'exécute tel quel dans la page, sans dépendre du bundle.
-export const SURCHARGE_NOTIFICATION = `(function (nom) {
+export const SURCHARGE_NOTIFICATION = `(function (pont) {
   'use strict'
-  var pont = window[nom]
-  try { delete window[nom] } catch (e) {}
   var Natif = window.Notification
   if (!pont || typeof Natif !== 'function') return
   var vivantes = new Map()
@@ -47,7 +45,7 @@ export const SURCHARGE_NOTIFICATION = `(function (nom) {
     var t = String(titre)
     var id = null
     try {
-      id = pont.creer(t, o.body === undefined ? '' : String(o.body), o.tag === undefined ? '' : String(o.tag), o.silent === true)
+      id = pont.creer(t.slice(0, 300), o.body === undefined ? '' : String(o.body).slice(0, 1000), o.tag === undefined ? '' : String(o.tag).slice(0, 200), o.silent === true)
     } catch (e) {}
     if (id === null || id === undefined) return Reflect.construct(Natif, arguments)
     var n = new Faux()

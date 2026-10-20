@@ -42,6 +42,8 @@ export interface DepsDnd {
   ouvrirPopups(fenetre: number, popups: PopupRetenue[]): void
   /** L'état d'une fenêtre a changé (entrée, sortie, compteur, rappel). */
   surChangement(fenetre: number, etat: EtatDnd): void
+  /** Horloge murale (ms) ; Date.now par défaut. Injectée pour tester la reprise après une mise en veille. */
+  maintenant?(): number
 }
 
 interface Fenetre {
@@ -84,7 +86,7 @@ export class Dnd {
   }
 
   /** Entre (ou relance avec une autre durée, sans perdre ce qui est retenu). */
-  entrer(fenetre: number, duree: DureeDnd = DUREE_PAR_DEFAUT, maintenant = Date.now()): void {
+  entrer(fenetre: number, duree: DureeDnd = DUREE_PAR_DEFAUT, maintenant = this.deps.maintenant?.() ?? Date.now()): void {
     const f: Fenetre = this.fenetres.get(fenetre) ?? { fin: null, duree, notifications: [], popups: [], rappel: true, attentes: [] }
     clearTimeout(f.minuterie)
     f.duree = duree
@@ -92,6 +94,24 @@ export class Dnd {
     f.minuterie = duree === 'arret' ? undefined : this.armer(() => this.sortir(fenetre), duree * 60_000)
     this.fenetres.set(fenetre, f)
     this.montrerRappel(fenetre)
+  }
+
+  /**
+   * Reprise après une mise en veille du système : les minuteries du processus ne comptent pas le temps endormi.
+   * La fin est recalculée sur l'horloge murale : échue, le mode se termine ; sinon la minuterie est réarmée sur le reste.
+   */
+  surReprise(): void {
+    const maintenant = this.deps.maintenant?.() ?? Date.now()
+    for (const [fenetre, f] of [...this.fenetres]) {
+      if (f.fin === null) continue
+      if (maintenant >= f.fin) {
+        this.sortir(fenetre)
+        continue
+      }
+      clearTimeout(f.minuterie)
+      f.minuterie = this.armer(() => this.sortir(fenetre), f.fin - maintenant)
+      this.diffuser(fenetre)
+    }
   }
 
   /** Bascule : sort si actif, sinon entre avec la durée donnée. */
@@ -149,16 +169,27 @@ export class Dnd {
     return id
   }
 
-  /** La page a fermé sa notification avant la sortie (`close()`) : elle n'est plus livrée. */
-  retirerNotification(fenetre: number, id: number): void {
+  /**
+   * La page a fermé sa notification avant la sortie (`close()`) : elle n'est plus livrée. Une page ne ferme que les
+   * notifications de sa propre origine (les identifiants sont séquentiels : elle pourrait en viser d'autres).
+   * Renvoie vrai si une notification a été retirée.
+   */
+  retirerNotification(fenetre: number, id: number, origine: string): boolean {
     const f = this.fenetres.get(fenetre)
-    if (!f) return
+    if (!f) return false
     const avant = f.notifications.length
-    f.notifications = f.notifications.filter((x) => x.id !== id)
-    if (f.notifications.length !== avant) this.diffuser(fenetre)
+    f.notifications = f.notifications.filter((x) => !(x.id === id && x.origine === origine))
+    if (f.notifications.length === avant) return false
+    this.diffuser(fenetre)
+    return true
   }
 
-  /** Retient une popup (`window.open` avec features) ; faux si elle doit s'ouvrir normalement. Une même adresse du même site n'est gardée qu'une fois. */
+  /**
+   * Retient une popup (`window.open` avec features de fenêtre, `about:blank` compris : motif des pop-under) ; faux si
+   * elle doit s'ouvrir normalement (mode inactif, site en exception). Un Maj+clic sur un lien n'est pas une popup
+   * (voir `estVraiePopup`). Une même adresse du même site n'est gardée qu'une fois ; à la sortie, elle est rouverte
+   * en étoile d'arrière-plan si elle a une adresse web.
+   */
   retenirPopup(fenetre: number, p: PopupRetenue): boolean {
     const f = this.fenetres.get(fenetre)
     if (!f || this.deps.exception(p.origine)) return false

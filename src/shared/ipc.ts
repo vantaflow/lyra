@@ -51,6 +51,8 @@ export interface EtatBoucliers {
   origine: string
   /** 20 dernières adresses bloquées, la plus récente d'abord. */
   dernieres: string[]
+  /** Fenêtre privée : la règle par site ne peut pas être changée (rien n'est écrit dans les réglages). */
+  privee?: boolean
 }
 
 /** Favori tel que l'exposent les pages internes. */
@@ -91,6 +93,7 @@ export type RouteOverlay = 'palette' | 'shields' | 'downloads' | 'menu' | 'permi
 export type ActionMenu =
   | 'nouvelle-etoile'
   | 'nouvelle-fenetre'
+  | 'fenetre-privee'
   | 'favori'
   | 'recherche'
   | 'imprimer'
@@ -108,6 +111,8 @@ export interface AncreMenu {
   /** L'hôte est déjà dans la liste des sites contournés. */
   contourne?: boolean
   favori: boolean
+  /** Fenêtre privée : l'ajout aux favoris est indisponible (rien n'est écrit). */
+  privee?: boolean
   zoom: number
 }
 
@@ -141,12 +146,16 @@ export type Requetes = {
   ]
   /** État du mode Ne pas déranger de la fenêtre de l'expéditeur. */
   'dnd:get': [void, EtatDnd]
+  /** Chrome ou page interne → main : la fenêtre de l'expéditeur est-elle privée ? */
+  'fenetre:privee': [void, boolean]
   /** Chrome → main : entre dans le mode (durée par défaut : 1 h) ou le quitte. */
   'dnd:basculer': [{ duree?: DureeDnd } | void, void]
   /** Chrome → main : sort du mode (Échap, croissant, ×). */
   'dnd:sortir': [void, void]
   /** Chrome → main : réaffiche le rappel complet (survol du croissant). */
   'dnd:rappel': [void, void]
+  /** Largeur mesurée de la pastille du rappel (la vue chrome ne couvre que sa surface). */
+  'dnd:taille': [{ largeur: number }, void]
   /** Test uniquement (LYRA_TEST=1) : notifications livrées à la sortie (au lieu d'être affichées). */
   'test:livraisons': [void, Array<{ titre: string; corps?: string; origine: string; etoileId?: string }>]
   /** Chrome → main : révèle (actif) ou retire le ciel masqué ; renvoie l'état obtenu. */

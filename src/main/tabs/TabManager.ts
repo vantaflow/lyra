@@ -1,4 +1,4 @@
-import { WebContentsView, session, type WebContents } from 'electron'
+import { WebContentsView, session, type Session, type WebContents } from 'electron'
 import type { LyraWindow } from '../window/WindowManager'
 import { PRELOAD_INTERNAL, PRELOAD_PAGE } from '../preloads'
 import { envoyer } from '../ipc'
@@ -10,6 +10,8 @@ import { origineDe } from '../shields/Shields'
 import { estZoomNormal, palierSuivant } from './zoom'
 import { optionsFenetreCachee, prefsPageCachee, testCache } from '../modeTest'
 import { estUrlErreur, urlOriginale } from './erreurs'
+import { raccourciPage } from './raccourcis'
+import { estVraiePopup } from './popup'
 import { arreter as arreterRechercheWc, rechercher as rechercherWc } from './find'
 import { attacherComportements } from './comportements'
 import type { CrochetsPasserelles } from '../passerelles/Passerelles'
@@ -45,6 +47,8 @@ export interface RappelsHistorique {
  */
 /** Réglages de dormance et rappel de changement (sauvegarde de la session). */
 export interface OptionsTabs {
+  /** Session des pages web (fenêtre privée : partition mémoire propre à la fenêtre) ; `persist:lyra` par défaut. */
+  session?: Session
   /** Minutes d'inactivité avant l'endormissement (0 ou moins : jamais). */
   endormirApresMin?: () => number
   surChangement?: () => void
@@ -57,6 +61,8 @@ export interface OptionsTabs {
   passerelles?: CrochetsPasserelles
   /** Échap dans une page : sort du mode Ne pas déranger s'il est actif. */
   surEchap?: () => void
+  /** ⌘ ⇧ D dans une page (le site ne peut pas l'avaler) : entre dans Ne pas déranger ou en sort. */
+  basculerDnd?: () => void
   /** Ne pas déranger : retient une popup (`window.open` avec features) ; faux si elle doit s'ouvrir normalement. */
   retenirPopup?: (popup: { url: string; origine: string; etoileId: string }) => boolean
 }
@@ -483,7 +489,7 @@ export class TabManager {
     this.categories.set(id, categorie)
     const vue = new WebContentsView({
       webPreferences: {
-        session: session.fromPartition('persist:lyra'),
+        session: this.options.session ?? session.fromPartition('persist:lyra'),
         sandbox: true,
         contextIsolation: true,
         // Un seul mécanisme de preload : webPreferences.preload (pas de session.registerPreloadScript,
@@ -547,19 +553,15 @@ export class TabManager {
       if (input.type === 'keyDown' && input.key === 'Escape' && !input.isAutoRepeat && !input.control && !input.meta && !input.alt && !input.shift && !this.fenetre.estPleinEcran()) {
         this.options.surEchap?.()
       }
-      if (input.type !== 'keyDown' || !(input.control || input.meta) || input.alt) return
-      const k = input.key.toLowerCase()
       // La page ne doit pas avaler ces raccourcis : preventDefault coupe aussi le menu, on agit donc ici.
-      if (k === 'l' && !input.shift) {
-        _e.preventDefault()
-        this.ouvrirPalette()
-      } else if (k === 't' && !input.shift) {
-        _e.preventDefault()
-        this.ouvrir(URL_NEWTAB)
-      } else if (k === 'f' && !input.shift) {
-        _e.preventDefault()
-        this.ouvrirRecherche()
-      }
+      const raccourci = raccourciPage(input)
+      if (!raccourci) return
+      _e.preventDefault()
+      if (!raccourci.agir) return
+      if (raccourci.nom === 'palette') this.ouvrirPalette()
+      else if (raccourci.nom === 'nouvelle-etoile') this.ouvrir(URL_NEWTAB)
+      else if (raccourci.nom === 'recherche') this.ouvrirRecherche()
+      else this.options.basculerDnd?.()
     })
     attacherComportements(wc, {
       id,
@@ -582,9 +584,11 @@ export class TabManager {
     })
     wc.setWindowOpenHandler((details) => {
       if (categorie === 'web' && interditAuxSites(details.url)) return { action: 'deny' }
-      if (details.features) {
-        // Ne pas déranger : la popup est retenue (comptée, ouverte à la sortie), la page n'en reçoit pas de fenêtre.
-        if (/^(https?|file):/i.test(details.url) && this.options.retenirPopup?.({ url: details.url, origine: origineDe(wc.getURL()), etoileId: id })) return { action: 'deny' }
+      // Vraie popup : disposition « nouvelle fenêtre » ou features de fenêtre. `noopener` / `noreferrer` seuls
+      // (lien ordinaire cliqué par l'utilisateur) ouvrent une étoile comme `target=_blank`.
+      if (estVraiePopup(details)) {
+        // Ne pas déranger : la popup est retenue (comptée ; ouverte à la sortie si elle a une adresse web), la page n'en reçoit pas de fenêtre.
+        if (this.options.retenirPopup?.({ url: details.url, origine: origineDe(wc.getURL()), etoileId: id })) return { action: 'deny' }
         return {
           action: 'allow',
           overrideBrowserWindowOptions: {

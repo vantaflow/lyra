@@ -53,6 +53,9 @@ test('invite de permission et panneaux : visibles et dans la fenêtre, pour chaq
       expect(b.x).toBeGreaterThanOrEqual(bounds.page.x - 1)
       expect(b.x + b.width).toBeLessThanOrEqual(bounds.page.x + bounds.page.width + 1)
       expect(b.y).toBeGreaterThanOrEqual(bounds.page.y)
+      // Strictement dans la page : aussi en bas, et juste sous la capsule (pas à l'autre bout de la zone).
+      expect(b.y + b.height).toBeLessThanOrEqual(bounds.page.y + bounds.page.height + 1)
+      expect(b.y).toBeLessThanOrEqual(bounds.page.y + 24)
       await o.getByRole('button', { name: 'Refuser' }).click()
       await expect(carte).toHaveCount(0)
 
@@ -163,6 +166,31 @@ test('largeur : aperçu en direct sans rien écrire, enregistrée une seule fois
     await expect.poll(async () => (await layout(fenetre)).bounds.page.x).toBe(350)
     expect((await layout(fenetre)).ciel.largeur).toBe(350)
     await fenetre.mouse.up()
+  } finally {
+    await app.close()
+  }
+})
+
+test('ciel:apercu hors bornes : bornée à 200-420, valeur non numérique ignorée, null rétablit ; rien d’écrit', async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const apercu = (largeur: unknown): Promise<void> => fenetre.evaluate((l) => window.lyra.invoke('ciel:apercu', { largeur: l as number }), largeur)
+    const pageX = async (): Promise<number> => (await layout(fenetre)).bounds.page.x
+    expect(await pageX()).toBe(272)
+    await apercu(9999)
+    await expect.poll(pageX).toBe(420)
+    await apercu(-5)
+    await expect.poll(pageX).toBe(200)
+    await apercu(310)
+    await expect.poll(pageX).toBe(310)
+    // Valeurs invalides : l'aperçu courant reste.
+    await apercu('large')
+    await apercu(undefined)
+    await fenetre.waitForTimeout(150)
+    expect(await pageX()).toBe(310)
+    await apercu(null)
+    await expect.poll(pageX).toBe(272)
+    expect((await layout(fenetre)).ciel.largeur).toBe(272)
   } finally {
     await app.close()
   }

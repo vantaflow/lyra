@@ -54,6 +54,8 @@ if (location.hash === '#overlay') {
   document.documentElement.classList.add('overlay')
   render(<Overlay />, document.getElementById('app')!)
 } else {
+  // Fenêtre privée : thème Aurore (le ciel prend #2A1540, variables de theme.css).
+  if (location.hash === '#privee') document.documentElement.classList.add('privee')
   void initialiserEtat()
   render(<Racine />, document.getElementById('app')!)
 }

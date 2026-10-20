@@ -19,6 +19,8 @@ export interface DepsBoucliers {
   sessions: Session[]
   cacheDir: string
   onglets(): Iterable<TabManager>
+  /** Fenêtre privée : aucune règle par site n'y est écrite. */
+  privee?: (tm: TabManager) => boolean
   ongletsDe(wc: WebContents): TabManager
   /** Annule une requête avant le moteur de blocage (ex. http vers un site contourné). */
   garde?: (d: { url: string; resourceType?: string }) => boolean
@@ -71,7 +73,8 @@ export async function demarrerBoucliers(deps: DepsBoucliers): Promise<Shields> {
       actif: origine !== '' && shields.estActif(origine),
       bloques: wc ? shields.bloques(wc.id) : 0,
       origine,
-      dernieres: wc ? shields.dernieres(wc.id) : []
+      dernieres: wc ? shields.dernieres(wc.id) : [],
+      privee: deps.privee?.(tm) === true
     }
   }
 
@@ -128,8 +131,10 @@ export async function demarrerBoucliers(deps: DepsBoucliers): Promise<Shields> {
   handle('overlay:close', (_d, e) => deps.ongletsDe(e.sender).fermerOverlay())
   handle('shields:toggleSite', ({ origine, actif }, e) => {
     if (typeof origine !== 'string' || typeof actif !== 'boolean' || origine === '') return
-    deps.reglages.setSettings({ sites: { [origine]: { boucliers: actif } } } as Partial<Settings>)
     const tm = deps.ongletsDe(e.sender)
+    // Fenêtre privée : aucune règle par site n'est écrite ; le panneau l'indique.
+    if (deps.privee?.(tm)) return
+    deps.reglages.setSettings({ sites: { [origine]: { boucliers: actif } } } as Partial<Settings>)
     const wc = tm.wcActif()
     // La page est rechargée pour appliquer le changement (réseau et scriptlets).
     if (wc && origineDe(wc.getURL()) === origine) wc.reload()

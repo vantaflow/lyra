@@ -7,8 +7,13 @@ import type { RouteOverlay } from '../../shared/ipc'
 import { envoyer } from '../ipc'
 import { optionsFenetreCachee, prefsPageCachee } from '../modeTest'
 
+/** Ciel du thème Aurore (fenêtres privées), cf. docs/design/project/Couleurs.dc.html. */
+const CIEL_PRIVE = '#2A1540'
+
 export interface LyraWindow {
   id: number
+  /** Fenêtre privée : thème Aurore, session mémoire propre à la fenêtre. */
+  privee: boolean
   win: BaseWindow
   chrome: WebContentsView
   overlay: WebContentsView
@@ -19,6 +24,8 @@ export interface LyraWindow {
   estPleinEcran(): boolean
   /** Mode Ne pas déranger : page plein cadre, chrome réduit au rappel (ou au croissant) ; null pour en sortir. */
   setDnd(dnd: DndLayout | null): void
+  /** Largeur mesurée de la pastille du rappel : la zone de la vue chrome la suit. */
+  setDndLargeur(largeur: number): void
   /** Mode Ne pas déranger actif dans cette fenêtre. */
   estDnd(): boolean
   montrerOverlay(route: RouteOverlay): void
@@ -72,7 +79,7 @@ export class WindowManager {
   }
 
   creerFenetre(opts: { privee?: boolean } = {}): LyraWindow {
-    void opts.privee // la navigation privée est traitée par une tâche ultérieure
+    const privee = opts.privee === true
     const win = new BaseWindow({
       width: 1280,
       height: 800,
@@ -81,7 +88,7 @@ export class WindowManager {
       minHeight: FENETRE_MIN.height,
       title: 'Lyra',
       // Derrière le ciel révélé et la page : jamais de blanc quand la vue chrome change de taille.
-      backgroundColor: '#15152E',
+      backgroundColor: privee ? CIEL_PRIVE : '#15152E',
       ...optionsFenetreCachee(),
       ...(process.platform === 'darwin'
         ? { titleBarStyle: 'hidden' as const, trafficLightPosition: positionFeux(this.lireCiel()) }
@@ -156,6 +163,7 @@ export class WindowManager {
 
     const lw: LyraWindow = {
       id: win.id,
+      privee,
       win,
       chrome,
       overlay,
@@ -163,6 +171,8 @@ export class WindowManager {
       relayout,
       estRevele,
       reveler(b) {
+        // Ignoré pendant Ne pas déranger ou le plein écran : aucun état latent à la sortie du mode.
+        if (b && (dnd !== null || pleinEcran)) return false
         revele = b
         relayout()
         return estRevele()
@@ -193,7 +203,8 @@ export class WindowManager {
       estPleinEcran: () => pleinEcran,
       estDnd: () => dnd !== null,
       setDnd(d) {
-        dnd = d
+        // La largeur mesurée du rappel survit aux changements d'état (compteur, délai) tant que le mode dure.
+        dnd = d ? { ...d, largeur: d.largeur ?? dnd?.largeur } : null
         if (d) {
           // Plus de ciel révélé ni de glisser en cours.
           revele = false
@@ -201,6 +212,11 @@ export class WindowManager {
           envoyer(chrome.webContents, 'ciel:revele', false)
         }
         ordonner()
+        relayout()
+      },
+      setDndLargeur(largeur) {
+        if (!dnd || !Number.isFinite(largeur) || largeur <= 0 || dnd.largeur === largeur) return
+        dnd = { ...dnd, largeur }
         relayout()
       },
       surOverlay(cb) {
@@ -224,6 +240,8 @@ export class WindowManager {
     chrome.webContents.on('render-process-gone', finGlisse)
     chrome.webContents.on('did-start-loading', finGlisse)
     win.on('closed', () => {
+      // Fermée pendant le glissement de la poignée : l'aperçu de largeur ne reste pas sur les autres fenêtres.
+      finGlisse()
       this.fenetres.delete(lw.id)
       for (const v of [chrome, overlay, pageView]) {
         if (v && !v.webContents.isDestroyed()) v.webContents.close()
@@ -232,7 +250,7 @@ export class WindowManager {
 
     this.fenetres.set(lw.id, lw)
     relayout()
-    charger(chrome)
+    charger(chrome, privee ? '#privee' : '')
     charger(overlay, '#overlay')
     return lw
   }

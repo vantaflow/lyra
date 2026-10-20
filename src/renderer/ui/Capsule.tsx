@@ -1,6 +1,6 @@
 import { useEffect } from 'preact/hooks'
 import { ouvrirRecherche } from './FindBar'
-import { actif, cielMasque, estNouvelleEtoile, etatActif, favori, rafraichirFavori, reveler } from './state'
+import { actif, cielMasque, estNouvelleEtoile, etatActif, favori, fenetrePrivee, rafraichirFavori, reveler } from './state'
 
 interface Affichage {
   /** Icône : cadenas vert (https), avertissement (http), engrenage (lyra://), aucune. */
@@ -50,7 +50,7 @@ export function Capsule() {
   useEffect(() => rafraichirFavori(url), [url])
   const peutFavori = !!url && !url.startsWith('lyra://')
   const basculerFavori = (): void => {
-    if (!peutFavori) return
+    if (!peutFavori || fenetrePrivee) return
     void window.lyra.invoke('bookmarks:toggle', { url, title: etat?.titre || star?.title || url })
   }
   const ouvrirMenu = (e: MouseEvent): void => {
@@ -135,7 +135,8 @@ export function Capsule() {
         type="button"
         aria-label={favori.value ? 'Retirer des favoris' : 'Ajouter aux favoris'}
         aria-pressed={favori.value}
-        disabled={!peutFavori}
+        title={fenetrePrivee ? 'Favoris indisponibles en fenêtre privée' : undefined}
+        disabled={!peutFavori || fenetrePrivee}
         onClick={basculerFavori}
       >
         <svg viewBox="0 0 24 24" width="17" height="17" fill={favori.value ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true">
