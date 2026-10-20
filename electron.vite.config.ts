@@ -32,6 +32,7 @@ export default defineConfig({
           ui: resolve('src/renderer/ui.html'),
           newtab: resolve('src/renderer/newtab.html'),
           settings: resolve('src/renderer/settings.html'),
+          extensions: resolve('src/renderer/extensions.html'),
           erreur: resolve('src/renderer/erreur.html')
         }
       }

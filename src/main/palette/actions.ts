@@ -39,6 +39,7 @@ export function installerPalette(deps: DepsPalette): void {
     if (id === 'nouvelle-etoile') tabs.ouvrir('lyra://newtab')
     else if (id === 'fenetre-privee') deps.creerFenetre({ privee: true })
     else if (id === 'reglages') tabs.ouvrir('lyra://settings')
+    else if (id === 'extensions') tabs.ouvrir('lyra://extensions')
     else if (id === 'dnd-30') deps.dnd(tabs, 30)
     else if (id === 'dnd-60') deps.dnd(tabs, 60)
     else if (id === 'dnd-arret') deps.dnd(tabs, 'arret')

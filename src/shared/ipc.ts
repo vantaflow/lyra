@@ -1,4 +1,4 @@
-import type { DecisionPermission, DownloadInfo, ExtensionInstallee, HistoryEntry, JournalExtension, PasserellePerso, ResultatInstallation, Settings, SiteContourne, SkyState, Suggestion, TypePermission } from './types'
+import type { DecisionPermission, DownloadInfo, HistoryEntry, InfoExtension, JournalExtension, PasserellePerso, ResultatInstallation, Settings, SiteContourne, SkyState, Suggestion, TypePermission } from './types'
 
 export interface RectIpc {
   x: number
@@ -87,7 +87,7 @@ export interface EtatDnd {
   rappel: boolean
 }
 
-export type RouteOverlay = 'palette' | 'shields' | 'downloads' | 'menu' | 'permission'
+export type RouteOverlay = 'palette' | 'shields' | 'downloads' | 'menu' | 'permission' | 'extensions'
 
 /** Entrées actives du menu ⋯ de la capsule. */
 export type ActionMenu =
@@ -98,6 +98,7 @@ export type ActionMenu =
   | 'recherche'
   | 'imprimer'
   | 'devtools'
+  | 'extensions'
   | 'historique'
   | 'reglages'
 
@@ -131,7 +132,7 @@ export interface SkyChange {
 export type Requetes = {
   'settings:get': [void, Settings]
   /** Registre des extensions, avec l'état de chargement de chacune. */
-  'extensions:lister': [void, Array<ExtensionInstallee & { chargee: boolean }>]
+  'extensions:lister': [void, InfoExtension[]]
   /** Active ou désactive à chaud ; faux si l'extension est inconnue ou ne se charge pas. */
   'extensions:activer': [{ id: string; active: boolean }, boolean]
   /** Retire l'extension, son dossier et son entrée du registre. */
@@ -143,6 +144,12 @@ export type Requetes = {
   'extensions:installer': [{ source?: string; choisir?: 'fichier' | 'dossier' }, ResultatInstallation]
   /** Cherche et installe les mises à jour maintenant (ignore le réglage automatique). */
   /** Journal de compatibilité d'une extension (undefined si inconnue). */
+  /** Ouvre la page d'options de l'extension dans une nouvelle étoile ; faux si elle n'en a pas. */
+  'extensions:options': [{ id: string }, boolean]
+  /** Règle par site : `active: false` enregistre `settings.sites[origine].extensions[id] = false`. */
+  'extensions:regleSite': [{ id: string; origine: string; active: boolean }, boolean]
+  /** Panneau des extensions (icônes d'action) depuis le pied du ciel. */
+  'extensions:panel': [void, void]
   'extensions:journal': [{ id: string }, JournalExtension | undefined]
   'extensions:majTout': [void, { misesAJour: Array<{ id: string; nom: string; de: string; vers: string }>; erreurs: string[]; derniereVerification?: string }]
   'settings:set': [Partial<Settings>, Settings]

@@ -5,6 +5,7 @@
  */
 import { ElectronChromeExtensions } from 'electron-chrome-extensions'
 import type { BaseWindow, Session, WebContents } from 'electron'
+import { testCache } from '../modeTest'
 
 /** Ce que les extensions demandent aux étoiles (implémenté par `index.ts` au-dessus des `TabManager`). */
 export interface PontEtoiles {
@@ -24,6 +25,8 @@ export interface PontFenetres {
 
 export interface OptionsExtensions {
   session: Session
+  /** Session de la vue d'interface (icônes d'action `crx://`). */
+  sessionUI?: Session
   tabs: PontEtoiles
   fenetres: PontFenetres
 }
@@ -66,8 +69,12 @@ export function creerExtensions(o: OptionsExtensions): Extensions {
       details.incognito = false
     }
   })
+  // Popups d'action : fenêtre native ancrée au bouton (spec §9, réponse 4). Sous `LYRA_TEST`, jamais affichée : la fenêtre
+  // existe et charge son HTML (le popup est testable) mais `show()` n'est pas appelé.
+  if (testCache()) lib.on('browser-action-popup-created', (popup) => void ((popup as unknown as { show: () => void }).show = () => undefined))
   // Icônes d'action (<browser-action-list>) : protocole crx:// sur la session des pages.
   ElectronChromeExtensions.handleCRXProtocol(o.session)
+  if (o.sessionUI && o.sessionUI !== o.session) ElectronChromeExtensions.handleCRXProtocol(o.sessionUI)
 
   singleton = {
     session: o.session,

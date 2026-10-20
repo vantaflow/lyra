@@ -37,7 +37,22 @@ function permissions(v: unknown): Obj | undefined {
   return Object.keys(sortie).length > 0 ? sortie : undefined
 }
 
-/** sites : { origine: { boucliers?, permissions?, zoom?, exceptionDnd? } } ; champs et entrées invalides ignorés. */
+const MAX_REGLES_EXTENSIONS = 100
+/** Règle par site des extensions : { identifiant (32 lettres a-p) : booléen } ; entrées invalides ignorées. */
+function reglesExtensions(v: unknown): Obj | undefined {
+  if (!estObjet(v)) return undefined
+  const sortie: Obj = {}
+  let n = 0
+  for (const [id, actif] of Object.entries(v)) {
+    if (n >= MAX_REGLES_EXTENSIONS) break
+    if (!/^[a-p]{32}$/.test(id) || typeof actif !== 'boolean') continue
+    sortie[id] = actif
+    n++
+  }
+  return Object.keys(sortie).length > 0 ? sortie : undefined
+}
+
+/** sites : { origine: { boucliers?, permissions?, zoom?, exceptionDnd?, extensions? } } ; champs et entrées invalides ignorés. */
 function sites(v: unknown): Obj | undefined {
   if (!estObjet(v)) return undefined
   const sortie: Obj = {}
@@ -55,6 +70,8 @@ function sites(v: unknown): Obj | undefined {
     // Absent par défaut ; false annule une exception déjà accordée.
     const exceptionDnd = booleen(propre(regle, 'exceptionDnd'))
     if (exceptionDnd !== undefined) champs.exceptionDnd = exceptionDnd
+    const ext = reglesExtensions(propre(regle, 'extensions'))
+    if (ext) champs.extensions = ext
     if (Object.keys(champs).length === 0) continue
     sortie[origine] = champs
     n++

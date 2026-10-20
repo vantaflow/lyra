@@ -59,7 +59,7 @@ function App() {
     <div class="reglages">
       <nav class="nav" aria-label="Sections des réglages">
         {SECTIONS.map((s) => (
-          <a key={s.id} href={`#/${s.id}`} class={s.id === route ? 'on' : undefined}>
+          <a key={s.id} href={s.id === 'extensions' ? 'lyra://extensions' : `#/${s.id}`} class={s.id === route ? 'on' : undefined}>
             {s.titre}
           </a>
         ))}

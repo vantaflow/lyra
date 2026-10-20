@@ -63,7 +63,8 @@ describe('suggerer', () => {
     expect(r.every((s) => s.sousTitre === 'réglage')).toBe(true)
     // Ciel masqué (positionCiel absent) : toutes les positions restent proposées.
     expect(suggerer('>déplacer le ciel', ctx)).toHaveLength(4)
-    expect(suggerer('', { ...ctx, positionCiel: 'gauche' }).filter((s) => s.type === 'commande')).toHaveLength(9)
+    expect(suggerer('', { ...ctx, positionCiel: 'gauche' }).filter((s) => s.type === 'commande')).toHaveLength(10)
+    expect(suggerer('>extensions', ctx)[0]).toMatchObject({ type: 'commande', id: 'extensions', titre: 'Extensions' })
   })
   it('Ne pas déranger : trois durées (libellés du design), « Quitter » seulement quand le mode est actif', () => {
     const r = suggerer('>ne pas deranger', ctx)

@@ -1,5 +1,5 @@
 import type { WebContents } from 'electron'
-import type { ResultatInstallation } from '../../shared/types'
+import type { ExtensionInstallee, InfoExtension, ResultatInstallation } from '../../shared/types'
 import { handle } from '../ipc'
 import { collecterStubs, type Journal, type PageExtension } from './journal'
 import type { Chargeur } from './chargeur'
@@ -7,6 +7,7 @@ import { analyserSourceChrome, type InstallateurChrome } from './chrome'
 import { analyserSourceFirefox, type InstallateurFirefox } from './firefox'
 import type { MiseAJour } from './miseAJour'
 import { ID_EXTENSION } from './registre'
+import { porteeDuManifest, urlOptions } from './details'
 
 export interface OptionsIpcExtensions {
   chargeur: Chargeur
@@ -20,6 +21,12 @@ export interface OptionsIpcExtensions {
   choisir: (sender: WebContents, quoi: 'fichier' | 'dossier') => Promise<string | undefined>
   /** L'expéditeur est-il dans une fenêtre privée ? (jamais d'installation depuis une fenêtre privée) */
   estPrivee: (sender: WebContents) => boolean
+  /** Manifest de l'extension installée (undefined si illisible). */
+  lireManifest: (e: ExtensionInstallee) => Record<string, unknown> | undefined
+  /** Ouvre une page de l'extension dans une nouvelle étoile de la fenêtre de l'expéditeur. */
+  ouvrirEtoile: (sender: WebContents, url: string) => void
+  /** Écrit `settings.sites[origine].extensions[id]`. */
+  ecrireRegleSite: (origine: string, id: string, active: boolean) => void
   /** `LYRA_TEST=1` : un chemin de fichier ou de dossier peut être passé directement en `source`. */
   modeTest: boolean
 }
@@ -27,7 +34,27 @@ export interface OptionsIpcExtensions {
 /** IPC `extensions:*` : l'expéditeur est vérifié par `handle` ; l'identifiant est validé avant tout usage. */
 export function installerExtensionsIpc(o: OptionsIpcExtensions): void {
   const { chargeur } = o
-  handle('extensions:lister', () => chargeur.lister())
+  const info = (e: ExtensionInstallee & { chargee: boolean }): InfoExtension => {
+    const manifest = o.lireManifest(e)
+    return { ...e, aOptions: !!manifest && urlOptions(e.id, manifest) !== undefined, portee: manifest ? porteeDuManifest(manifest) : { tous: false, hotes: [] } }
+  }
+  handle('extensions:lister', () => chargeur.lister().map(info))
+  handle('extensions:options', (d, e) => {
+    if (!d || typeof d.id !== 'string' || !ID_EXTENSION.test(d.id)) return false
+    const ext = chargeur.lister().find((x) => x.id === d.id)
+    const manifest = ext && o.lireManifest(ext)
+    const url = manifest ? urlOptions(d.id, manifest) : undefined
+    if (!ext || !ext.chargee || !url || o.estPrivee(e.sender)) return false
+    o.ouvrirEtoile(e.sender, url)
+    return true
+  })
+  handle('extensions:regleSite', (d) => {
+    if (!d || typeof d.id !== 'string' || !ID_EXTENSION.test(d.id) || typeof d.active !== 'boolean' || typeof d.origine !== 'string') return false
+    if (!/^https?:\/\/[a-z0-9.-]+(:\d{1,5})?$/i.test(d.origine) || d.origine.length > 300) return false
+    if (!chargeur.lister().some((x) => x.id === d.id)) return false
+    o.ecrireRegleSite(d.origine, d.id, d.active)
+    return true
+  })
   handle('extensions:activer', async (d) => {
     if (!d || typeof d.id !== 'string' || !ID_EXTENSION.test(d.id) || typeof d.active !== 'boolean') return false
     return chargeur.activer(d.id, d.active)

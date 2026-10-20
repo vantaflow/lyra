@@ -175,6 +175,25 @@ export interface RegleSite {
   zoom?: number
   /** true : les notifications et popups de ce site passent même en mode Ne pas déranger. Absent : retenues. */
   exceptionDnd?: boolean
+  /** Règle par site des extensions (`false` : l'extension ne doit pas agir sur ce site). Absent ou `true` : elle agit. */
+  extensions?: Record<string, boolean>
+}
+
+/** Sites sur lesquels agit une extension, d'après son manifest. */
+export interface PorteeExtension {
+  /** `<all_urls>` ou équivalent. */
+  tous: boolean
+  /** Hôtes visés quand `tous` est faux (« youtube.com »). */
+  hotes: string[]
+}
+
+/** Entrée du registre avec ce que la page des extensions affiche. */
+export interface InfoExtension extends ExtensionInstallee {
+  /** Chargée dans la session (une extension active qui ne se charge pas est « Incompatible »). */
+  chargee: boolean
+  /** L'extension a une page d'options. */
+  aOptions: boolean
+  portee: PorteeExtension
 }
 
 export interface HistoryEntry {

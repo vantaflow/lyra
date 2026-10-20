@@ -47,7 +47,9 @@ definirFournisseurLangue(() => app.getLocale())
 app.setPath('userData', paths.userData())
 
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'lyra', privileges: { standard: true, secure: true, supportFetchAPI: true, codeCache: true } }
+  { scheme: 'lyra', privileges: { standard: true, secure: true, supportFetchAPI: true, codeCache: true } },
+  // Icônes d'action des extensions (<browser-action-list>) ; electron-chrome-extensions l'enregistre aussi, mais un second appel remplace le premier.
+  { scheme: 'crx', privileges: { bypassCSP: true } }
 ])
 
 let reglagesCourants: () => Settings = () => {
@@ -395,6 +397,7 @@ void app.whenReady().then(async () => {
   handle('downloads:reveal', ({ id }) => telechargements.afficherDansDossier(id))
   handle('downloads:clear', () => telechargements.effacerListe())
   handle('downloads:panel', (_d, e) => ongletsDe(e.sender).ouvrirOverlay('downloads'))
+  handle('extensions:panel', (_d, e) => ongletsDe(e.sender).ouvrirOverlay('extensions'))
   handle('layout:get', (_d, event) => {
     const f = manager.deWebContents(event.sender) ?? manager.premiere()
     if (!f) throw new Error('aucune fenêtre')
@@ -524,6 +527,7 @@ void app.whenReady().then(async () => {
   const sessionLyra = session.fromPartition('persist:lyra')
   extensionsLyra = creerExtensions({
     session: sessionLyra,
+    sessionUI: session.defaultSession,
     tabs: {
       ouvrir: (url, o) => {
         // Les extensions n'ouvrent que des pages web ou leurs propres pages (options, popups) : ni lyra:// ni file://.
@@ -631,12 +635,18 @@ void app.whenReady().then(async () => {
       const f = manager.deWebContents(wc)
       return f !== undefined && privees.has(f.id)
     },
+    lireManifest: (e) => lireJson(join(baseExtensions, e.dossier, 'manifest.json')),
+    ouvrirEtoile: (wc, url) => ongletsDe(wc).ouvrir(url),
+    ecrireRegleSite: (origine, id, active) => void reglages.setSettings({ sites: { [origine]: { extensions: { [id]: active } } } }),
     choisir: async (wc, quoi) => {
+      // Sous LYRA_TEST, pas de dialogue natif : le test fournit le chemin.
+      if (process.env.LYRA_TEST === '1' && process.env.LYRA_CHOIX_EXTENSION) return process.env.LYRA_CHOIX_EXTENSION
       const f = manager.deWebContents(wc)
+      // macOS accepte un fichier ou un dossier dans le même dialogue ; ailleurs, deux dialogues distincts.
       const options: Electron.OpenDialogOptions =
         quoi === 'dossier'
           ? { title: "Choisir le dossier de l'extension", properties: ['openDirectory'] }
-          : { title: "Choisir une extension (.crx, .zip ou .xpi)", properties: ['openFile'], filters: [{ name: 'Extensions', extensions: ['crx', 'zip', 'xpi'] }] }
+          : { title: "Choisir une extension (.crx, .zip, .xpi ou dossier)", properties: process.platform === 'darwin' ? ['openFile', 'openDirectory'] : ['openFile'], filters: [{ name: 'Extensions', extensions: ['crx', 'zip', 'xpi'] }] }
       const r = f ? await dialog.showOpenDialog(f.win, options) : await dialog.showOpenDialog(options)
       return r.canceled ? undefined : r.filePaths[0]
     }
@@ -726,7 +736,7 @@ void app.whenReady().then(async () => {
     }
     m.ancrerMenu(ancre)
   })
-  const ACTIONS: ActionMenu[] = ['nouvelle-etoile', 'nouvelle-fenetre', 'fenetre-privee', 'favori', 'recherche', 'imprimer', 'devtools', 'historique', 'reglages']
+  const ACTIONS: ActionMenu[] = ['nouvelle-etoile', 'nouvelle-fenetre', 'fenetre-privee', 'favori', 'recherche', 'imprimer', 'devtools', 'historique', 'extensions', 'reglages']
   handle('menu:action', ({ action }, e) => {
     if (!ACTIONS.includes(action)) return
     const m = ongletsDe(e.sender)
@@ -739,6 +749,7 @@ void app.whenReady().then(async () => {
     else if (action === 'imprimer') m.imprimer()
     else if (action === 'devtools') m.outilsDeveloppement()
     else if (action === 'historique') m.ouvrir('lyra://history')
+    else if (action === 'extensions') m.ouvrir('lyra://extensions')
     else m.ouvrir('lyra://settings')
   })
   installerPalette({ ongletsDe, historique: hist, favoris, reglages: () => reglages.getSettings(), creerFenetre,
