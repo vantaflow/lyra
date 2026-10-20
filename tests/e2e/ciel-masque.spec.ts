@@ -135,3 +135,55 @@ test('CmdOrCtrl+'+String.fromCharCode(92)+' (menu) : épinglé, masqué, révél
     await app.close()
   }
 })
+
+/** Début d'un glisser de l'en-tête du ciel révélé jusqu'au point (x, y), sans relâcher. */
+const commencerGlisser = (f: Page, x: number, y: number): Promise<void> =>
+  f.evaluate(
+    ([x1, y1]) => {
+      const cible = document.querySelector('.marque-lyra')!
+      const r = cible.getBoundingClientRect()
+      const ev = (type: string, cx: number, cy: number): PointerEvent =>
+        new PointerEvent(type, { bubbles: true, cancelable: true, button: 0, pointerId: 1, clientX: cx, clientY: cy })
+      cible.dispatchEvent(ev('pointerdown', r.x + 4, r.y + 4))
+      window.dispatchEvent(ev('pointermove', r.x + 30, r.y + 30))
+      window.dispatchEvent(ev('pointermove', x1, y1))
+    },
+    [x, y]
+  )
+
+test('ciel révélé : on vise à partir du ciel affiché (pas du rail de 14 px) ; Échap pendant le glisser rétablit la page', async () => {
+  test.setTimeout(60_000)
+  const { app, fenetre } = await lancerLyra()
+  try {
+    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { ciel: { masque: true } } as never))
+    await expect(fenetre.locator('.rail')).toBeVisible()
+    const reveler = async (): Promise<void> => {
+      await fenetre.evaluate(() => window.lyra.invoke('ciel:reveler', { actif: true }))
+      await expect(fenetre.locator('.ciel-revele')).toBeVisible()
+    }
+    await reveler()
+    // (200, 5) : sur le ciel révélé (272 px) mais hors du rail (14 px) ; mesuré depuis le rail il viserait le haut
+    // (coin supérieur gauche, plus proche du haut). La position ne change pas, pas de repère.
+    await commencerGlisser(fenetre, 200, 5)
+    await fenetre.waitForTimeout(200)
+    expect((await layout(fenetre)).glisse).toBe(false)
+    await expect(fenetre.locator('.cible-ciel')).toHaveCount(0)
+    await fenetre.evaluate(() => window.dispatchEvent(new PointerEvent('pointerup', { clientX: 200, clientY: 5, pointerId: 1 })))
+    expect((await layout(fenetre)).ciel.position).toBe('gauche')
+
+    // Glisser vers l'autre bord : repère, page retirée ; Échap annule et rétablit la page, le ciel reste replié à gauche.
+    await commencerGlisser(fenetre, 1200, 400)
+    await expect.poll(async () => (await layout(fenetre)).glisse).toBe(true)
+    await expect(fenetre.locator('.cible-ciel.cible-droite')).toHaveCount(1)
+    await fenetre.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })))
+    await expect.poll(async () => (await layout(fenetre)).glisse).toBe(false)
+    await expect(fenetre.locator('.cible-ciel')).toHaveCount(0)
+    await expect.poll(async () => (await layout(fenetre)).revele).toBe(false)
+    const l = await layout(fenetre)
+    expect(l.ciel).toMatchObject({ position: 'gauche', masque: true })
+    expect(l.bounds.page.x).toBe(14)
+    expect(l.ordre).toEqual(['chrome', 'page', 'overlay'])
+  } finally {
+    await app.close()
+  }
+})
