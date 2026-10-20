@@ -14,13 +14,14 @@ import { raccourciPage } from './raccourcis'
 import { estVraiePopup } from './popup'
 import { arreter as arreterRechercheWc, rechercher as rechercherWc } from './find'
 import { attacherComportements } from './comportements'
+import { enTest } from '../modeTest'
 import type { CrochetsPasserelles } from '../passerelles/Passerelles'
 import type { Constellation, SkyState } from '../../shared/types'
 import type { AncreMenu, CanalEvenement, DemandePermission, EtatEtoile, Evenements, RouteOverlay, SkyChange } from '../../shared/ipc'
 
 const URL_NEWTAB = 'lyra://newtab'
 const SCHEMAS_OUVRABLES = /^(https?|lyra|file):/i
-const EN_TEST = process.env.LYRA_TEST === '1'
+const EN_TEST = enTest()
 
 /** Un site ne peut faire ouvrir ni page Lyra ni fichier local (file:// n'existe que pour les e2e). */
 const interditAuxSites = (url: string): boolean => /^lyra:/i.test(url) || (!EN_TEST && /^file:/i.test(url))
@@ -31,7 +32,7 @@ interface Extras {
 }
 
 /** Drapeau transmis aux preloads web : la sonde window.__lyraShields n'existe qu'en test. */
-const ARGS_TEST = process.env.LYRA_TEST === '1' ? ['--lyra-test'] : []
+const ARGS_TEST = enTest() ? ['--lyra-test'] : []
 
 /** Rappels vers l'historique ; absents pour une fenêtre privée. */
 export interface RappelsHistorique {

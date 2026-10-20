@@ -17,6 +17,7 @@ import { Downloads } from './downloads/Downloads'
 import { installerReglagesIpc } from './settings/ipc'
 import { installerImportIpc } from './import/ipc'
 import { installerExportIpc } from './export/ipc'
+import { enTest } from './modeTest'
 import { SauvegardeAuto } from './export/sauvegardeAuto'
 import { coffreDeTest, coffreSysteme } from './export/coffre'
 import { cookiesDeSession, PARTITION_COOKIES } from './export/cookies'
@@ -97,7 +98,7 @@ function focaliserNotification(fenetre: number, n: NotificationRetenue): void {
  * dure des heures) ; la livraison par le main y résiste, et le clic retrouve l'étoile d'origine.
  */
 function livrerNotifications(fenetre: number, notifications: NotificationRetenue[]): void {
-  if (process.env.LYRA_TEST === '1') {
+  if (enTest()) {
     for (const n of notifications) livraisonsTest.push({ titre: n.titre, corps: n.corps, origine: n.origine, etoileId: n.etoileId })
     return
   }
@@ -347,7 +348,7 @@ void app.whenReady().then(async () => {
     if (attentes.repondre(d.id, e.sender.id, reponse)) ongletsDe(e.sender).fermerOverlay()
   })
   // file:// n'est enregistré que sous LYRA_TEST=1 : les e2e naviguent sur une fixture locale.
-  historique = new History(join(paths.userData(), 'historique.jsonl'), { enregistrerFichiers: process.env.LYRA_TEST === '1' })
+  historique = new History(join(paths.userData(), 'historique.jsonl'), { enregistrerFichiers: enTest() })
   const hist = historique
   const favoris = new Bookmarks(join(paths.userData(), 'favoris.json'))
   favoris.onChange(() => {
@@ -518,6 +519,7 @@ void app.whenReady().then(async () => {
       historique: hist,
       ciel: cibleCiel(m),
       nouvelleFenetre: () => cibleCiel(nouvelleFenetreNormale()),
+      etoilesFichiers: enTest(),
       reglages: { get: () => reglages.getSettings(), set: (patch) => reglages.setSettings(patch) }
     }
   }
@@ -534,10 +536,10 @@ void app.whenReady().then(async () => {
   })
   const sauvegardeAuto = new SauvegardeAuto({
     fichierConfig: join(paths.userData(), 'sauvegarde-auto.json'),
-    coffre: process.env.LYRA_TEST === '1' && !app.isPackaged ? coffreDeTest : coffreSysteme(),
+    coffre: enTest() ? coffreDeTest : coffreSysteme(),
     horloge: { maintenant: () => Date.now(), planifier: (fn, ms) => { const t = setTimeout(fn, ms); t.unref(); return () => clearTimeout(t) } },
     sources: () => ({ version: app.getVersion(), reglages: reglages.getSettings(), favoris: favoris.lister(), ciels: cielsNormaux(), visites: () => hist.visites() }),
-    delaiDemarrage: process.env.LYRA_TEST === '1' ? 500 : undefined
+    delaiDemarrage: enTest() ? 500 : undefined
   })
   installerExportIpc({ estPrivee, operations: operationsPour, cibles: ciblesImport, sauvegarde: sauvegardeAuto })
   sauvegardeAuto.demarrer()
@@ -560,7 +562,7 @@ void app.whenReady().then(async () => {
   installerPasserellesIpc(pass, estPrivee)
   // Le PAC initial est en place avant toute fenêtre (une étoile restaurée ne part pas en direct).
   await pass.demarrer()
-  if (process.env.LYRA_TEST === '1') {
+  if (enTest()) {
     handle('test:navigate', async (url) => {
       const m = ongletsCourants()
       const id = m?.idActif()

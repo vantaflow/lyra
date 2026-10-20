@@ -5,7 +5,7 @@ import { EventEmitter } from 'node:events'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { creerProcessus } from './processus'
+import { creerProcessus, envLecteur } from './processus'
 import type { Enfant } from './processus'
 import type { MessageDuLecteur, MessageVersLecteur } from './protocole'
 import type { ProfilDetecte, Visite } from './types'
@@ -213,5 +213,15 @@ describe('worker.ts', () => {
   it('n’importe pas Electron', () => {
     const source = readFileSync(fileURLToPath(new URL('./worker.ts', import.meta.url)), 'utf8')
     expect(source).not.toMatch(/from ['"]electron['"]|require\(['"]electron['"]\)|import\(['"]electron['"]\)/)
+  })
+})
+
+describe('envLecteur', () => {
+  const env = { LYRA_TEST: '1', LYRA_IMPORT_RACINE: '/tmp/x', PATH: '/usr/bin' }
+  it('application empaquetée : ni LYRA_TEST ni LYRA_IMPORT_RACINE', () => {
+    expect(envLecteur(env, true)).toEqual({ PATH: '/usr/bin' })
+  })
+  it('non empaquetée : environnement inchangé (e2e)', () => {
+    expect(envLecteur(env, false)).toEqual(env)
   })
 })

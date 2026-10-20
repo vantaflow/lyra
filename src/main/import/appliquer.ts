@@ -72,6 +72,8 @@ export interface CiblesImport {
   /** Ouvre une fenêtre Lyra normale (option `nouvelle-par-fenetre`) ; absent : tout va dans `ciel`. */
   nouvelleFenetre?(): CibleCiel
   reglages: CibleReglages
+  /** Mode test seulement (`enTest()`, fourni par le main) : les étoiles `file:` sont acceptées. */
+  etoilesFichiers?: boolean
 }
 
 export interface EntreeImport {
@@ -106,8 +108,8 @@ const vide = (etat: ElementResultat['etat']): ElementResultat => ({ etat, ajoute
 
 /** Schémas qu'un favori peut garder : http(s) et ftp ; jamais lyra:, file:, javascript:, data:, about:. */
 const FAVORI_OUVRABLE = /^(https?|ftp):/i
-/** Étoiles : comme `SCHEMAS_OUVRABLES` / `interditAuxSites` de TabManager (file: seulement sous LYRA_TEST). */
-const etoileOuvrable = (url: string): boolean => /^https?:/i.test(url) || (process.env.LYRA_TEST === '1' && /^file:/i.test(url))
+/** Étoiles : comme `SCHEMAS_OUVRABLES` / `interditAuxSites` de TabManager (file: seulement en mode test, drapeau fourni par l'appelant). */
+const etoileOuvrable = (url: string, fichiersLocaux: boolean): boolean => /^https?:/i.test(url) || (fichiersLocaux && /^file:/i.test(url))
 
 const raisonDe = (e: unknown): string => (e as { raison?: unknown })?.raison?.toString() ?? (e instanceof Error ? e.message : String(e))
 
@@ -403,7 +405,7 @@ async function appliquerOnglets(o: OngletsImportes, cibles: CiblesImport, option
       const aCreer = []
       const urls = new Set<string>()
       for (const t of fenetre.onglets) {
-        if (!etoileOuvrable(t.url)) res.ignores++
+        if (!etoileOuvrable(t.url, cibles.etoilesFichiers === true)) res.ignores++
         else if (urls.has(t.url)) res.ignores++
         else {
           urls.add(t.url)

@@ -191,11 +191,23 @@ export function creerProcessus(fork: Fork): Processus {
   }
 }
 
+/**
+ * Environnement du lecteur : le lecteur n'a pas `app` pour savoir s'il est empaqueté, donc, dans l'application empaquetée,
+ * il ne reçoit ni `LYRA_TEST` ni `LYRA_IMPORT_RACINE` (sinon une variable du poste pourrait rediriger la lecture).
+ */
+export function envLecteur(env: NodeJS.ProcessEnv, empaquetee: boolean): NodeJS.ProcessEnv {
+  if (!empaquetee) return env
+  const { LYRA_TEST: _t, LYRA_IMPORT_RACINE: _r, ...reste } = env
+  void _t
+  void _r
+  return reste
+}
+
 /** Lance `import-worker.js` (construit à côté de `index.js`) dans un `utilityProcess`. */
 export function forkerLecteur(): Enfant {
   // `require` paresseux : ce module reste chargeable sans Electron (tests).
-  const { utilityProcess } = require('electron') as typeof import('electron')
-  return utilityProcess.fork(join(__dirname, 'import-worker.js'), [], { serviceName: 'lyra-import', stdio: 'ignore' }) as unknown as Enfant
+  const { utilityProcess, app } = require('electron') as typeof import('electron')
+  return utilityProcess.fork(join(__dirname, 'import-worker.js'), [], { serviceName: 'lyra-import', stdio: 'ignore', env: envLecteur(process.env, app.isPackaged) }) as unknown as Enfant
 }
 
 /** Instance utilisée par le main (sous-tâche 3.5). */

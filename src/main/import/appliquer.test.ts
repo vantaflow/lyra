@@ -386,6 +386,16 @@ describe('onglets et groupes', () => {
     expect(f.sauvegardes).toBe(2)
   })
 
+  it('étoiles file: refusées sauf si la cible l’autorise (mode test fourni par le main)', async () => {
+    const onglets = { onglets: { fenetres: [{ onglets: [{ url: 'file:///tmp/a.html', titre: 'A' }, { url: 'https://ok.example/', titre: 'B' }], groupes: [] }] } }
+    const f = faux()
+    await appliquer(entree(onglets), f.cibles, OPTIONS)
+    expect(f.etoiles.map((e) => e.url)).toEqual(['https://ok.example/'])
+    const g = faux()
+    await appliquer(entree(onglets), { ...g.cibles, etoilesFichiers: true }, OPTIONS)
+    expect(g.etoiles.map((e) => e.url)).toEqual(['file:///tmp/a.html', 'https://ok.example/'])
+  })
+
   it('ouvrirMaintenant : seules les 10 premières sont réveillées', async () => {
     const f = faux()
     const onglets = Array.from({ length: 25 }, (_, i) => ({ url: `https://s.example/${i}`, titre: `S${i}` }))

@@ -1,6 +1,7 @@
 /** Câblage IPC de la palette côté main (dépend d'Electron). */
 import type { WebContents } from 'electron'
 import { handle } from '../ipc'
+import { enTest } from '../modeTest'
 import type { TabManager } from '../tabs/TabManager'
 import type { HistoryEntry, Settings, Suggestion } from '../../shared/types'
 import { moteurParId, moteursDisponibles, urlDeRecherche } from './engines'
@@ -87,5 +88,5 @@ export function installerPalette(deps: DepsPalette): void {
       if (c) commande(c.id, tabs)
     }
   })
-  if (process.env.LYRA_TEST === '1') handle('test:lastNavigation', () => derniereNavigation)
+  if (enTest()) handle('test:lastNavigation', () => derniereNavigation)
 }
