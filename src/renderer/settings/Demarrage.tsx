@@ -5,11 +5,10 @@ import { useReglages } from './reglages'
 import './reseau.css'
 import './sections.css'
 
-const FENETRES = [
-  { id: 'accueil', libelle: "Page d'accueil", inactif: true },
-  { id: 'session', libelle: 'Dernière session', inactif: true },
-  { id: 'vide', libelle: 'Page vide', inactif: true }
-] as const
+const FENETRES: { id: 'vide' | 'accueil'; libelle: string }[] = [
+  { id: 'vide', libelle: 'Nouvel onglet' },
+  { id: 'accueil', libelle: "Page d'accueil" }
+]
 
 export function Demarrage() {
   const [s, regler] = useReglages()
@@ -63,9 +62,8 @@ export function Demarrage() {
             {refus}
           </p>
         )}
-        <Ligne reglage="demarrage.nouvelleFenetre" titre="Nouvelle fenêtre" aide="Bientôt : choisir ce que montre une nouvelle fenêtre">
-          {/* Aucun choix n'est mis en avant : la valeur enregistrée n'a pas encore d'effet (une nouvelle fenêtre ouvre le nouvel onglet). */}
-          <Segments<string> valeur="" options={[...FENETRES]} />
+        <Ligne reglage="demarrage.nouvelleFenetre" titre="Nouvelle fenêtre" aide="Ce que montre une nouvelle fenêtre (⌘ N). Une fenêtre privée ouvre toujours un nouvel onglet privé.">
+          <Segments valeur={s.demarrage.nouvelleFenetre} options={FENETRES} surChange={(nouvelleFenetre) => regler({ demarrage: { nouvelleFenetre } })} />
         </Ligne>
       </div>
     </>

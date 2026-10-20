@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { adresseAccueilValide, NOUVEL_ONGLET, normaliserAccueil, pageDeDemarrage, restaurerSession } from './accueil'
+import { adresseAccueilValide, NOUVEL_ONGLET, normaliserAccueil, pageDeDemarrage, restaurerSession, urlNouvelleFenetre } from './accueil'
 
 describe('pageDeDemarrage', () => {
   it("page d'accueil vide : le nouvel onglet", () => {
@@ -53,5 +53,19 @@ describe('normaliserAccueil', () => {
     for (const u of ['javascript:alert(1)', 'JAVASCRIPT:alert(1)', 'file:///etc/passwd', 'data:text/html,x', 'a b', 'exemple fr']) {
       expect(normaliserAccueil(u), u).toBeNull()
     }
+  })
+})
+
+describe('urlNouvelleFenetre', () => {
+  it("« vide » : toujours le nouvel onglet, même avec une page d'accueil", () => {
+    expect(urlNouvelleFenetre('vide', 'https://exemple.fr/')).toBe(NOUVEL_ONGLET)
+    expect(urlNouvelleFenetre('vide', '')).toBe(NOUVEL_ONGLET)
+  })
+  it("« accueil » : la page d'accueil si elle est valable", () => {
+    expect(urlNouvelleFenetre('accueil', 'https://exemple.fr/')).toBe('https://exemple.fr/')
+    expect(urlNouvelleFenetre('accueil', 'lyra://history')).toBe('lyra://history')
+  })
+  it("« accueil » : repli sur le nouvel onglet si la page est vide ou invalide", () => {
+    for (const u of ['', '   ', 'javascript:alert(1)', 'file:///etc/passwd', 'exemple.fr']) expect(urlNouvelleFenetre('accueil', u), u).toBe(NOUVEL_ONGLET)
   })
 })

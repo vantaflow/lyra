@@ -34,6 +34,11 @@ export function pageDeDemarrage(pageAccueil: string): string {
   return t !== '' && ADRESSE.test(t) ? t : NOUVEL_ONGLET
 }
 
+/** Première page d'une nouvelle fenêtre normale : « accueil » ouvre la page d'accueil (repli sur le nouvel onglet), « vide » le nouvel onglet. */
+export function urlNouvelleFenetre(choix: 'vide' | 'accueil', pageAccueil: string): string {
+  return choix === 'accueil' ? pageDeDemarrage(pageAccueil) : NOUVEL_ONGLET
+}
+
 /** Session à rouvrir au démarrage : celle qui a été sauvegardée, seulement si « restaurer » est coché. */
 export function restaurerSession<T>(restaurer: boolean, sauvegardee: T | null): T | null {
   return restaurer ? sauvegardee : null

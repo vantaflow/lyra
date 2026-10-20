@@ -109,7 +109,7 @@ export interface ReglagesD {
   raccourcis: Record<string, string>
   gestes: { defilementHorizontal: boolean; clicMolette: boolean; molettePlusCmdZoom: boolean }
   dnd: { duree: DureeDnd }
-  demarrage: { restaurer: boolean; pageAccueil: string; nouvelleFenetre: 'accueil' | 'session' | 'vide' }
+  demarrage: { restaurer: boolean; pageAccueil: string; nouvelleFenetre: 'vide' | 'accueil' }
   styles: { css: string; scripts: ScriptPerso[] }
   labo: Record<string, boolean>
 }

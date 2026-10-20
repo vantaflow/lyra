@@ -46,7 +46,7 @@ import { reglagesHorsSitesChanges } from './sites/service'
 import { resoudre } from './settings/sites'
 import { Dnd, type NotificationRetenue } from './dnd/Dnd'
 import { installerConfidentialite, type Confidentialite } from './confidentialite/installer'
-import { NOUVEL_ONGLET, pageDeDemarrage, restaurerSession } from '../shared/accueil'
+import { NOUVEL_ONGLET, pageDeDemarrage, restaurerSession, urlNouvelleFenetre } from '../shared/accueil'
 import { origineDe, type Shields } from './shields/Shields'
 import type { DureeDnd } from '../shared/ipc'
 import { creerExtensions, type Extensions } from './extensions/Extensions'
@@ -264,6 +264,12 @@ function creerFenetre(opts: { privee?: boolean; urlInitiale?: string } = {}, res
   // Une session privée est équipée (PAC compris) avant la première navigation : aucune requête ne part sans passerelle.
   else void equipement.then(() => !fenetre.win.isDestroyed() && tabs.ouvrir(opts.urlInitiale ?? NOUVEL_ONGLET)).catch(echecEquipement)
   return fenetre.win
+}
+
+/** Nouvelle fenêtre normale demandée par l'utilisateur (⌘ N, menu) : première page selon `demarrage.nouvelleFenetre`. */
+function ouvrirNouvelleFenetre(): BaseWindow {
+  const { nouvelleFenetre, pageAccueil } = reglagesCourants().demarrage
+  return creerFenetre({ urlInitiale: urlNouvelleFenetre(nouvelleFenetre, pageAccueil) })
 }
 
 /** Fermeture d'une fenêtre privée : plus rien ne subsiste de sa session. */
@@ -867,7 +873,7 @@ void app.whenReady().then(async () => {
     const m = ongletsDe(e.sender)
     m.fermerOverlay()
     if (action === 'nouvelle-etoile') m.ouvrir('lyra://newtab')
-    else if (action === 'nouvelle-fenetre') creerFenetre()
+    else if (action === 'nouvelle-fenetre') ouvrirNouvelleFenetre()
     else if (action === 'fenetre-privee') creerFenetre({ privee: true })
     else if (action === 'favori') basculerFavori(m)
     else if (action === 'recherche') m.ouvrirRecherche()
@@ -890,7 +896,7 @@ void app.whenReady().then(async () => {
     if (/^(https?|file):/i.test(url) && wc) favoris.toggle({ url, title: wc.getTitle() || url })
   }
   installerMenu(ongletsCourants, {
-    nouvelleFenetre: () => creerFenetre(),
+    nouvelleFenetre: () => ouvrirNouvelleFenetre(),
     nouvelleFenetrePrivee: () => creerFenetre({ privee: true }),
     basculerFavori,
     basculerDnd: () => {

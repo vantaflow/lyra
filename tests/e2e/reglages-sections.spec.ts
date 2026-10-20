@@ -317,3 +317,79 @@ test("Confidentialité (macOS) : fermer la dernière fenêtre efface déjà les 
     await app.close()
   }
 })
+
+const interfaces = (app: ElectronApplication): Page[] => app.windows().filter((p) => p.url().includes('ui.html') && !p.url().includes('#overlay'))
+const nombrePages = (app: ElectronApplication, debut: string): number => app.windows().filter((w) => w.url().startsWith(debut)).length
+
+test('Démarrage : « Nouvelle fenêtre » (Nouvel onglet par défaut) se règle par le contrôle segmenté', async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    expect((await reglages(fenetre)).demarrage.nouvelleFenetre).toBe('vide')
+    const r = await ouvrirReglages(app, fenetre, 'demarrage')
+    const nouvelOnglet = r.getByRole('button', { name: 'Nouvel onglet', exact: true })
+    const accueil = r.locator('[data-reglage="demarrage.nouvelleFenetre"]').getByRole('button', { name: "Page d'accueil" })
+    await expect(nouvelOnglet).toBeEnabled()
+    await expect(nouvelOnglet).toHaveAttribute('aria-pressed', 'true')
+    await expect(r.getByRole('button', { name: 'Dernière session' })).toHaveCount(0)
+    await accueil.click()
+    await expect.poll(async () => (await reglages(fenetre)).demarrage.nouvelleFenetre).toBe('accueil')
+    await expect(accueil).toHaveAttribute('aria-pressed', 'true')
+    await nouvelOnglet.click()
+    await expect.poll(async () => (await reglages(fenetre)).demarrage.nouvelleFenetre).toBe('vide')
+  } finally {
+    await app.close()
+  }
+})
+
+test("Démarrage : « Page d'accueil » → ⌘ N et le menu ouvrent cette page ; fenêtre privée inchangée ; « Nouvel onglet » → nouvel onglet", async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    await fenetre.evaluate((u) => window.lyra.invoke('settings:set', { demarrage: { pageAccueil: u, nouvelleFenetre: 'accueil' } } as never), `${BASE}/nouvelle-fenetre`)
+    await expect.poll(async () => (await reglages(fenetre)).demarrage.nouvelleFenetre).toBe('accueil')
+    const avant = nombrePages(app, 'lyra://newtab')
+    // ⌘ N (entrée de menu).
+    await menu(app, 'nouvelle-fenetre')
+    await expect.poll(() => nombrePages(app, `${BASE}/nouvelle-fenetre`)).toBe(1)
+    expect(nombrePages(app, 'lyra://newtab')).toBe(avant)
+    // Panneau de menu de la fenêtre (même effet).
+    await fenetre.evaluate(() => window.lyra.invoke('menu:action', { action: 'nouvelle-fenetre' }))
+    await expect.poll(() => nombrePages(app, `${BASE}/nouvelle-fenetre`)).toBe(2)
+    expect(nombrePages(app, 'lyra://newtab')).toBe(avant)
+    // Fenêtre privée : toujours son nouvel onglet, jamais la page d'accueil.
+    const dejaUI = interfaces(app)
+    await menu(app, 'fenetre-privee')
+    await expect.poll(() => interfaces(app).find((p) => p.url().includes('#privee') && !dejaUI.includes(p))).toBeDefined()
+    const privee = interfaces(app).find((p) => p.url().includes('#privee'))!
+    await expect
+      .poll(async () => (await privee.evaluate(() => window.lyra.invoke('sky:get'))).sky.stars.map((e) => e.url.replace(/\/$/, '')))
+      .toEqual(['lyra://newtab'])
+    expect(nombrePages(app, `${BASE}/nouvelle-fenetre`)).toBe(2)
+    // Page d'accueil vide : repli sur le nouvel onglet.
+    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { demarrage: { pageAccueil: '' } } as never))
+    const avantVide = nombrePages(app, 'lyra://newtab')
+    await menu(app, 'nouvelle-fenetre')
+    await expect.poll(() => nombrePages(app, 'lyra://newtab')).toBe(avantVide + 1)
+    // « Nouvel onglet » : la page d'accueil réglée n'est pas ouverte.
+    await fenetre.evaluate((u) => window.lyra.invoke('settings:set', { demarrage: { pageAccueil: u, nouvelleFenetre: 'vide' } } as never), `${BASE}/nouvelle-fenetre`)
+    await expect.poll(async () => (await reglages(fenetre)).demarrage.nouvelleFenetre).toBe('vide')
+    const avantNO = nombrePages(app, 'lyra://newtab')
+    await menu(app, 'nouvelle-fenetre')
+    await expect.poll(() => nombrePages(app, 'lyra://newtab')).toBe(avantNO + 1)
+    expect(nombrePages(app, `${BASE}/nouvelle-fenetre`)).toBe(2)
+  } finally {
+    await app.close()
+  }
+})
+
+test("Démarrage : un ancien settings.json (nouvelleFenetre « session ») donne « Nouvel onglet » ; « accueil » est conservé", async () => {
+  for (const [ancien, attendu] of [['session', 'vide'], ['accueil', 'accueil']] as const) {
+    const userData = mkdtempSync(join(tmpdir(), 'lyra-e2e-nf-'))
+    writeFileSync(join(userData, 'settings.json'), JSON.stringify({ version: 2, demarrage: { nouvelleFenetre: ancien } }))
+    const { app, fenetre } = await lancerLyra({ LYRA_USER_DATA: userData })
+    try {
+      expect((await reglages(fenetre)).demarrage.nouvelleFenetre).toBe(attendu)
+    } finally {
+      await app.close()
+    }
+  }
+})

@@ -92,7 +92,7 @@ export const INDEX: EntreeIndex[] = [
   ligne('nepasderanger', 'exceptions', 'Sites qui peuvent vous déranger', ['exception', 'notifications', 'fenêtres surgissantes', 'retirer']),
   ligne('demarrage', 'restaurer', 'Rouvrir les étoiles de la dernière session', ['restaurer', 'session', 'onglets', 'démarrage']),
   ligne('demarrage', 'pageAccueil', "Page d'accueil", ['démarrage', 'adresse', 'nouvel onglet', 'site de départ']),
-  ligne('demarrage', 'nouvelleFenetre', 'Nouvelle fenêtre', ['démarrage', 'fenêtre', 'session', 'vide']),
+  ligne('demarrage', 'nouvelleFenetre', 'Nouvelle fenêtre', ['démarrage', 'fenêtre', 'nouvel onglet', 'page d\'accueil', 'vide']),
   ligne('styles', 'css', 'Feuille de style globale', ['css', 'style', 'tous les sites', 'personnalisé']),
   ligne('styles', 'scripts', 'Scripts globaux', ['javascript', 'script', 'tous les sites', 'personnalisé']),
   ligne('sauvegarde', 'exporter', 'Exporter et importer vos données', ['sauvegarde', 'réglages', 'favoris', 'copie']),

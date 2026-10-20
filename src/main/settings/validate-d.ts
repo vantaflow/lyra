@@ -125,6 +125,9 @@ export function champsRegleSiteD(regle: Obj): Obj {
   return champs
 }
 
+/** 'accueil' ou 'vide' ; toute autre chaîne (dont l'ancien 'session') retombe sur 'vide', le reste est refusé. */
+const nouvelleFenetre = (v: unknown): 'vide' | 'accueil' | undefined => (typeof v === 'string' ? (v === 'accueil' ? 'accueil' : 'vide') : undefined)
+
 /** Blocs de réglages du jalon D, à étaler dans le schéma principal. */
 export const SCHEMA_D: Schema = {
   apparence: {
@@ -161,7 +164,7 @@ export const SCHEMA_D: Schema = {
   demarrage: {
     restaurer: booleen,
     pageAccueil: (v) => (typeof v === 'string' && v.length <= 2048 && adresseAccueilValide(v) ? v : undefined),
-    nouvelleFenetre: enumeration('accueil', 'session', 'vide')
+    nouvelleFenetre: nouvelleFenetre
   },
   styles: { css: code, scripts: scriptsPerso },
   labo
