@@ -58,7 +58,7 @@ export interface FichiersCopies {
   journal?: string
 }
 
-const mo = (octets: number): number => Math.max(1, Math.round(octets / (1024 * 1024)))
+const mo = (octets: number): number => Math.max(1, Math.ceil(octets / (1024 * 1024)))
 
 /** Message pour l'utilisateur correspondant à une erreur du système de fichiers. */
 export function raisonErreurFichier(err: unknown, nomFichier: string, navigateur = 'le navigateur', plateforme: NodeJS.Platform = process.platform): string {

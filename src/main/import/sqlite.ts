@@ -100,7 +100,7 @@ export class BaseLue {
 }
 
 /** Échec d'allocation (WebAssembly ou tampon) : mémoire insuffisante plutôt que base « corrompue ». */
-export const estErreurMemoire = (e: unknown): boolean => e instanceof RangeError || /out of memory|allocation failed|OOM|could not allocate/i.test(e instanceof Error ? e.message : String(e))
+export const estErreurMemoire = (e: unknown): boolean => e instanceof RangeError || /out of memory|allocation failed|\bOOM\b|could not allocate/i.test(e instanceof Error ? e.message : String(e))
 
 /** `ErreurImport` lisible pour une erreur survenue pendant la lecture d'une base (`sujet` : « l'historique »). */
 export function erreurLectureBase(e: unknown, sujet: string, messageCorrompu: string): ErreurImport {

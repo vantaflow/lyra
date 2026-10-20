@@ -124,6 +124,14 @@ describe('taille maximale', () => {
     expect(readdirSync(tmp)).toEqual(['Bookmarks']) // le dossier temporaire a disparu, aucune copie n'a été faite
   })
 
+  it('la taille affichée est arrondie vers le haut : 2,1 Mio ne s’affiche pas « 2 Mo, maximum 2 Mo »', async () => {
+    const source = join(tmp, 'Bookmarks')
+    writeFileSync(source, Buffer.alloc(2 * 1024 * 1024 + 100 * 1024))
+    await expect(avecCopieur((c) => c.lire(source), { dossierTemp: tmp, tailleMaxFichier: 2 * 1024 * 1024 })).rejects.toMatchObject({
+      raison: expect.stringMatching(/\(3 Mo, maximum 2 Mo\)/)
+    })
+  })
+
   it('base : limite propre aux bases, sujet personnalisé ; le -wal est contrôlé aussi', async () => {
     const source = join(tmp, 'History')
     writeFileSync(source, Buffer.alloc(1024))

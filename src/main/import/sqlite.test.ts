@@ -3,7 +3,7 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { appliquerWal, chargerSqlJs, ouvrirBase, ouvrirBaseCopiee } from './sqlite'
+import { appliquerWal, estErreurMemoire, chargerSqlJs, ouvrirBase, ouvrirBaseCopiee } from './sqlite'
 import { ErreurImport } from './types'
 import { lireProfilChromium } from './chromium'
 
@@ -28,6 +28,15 @@ async function baseAvecLignes(n: number): Promise<Uint8Array> {
   db.close()
   return octets
 }
+
+describe('estErreurMemoire', () => {
+  it('« OOM » seul est une erreur de mémoire, pas le mot « zoom »', () => {
+    expect(estErreurMemoire(new Error('SQLite: OOM'))).toBe(true)
+    expect(estErreurMemoire(new Error('out of memory'))).toBe(true)
+    expect(estErreurMemoire(new Error('could not allocate 12 bytes'))).toBe(true)
+    expect(estErreurMemoire(new Error('réglage de zoom invalide'))).toBe(false)
+  })
+})
 
 describe('sql.js', () => {
   it('le .wasm est trouvé à côté de sql-wasm.js (même résolution en développement, sous vitest et dans l’asar)', async () => {

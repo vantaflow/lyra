@@ -2,7 +2,7 @@
  * Système de fichiers simulé : disque plein (ENOSPC) et suppression refusée (EBUSY) du dossier temporaire.
  * La suppression qui échoue ne doit jamais remplacer le résultat de la lecture.
  */
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
+import { existsSync, lutimesSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -127,6 +127,19 @@ describe('balayerOrphelins', () => {
     expect(await balayerOrphelins({ dossierTemp: tmp, ageMaxMs: 60_000 })).toBe(1)
     expect(existsSync(chemin)).toBe(false)
     expect(await balayerOrphelins({ dossierTemp: join(tmp, 'absent') })).toBe(0)
+  })
+
+  it('une jonction NTFS (ou lien) nommée lyra-import-* n’est jamais parcourue : la cible survit', async () => {
+    const cible = join(tmp, 'cible-sensible')
+    mkdirSync(cible)
+    writeFileSync(join(cible, 'precieux.txt'), 'à ne pas supprimer')
+    const lien = join(tmp, 'lyra-import-Jn7c10')
+    symlinkSync(cible, lien, 'junction') // ignoré hors Windows : lien symbolique ordinaire
+    const date = new Date(Date.now() - 2 * 3_600_000)
+    lutimesSync(lien, date, date)
+    const { balayerOrphelins } = await import('./copie')
+    await balayerOrphelins({ dossierTemp: tmp })
+    expect(existsSync(join(cible, 'precieux.txt'))).toBe(true)
   })
 
   it('une suppression refusée n’interrompt pas le balayage et n’est pas comptée', async () => {
