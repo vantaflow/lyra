@@ -24,6 +24,8 @@ export interface LyraWindow {
   estPleinEcran(): boolean
   /** Mode Ne pas déranger : page plein cadre, chrome réduit au rappel (ou au croissant) ; null pour en sortir. */
   setDnd(dnd: DndLayout | null): void
+  /** Largeur mesurée de la pastille du rappel : la zone de la vue chrome la suit. */
+  setDndLargeur(largeur: number): void
   /** Mode Ne pas déranger actif dans cette fenêtre. */
   estDnd(): boolean
   montrerOverlay(route: RouteOverlay): void
@@ -169,6 +171,8 @@ export class WindowManager {
       relayout,
       estRevele,
       reveler(b) {
+        // Ignoré pendant Ne pas déranger ou le plein écran : aucun état latent à la sortie du mode.
+        if (b && (dnd !== null || pleinEcran)) return false
         revele = b
         relayout()
         return estRevele()
@@ -199,7 +203,8 @@ export class WindowManager {
       estPleinEcran: () => pleinEcran,
       estDnd: () => dnd !== null,
       setDnd(d) {
-        dnd = d
+        // La largeur mesurée du rappel survit aux changements d'état (compteur, délai) tant que le mode dure.
+        dnd = d ? { ...d, largeur: d.largeur ?? dnd?.largeur } : null
         if (d) {
           // Plus de ciel révélé ni de glisser en cours.
           revele = false
@@ -207,6 +212,11 @@ export class WindowManager {
           envoyer(chrome.webContents, 'ciel:revele', false)
         }
         ordonner()
+        relayout()
+      },
+      setDndLargeur(largeur) {
+        if (!dnd || !Number.isFinite(largeur) || largeur <= 0 || dnd.largeur === largeur) return
+        dnd = { ...dnd, largeur }
         relayout()
       },
       surOverlay(cb) {
@@ -230,6 +240,8 @@ export class WindowManager {
     chrome.webContents.on('render-process-gone', finGlisse)
     chrome.webContents.on('did-start-loading', finGlisse)
     win.on('closed', () => {
+      // Fermée pendant le glissement de la poignée : l'aperçu de largeur ne reste pas sur les autres fenêtres.
+      finGlisse()
       this.fenetres.delete(lw.id)
       for (const v of [chrome, overlay, pageView]) {
         if (v && !v.webContents.isDestroyed()) v.webContents.close()

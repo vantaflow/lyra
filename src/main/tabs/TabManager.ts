@@ -10,6 +10,7 @@ import { origineDe } from '../shields/Shields'
 import { estZoomNormal, palierSuivant } from './zoom'
 import { optionsFenetreCachee, prefsPageCachee, testCache } from '../modeTest'
 import { estUrlErreur, urlOriginale } from './erreurs'
+import { raccourciPage } from './raccourcis'
 import { estVraiePopup } from './popup'
 import { arreter as arreterRechercheWc, rechercher as rechercherWc } from './find'
 import { attacherComportements } from './comportements'
@@ -575,22 +576,15 @@ export class TabManager {
       if (input.type === 'keyDown' && input.key === 'Escape' && !input.isAutoRepeat && !input.control && !input.meta && !input.alt && !input.shift && !this.fenetre.estPleinEcran()) {
         this.options.surEchap?.()
       }
-      if (input.type !== 'keyDown' || !(input.control || input.meta) || input.alt) return
-      const k = input.key.toLowerCase()
       // La page ne doit pas avaler ces raccourcis : preventDefault coupe aussi le menu, on agit donc ici.
-      if (k === 'l' && !input.shift) {
-        _e.preventDefault()
-        this.ouvrirPalette()
-      } else if (k === 't' && !input.shift) {
-        _e.preventDefault()
-        this.ouvrir(URL_NEWTAB)
-      } else if (k === 'f' && !input.shift) {
-        _e.preventDefault()
-        this.ouvrirRecherche()
-      } else if (k === 'd' && input.shift) {
-        _e.preventDefault()
-        this.options.basculerDnd?.()
-      }
+      const raccourci = raccourciPage(input)
+      if (!raccourci) return
+      _e.preventDefault()
+      if (!raccourci.agir) return
+      if (raccourci.nom === 'palette') this.ouvrirPalette()
+      else if (raccourci.nom === 'nouvelle-etoile') this.ouvrir(URL_NEWTAB)
+      else if (raccourci.nom === 'recherche') this.ouvrirRecherche()
+      else this.options.basculerDnd?.()
     })
     attacherComportements(wc, {
       id,

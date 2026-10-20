@@ -1,4 +1,4 @@
-import { app, BaseWindow, dialog, ipcMain, Notification as NotificationSysteme, webContents, type WebContents, type WebFrameMain, protocol, session, type Session } from 'electron'
+import { app, BaseWindow, dialog, ipcMain, powerMonitor, Notification as NotificationSysteme, webContents, type WebContents, type WebFrameMain, protocol, session, type Session } from 'electron'
 import { readFileSync } from 'node:fs'
 import { WindowManager } from './window/WindowManager'
 import type { Settings } from '../shared/types'
@@ -226,9 +226,17 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
     sauverSession()
     if (sesPrivee) void jeterSessionPrivee(sesPrivee)
   })
-  if (restauration) tabs.restaurer(restauration)
+  // Équipement en échec : on journalise et on ferme la fenêtre privée (fail-closed), jamais de fenêtre vide ni de rejet non géré.
+  const echecEquipement = (err: unknown): void => {
+    console.error('[privee] équipement de la session privée impossible, fenêtre fermée', err)
+    if (!fenetre.win.isDestroyed()) fenetre.win.close()
+  }
+  if (restauration) {
+    tabs.restaurer(restauration)
+    void equipement.catch(echecEquipement)
+  }
   // Une session privée est équipée (PAC compris) avant la première navigation : aucune requête ne part sans passerelle.
-  else void equipement.then(() => !fenetre.win.isDestroyed() && tabs.ouvrir('lyra://newtab'))
+  else void equipement.then(() => !fenetre.win.isDestroyed() && tabs.ouvrir('lyra://newtab')).catch(echecEquipement)
   return fenetre.win
 }
 
@@ -314,6 +322,8 @@ function hoteLisible(url: string): string {
 }
 
 void app.whenReady().then(async () => {
+  // Après une veille du système, les minuteries de Ne pas déranger sont recalculées sur l'horloge murale.
+  powerMonitor.on('resume', () => dnd.surReprise())
   const ua = nettoyerUserAgent(app.userAgentFallback)
   app.userAgentFallback = ua
   session.defaultSession.setUserAgent(ua)
@@ -422,15 +432,27 @@ void app.whenReady().then(async () => {
     const id = fenetreChrome(e)
     if (id !== undefined) dnd.sortir(id)
   })
+  handle('dnd:taille', (d, e) => {
+    const f = manager.deWebContents(e.sender)
+    if (f && f.chrome.webContents === e.sender && typeof d?.largeur === 'number') f.setDndLargeur(Math.min(4000, d.largeur))
+  })
   handle('dnd:rappel', (_d, e) => {
     const id = fenetreChrome(e)
     if (id !== undefined) dnd.montrerRappel(id)
   })
   // Surcharge de window.Notification (preload page) : appels synchrones, l'origine vient du cadre expéditeur.
   const decisionNotifications = (origine: string): string | undefined => reglages.getSettings().sites[origine]?.permissions?.notifications
+  // Iframe about:blank / srcdoc : elle hérite de l'origine du cadre qui l'a créée (le parent le plus proche qui a une adresse).
+  const urlEffective = (cadre?: WebFrameMain | null): string => {
+    let c = cadre
+    while (c && /^about:/i.test(c.url)) c = c.parent
+    return c?.url ?? ''
+  }
   const contexteNotification = (e: { sender: WebContents; senderFrame?: WebFrameMain | null }): { m: TabManager; origine: string } | undefined => {
+    // Fenêtre privée : aucune permission du profil normal n'est lue (la page suit le chemin natif, refusé pendant le mode).
+    if (estPrivee(e.sender)) return undefined
     const m = ongletsPossedant(e.sender)
-    const origine = origineDe(e.senderFrame?.url ?? '')
+    const origine = origineDe(urlEffective(e.senderFrame))
     return m && origine && dnd.retient(m.fenetreId, origine) ? { m, origine } : undefined
   }
   const court = (v: unknown, max: number): string => (typeof v === 'string' ? v.slice(0, max) : '')
@@ -473,7 +495,7 @@ void app.whenReady().then(async () => {
   ipcMain.on('dnd:fermer', (e, id: unknown) => {
     // Une page ne ferme que ses propres notifications : l'origine vient du cadre expéditeur.
     const m = ongletsPossedant(e.sender)
-    const origine = origineDe(e.senderFrame?.url ?? '')
+    const origine = origineDe(urlEffective(e.senderFrame))
     if (m && origine && typeof id === 'number' && dnd.retirerNotification(m.fenetreId, id, origine)) cadresNotifications.delete(id)
   })
   handle('settings:get', () => reglages.getSettings())
@@ -494,7 +516,7 @@ void app.whenReady().then(async () => {
     }
   })
   passerelles = pass
-  installerPasserellesIpc(pass)
+  installerPasserellesIpc(pass, estPrivee)
   // Le PAC initial est en place avant toute fenêtre (une étoile restaurée ne part pas en direct).
   await pass.demarrer()
   // Extensions : branchées et chargées avant la création de la moindre vue (donc de la première fenêtre).
@@ -669,14 +691,18 @@ void app.whenReady().then(async () => {
     exceptionsCertificat.add(hoteDe(url))
     p.m.naviguer(p.id, url)
   })
-  handle('erreur:passerelle', (_d, e) => {
+  handle('erreur:passerelle', async (_d, e) => {
     // Même garde que « continuer » : l'adresse vient de la page d'erreur expéditrice, jamais des données.
     const p = pageErreur(e.sender)
     if (!p) return {}
     // Fenêtre privée : jamais d'écriture dans les réglages.
     const r = pass.ajouterDepuisErreur(p.url, { privee: privees.has(p.m.fenetreId) })
     if (r.erreur) return { erreur: r.erreur }
-    if (r.ok) p.m.naviguer(p.id, p.url)
+    if (r.ok) {
+      // Le PAC doit être en place avant de recharger : sa mise en service ferme les connexions et interromprait la navigation.
+      await pass.pacApplique()
+      p.m.naviguer(p.id, p.url)
+    }
     return {}
   })
   handle('menu:open', (d, e) => {

@@ -54,20 +54,17 @@ Spec docs/superpowers/specs/2026-10-19-lyra-design-cycle2.md, plan docs/superpow
    - jamais écrits : historique, session, favoris (bouton désactivé), zoom, permissions et Boucliers par site ;
    - thème Aurore (ciel `#2A1540`), nouvel onglet privé avec bandeau, ⌘⇧N et menu ⋯ ;
    - e2e `fenetre-privee.spec.ts`. Mineurs reportés : voir le ledger SDD du jalon C (relecture finale).
-5. ⬜ **Restes et finition** :
-   - cycle 2 : veille du proxy système après échec, `ajouter()` qui lève le délai de grâce, IPC passerelles refusés depuis une fenêtre privée, `historique.spec.ts:33` ;
-   - Échap pendant le glisser depuis le ciel révélé ;
-   - e2e de l'invite plus strict, et `ciel:apercu` testé hors bornes ;
-   - `viser()` avec le rail de 14 px ;
-   - tests réseau instables `passerelles.spec.ts:88/131` ;
-   - Ne pas déranger :
-     - Shift+clic sur un lien classé popup (`disposition new-window` sans features) : vérifier, et en faire une fenêtre ordinaire ;
-     - garde `!input.isAutoRepeat` sur ⌘⇧D, L, T et F ;
-     - e2e du chemin clavier de ⌘⇧D ;
-     - iframes `about:blank` et `srcdoc` sans surcharge ;
-     - minuterie après une mise en veille ;
-     - zone de la vue chrome qui bloque les clics en haut à droite ;
-     - commentaire de `Dnd.retenirPopup`.
+5. ✅ **Restes et finition** (11c1e5c..e59f27b), approuvés après 1 ronde : veille du proxy réarmée, `ajouter()` lève le délai de grâce, IPC passerelles d'écriture refusés en privé (`ajouter`, `basculerSite`, `retirer`), e2e passerelles et historique rendus déterministes (PAC attendu avant de recharger), Maj+clic = étoile ordinaire, raccourcis sans répétition automatique, iframes srcdoc couvertes, minuterie recalculée après une mise en veille, vue chrome limitée au rappel (largeur mesurée, ombre du design), e2e du ciel (Échap pendant le glisser, aperçu hors bornes, visée avec le rail).
+
+**Jalon C terminé** (60487c0..12fa69e) : relecture finale de toute la branche puis une vague de corrections (12fa69e : Ne pas déranger ne lit plus les permissions du profil normal en privé, ⌘ \ sans état latent, aperçu de largeur libéré à la fermeture, ancienne largeur bornée, case « souvenir » masquée en privé, échec d'équipement privé = fenêtre fermée, PAC attendu 5 s au plus, nouvel onglet privé fermé par défaut). Vérifié : typecheck, vitest 416, Playwright 89/89 ; CI macOS et Windows (voir le dernier run de main).
+
+Reste, à reprendre plus tard :
+- téléchargements privés : aucun panneau ne les montre (pas même celui de la fenêtre privée) — liste en mémoire propre à la fenêtre avant une release ;
+- palette d'une fenêtre privée : propose l'historique et les favoris du profil normal (lecture seule) — à trancher au jalon D ;
+- exceptions de certificat globales (une exception accordée en privé vaut pour la session de l'application) ;
+- iframe `about:blank` initiale sans preload (notifications non surchargées) ;
+- ciel déjà révélé au survol au moment d'entrer en Ne pas déranger ;
+- `historique.spec.ts:33` et `passerelles.spec.ts:88/131` corrigés sans reproduction locale : à surveiller en CI.
 
 ## Jalon E — branche `jalon-e` (worktree `../lyra.worktrees/jalon-e`, plan `plans/2026-10-19-lyra-jalon-e.md`)
 

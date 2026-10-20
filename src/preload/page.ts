@@ -56,8 +56,12 @@ if (WEB) {
 }
 
 // Ne pas déranger : les notifications web passent par le main (file par fenêtre, livrées à la sortie du mode).
-// Sites web ; file:// seulement en test (les e2e naviguent sur des fixtures locales).
-if (WEB || (location.protocol === 'file:' && process.argv.includes('--lyra-test'))) {
+// Sites web ; file:// seulement en test (les e2e naviguent sur des fixtures locales). Les iframes about:blank et srcdoc
+// héritent de l'origine de leur créateur : elles reçoivent la surcharge aussi (sinon elles contourneraient le mode).
+const TEST = process.argv.includes('--lyra-test')
+const parent = location.ancestorOrigins?.[0] ?? ''
+const HERITE = location.protocol === 'about:' && window !== window.top && (/^https?:/i.test(location.origin) || /^https?:/i.test(parent) || (TEST && parent.startsWith('file:')))
+if (WEB || HERITE || (location.protocol === 'file:' && TEST)) {
   const clics: Array<(id: number) => void> = []
   ipcRenderer.on('dnd:clic', (_e, id: number) => {
     for (const cb of clics) cb(id)

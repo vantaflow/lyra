@@ -4,11 +4,11 @@
 const NEUTRES = new Set(['noopener', 'noreferrer', 'attributionsrc'])
 
 /**
- * Vraie popup : disposition « nouvelle fenêtre » (Chromium), ou features autres que `noopener` / `noreferrer` /
- * `attributionsrc` (largeur, hauteur, position…). `window.open(url, '_blank', 'noopener')` est un lien ordinaire.
+ * Vraie popup : features autres que `noopener` / `noreferrer` / `attributionsrc` (largeur, hauteur, position…).
+ * `window.open(url, '_blank', 'noopener')` est un lien ordinaire. Une disposition « nouvelle fenêtre » sans aucun
+ * feature est un Maj+clic sur un lien (un `window.open` sans features donne un onglet) : lien ordinaire, ouvert en étoile.
  */
 export function estVraiePopup(d: { disposition: string; features: string }): boolean {
-  if (d.disposition === 'new-window') return true
   return d.features
     .split(',')
     .map((f) => f.trim().split('=')[0].trim().toLowerCase())

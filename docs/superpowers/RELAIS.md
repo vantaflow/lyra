@@ -6,8 +6,8 @@ Mis à jour : 2026-10-20 (Mac). Deux sessions seulement : la session d'aide c72a
 
 | Jalon | Branche | Session | État |
 |---|---|---|---|
-| C — ciel déplaçable, Ne pas déranger, fenêtre privée | `main` | session d'aide c72a5410 (Mac) | tâches 1-4 faites et approuvées, 5 en cours |
-| E — import/export | `jalon-e` (worktree `lyra.worktrees/jalon-e`) | session d'aide c72a5410, après C | tâches 1-2 faites et approuvées, plan détaillé de la 3 prêt, 3-5 à faire |
+| C — ciel déplaçable, Ne pas déranger, fenêtre privée | `main` | session d'aide c72a5410 (Mac) | **terminé** (12fa69e), relecture finale passée ; B et D peuvent repartir de `main` |
+| E — import/export | `jalon-e` (worktree `lyra.worktrees/jalon-e`) | session d'aide c72a5410, en cours | tâches 1-2 faites et approuvées, plan détaillé de la 3 prêt, 3-5 à faire |
 | E tâche 2 — lecteurs Firefox, Safari, Orion | `jalon-e-t2` → fusionnée dans `jalon-e` | session downloads-60 | faite et approuvée (branche `jalon-e-t2` close) |
 | **B — extensions Chrome + Firefox** | **`jalon-b`** (worktree `lyra.worktrees/jalon-b`) | **session Mac projects-3c** | en cours |
 | D — réglages complets, règles par site, couleurs | `jalon-d` (plan 94be3a2) | session Mac projects-3c, après B et la fusion de C | plan prêt |

@@ -158,6 +158,14 @@ export function validerPatch(brut: unknown): DeepPartial<Settings> {
 }
 
 /** Réglages complets : défauts + champs valides du JSON brut. */
+/** Fichier relu : une ancienne largeur du ciel hors bornes ou décimale est arrondie et bornée, pas rejetée. */
+function largeurRamenee(brut: unknown): unknown {
+  if (!estObjet(brut) || !estObjet(brut.ciel)) return brut
+  const l = brut.ciel.largeur
+  if (typeof l !== 'number' || !Number.isFinite(l)) return brut
+  return { ...brut, ciel: { ...brut.ciel, largeur: Math.min(420, Math.max(200, Math.round(l))) } }
+}
+
 export function validerSettings(brut: unknown, defauts: Settings): Settings {
-  return fusion(defauts, validerPatch(brut))
+  return fusion(defauts, validerPatch(largeurRamenee(brut)))
 }

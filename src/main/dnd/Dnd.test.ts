@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DELAI_RAPPEL_MS, Dnd, PLAFOND_NOTIFICATIONS, PLAFOND_POPUPS, texteFenetres, texteNotifications, texteReste, type EtatDnd, type NotificationRetenue, type PopupRetenue } from './Dnd'
 
-function creer(exceptions: string[] = []) {
+function creer(exceptions: string[] = [], horloge?: () => number) {
   const livrees: Array<[number, NotificationRetenue[]]> = []
   const popups: Array<[number, PopupRetenue[]]> = []
   const etats: Array<[number, EtatDnd]> = []
@@ -9,12 +9,51 @@ function creer(exceptions: string[] = []) {
     exception: (o) => exceptions.includes(o),
     livrerNotifications: (f, n) => livrees.push([f, n]),
     ouvrirPopups: (f, p) => popups.push([f, p]),
-    surChangement: (f, e) => etats.push([f, e])
+    surChangement: (f, e) => etats.push([f, e]),
+    maintenant: horloge
   })
   return { dnd, livrees, popups, etats }
 }
 
 const notif = (titre: string, origine = 'https://a.fr', extra: object = {}) => ({ origine, titre, ...extra })
+
+describe('Dnd : reprise après une mise en veille', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('fin échéante pendant la veille : le mode se termine à la reprise', () => {
+    let t = 1_000_000
+    const { dnd } = creer([], () => t)
+    dnd.entrer(1, 30, t)
+    // Veille de 2 h : la minuterie du processus n'a pas compté ce temps.
+    t += 2 * 3_600_000
+    expect(dnd.actif(1)).toBe(true)
+    dnd.surReprise()
+    expect(dnd.actif(1)).toBe(false)
+  })
+
+  it('fin non échue : la minuterie est réarmée sur le temps restant', () => {
+    let t = 1_000_000
+    const { dnd } = creer([], () => t)
+    dnd.entrer(1, 30, t)
+    t += 20 * 60_000
+    dnd.surReprise()
+    expect(dnd.actif(1)).toBe(true)
+    vi.advanceTimersByTime(9 * 60_000)
+    expect(dnd.actif(1)).toBe(true)
+    vi.advanceTimersByTime(60_000)
+    expect(dnd.actif(1)).toBe(false)
+  })
+
+  it('sans minuterie (« jusqu\'à l\'arrêt ») : rien ne change', () => {
+    let t = 1_000_000
+    const { dnd } = creer([], () => t)
+    dnd.entrer(1, 'arret', t)
+    t += 10 * 3_600_000
+    dnd.surReprise()
+    expect(dnd.actif(1)).toBe(true)
+  })
+})
 
 describe('Dnd : entrée et sortie', () => {
   beforeEach(() => vi.useFakeTimers())

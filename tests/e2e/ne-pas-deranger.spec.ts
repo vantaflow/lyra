@@ -55,10 +55,36 @@ test('⌘ ⇧ D (menu) : page plein cadre, ni ciel ni capsule, rappel conforme, 
     await expect(rappel).toContainText('aucune notification retenue · encore 1 h')
     await expect(rappel.locator('kbd')).toHaveText('Échap')
     await expect(fenetre.getByRole('button', { name: 'Quitter le mode Ne pas déranger' })).toBeVisible()
+    // La vue chrome suit la pastille (ombre du design : 30 px autour, 10 px de décalage) : le reste appartient à la page.
+    const marge = async (cible: string): Promise<{ gauche: number; droite: number; bas: number; haut: number }> => {
+      const b = (await fenetre.locator(cible).boundingBox())!
+      const c = (await layout(fenetre)).bounds.chrome
+      return { gauche: b.x, droite: c.width - (b.x + b.width), bas: c.height - (b.y + b.height), haut: b.y }
+    }
+    // Largeur mesurée : attendre que la zone se soit ajustée au rappel (la valeur de repli est de 720 px).
+    await expect.poll(async () => (await marge('.dnd-rappel')).gauche).toBeLessThanOrEqual(32)
+    const mr = await marge('.dnd-rappel')
+    expect(mr.gauche).toBeGreaterThanOrEqual(29)
+    // 16 px de marge à droite (le reste de l'ombre sort de la fenêtre).
+    expect(mr.droite).toBeGreaterThanOrEqual(15)
+    expect(mr.droite).toBeLessThanOrEqual(17)
+    expect(mr.bas).toBeGreaterThanOrEqual(40)
+    expect(mr.bas).toBeLessThanOrEqual(42)
+    // Un clic juste à gauche de l'ombre du rappel visible tombe hors de la vue chrome : il atteint la page.
+    const chrome = (await layout(fenetre)).bounds.chrome
+    const gaucheRappel = chrome.x + mr.gauche
+    expect(chrome.x).toBeGreaterThanOrEqual(gaucheRappel - 32)
+    expect(gaucheRappel - 40).toBeLessThan(chrome.x)
+    // La zone suit la largeur mesurée, plus étroite que la valeur de repli (720 px), quelle que soit la police du système.
+    expect(chrome.width).toBeLessThan(720)
 
     // Le rappel s'efface au bout de quelques secondes : seul le croissant reste, la vue chrome rétrécit.
     await expect(fenetre.locator('.dnd-croissant')).toBeVisible({ timeout: 10_000 })
     await expect(rappel).toHaveCount(0)
+    const mc = await marge('.dnd-croissant')
+    expect(mc.gauche).toBeLessThanOrEqual(32)
+    expect(mc.droite).toBeLessThanOrEqual(17)
+    expect(mc.bas).toBeLessThanOrEqual(42)
     const petit = (await layout(fenetre)).bounds.chrome
     expect(petit.width).toBeLessThan(l.bounds.chrome.width)
     expect((await layout(fenetre)).bounds.page).toEqual({ x: 0, y: 0, ...t })
@@ -284,5 +310,67 @@ test("le mode n'est pas restauré au redémarrage", async () => {
     await expect(f2.locator('.ciel')).toBeVisible()
   } finally {
     await app2.close()
+  }
+})
+
+test("Maj+clic sur un lien (disposition nouvelle fenêtre sans features) : étoile ordinaire, rien n'est retenu", async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const p = await ouvrir(app, fenetre, DND)
+    const avant = await ciel(fenetre)
+    await menu(app, 'ne-pas-deranger')
+    await expect.poll(async () => (await etat(fenetre)).actif).toBe(true)
+    await p.locator('#lien').click({ modifiers: ['Shift'] })
+    await expect.poll(async () => (await ciel(fenetre)).sky.stars.length).toBe(avant.sky.stars.length + 1)
+    expect((await etat(fenetre)).popups).toBe(0)
+  } finally {
+    await app.close()
+  }
+})
+
+test('⌘ ⇧ D au clavier (page au premier plan) : entre puis sort, sans passer par le menu', async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    await ouvrir(app, fenetre, DND)
+    // Touche envoyée à la page elle-même : c'est `before-input-event` qui la traite, pas l'accélérateur du menu.
+    const touche = (): Promise<void> =>
+      app.evaluate(({ webContents }, adresse) => {
+        const wc = webContents.getAllWebContents().find((w) => w.getURL() === adresse)!
+        const modifiers = [process.platform === 'darwin' ? 'meta' : 'control', 'shift'] as const
+        wc.sendInputEvent({ type: 'keyDown', keyCode: 'D', modifiers: [...modifiers] })
+        wc.sendInputEvent({ type: 'keyUp', keyCode: 'D', modifiers: [...modifiers] })
+      }, DND)
+    await touche()
+    await expect.poll(async () => (await etat(fenetre)).actif).toBe(true)
+    await touche()
+    await expect.poll(async () => (await etat(fenetre)).actif).toBe(false)
+  } finally {
+    await app.close()
+  }
+})
+
+test('notification depuis une iframe srcdoc : surcharge posée et retenue, origine héritée du site', async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { sites: { 'file://': { permissions: { notifications: 'autoriser' } } } }))
+    const p = await ouvrir(app, fenetre, DND)
+    await menu(app, 'ne-pas-deranger')
+    await expect.poll(async () => (await etat(fenetre)).actif).toBe(true)
+    // Le srcdoc finit de charger (sa surcharge est posée par son propre preload).
+    await expect.poll(() => p.frames().some((f) => f.url() === 'about:srcdoc')).toBe(true)
+    const natif = await p.evaluate(() => {
+      const w = (document.getElementById('doc') as HTMLIFrameElement).contentWindow as unknown as { Notification: new (t: string) => object }
+      new w.Notification('depuis srcdoc')
+      // La surcharge remplace le constructeur natif.
+      return Function.prototype.toString.call(w.Notification).includes('[native code]')
+    })
+    expect(natif).toBe(false)
+    await expect.poll(async () => (await etat(fenetre)).notifications).toBe(1)
+    expect(await livraisons(fenetre)).toEqual([])
+    await menu(app, 'ne-pas-deranger')
+    await expect.poll(async () => (await livraisons(fenetre)).length).toBe(1)
+    expect((await livraisons(fenetre))[0]).toMatchObject({ titre: 'depuis srcdoc', origine: 'file://' })
+  } finally {
+    await app.close()
   }
 })

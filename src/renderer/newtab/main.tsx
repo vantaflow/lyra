@@ -185,7 +185,7 @@ function NouvelOnglet({ privee }: { privee: boolean }) {
 function Racine() {
   const [privee, setPrivee] = useState<boolean | null>(null)
   useEffect(() => {
-    void window.lyra.invoke('fenetre:privee').then(setPrivee, () => setPrivee(false))
+    void window.lyra.invoke('fenetre:privee').then(setPrivee, () => setPrivee(true))
   }, [])
   useEffect(() => {
     document.documentElement.classList.toggle('privee', privee === true)

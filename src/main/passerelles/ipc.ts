@@ -1,15 +1,25 @@
 /** IPC des passerelles (expéditeur vérifié par `handle`). */
 import { handle } from '../ipc'
+import type { WebContents } from 'electron'
 import type { PasserellePerso } from '../../shared/types'
-import type { Passerelles } from './Passerelles'
+import type { EtatPasserelles, Passerelles } from './Passerelles'
 
 const texte = (v: unknown): string => (typeof v === 'string' ? v.slice(0, 300) : '')
 
-export function installerPasserellesIpc(p: Passerelles): void {
+/** `estPrivee` : l'expéditeur appartient-il à une fenêtre privée ? Elle ne doit jamais écrire dans les réglages. */
+export function installerPasserellesIpc(p: Passerelles, estPrivee: (wc: WebContents) => boolean): void {
+  // Une modification ne répond qu'une fois le PAC en place : la navigation qui suit n'est pas interrompue par la
+  // fermeture des connexions. Fenêtre privée : appel refusé, l'état est renvoyé sans rien écrire.
+  const modifier = async (wc: WebContents, fn: () => EtatPasserelles): Promise<EtatPasserelles> => {
+    if (estPrivee(wc)) return p.etat()
+    const etat = fn()
+    await p.pacApplique()
+    return etat
+  }
   handle('passerelles:etat', () => p.etat())
-  handle('passerelles:ajouter', (d) => p.ajouter(texte(d?.hote)))
-  handle('passerelles:retirer', (d) => p.retirer(texte(d?.hote)))
-  handle('passerelles:basculerSite', (d) => p.basculerSite(texte(d?.hote)))
+  handle('passerelles:ajouter', (d, e) => modifier(e.sender, () => p.ajouter(texte(d?.hote))))
+  handle('passerelles:retirer', (d, e) => modifier(e.sender, () => p.retirer(texte(d?.hote))))
+  handle('passerelles:basculerSite', (d, e) => modifier(e.sender, () => p.basculerSite(texte(d?.hote))))
   handle('passerelles:tester', () => p.tester())
   handle('passerelles:personnelle', (d) => {
     const config = d?.config

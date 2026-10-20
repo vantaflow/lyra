@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { PasserellePerso, Settings } from '../../shared/types'
 import type { Candidat } from './liste'
-import { Passerelles, type DepsPasserelles, type SessionProxy } from './Passerelles'
+import { DELAI_PAC_MAX_MS, Passerelles, type DepsPasserelles, type SessionProxy } from './Passerelles'
 
 type Reseau = Settings['reseau']
 
@@ -644,6 +644,65 @@ describe('Passerelles — relecture finale', () => {
     await p.tester()
     expect(env.appels.trouver).toBe(2)
     expect(p.etat().pret).toBe(1)
+  })
+
+  it('3. un ajout explicite lève le délai de grâce', async () => {
+    const { p, env } = monter({ sites: [site('a.fr')] })
+    env.trouves = []
+    p.demarrer()
+    await p.rechercher()
+    await p.attendre()
+    expect(env.appels.trouver).toBe(1)
+    env.trouves = [P2]
+    p.ajouter('b.fr')
+    await p.attendre()
+    // Le prochain échec sur un site contourné cherche aussitôt une passerelle.
+    expect(await p.surEchec(7, 'https://a.fr/', -130)).toEqual({ action: 'recharger' })
+    expect(env.appels.trouver).toBe(2)
+    await p.attendre()
+  })
+
+  it('2. pacApplique : après un ajout, résolue seulement quand le PAC est en place sur toutes les sessions', async () => {
+    const { p, env } = monter()
+    p.demarrer()
+    p.ajouter('a.fr')
+    await p.pacApplique()
+    for (const s of env.sessions) expect(evaluer(s, 'https://a.fr/')).not.toBe('DIRECT')
+    await p.attendre()
+  })
+
+  it('2. pacApplique : un setProxy bloqué ne fige pas l\'attente au-delà du délai maximal', async () => {
+    vi.useFakeTimers()
+    try {
+      const { p, env } = monter()
+      env.sessions[0].setProxy = () => new Promise<void>(() => {})
+      p.demarrer()
+      p.ajouter('a.fr')
+      let fini = false
+      void p.pacApplique().then(() => (fini = true))
+      await vi.advanceTimersByTimeAsync(DELAI_PAC_MAX_MS - 1)
+      expect(fini).toBe(false)
+      await vi.advanceTimersByTimeAsync(2)
+      expect(fini).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('2. la veille du proxy système est réarmée après un échec de setProxy', async () => {
+    const { p, env } = monter({ sites: [site('a.fr')] })
+    // Deux applications au démarrage (PAC initial, puis fin de la recherche) : les deux échouent.
+    env.sessions[0].echecs = 2
+    await p.demarrer()
+    await p.attendre()
+    const veilles = (): typeof env.minuteurs => env.minuteurs.filter((m) => m.ms === 60_000 && !m.annule)
+    expect(env.sessions[0].proxys).toEqual([])
+    expect(veilles().length).toBe(1)
+    veilles()[0].fn()
+    await p.attendre()
+    expect(evaluer(env.sessions[0], 'https://a.fr/')).toMatch(/PROXY|SOCKS/)
+    // Appliquée : la veille de relecture continue (une nouvelle minuterie).
+    expect(veilles().length).toBe(2)
   })
 
   it('3. « Réessayer » lève le délai de grâce', async () => {
