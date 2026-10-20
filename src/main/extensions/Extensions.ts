@@ -62,7 +62,7 @@ export function creerExtensions(o: OptionsExtensions): Extensions {
     },
     createWindow: async (details) => o.fenetres.creer(Array.isArray(details.url) ? details.url[0] : details.url),
     removeWindow: (win) => o.fenetres.fermer(win),
-    // Permissions optionnelles : refusées tant que la page lyra://extensions (tâche 5) ne sait pas demander.
+    // Permissions optionnelles : toujours refusées (limite assumée, dite dans lyra://extensions).
     requestPermissions: async () => false,
     assignTabDetails: (details) => {
       // Les extensions ne vivent jamais en fenêtre privée.

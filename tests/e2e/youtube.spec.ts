@@ -70,7 +70,8 @@ async function scenarioYoutube(ubo: boolean): Promise<void> {
     console.log('[youtube] compteur de l’étoile', b.bloques, 'dernières :', b.dernieres.slice(0, 5).join(' , '))
   } finally {
     await app.close()
-  }}
+  }
+}
 
 test('@reseau YouTube : scriptlets avant la page, aucune pub sur 3 vidéos enchaînées', async () => {
   test.setTimeout(180_000)

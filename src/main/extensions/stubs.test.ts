@@ -180,6 +180,17 @@ describe('appliquerStubs', () => {
     expect(appliquerStubs(d, { ...mv2 }, shims).raison).toBe('deja-applique')
   })
 
+  it("marqueur d'une autre version ET « en cours » : l'application est reprise en entier, pas seulement les fichiers", () => {
+    const d = extension(mv2, fichiers)
+    writeFileSync(join(d, MARQUEUR_STUBS), JSON.stringify({ version: 0, enCours: true }))
+    const r = appliquerStubs(d, { ...mv2 }, shims)
+    expect(r).toMatchObject({ applique: true })
+    expect(r.raison).not.toBe('mis-a-jour')
+    expect(JSON.parse(lire(join(d, 'manifest.json'))).background.scripts).toEqual([FICHIER_HEAD, 'browser-polyfill.js', FICHIER_POST, 'bg.js'])
+    expect(lire(join(d, 'popup.html'))).toContain(FICHIER_HEAD)
+    expect(JSON.parse(lire(join(d, MARQUEUR_STUBS)))).toMatchObject({ version: VERSION_STUBS })
+  })
+
   it("arrêt en route : le marqueur « en cours » est écrit d'abord, la reprise termine sans rien doubler", () => {
     const m = { ...mv2, options_page: 'o/options.html' }
     const d = extension(m, { ...fichiers, 'o/options.html': '<html><head></head></html>' })

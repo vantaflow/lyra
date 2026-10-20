@@ -82,6 +82,8 @@ export const LIMITES: string[] = [
   "Pas de sidePanel ni de sidebar_action : le ciel de Lyra fait déjà ce travail.",
   "Pas de messagerie native (nativeMessaging), de fontSettings, de theme ni de contextualIdentities.",
   "Les extensions ne s'exécutent pas en fenêtre privée (limite d'electron-chrome-extensions).",
+  "La règle par site (« Exclure un site ») est enregistrée dans les réglages mais n'est pas appliquée aux scripts qu'une extension déclare dans son manifest.",
+  "Les permissions optionnelles qu'une extension demande après coup (chrome.permissions.request) sont refusées.",
   "Manifest V2 déprécié par Electron : risque de retrait dans une version future. Lyra reste sur Electron 44 tant que le MV2 des extensions clés en dépend, et pousse les auteurs vers MV3."
 ]
 

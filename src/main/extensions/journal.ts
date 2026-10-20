@@ -99,12 +99,15 @@ export function lireRapportConversion(chemin: string): { rapport?: RapportConver
   }
 }
 
-const vide = (): JournalExtension => ({ avertissementsChargement: [], apiStubees: {}, apiManquantes: [], conflitsRaccourcis: [], redondanceBoucliers: false })
+/** Compteurs d'API sans prototype : un nom comme « constructor » ou « toString » n'est jamais une propriété héritée. */
+const compteurs = (): Record<string, number> => Object.create(null) as Record<string, number>
+
+const vide = (): JournalExtension => ({ avertissementsChargement: [], apiStubees: compteurs(), apiManquantes: [], conflitsRaccourcis: [], redondanceBoucliers: false })
 
 function nettoyer(v: unknown): JournalExtension {
   const o = objet(v)
   if (!o) return vide()
-  const stubs: Record<string, number> = {}
+  const stubs = compteurs()
   for (const [k, n] of Object.entries(objet(o.apiStubees) ?? {})) if (typeof n === 'number' && Number.isFinite(n) && n >= 0 && Object.keys(stubs).length < MAX_API) stubs[k] = Math.floor(n)
   const rb = o.redondanceBoucliers === true
   const conv = validerRapportConversion(o.conversion)
@@ -189,10 +192,10 @@ export function creerJournal(o: { dossier: string }): Journal {
     releverStubs(id, page, releve) {
       if (!valide(id)) return
       const cle = `${id}:${page}`
-      const avant = releves.get(cle) ?? {}
+      const avant = releves.get(cle) ?? compteurs()
       const j = charger(id)
       let change = false
-      const retenu: Record<string, number> = {}
+      const retenu = compteurs()
       for (const [api, n] of Object.entries(releve)) {
         if (typeof n !== 'number' || !Number.isFinite(n) || n < 0 || !/^[\w.$-]{1,120}$/.test(api)) continue
         if (Object.keys(retenu).length >= MAX_API) break
@@ -200,7 +203,7 @@ export function creerJournal(o: { dossier: string }): Journal {
         const prec = avant[api] ?? 0
         const delta = n >= prec ? n - prec : n
         if (delta === 0) continue
-        if (!(api in j.apiStubees) && Object.keys(j.apiStubees).length >= MAX_API) continue
+        if (!Object.hasOwn(j.apiStubees, api) && Object.keys(j.apiStubees).length >= MAX_API) continue
         j.apiStubees[api] = (j.apiStubees[api] ?? 0) + Math.floor(delta)
         change = true
       }

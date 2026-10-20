@@ -82,7 +82,7 @@ export function appliquerStubs(dossier: string, manifest: Record<string, unknown
     }
     if (version === VERSION_STUBS && !enCours) return { applique: false, raison: 'deja-applique' }
     // Un marqueur « en cours » : une application précédente s'est arrêtée en route ; les insertions sont idempotentes, on les reprend.
-    if (version !== VERSION_STUBS) {
+    if (version !== VERSION_STUBS && !enCours) {
       // Autre version des shims : fichiers recopiés, insertions déjà faites.
       copyFileSync(shims.head, join(dossier, FICHIER_HEAD))
       copyFileSync(shims.post, join(dossier, FICHIER_POST))

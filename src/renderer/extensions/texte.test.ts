@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JournalExtension } from '../../shared/types'
-import { depuis, etatTexte, lignesJournal, origineTexte, porteeTexte, resumeFile, sitesExclus } from './texte'
+import { depuis, etatTexte, LIMITES, lignesJournal, origineTexte, porteeTexte, resumeFile, sitesExclus } from './texte'
 
 const journal = (p: Partial<JournalExtension> = {}): JournalExtension => ({ avertissementsChargement: [], apiStubees: {}, apiManquantes: [], conflitsRaccourcis: [], redondanceBoucliers: false, ...p })
 
@@ -70,5 +70,12 @@ describe('resumeFile', () => {
     const r = (etat: 'installee' | 'manuel' | 'erreur' | 'a-confirmer') => ({ entree: e, etat })
     expect(resumeFile({ resultats: [r('installee'), r('installee'), r('installee'), r('installee'), r('installee'), r('manuel')] })).toBe('5 sur 6 réinstallées, 1 à installer à la main')
     expect(resumeFile({ resultats: [r('installee'), r('erreur'), r('a-confirmer')] })).toBe('1 sur 3 réinstallées, 1 en erreur, 1 à confirmer')
+  })
+})
+
+describe('LIMITES', () => {
+  it('dit que la règle par site ne touche pas les scripts et que les permissions optionnelles sont refusées', () => {
+    expect(LIMITES.some((l) => /règle par site/i.test(l) && /scripts/.test(l))).toBe(true)
+    expect(LIMITES.some((l) => /permissions optionnelles/.test(l) && /refusées/.test(l))).toBe(true)
   })
 })

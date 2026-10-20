@@ -142,20 +142,20 @@ export type Requetes = {
    * natif (fichier .crx/.zip ou dossier). Un chemin passé en `source` n'est accepté que sous `LYRA_TEST`.
    */
   'extensions:installer': [{ source?: string; choisir?: 'fichier' | 'dossier' }, ResultatInstallation]
-  /** Cherche et installe les mises à jour maintenant (ignore le réglage automatique). */
-  /** Journal de compatibilité d'une extension (undefined si inconnue). */
   /** Ouvre la page d'options de l'extension dans une nouvelle étoile ; faux si elle n'en a pas. */
   'extensions:options': [{ id: string }, boolean]
   /** Règle par site : `active: false` enregistre `settings.sites[origine].extensions[id] = false`. */
   'extensions:regleSite': [{ id: string; origine: string; active: boolean }, boolean]
   /** Panneau des extensions (icônes d'action) depuis le pied du ciel. */
   'extensions:panel': [void, void]
+  /** Journal de compatibilité d'une extension (undefined si inconnue). */
   'extensions:journal': [{ id: string }, JournalExtension | undefined]
   /**
    * File d'import (jalon E) : installe les entrées en série ; les entrées imposées exigent leur identifiant dans `confirmees`.
    * Rend un résultat par entrée et la file restante à réécrire.
    */
   'extensions:consommerFile': [{ entrees: EntreeImport[]; confirmees?: string[] }, ResultatFile]
+  /** Cherche et installe les mises à jour maintenant (ignore le réglage automatique). */
   'extensions:majTout': [void, { misesAJour: Array<{ id: string; nom: string; de: string; vers: string }>; erreurs: string[]; derniereVerification?: string }]
   'settings:set': [Partial<Settings>, Settings]
   'layout:get': [

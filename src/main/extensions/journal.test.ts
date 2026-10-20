@@ -72,6 +72,14 @@ describe('journal', () => {
     expect(existsSync(join(dossier, '..', 'evil.json'))).toBe(false)
   })
 
+  it('un nom d’API qui est aussi une propriété d’Object (constructor, toString) est compté comme les autres', () => {
+    const { j } = nouveau()
+    j.releverStubs(ID, 1, { constructor: 3, toString: 2 })
+    j.releverStubs(ID, 1, { constructor: 4, toString: 2 })
+    expect(j.lire(ID)!.apiStubees).toEqual({ constructor: 4, toString: 2 })
+    expect(j.lire(ID)!.apiStubees.constructor).toBe(4)
+  })
+
   it('avertissements dédoublonnés et bornés ; supprimer efface le fichier', () => {
     const { dossier, j } = nouveau()
     j.avertissement(ID, 'a')
