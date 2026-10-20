@@ -47,8 +47,13 @@ export function ShieldsPanel() {
 
   const basculerGenes = (genes: boolean): void => {
     if (!reglages) return
+    const avant = reglages
     setReglages({ ...reglages, boucliers: { ...reglages.boucliers, genes } })
-    void window.lyra.invoke('settings:set', { boucliers: { genes } } as Partial<Settings>).then(setReglages, (e: unknown) => console.warn('[boucliers] réglage des gênes :', e))
+    // Échec : l'interrupteur revient à l'état enregistré (jamais un état affiché qui n'est pas appliqué).
+    void window.lyra.invoke('settings:set', { boucliers: { genes } } as Partial<Settings>).then(setReglages, (e: unknown) => {
+      console.warn('[boucliers] réglage des gênes :', e)
+      setReglages(avant)
+    })
   }
 
   const interne = etat !== null && etat.origine === ''

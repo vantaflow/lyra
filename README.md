@@ -86,3 +86,12 @@ Variables utiles : `LYRA_E2E_RESEAU=1` active les tests réseau (`@reseau`), `LY
 ## Licence
 
 GPL-3.0 — voir `LICENSE`. `electron-chrome-extensions` (GPL-3.0) est une dépendance. Les fontes Manrope et Instrument Serif sont sous licence OFL (voir `src/renderer/fonts/`).
+
+Listes de filtrage embarquées par les Boucliers (`resources/shields/`, chaque fichier garde l'en-tête de licence de ses auteurs) :
+
+- uBlock Origin — filtres uAssets (dont « Cookie Notices » et « Other Annoyances » pour l'option « Masquer aussi les gênes ») et scriptlets : GPL-3.0, © Raymond Hill et contributeurs (https://github.com/uBlockOrigin/uAssets) ;
+- EasyList et EasyPrivacy : GPL-3.0 ou CC BY-SA 3.0, au choix, © The EasyList authors (https://easylist.to/) ;
+- Easylist Cookie List : CC BY 3.0, © Fanboy et The EasyList authors (https://secure.fanboy.co.nz/) ;
+- liste de serveurs publicitaires de Peter Lowe (https://pgl.yoyo.org/adservers/), selon ses conditions d'utilisation.
+
+Le moteur de filtrage `@ghostery/adblocker` est sous licence MPL-2.0.
