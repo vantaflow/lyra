@@ -193,6 +193,73 @@ describe('desinstaller', () => {
   })
 })
 
+describe('verrou par identifiant', () => {
+  /** Session dont le chargement attend qu'on le libère : l'activation reste « en vol ». */
+  function sessionLente() {
+    const chargees = new Map<string, string>()
+    let liberer: () => void = () => undefined
+    const porte = new Promise<void>((ok) => (liberer = ok))
+    const api: SessionExtensions = {
+      async loadExtension(chemin) {
+        await porte
+        const idExt = chemin.split(/[\\/]/).slice(-2)[0]
+        chargees.set(idExt, chemin)
+        return { id: idExt }
+      },
+      async removeExtension(idExt) {
+        chargees.delete(idExt)
+      },
+      getAllExtensions: () => [...chargees.keys()].map((i) => ({ id: i }))
+    }
+    return { api, chargees, liberer }
+  }
+
+  it("désinstaller pendant une activation attend la fin de celle-ci : rien ne reste chargé ni inscrit", async () => {
+    const e = ext('a', { active: false })
+    installerDossier(e)
+    const reglages = reglagesSimules([e])
+    const s = sessionLente()
+    const c = creerChargeur({ extensions: s.api, registre: creerRegistre(reglages), base })
+    const activation = c.activer(id('a'), true)
+    const suppression = c.desinstaller(id('a'))
+    s.liberer()
+    await Promise.all([activation, suppression])
+    expect(s.chargees.size).toBe(0)
+    expect(reglages.getSettings().extensions.installees).toEqual([])
+  })
+
+  it('verrou(id) sérialise les travaux d’un même id, pas ceux de deux ids ; une erreur ne bloque pas la suite', async () => {
+    const c = creerChargeur({ extensions: sessionSimulee().api, registre: creerRegistre(reglagesSimules([])), base })
+    const ordre: string[] = []
+    let ouvrir: () => void = () => undefined
+    const attente = new Promise<void>((ok) => (ouvrir = ok))
+    const a1 = c.verrou(id('a'), async () => {
+      ordre.push('a1 debut')
+      await attente
+      ordre.push('a1 fin')
+    })
+    const a2 = c.verrou(id('a'), async () => void ordre.push('a2'))
+    const b = c.verrou(id('b'), async () => void ordre.push('b'))
+    await b
+    expect(ordre).toEqual(['a1 debut', 'b'])
+    ouvrir()
+    await Promise.all([a1, a2])
+    expect(ordre).toEqual(['a1 debut', 'b', 'a1 fin', 'a2'])
+    await expect(c.verrou(id('a'), async () => Promise.reject(new Error('x')))).rejects.toThrow('x')
+    expect(await c.verrou(id('a'), async () => 'ok')).toBe('ok')
+  })
+
+  it("retirerSession retire l'extension de la session sans toucher à l'état « actif » du registre", async () => {
+    const reglages = reglagesSimules([ext('a')])
+    const s = sessionSimulee()
+    const c = creerChargeur({ extensions: s.api, registre: creerRegistre(reglages), base })
+    await c.chargerAuDemarrage()
+    await c.retirerSession(id('a'))
+    expect(s.chargees.size).toBe(0)
+    expect(reglages.getSettings().extensions.installees[0].active).toBe(true)
+  })
+})
+
 describe('lister', () => {
   it("ajoute l'état de chargement à chaque entrée", async () => {
     const s = sessionSimulee()

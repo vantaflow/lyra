@@ -100,6 +100,7 @@ describe('verifier', () => {
     const m = creerMiseAJour(base(r, { maintenant: () => NOW, derniereVersionUbo: async () => '1.64.0', installerUbo }))
     const res = await m.verifier()
     expect(installerUbo).toHaveBeenCalledTimes(1)
+    expect(installerUbo).toHaveBeenCalledWith(true) // mise à jour : l'extension doit toujours être installée
     expect(res.misesAJour).toEqual([{ id: id('u'), nom: 'uBlock Origin', de: '1.63.0', vers: '1.64.0' }])
     installerUbo.mockClear()
     const r2 = reglages([{ ...ubo, version: '1.64.0' }])

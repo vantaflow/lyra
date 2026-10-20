@@ -108,7 +108,7 @@ export function creerInstallateurFirefox(d: DepsInstallateurFirefox): Installate
   })
 
   /** Extrait, convertit, finalise. Le dossier d'attente disparaît quoi qu'il arrive. */
-  function convertirEtInstaller(xpi: Uint8Array, o: { source: 'amo' | 'xpi'; slugAmo?: string }): Promise<ResultatInstallation> {
+  function convertirEtInstaller(xpi: Uint8Array, o: { source: 'amo' | 'xpi'; slugAmo?: string; exigerInstallee?: boolean }): Promise<ResultatInstallation> {
     return enAttente(async (attente) => {
       extraireZip(xpi, attente)
       let guid: string | undefined
@@ -136,7 +136,7 @@ export function creerInstallateurFirefox(d: DepsInstallateurFirefox): Installate
       }
       // Le rapport voyage avec le dossier de la version (supprimé avec elle, lu par le journal de compatibilité).
       writeFileSync(join(attente, 'lyra-conversion.json'), JSON.stringify(rapport, null, 2))
-      const r = await finaliser({ extrait: attente, source: o.source, magasin: 'firefox', convertie: true, ...(o.slugAmo ? { slugAmo: o.slugAmo } : {}) })
+      const r = await finaliser({ extrait: attente, source: o.source, magasin: 'firefox', convertie: true, ...(o.slugAmo ? { slugAmo: o.slugAmo } : {}), ...(o.exigerInstallee ? { exigerInstallee: true } : {}) })
       if (r.etat !== 'installee') return r
       return { ...r, convertie: true, rapport: rapport as RapportConversion, ...(suggestion ? { suggestionChrome: suggestion } : {}) }
     })
@@ -151,7 +151,7 @@ export function creerInstallateurFirefox(d: DepsInstallateurFirefox): Installate
     const deja = d.registre.lister().find((e) => e.slugAmo === infos.slug)
     if (!forcer && deja && deja.version === infos.version) return { etat: 'installee', id: deja.id, nom: deja.nom, version: deja.version, convertie: true }
     const xpi = await amo.telecharger(infos)
-    return convertirEtInstaller(xpi, { source: 'amo', slugAmo: infos.slug })
+    return convertirEtInstaller(xpi, { source: 'amo', slugAmo: infos.slug, ...(forcer ? { exigerInstallee: true } : {}) })
   }
 
   async function installerFirefox(source: string): Promise<ResultatInstallation> {

@@ -27,7 +27,7 @@ export interface OptionsMiseAJour {
   versionDistanteAmo?: (slug: string) => Promise<string | undefined>
   mettreAJourAmo?: (slug: string) => Promise<ResultatInstallation>
   derniereVersionUbo?: () => Promise<string>
-  installerUbo?: () => Promise<ResultatInstallation>
+  installerUbo?: (miseAJour?: boolean) => Promise<ResultatInstallation>
   maintenant?: () => Date
   journal?: (m: string) => void
   /** Délai avant la première vérification après `demarrer` (0 par défaut). */
@@ -101,7 +101,7 @@ export function creerMiseAJour(o: OptionsMiseAJour): MiseAJour {
         try {
           const derniere = await o.derniereVersionUbo()
           if (comparerVersions(derniere, e.version) <= 0) continue
-          const r = await o.installerUbo()
+          const r = await o.installerUbo(true)
           if (r.etat === 'installee') misesAJour.push({ id: r.id, nom: r.nom, de: e.version, vers: r.version })
           else echec(`${e.nom} : ${r.etat === 'erreur' ? r.raison : 'installation manuelle requise'}`)
         } catch (err) {

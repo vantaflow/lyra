@@ -152,7 +152,8 @@ export interface DepsInstallateurChrome {
 
 export interface InstallateurChrome {
   installerChrome(source: string): Promise<ResultatInstallation>
-  installerUbo(): Promise<ResultatInstallation>
+  /** `miseAJour` : l'extension doit déjà être installée (une désinstallation entre-temps l'emporte). */
+  installerUbo(miseAJour?: boolean): Promise<ResultatInstallation>
   /** Version de la dernière release GitHub de uBlock Origin. */
   derniereVersionUbo(): Promise<string>
   /** Version la plus récente d'une extension du Chrome Web Store (undefined si le magasin n'en propose pas). */
@@ -173,7 +174,14 @@ export interface Finalisation {
   convertie?: boolean
   /** Identifiant AMO (slug) de l'extension, pour les mises à jour. */
   slugAmo?: string
+  /** Mise à jour : abandon si l'extension n'est plus au registre une fois le verrou pris (désinstallée entre-temps). */
+  exigerInstallee?: boolean
 }
+
+/** « catalogue » (Chrome Web Store, AMO) ou « local » (zip, crx, dossier, xpi) : deux provenances qui ne se remplacent pas. */
+const provenance = (s: SourceExtension): 'catalogue' | 'local' => (s === 'cws' || s === 'amo' ? 'catalogue' : 'local')
+const origineTexte = (s: SourceExtension): string =>
+  s === 'cws' ? 'le Chrome Web Store' : s === 'amo' ? 'addons.mozilla.org' : 'un fichier ou un dossier local'
 
 /** Briques communes aux installateurs (Chrome, Firefox) : réseau borné, extraction, finalisation (registre + chargement). */
 export function creerBaseInstallation(d: DepsInstallateurChrome) {
@@ -236,66 +244,75 @@ export function creerBaseInstallation(d: DepsInstallateurChrome) {
     const version = m.version
     if (!dossierRelatifValide(`${id}/${version}`)) return echec(`version « ${version.slice(0, 40)} » illisible`)
 
-    const precedente = d.registre.trouver(id)
-    const cible = join(d.base, id, version)
-    // Une version déjà chargée sous cet id est retirée de la session avant de charger la nouvelle.
-    if (precedente) await d.chargeur.activer(id, false)
-    // Le dossier existant (même version) est mis de côté, pas supprimé : il revient si l'installation échoue.
-    mkdirSync(join(d.base, id), { recursive: true })
-    const ancien = existsSync(cible) ? `${cible}.ancien-${randomUUID().slice(0, 8)}` : undefined
-    if (ancien) renameSync(cible, ancien)
-    // Retour à l'état d'avant : chaque étape est protégée (une restauration qui échoue ne masque ni l'erreur d'origine ni les étapes suivantes).
-    const restaurer = async (): Promise<void> => {
-      const etape = async (etapeNom: string, f: () => unknown): Promise<void> => {
-        try {
-          await f()
-        } catch (err) {
-          journal(`${nom} ${version} : restauration incomplète (${etapeNom} : ${err instanceof Error ? err.message : String(err)})`)
+    return d.chargeur.verrou(id, async () => {
+      const precedente = d.registre.trouver(id)
+      // Mise à jour : l'extension a pu être désinstallée entre la vérification et ici (le verrou rend la lecture fiable) ; elle ne ressuscite pas.
+      if (o.exigerInstallee && !precedente) return echec("l'extension a été désinstallée pendant la mise à jour")
+      // Même identité mais autre provenance (catalogue ↔ fichier ou dossier local) : jamais de remplacement silencieux.
+      if (precedente && provenance(precedente.source) !== provenance(o.source)) {
+        return echec(`ce paquet remplacerait l'extension ${precedente.nom} installée depuis ${origineTexte(precedente.source)} : désinstalle-la d'abord si c'est voulu`)
+      }
+      const cible = join(d.base, id, version)
+      // Une version déjà chargée sous cet id est retirée de la session avant de charger la nouvelle (retrait de session seulement :
+      // le registre garde « actif », une interruption ne désactive donc jamais l'extension).
+      if (precedente) await d.chargeur.retirerSession(id)
+      // Le dossier existant (même version) est mis de côté, pas supprimé : il revient si l'installation échoue.
+      mkdirSync(join(d.base, id), { recursive: true })
+      const ancien = existsSync(cible) ? `${cible}.ancien-${randomUUID().slice(0, 8)}` : undefined
+      if (ancien) renameSync(cible, ancien)
+      // Retour à l'état d'avant : chaque étape est protégée (une restauration qui échoue ne masque ni l'erreur d'origine ni les étapes suivantes).
+      const restaurer = async (): Promise<void> => {
+        const etape = async (etapeNom: string, f: () => unknown): Promise<void> => {
+          try {
+            await f()
+          } catch (err) {
+            journal(`${nom} ${version} : restauration incomplète (${etapeNom} : ${err instanceof Error ? err.message : String(err)})`)
+          }
+        }
+        await etape('suppression', () => rmSync(cible, { recursive: true, force: true }))
+        if (ancien) await etape('ancien dossier', () => renameSync(ancien, cible))
+        if (precedente) {
+          await etape('registre', () => d.registre.ajouter(precedente))
+          if (precedente.active) await etape('rechargement', () => d.chargeur.charger(id))
+        } else {
+          await etape('registre', () => d.registre.retirer(id))
+          await etape('dossier', () => rmSync(join(d.base, id), { recursive: true, force: true }))
         }
       }
-      await etape('suppression', () => rmSync(cible, { recursive: true, force: true }))
-      if (ancien) await etape('ancien dossier', () => renameSync(ancien, cible))
-      if (precedente) {
-        await etape('registre', () => d.registre.ajouter(precedente))
-        if (precedente.active) await etape('rechargement', () => d.chargeur.charger(id))
-      } else {
-        await etape('registre', () => d.registre.retirer(id))
-        await etape('dossier', () => rmSync(join(d.base, id), { recursive: true, force: true }))
-      }
-    }
-    try {
-      renameSync(racine, cible)
-    } catch (err) {
-      await restaurer()
-      throw err
-    }
-    const maintenantIso = maintenant().toISOString()
-    const entree: ExtensionInstallee = {
-      id,
-      nom,
-      version,
-      source: o.source,
-      magasin: o.magasin,
-      dossier: `${id}/${version}`,
-      active: precedente?.active ?? true,
-      ...(o.convertie ? { convertie: true } : {}),
-      ...(o.slugAmo ? { slugAmo: o.slugAmo } : {}),
-      installeeLe: precedente?.installeeLe ?? maintenantIso,
-      miseAJourLe: maintenantIso
-    }
-    d.registre.ajouter(entree)
-    if (entree.active) {
-      const r = await d.chargeur.charger(id)
-      if (!r.ok) {
+      try {
+        renameSync(racine, cible)
+      } catch (err) {
         await restaurer()
-        return echec(`chargement impossible : ${r.erreur ?? 'erreur inconnue'}`)
+        throw err
       }
-    }
-    if (ancien) rmSync(ancien, { recursive: true, force: true })
-    // Versions antérieures : supprimées une fois la nouvelle en place.
-    for (const v of readdirSync(join(d.base, id))) if (v !== version) rmSync(join(d.base, id, v), { recursive: true, force: true })
-    journal(`${nom} ${version} installée (${o.source}, ${id})`)
-    return { etat: 'installee', id, nom, version }
+      const maintenantIso = maintenant().toISOString()
+      const entree: ExtensionInstallee = {
+        id,
+        nom,
+        version,
+        source: o.source,
+        magasin: o.magasin,
+        dossier: `${id}/${version}`,
+        active: precedente?.active ?? true,
+        ...(o.convertie ? { convertie: true } : {}),
+        ...(o.slugAmo ? { slugAmo: o.slugAmo } : {}),
+        installeeLe: precedente?.installeeLe ?? maintenantIso,
+        miseAJourLe: maintenantIso
+      }
+      d.registre.ajouter(entree)
+      if (entree.active) {
+        const r = await d.chargeur.charger(id)
+        if (!r.ok) {
+          await restaurer()
+          return echec(`chargement impossible : ${r.erreur ?? 'erreur inconnue'}`)
+        }
+      }
+      if (ancien) rmSync(ancien, { recursive: true, force: true })
+      // Versions antérieures : supprimées une fois la nouvelle en place.
+      for (const v of readdirSync(join(d.base, id))) if (v !== version) rmSync(join(d.base, id, v), { recursive: true, force: true })
+      journal(`${nom} ${version} installée (${o.source}, ${id})`)
+      return { etat: 'installee', id, nom, version }
+    })
   }
 
   /** Dossier d'attente sous `base` (même volume : le renommage final est atomique), supprimé à la fin quoi qu'il arrive. */
@@ -338,7 +355,7 @@ export function creerInstallateurChrome(d: DepsInstallateurChrome): Installateur
     const octets = await requete(urlCrx(id), hoteCws, MAX_ARCHIVE)
     // Signature vérifiée : une des preuves RSA porte la clé dont dérive l'identifiant demandé.
     const { zip, cle } = verifierCrx3(octets, id)
-    return depuisZip(zip, { source: 'cws', magasin: 'chrome', cle, idAttendu: id })
+    return depuisZip(zip, { source: 'cws', magasin: 'chrome', cle, idAttendu: id, ...(forcer ? { exigerInstallee: true } : {}) })
   }
 
   async function versionDistanteCws(id: string): Promise<string | undefined> {
@@ -364,10 +381,10 @@ export function creerInstallateurChrome(d: DepsInstallateurChrome): Installateur
     throw new Error("la dernière release de uBlock Origin n'a pas de paquet « chromium.zip »")
   }
 
-  async function installerUbo(): Promise<ResultatInstallation> {
+  async function installerUbo(miseAJour = false): Promise<ResultatInstallation> {
     const release = await releaseUbo()
     const zip = await requete(release.url, hoteGithub, MAX_ARCHIVE)
-    return depuisZip(zip, { source: 'zip', magasin: 'chrome' })
+    return depuisZip(zip, { source: 'zip', magasin: 'chrome', ...(miseAJour ? { exigerInstallee: true } : {}) })
   }
 
   async function installerChrome(source: string): Promise<ResultatInstallation> {
@@ -397,7 +414,7 @@ export function creerInstallateurChrome(d: DepsInstallateurChrome): Installateur
     }
   }
 
-  return { installerChrome, installerUbo: () => installerUbo().catch((e) => echec(`installation impossible : ${message(e)}`)), derniereVersionUbo: async () => (await releaseUbo()).version,
+  return { installerChrome, installerUbo: (miseAJour) => installerUbo(miseAJour === true).catch((e) => echec(`installation impossible : ${message(e)}`)), derniereVersionUbo: async () => (await releaseUbo()).version,
     versionDistanteCws,
     mettreAJourCws: (id) => installerCws(id, true).catch((e) => echec(`mise à jour impossible : ${message(e)}`))
   }

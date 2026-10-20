@@ -335,6 +335,93 @@ describe('mises à jour du Chrome Web Store', () => {
   })
 })
 
+describe('cycle de vie : mises à jour et désinstallation', () => {
+  it("une extension désinstallée pendant sa mise à jour ne ressuscite pas", async () => {
+    const paire = generateKeyPairSync('rsa', { modulusLength: 2048 })
+    const v1 = crx3Signe(zipSync({ 'manifest.json': manifest({ version: '1.0.0' }) }), { cle: paire })
+    const v2 = crx3Signe(zipSync({ 'manifest.json': manifest({ version: '2.0.0' }) }), { cle: paire })
+    let servi = v1.octets
+    let ouvrir: () => void = () => undefined
+    let bloquer = false
+    const porte = new Promise<void>((ok) => (ouvrir = ok))
+    const f = (async () => {
+      if (bloquer) await porte
+      return reponse(servi)
+    }) as typeof fetch
+    const { inst, registre, chargeur, s } = monter(f)
+    await inst.installerChrome(v1.id)
+    servi = v2.octets
+    bloquer = true
+    const maj = inst.mettreAJourCws(v1.id)
+    await chargeur.desinstaller(v1.id)
+    ouvrir()
+    expect(await maj).toMatchObject({ etat: 'erreur' })
+    expect(registre.trouver(v1.id)).toBeUndefined()
+    expect(s.chargees.has(v1.id)).toBe(false)
+    expect(existsSync(join(base, v1.id))).toBe(false)
+  })
+
+  it("remplacer une extension active ne la marque jamais « désactivée » dans le registre, même brièvement", async () => {
+    const paire = generateKeyPairSync('rsa', { modulusLength: 2048 })
+    const v1 = crx3Signe(zipSync({ 'manifest.json': manifest({ version: '1.0.0' }) }), { cle: paire })
+    const v2 = crx3Signe(zipSync({ 'manifest.json': manifest({ version: '2.0.0' }) }), { cle: paire })
+    let servi = v1.octets
+    const { inst, registre } = monter((async () => reponse(servi)) as typeof fetch)
+    await inst.installerChrome(v1.id)
+    const vus: boolean[] = []
+    const ajouterOrigine = registre.activer
+    registre.activer = (i, a) => {
+      vus.push(a)
+      return ajouterOrigine(i, a)
+    }
+    servi = v2.octets
+    await inst.mettreAJourCws(v1.id)
+    expect(vus).not.toContain(false)
+    expect(registre.trouver(v1.id)).toMatchObject({ version: '2.0.0', active: true })
+  })
+})
+
+describe('provenance : catalogue et fichiers locaux ne se remplacent pas', () => {
+  const paire = generateKeyPairSync('rsa', { modulusLength: 2048 })
+  const paquet = crx3Signe(zipSync({ 'manifest.json': manifest({ name: 'Signée' }) }), { cle: paire })
+
+  it("un fichier .crx de même identité qu'une extension du Web Store est refusé", async () => {
+    const { inst, registre } = monter((async () => reponse(paquet.octets)) as typeof fetch)
+    expect(await inst.installerChrome(paquet.id)).toMatchObject({ etat: 'installee' })
+    const r = await inst.installerChrome(ecrire('local.crx', paquet.octets))
+    expect(r).toMatchObject({ etat: 'erreur' })
+    if (r.etat !== 'erreur') throw new Error('attendu : erreur')
+    expect(r.raison).toContain("remplacerait l'extension Signée installée depuis le Chrome Web Store")
+    expect(r.raison).toContain("désinstalle-la d'abord")
+    expect(registre.trouver(paquet.id)).toMatchObject({ source: 'cws' })
+  })
+
+  it("l'extension du Web Store qui remplacerait un fichier local est refusée aussi, et rien n'est modifié", async () => {
+    const { inst, registre, s } = monter((async () => reponse(paquet.octets)) as typeof fetch)
+    expect(await inst.installerChrome(ecrire('local.crx', paquet.octets))).toMatchObject({ etat: 'installee' })
+    const avant = registre.trouver(paquet.id)
+    const r = await inst.installerChrome(paquet.id)
+    expect(r).toMatchObject({ etat: 'erreur' })
+    if (r.etat !== 'erreur') throw new Error('attendu : erreur')
+    expect(r.raison).toContain("remplacerait l'extension Signée installée depuis un fichier ou un dossier local")
+    expect(registre.trouver(paquet.id)).toEqual(avant)
+    expect(s.chargees.has(paquet.id)).toBe(true)
+  })
+
+  it('sans clé : un dossier de même nom qu’un zip reçoit sa propre clé (aucun remplacement), un zip de même nom garde la sienne', async () => {
+    const { inst, registre } = monter()
+    const zip = zipSync({ 'manifest.json': manifest({ name: 'Homonyme' }) })
+    const a = await inst.installerChrome(ecrire('h.zip', zip))
+    const dossier = join(tmp, 'h-dossier')
+    mkdirSync(dossier)
+    writeFileSync(join(dossier, 'manifest.json'), Buffer.from(manifest({ name: 'Homonyme' })))
+    const b = await inst.installerChrome(dossier)
+    if (a.etat !== 'installee' || b.etat !== 'installee') throw new Error(JSON.stringify([a, b]))
+    expect(b.id).not.toBe(a.id)
+    expect(registre.lister()).toHaveLength(2)
+  })
+})
+
 describe('uBlock Origin (release GitHub)', () => {
   const release = (v: string): string =>
     JSON.stringify({

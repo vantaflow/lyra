@@ -157,6 +157,20 @@ describe('installation depuis AMO', () => {
     expect(readdirSync(join(base, r1.id))).toEqual(['4.9.81'])
   })
 
+  it("mise à jour AMO : une extension désinstallée entre-temps ne ressuscite pas", async () => {
+    const etat: Etat = { version: '4.9.80', xpi: xpiDarkReader(), appels: [] }
+    const { inst, registre, chargeur } = monter(faux(etat))
+    const r1 = await inst.installerFirefox('darkreader')
+    if (r1.etat !== 'installee') throw new Error(JSON.stringify(r1))
+    etat.version = '4.9.81'
+    etat.xpi = xpiDarkReader('4.9.81')
+    // La mise à jour télécharge (asynchrone) ; la désinstallation passe avant sa finalisation : la mise à jour s'abandonne.
+    const maj = inst.mettreAJourAmo('darkreader')
+    await chargeur.desinstaller(r1.id)
+    expect(await maj).toMatchObject({ etat: 'erreur' })
+    expect(registre.lister()).toEqual([])
+  })
+
   it('l\'identifiant ne dépend que de l\'identifiant gecko (réinstallation après désinstallation)', async () => {
     const etat: Etat = { version: '4.9.80', xpi: xpiDarkReader(), appels: [] }
     const { inst, chargeur } = monter(faux(etat))

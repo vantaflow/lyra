@@ -33,12 +33,19 @@ export interface ResultatChargement {
 export interface Chargeur {
   /** Charge les extensions actives dans l'ordre d'installation ; une erreur est journalisée, jamais propagée. */
   chargerAuDemarrage(): Promise<ResultatChargement[]>
-  /** Active ou désactive à chaud et met le registre à jour ; faux si inconnue ou si le chargement échoue. */
+  /** Active ou désactive à chaud et met le registre à jour ; faux si inconnue ou si le chargement échoue. Sous le verrou de l'id. */
   activer(id: string, active: boolean): Promise<boolean>
-  /** Retire l'extension de la session, supprime `<base>/<id>` et l'entrée du registre ; faux si inconnue. */
+  /** Retire l'extension de la session, supprime `<base>/<id>` et l'entrée du registre ; faux si inconnue. Sous le verrou de l'id. */
   desinstaller(id: string): Promise<boolean>
-  /** Charge (ou recharge) une extension déjà inscrite au registre, par exemple juste après son installation. */
+  /** Charge (ou recharge) une extension déjà inscrite au registre, par exemple juste après son installation. Sans verrou : à appeler sous `verrou(id)`. */
   charger(id: string): Promise<ResultatChargement>
+  /** Retire l'extension de la session seulement (le registre garde son état « actif ») : retrait temporaire d'une installation. Sans verrou. */
+  retirerSession(id: string): Promise<void>
+  /**
+   * Exécute `travail` quand les travaux précédents du même identifiant sont terminés (une chaîne de promesses par id) :
+   * installation, mise à jour, activation et désinstallation d'une même extension ne s'entremêlent jamais. Une erreur ne bloque pas la suite.
+   */
+  verrou<T>(id: string, travail: () => Promise<T>): Promise<T>
   lister(): Array<ExtensionInstallee & { chargee: boolean }>
 }
 
@@ -88,7 +95,49 @@ export function creerChargeur(o: OptionsChargeur): Chargeur {
     }
   }
 
+  const desinstallerSousVerrou = async (id: string): Promise<boolean> => {
+    const e = o.registre.trouver(id)
+    if (!e || !ID_EXTENSION.test(id)) return false
+    await retirer(id)
+    // Toutes les versions de l'extension : <base>/<id>. L'id est validé (32 lettres a-p) : aucune traversée possible.
+    // Renommage d'abord (atomique : l'extension disparaît d'un coup, même si la suppression s'interrompt), suppression ensuite.
+    const racine = resolve(o.base)
+    const dossier = join(racine, id)
+    const aSupprimer = join(racine, `${PREFIXE_SUPPRESSION}${id}-${randomUUID().slice(0, 8)}`)
+    try {
+      await rename(dossier, aSupprimer)
+      await rm(aSupprimer, { recursive: true, force: true })
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+        /* rien à supprimer */
+      } else {
+        journal(`${id} : suppression du dossier impossible — ${message(err)}`)
+        // Dernier recours : suppression directe du dossier d'origine s'il existe encore.
+        await rm(dossier, { recursive: true, force: true }).catch(() => undefined)
+      }
+    }
+    return o.registre.retirer(id)
+  }
+
+  const verrous = new Map<string, Promise<void>>()
+  const verrou = <T>(idExt: string, travail: () => Promise<T>): Promise<T> => {
+    const precedent = verrous.get(idExt) ?? Promise.resolve()
+    const resultat = precedent.then(travail)
+    const fin = resultat.then(
+      () => undefined,
+      () => undefined
+    )
+    verrous.set(idExt, fin)
+    void fin.then(() => {
+      if (verrous.get(idExt) === fin) verrous.delete(idExt)
+    })
+    return resultat
+  }
+
   return {
+    verrou,
+    retirerSession: retirer,
+
     async chargerAuDemarrage() {
       const resultats: ResultatChargement[] = []
       try {
@@ -103,41 +152,20 @@ export function creerChargeur(o: OptionsChargeur): Chargeur {
       return resultats
     },
 
-    async activer(id, active) {
-      const e = o.registre.trouver(id)
-      if (!e) return false
-      if (!active) {
-        await retirer(id)
-        return o.registre.activer(id, false)
-      }
-      const r = await charger(e)
-      if (!r.ok) return false
-      return o.registre.activer(id, true)
-    },
-
-    async desinstaller(id) {
-      const e = o.registre.trouver(id)
-      if (!e || !ID_EXTENSION.test(id)) return false
-      await retirer(id)
-      // Toutes les versions de l'extension : <base>/<id>. L'id est validé (32 lettres a-p) : aucune traversée possible.
-      // Renommage d'abord (atomique : l'extension disparaît d'un coup, même si la suppression s'interrompt), suppression ensuite.
-      const racine = resolve(o.base)
-      const dossier = join(racine, id)
-      const aSupprimer = join(racine, `${PREFIXE_SUPPRESSION}${id}-${randomUUID().slice(0, 8)}`)
-      try {
-        await rename(dossier, aSupprimer)
-        await rm(aSupprimer, { recursive: true, force: true })
-      } catch (err) {
-        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-          /* rien à supprimer */
-        } else {
-          journal(`${id} : suppression du dossier impossible — ${message(err)}`)
-          // Dernier recours : suppression directe du dossier d'origine s'il existe encore.
-          await rm(dossier, { recursive: true, force: true }).catch(() => undefined)
+    activer: (id, active) =>
+      verrou(id, async () => {
+        const e = o.registre.trouver(id)
+        if (!e) return false
+        if (!active) {
+          await retirer(id)
+          return o.registre.activer(id, false)
         }
-      }
-      return o.registre.retirer(id)
-    },
+        const r = await charger(e)
+        if (!r.ok) return false
+        return o.registre.activer(id, true)
+      }),
+
+    desinstaller: (id) => verrou(id, () => desinstallerSousVerrou(id)),
 
     charger: async (id) => {
       const e = o.registre.trouver(id)
