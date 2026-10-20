@@ -9,6 +9,7 @@ import { Telechargements } from './Telechargements'
 import { General } from './General'
 import { ActionsReglages } from './ActionsReglages'
 import { Reseau } from './Reseau'
+import { Apropos } from './Apropos'
 import { PageImport } from './PageImport'
 import { Apparence } from './Apparence'
 import { PaletteSection } from './PaletteSection'
@@ -110,7 +111,7 @@ function App() {
             <a
               key={s.id}
               id={`opt-${s.id}`}
-              href={s.route}
+              href={s.id === 'extensions' ? 'lyra://extensions' : s.route}
               role={filtre ? 'option' : undefined}
               aria-selected={filtre ? options[actif]?.id === s.id : undefined}
               class={s.id === route ? 'on' : undefined}
@@ -169,10 +170,10 @@ function App() {
         {route === 'demarrage' && <Emplacement description="Page de démarrage et restauration des sessions." />}
         {route === 'styles' && <Emplacement description="Styles et scripts personnalisés." />}
         {route === 'reseau' && <Reseau />}
+        {route === 'apropos' && <Apropos />}
         {route === 'importer' && <PageImport />}
         {route === 'sauvegarde' && <Emplacement description="Sauvegarde des réglages et profils." />}
         {route === 'labo' && <Emplacement description="Fonctions expérimentales." />}
-        {route === 'apropos' && <Emplacement description="Version et informations sur Lyra." />}
         {route === 'historique' && <Historique />}
         {route === 'favoris' && <Favoris />}
       </main>

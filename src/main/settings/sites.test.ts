@@ -55,6 +55,24 @@ describe('resoudre', () => {
     const s: Record<string, RegleSite> = { '*.a.com': { permissions: { camera: 'refuser', micro: 'autoriser' } }, 'https://x.a.com': { permissions: { camera: 'autoriser' } } }
     expect(resoudre(s, 'https://x.a.com').permissions).toEqual({ camera: 'autoriser', micro: 'autoriser' })
   })
+  it('extensions (jalon B) fusionnées par identifiant : la règle la plus précise gagne', () => {
+    const a = 'a'.repeat(32)
+    const b = 'b'.repeat(32)
+    const c = 'c'.repeat(32)
+    const s: Record<string, RegleSite> = {
+      '*.a.com': { extensions: { [a]: false, [b]: false } },
+      'x.a.com': { extensions: { [c]: false } },
+      'https://x.a.com': { extensions: { [a]: true } }
+    }
+    expect(resoudre(s, 'https://x.a.com').extensions).toEqual({ [a]: true, [b]: false, [c]: false })
+    expect(resoudre(s, 'https://y.a.com').extensions).toEqual({ [a]: false, [b]: false })
+    expect(resoudre(s, 'https://z.fr').extensions).toBeUndefined()
+  })
+  it('extensions par site : validées (ids a-p sur 32 lettres, booléens) et conservées', () => {
+    const a = 'a'.repeat(32)
+    const p = validerPatch({ sites: { '*.a.com': { extensions: { [a]: false, zzz: false, ['b'.repeat(32)]: 'non' } } } })
+    expect(p.sites?.['*.a.com']).toEqual({ extensions: { [a]: false } })
+  })
   it('file:// et URL invalide', () => {
     expect(resoudre({ 'file://': { zoom: 2 } }, 'file:///tmp/a.html').zoom).toBe(2)
     expect(resoudre({ 'file://': { zoom: 2 } }, 'n’importe quoi').zoom).toBeUndefined()

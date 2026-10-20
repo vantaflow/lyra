@@ -17,6 +17,31 @@ const repertoireExistant = (chemin: string): boolean => {
 }
 
 /**
+ * Registre des extensions et date de vérification : écrits par le processus principal seul (installateurs, mises à jour).
+ * Une page ou un fichier de réglages ne peut pas y inscrire d'extension (dossier, source, état actif).
+ */
+function retirerRegistreExtensions<T extends { extensions?: Record<string, unknown>; import?: unknown }>(patch: T): T {
+  // La file d'import (extensions et réglages en attente) est écrite par le processus principal et l'importeur seuls :
+  // jamais par une page (`settings:set`) ni par un fichier de réglages importé.
+  delete patch.import
+  if (patch.extensions === undefined) return patch
+  delete patch.extensions.installees
+  delete patch.extensions.derniereVerification
+  if (Object.keys(patch.extensions).length === 0) delete patch.extensions
+  return patch
+}
+
+/**
+ * Patch reçu d'une page (`settings:set`) : validé, sans le registre des extensions ni la file d'import.
+ * En fenêtre privée, les règles par site sont refusées (comme le zoom et les permissions, qui n'y sont pas mémorisés).
+ */
+export function patchPage(brut: unknown, opts: { privee?: boolean } = {}): Partial<Settings> {
+  const patch = retirerRegistreExtensions(validerPatch(brut)) as Partial<Settings>
+  if (opts.privee) delete patch.sites
+  return patch
+}
+
+/**
  * Patch issu d'un JSON importé : champs validés, et `telechargements.dossier` ignoré
  * sauf si c'est un chemin absolu vers un répertoire existant (un fichier partagé ne redirige pas les téléchargements).
  */
@@ -32,19 +57,12 @@ export function patchImporte(brut: unknown, estRepertoire: (chemin: string) => b
     delete patch.reseau.personnelle
     if (Object.keys(patch.reseau).length === 0) delete patch.reseau
   }
-  // Usage local : la file d'import et les extensions installées ne voyagent pas d'un profil à l'autre.
-  delete (patch as Record<string, unknown>).import
-  const extensions = (patch as { extensions?: Record<string, unknown> }).extensions
-  if (extensions && 'installees' in extensions) {
-    delete extensions.installees
-    if (Object.keys(extensions).length === 0) delete (patch as Record<string, unknown>).extensions
-  }
-  return patch as Partial<Settings>
+  return retirerRegistreExtensions(patch) as Partial<Settings>
 }
 
 /** Réglages tels qu'écrits dans un export JSON : sans `import` ni `extensions.installees` (usage local). */
 export function reglagesExportables(s: Settings): Record<string, unknown> {
-  const { import: _import, ...reste } = s as Settings & Record<string, unknown>
+  const { import: _import, ...reste } = s as unknown as Record<string, unknown>
   const extensions = reste.extensions
   if (typeof extensions === 'object' && extensions !== null && !Array.isArray(extensions)) {
     const { installees: _installees, ...sans } = extensions as Record<string, unknown>

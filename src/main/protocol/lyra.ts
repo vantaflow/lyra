@@ -5,8 +5,8 @@ import { pathToFileURL } from 'node:url'
 const HOTES_REGLAGES = ['settings', 'extensions', 'history', 'bookmarks', 'downloads', 'shields']
 const HOTES = ['newtab', 'erreur', ...HOTES_REGLAGES]
 
-/** Page HTML qui sert un hôte lyra:// (tous les hôtes de réglages partagent settings.html). */
-const pageDe = (hote: string): string => (hote === 'newtab' || hote === 'erreur' ? `${hote}.html` : 'settings.html')
+/** Page HTML qui sert un hôte lyra:// (les hôtes de réglages partagent settings.html ; `extensions` a sa propre page, mise en page du design Extensions). */
+const pageDe = (hote: string): string => (['newtab', 'erreur', 'extensions'].includes(hote) ? `${hote}.html` : 'settings.html')
 
 /** Traduit une URL lyra:// en fichier sous `racine`, ou null (hôte inconnu, traversée). */
 export function resolveLyraPath(url: string, racine: string): string | null {

@@ -4,6 +4,7 @@ import { Palette } from './Palette'
 import { ShieldsPanel } from './ShieldsPanel'
 import { DownloadsPanel } from './Downloads'
 import { MenuPanel } from './MenuPanel'
+import { ExtensionsPanel } from './ExtensionsPanel'
 import { PermissionPrompt } from './PermissionPrompt'
 
 /**
@@ -31,6 +32,7 @@ export function Overlay() {
       </div>
       {route === 'shields' && <ShieldsPanel key={ouverture} />}
       {route === 'downloads' && <DownloadsPanel key={ouverture} />}
+      {route === 'extensions' && <ExtensionsPanel key={ouverture} />}
       {route === 'menu' && <MenuPanel key={ouverture} ancre={ancre} />}
       <PermissionPrompt visible={route === 'permission'} />
     </>

@@ -9,9 +9,13 @@ describe('resolveLyraPath', () => {
     expect(resolveLyraPath('lyra://newtab', racine)).toBe(join(racine, 'newtab.html'))
     expect(resolveLyraPath('lyra://newtab/', racine)).toBe(join(racine, 'newtab.html'))
   })
+  it('lyra://extensions a sa propre page', () => {
+    expect(resolveLyraPath('lyra://extensions', racine)).toBe(join(racine, 'extensions.html'))
+    expect(urlDev('lyra://extensions', 'http://localhost:5173')).toBe('http://localhost:5173/extensions.html')
+  })
   it('les autres hôtes internes sont servis par settings.html', () => {
     expect(resolveLyraPath('lyra://settings/historique', racine)).toBe(join(racine, 'settings.html'))
-    for (const h of ['settings', 'extensions', 'history', 'bookmarks', 'downloads', 'shields']) {
+    for (const h of ['settings', 'history', 'bookmarks', 'downloads', 'shields']) {
       expect(resolveLyraPath(`lyra://${h}`, racine)).toBe(join(racine, 'settings.html'))
     }
   })

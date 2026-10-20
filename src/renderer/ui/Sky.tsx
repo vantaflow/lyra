@@ -34,7 +34,7 @@ export function PiedActions({ souple = true }: { souple?: boolean }) {
         <span class="boucliers-n">{b.bloques}</span>
       </button>
       {souple && <span class="souple"></span>}
-      <button class="sb" type="button" aria-label="Extensions">
+      <button class="sb" type="button" aria-label="Extensions" title="Extensions" onClick={() => void window.lyra.invoke('extensions:panel')}>
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true">
           <path d="M10 4a2 2 0 0 1 4 0v1h3a1 1 0 0 1 1 1v3h1a2 2 0 0 1 0 4h-1v3a1 1 0 0 1-1 1h-3v-1a2 2 0 0 0-4 0v1H7a1 1 0 0 1-1-1v-3H5a2 2 0 0 1 0-4h1V6a1 1 0 0 1 1-1h3z" />
         </svg>

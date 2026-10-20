@@ -133,9 +133,9 @@ describe('export / import de fichiers (vrais magasins, sans Electron)', () => {
     const a = monde('a')
     a.reglages.setSettings({ theme: 'sombre', sites: { 'https://x.fr': { zoom: 2 } } })
     await exporterReglages(a.chemin('r.json'), a.deps)
-    // Le même fichier que « Exporter les réglages » : sans `import` (usage local).
-    const { import: _local, ...exportable } = a.reglages.getSettings()
-    expect(JSON.parse(readFileSync(a.chemin('r.json'), 'utf8'))).toEqual(exportable)
+    // Le même fichier que « Exporter les réglages » : sans `import` ni `extensions.installees` (usage local).
+    const { import: _local, extensions: { installees: _installees, ...extensions }, ...reste } = a.reglages.getSettings()
+    expect(JSON.parse(readFileSync(a.chemin('r.json'), 'utf8'))).toEqual({ ...reste, extensions })
     const b = monde('b')
     const rep = await importerFichier({ type: 'reglages', chemin: a.chemin('r.json') }, b.cibles, b.deps, OPTIONS)
     expect(rep.ok && rep.reglages).toBe(true)
@@ -165,6 +165,27 @@ describe('export / import de fichiers (vrais magasins, sans Electron)', () => {
     expect(b.reglages.getSettings().theme).toBe('clair')
     expect(b.reglages.getSettings().sites['https://x.fr']).toEqual({ boucliers: false })
     expect(b.jar.size).toBe(0)
+  })
+
+  it('paquet : les extensions de catalogue repartent dans la file d’import (jamais installées), les locales sont listées non réinstallables', async () => {
+    const a = monde('a')
+    const base = { version: '1.0', dossier: 'x', active: true, installeeLe: '2026-10-19T10:00:00.000Z', miseAJourLe: '2026-10-19T10:00:00.000Z' }
+    a.reglages.setSettings({
+      extensions: {
+        majAuto: true,
+        installees: [
+          { ...base, id: 'b'.repeat(32), nom: 'Catalogue', source: 'cws', magasin: 'chrome', dossier: `${'b'.repeat(32)}/1.0` },
+          { ...base, id: 'c'.repeat(32), nom: 'Locale', source: 'dossier', magasin: 'inconnu', dossier: `${'c'.repeat(32)}/1.0` }
+        ]
+      }
+    })
+    await exporterPaquet(a.chemin('p.lyra'), a.deps, { phrase: PHRASE })
+    const b = monde('b')
+    const rep = await importerFichier({ type: 'paquet', chemin: a.chemin('p.lyra'), phrase: PHRASE }, b.cibles, b.deps, OPTIONS)
+    expect(rep.ok).toBe(true)
+    expect(b.reglages.getSettings().import.extensionsEnAttente.map((e) => [e.id, e.magasin, e.actif])).toEqual([['b'.repeat(32), 'chrome', true]])
+    expect(b.reglages.getSettings().extensions.installees).toEqual([])
+    expect(rep.ok && rep.avertissements?.join(' ')).toMatch(/Locale/)
   })
 
   it('paquet à deux fenêtres normales : deux fenêtres restaurées, étoiles endormies (une fenêtre privée n’est jamais fournie)', async () => {

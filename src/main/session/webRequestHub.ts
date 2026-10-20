@@ -38,9 +38,13 @@ export const PRIORITE_APRES_BOUCLIERS = 100
 
 const HOTES_CRX = /^(clients2\.google\.com|clients2\.googleusercontent\.com|([^.]+\.)*gvt1\.com)$/i
 
-/** Extensions et téléchargement des paquets CRX : les Boucliers les laissent passer, les règles par site aussi. */
+/**
+ * Extensions et téléchargement des paquets CRX : les Boucliers les laissent passer, les règles par site aussi.
+ * Pages et ressources des extensions (`chrome-extension://`, initiateur compris) et URL du protocole des icônes d'action
+ * (`crx://`) : jamais filtrées. Un initiateur `crx://` n'exempte rien (seule l'URL crx:// est celle de l'interface).
+ */
 export function estExempte(d: { url: string; initiatorOrigin?: string }): boolean {
-  if (d.url.startsWith('chrome-extension://') || (d.initiatorOrigin?.startsWith('chrome-extension://') ?? false)) return true
+  if (/^(chrome-extension|crx):\/\//.test(d.url) || (d.initiatorOrigin?.startsWith('chrome-extension://') ?? false)) return true
   try {
     return HOTES_CRX.test(new URL(d.url).hostname)
   } catch {
