@@ -110,6 +110,8 @@ export function etiquettesContraste(couleurs: CouleursTheme, corriger: boolean):
   const sortie: EtiquettesContraste = {}
   for (const mode of ['clair', 'sombre'] as const) {
     for (const { texte, fond } of PAIRES) {
+      // Texte dérivé du nouvel onglet : toujours ramené au seuil à la diffusion, pas de ligne ni d'étiquette.
+      if (texte === 'nouvel-onglet-texte') continue
       const r = rapport(couleurs[texte][mode], couleurs[fond][mode])
       if (r >= SEUIL) continue
       const apres = formaterRatio(Math.max(r, SEUIL))

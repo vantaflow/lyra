@@ -292,3 +292,29 @@ describe('etiquetteTeinteSite', () => {
     expect(etiquetteTeinteSite('#15152E', 'rouge')).toBe('#15152E')
   })
 })
+
+describe('jetons texte du nouvel onglet dans tous les thèmes', () => {
+  const NT = ['--nt-texte', '--nt-titre', '--nt-sous'] as const
+  it.each(NOMS_THEMES)('%s : lisibles (4,5:1) sur le ciel du nouvel onglet, en clair et en sombre', (nom) => {
+    const couleurs = THEMES[nom].couleurs
+    for (const mode of ['clair', 'sombre'] as const) {
+      const v = deriver(couleurs, mode)
+      for (const k of NT) expect(rapport(v[k], v['--nouvel-onglet-ciel']), `${nom} ${mode} ${k}`).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+  it('Sable et Clair total (ciel clair) : textes foncés, pas les teintes claires du design sombre', () => {
+    for (const nom of ['sable', 'clair-total'] as const) {
+      const v = deriver(THEMES[nom].couleurs, 'clair')
+      expect(luminance(v['--nt-texte'])).toBeLessThan(0.3)
+      expect(luminance(v['--nt-titre'])).toBeLessThan(0.3)
+    }
+  })
+  it('couleur personnalisée claire : textes foncés ; sombre : textes clairs', () => {
+    const perso = structuredClone(COULEURS_INDIGO_NUIT)
+    perso['nouvel-onglet-ciel'].clair = '#F0E8FF'
+    const v = deriver(perso, 'clair')
+    expect(rapport(v['--nt-sous'], '#F0E8FF')).toBeGreaterThanOrEqual(4.5)
+    expect(luminance(v['--nt-texte'])).toBeLessThan(0.3)
+    expect(luminance(deriver(perso, 'sombre')['--nt-texte'])).toBeGreaterThan(0.5)
+  })
+})

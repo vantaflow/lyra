@@ -1,6 +1,6 @@
 // Thèmes de Lyra : palettes prêtes, table nom CSS ↔ élément, variables dérivées, import/export (module pur).
 import { CLES_COULEUR, COULEURS_INDIGO_NUIT, type CleCouleur, type CouleursTheme, type NomTheme } from './types-reglages'
-import { corrigerPalette, corriger, luminance, melanger, SEUIL, type Mode } from './contraste'
+import { corrigerPalette, corriger, luminance, melanger, SEUIL, textesNouvelOnglet, type Mode } from './contraste'
 
 export type { CleCouleur, CouleursTheme, NomTheme }
 
@@ -201,6 +201,10 @@ export function deriver(couleurs: CouleursTheme, mode: Mode): Record<string, str
   vars['--libelles-ciel'] = corriger(v('--libelles-ciel'), c('ciel-fond'), 3)
   vars['--libelles-groupe'] = corriger(v('--libelles-groupe'), c('ciel-fond'), 3)
   vars['--bouclier-ciel'] = corriger(couleurs.boucliers.sombre, c('ciel-fond'), SEUIL)
+  const nt = textesNouvelOnglet(c('nouvel-onglet-ciel'))
+  vars['--nt-texte'] = nt.texte
+  vars['--nt-titre'] = nt.titre
+  vars['--nt-sous'] = nt.sous
   vars['--halo-etoile'] = rgbaDe(c('etoile-active'), 0.7)
   vars['--halo-anneau'] = rgbaDe(c('etoile-active'), 0.22)
   // Teintes des pages Lyra : dérivées du thème dans les deux modes (Indigo nuit en clair = valeurs d'origine de theme.css).

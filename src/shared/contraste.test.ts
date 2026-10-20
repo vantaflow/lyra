@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { COULEURS_INDIGO_NUIT, CLES_COULEUR, type CouleursTheme } from './types-reglages'
-import { PAIRES, SEUIL, corriger, corrigerPalette, rapport, verifier } from './contraste'
+import { luminance, LIBELLES_DERIVEES, PAIRES, SEUIL, corriger, corrigerPalette, rapport, textesNouvelOnglet, verifier } from './contraste'
 
 describe('rapport (WCAG 2.x)', () => {
   it('noir sur blanc = 21, identique = 1', () => {
@@ -39,16 +39,17 @@ describe('corriger', () => {
 })
 
 describe('PAIRES et verifier', () => {
-  it('les six paires de la décision C, toutes à 4,5:1', () => {
+  it('les six paires de la décision C et la paire du nouvel onglet, toutes à 4,5:1', () => {
     expect(PAIRES.map((p) => `${p.texte}/${p.fond}`)).toEqual([
       'ciel-texte/ciel-fond', 'etoiles/ciel-fond', 'etoile-active/etoile-active-fond',
-      'capsule-texte/capsule-fond', 'accent/pages-fond', 'boucliers/pages-fond'
+      'capsule-texte/capsule-fond', 'accent/pages-fond', 'boucliers/pages-fond',
+      'nouvel-onglet-texte/nouvel-onglet-ciel'
     ])
     expect(SEUIL).toBe(4.5)
   })
   it('verifier renvoie rapport et ok pour chaque paire', () => {
     const r = verifier(COULEURS_INDIGO_NUIT, 'sombre')
-    expect(r).toHaveLength(6)
+    expect(r).toHaveLength(7)
     for (const v of r) expect(v.ok).toBe(v.rapport >= SEUIL)
   })
 })
@@ -81,5 +82,24 @@ describe('corrigerPalette', () => {
     const ok = corrigerPalette(COULEURS_INDIGO_NUIT, 'sombre')
     expect(ok.ajustements).toEqual([])
     expect(ok.couleurs).toEqual(COULEURS_INDIGO_NUIT)
+  })
+})
+
+describe('textes du nouvel onglet', () => {
+  const perso = (ciel: string): CouleursTheme => ({ ...JSON.parse(JSON.stringify(COULEURS_INDIGO_NUIT)), 'nouvel-onglet-ciel': { clair: ciel, sombre: ciel } })
+  it('le libellé de la paire dérivée est celui du design', () => {
+    expect(LIBELLES_DERIVEES['nouvel-onglet-texte']).toBe('Nouvel onglet — texte')
+  })
+  it.each(['#0F0F26', '#090916', '#12261F', '#2A1540', '#E9DEC8', '#ECECF3', '#D8C8F0', '#F5F5A0', '#808080', '#FFFFFF', '#000000'])(
+    'ciel %s : texte, titre et sous-titre à 4,5:1',
+    (ciel) => {
+      const t = textesNouvelOnglet(ciel)
+      for (const v of [t.texte, t.titre, t.sous]) expect(rapport(v, ciel)).toBeGreaterThanOrEqual(SEUIL)
+      expect(verifier(perso(ciel), 'clair').every((r) => r.paire.texte !== 'nouvel-onglet-texte' || r.ok)).toBe(true)
+    }
+  )
+  it('ciel sombre : valeurs du design conservées ; ciel clair : textes foncés', () => {
+    expect(textesNouvelOnglet('#0F0F26')).toEqual({ texte: '#ECECFA', titre: '#F6F6FF', sous: '#9E9EC8' })
+    for (const ciel of ['#E9DEC8', '#ECECF3']) expect(luminance(textesNouvelOnglet(ciel).texte)).toBeLessThan(0.2)
   })
 })
