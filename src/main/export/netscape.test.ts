@@ -79,4 +79,87 @@ describe('favoris HTML Netscape', () => {
       expect(Date.now() - t).toBeLessThan(500)
     }
   })
+
+  it('attributs : 200 balises <a suivies de 16 Ko de « a » sans « = », et un attribut de 16 Ko plein de « = », en moins de 500 ms au total', () => {
+    const t = Date.now()
+    lireFavorisHtml(('<a ' + 'a'.repeat(16 * 1024)).repeat(200))
+    lireFavorisHtml('<a href="https://x.fr/" ' + '='.repeat(16 * 1024) + ' x=' + '='.repeat(16 * 1024) + '>t</a>')
+    lireFavorisHtml(('<a ' + 'a='.repeat(8 * 1024) + '>').repeat(200))
+    expect(Date.now() - t).toBeLessThan(500)
+  })
+
+  it('</abbr> ne ferme pas un lien ; </a  > avec espaces le ferme', () => {
+    const lu = aplatir('<DL><DT><A HREF="https://a.fr/">Un <abbr title="x">sigle</abbr> dans un lien</A><DT><A HREF="https://b.fr/">B</a  ></DL>')
+    expect(lu.map((x) => [x.url, x.title])).toEqual([['https://a.fr/', 'Un sigle dans un lien'], ['https://b.fr/', 'B']])
+  })
+
+  it('un « > » entre guillemets dans une valeur d’attribut ne termine pas la balise', () => {
+    const lu = aplatir('<DL><DT><A HREF="https://a.fr/?x=1>2&y=<3" TITLE=\'a>b\'>Lien</A></DL>')
+    expect(lu.map((x) => [x.url, x.title])).toEqual([['https://a.fr/?x=1>2&y=<3', 'Lien']])
+  })
+
+  it('export Chrome (fixture fabriquée) : barre, dossiers imbriqués, entités, icône en data:', () => {
+    const html = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<!-- This is an automatically generated file.
+     It will be read and overwritten.
+     DO NOT EDIT! -->
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+<TITLE>Bookmarks</TITLE>
+<H1>Bookmarks</H1>
+<DL><p>
+    <DT><H3 ADD_DATE="1700000000" LAST_MODIFIED="1700000100" PERSONAL_TOOLBAR_FOLDER="true">Bookmarks bar</H3>
+    <DL><p>
+        <DT><A HREF="https://exemple.fr/?a=1&amp;b=2" ADD_DATE="1700000200" ICON="data:image/png;base64,iVBORw0KGgo=">Caf&eacute; &amp; Cie &#8212; &quot;accueil&quot;</A>
+        <DT><H3 ADD_DATE="1700000300" LAST_MODIFIED="1700000400">Travail</H3>
+        <DL><p>
+            <DT><A HREF="https://b.fr/x" ADD_DATE="1700000500">B &lt;b&gt;</A>
+            <DT><H3 ADD_DATE="1700000600" LAST_MODIFIED="1700000700">Archives</H3>
+            <DL><p>
+                <DT><A HREF="https://c.fr/" ADD_DATE="1700000800">C</A>
+            </DL><p>
+        </DL><p>
+    </DL><p>
+    <DT><H3 ADD_DATE="1700000900" LAST_MODIFIED="1700001000">Other bookmarks</H3>
+    <DL><p>
+        <DT><A HREF="https://d.fr/" ADD_DATE="1700001100">D</A>
+    </DL><p>
+</DL><p>`
+    expect(aplatir(html).map((x) => [x.url, x.title, x.dossier])).toEqual([
+      ['https://exemple.fr/?a=1&b=2', 'Caf&eacute; & Cie — "accueil"', 'Bookmarks bar'],
+      ['https://b.fr/x', 'B <b>', 'Bookmarks bar / Travail'],
+      ['https://c.fr/', 'C', 'Bookmarks bar / Travail / Archives'],
+      ['https://d.fr/', 'D', 'Other bookmarks']
+    ])
+  })
+
+  it('export Firefox (fixture fabriquée) : menu, séparateurs <HR>, descriptions <DD>, ICON_URI', () => {
+    const html = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<!-- This is an automatically generated file.
+     It will be read and overwritten.
+     DO NOT EDIT! -->
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'none'; img-src data: *; object-src 'none'"></meta>
+<TITLE>Bookmarks</TITLE>
+<H1>Menu des marque-pages</H1>
+
+<DL><p>
+    <DT><H3 ADD_DATE="1700000000" LAST_MODIFIED="1700000050">Barre personnelle</H3>
+    <DD>Ma barre
+    <DL><p>
+        <DT><A HREF="https://f.fr/?q=a&amp;r=b" ADD_DATE="1700000100" LAST_MODIFIED="1700000150" ICON_URI="fake-favicon-uri:https://f.fr/?q=a&amp;r=b" ICON="data:image/png;base64,AAAA">Fran&ccedil;ais &amp; co</A>
+        <DD>description du favori
+        <HR>
+        <DT><H3 ADD_DATE="1700000200" LAST_MODIFIED="1700000250">Sous-dossier</H3>
+        <DL><p>
+            <DT><A HREF="https://g.fr/" ADD_DATE="1700000300" LAST_MODIFIED="1700000350" TAGS="a,b">G</A>
+        </DL><p>
+    </DL><p>
+    <DT><A HREF="place:parent=1234&amp;type=6&amp;sort=14" ADD_DATE="1700000400">Requête</A>
+</DL>`
+    expect(aplatir(html).map((x) => [x.url, x.title, x.dossier])).toEqual([
+      ['https://f.fr/?q=a&r=b', 'Fran&ccedil;ais & co', 'Barre personnelle'],
+      ['https://g.fr/', 'G', 'Barre personnelle / Sous-dossier'],
+      ['place:parent=1234&type=6&sort=14', 'Requête', undefined]
+    ])
+  })
 })

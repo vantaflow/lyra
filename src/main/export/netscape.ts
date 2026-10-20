@@ -72,15 +72,63 @@ export function exporterFavorisHtml(favoris: Favori[]): string {
 
 // --- Lecture ---------------------------------------------------------------------------------------------------------
 
-const ATTRIBUT = /([a-zA-Z_][\w-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g
-const NOM_BALISE = /^(\/?)([a-zA-Z][a-zA-Z0-9]*)/
-/** Une balise plus longue est ignorée pour ses attributs (évite un travail démesuré sur un fichier hostile). */
-const ATTRIBUTS_MAX = 16 * 1024
+const ESPACE = /\s/
 
-function attributs(brut: string): Map<string, string> {
-  const m = new Map<string, string>()
-  for (const a of brut.slice(0, ATTRIBUTS_MAX).matchAll(ATTRIBUT)) m.set(a[1].toLowerCase(), decoder(a[2] ?? a[3] ?? a[4] ?? ''))
-  return m
+interface Balise {
+  ferme: boolean
+  nom: string
+  /** Seulement `href` et `add_date`, décodés. */
+  attr: Map<string, string>
+  /** Position du `>` qui la termine. */
+  fin: number
+}
+
+/**
+ * Lit la balise qui commence à `i` (un « < »), sans regex à retour arrière : chaque caractère est vu une fois.
+ * Un `>` entre guillemets (valeur d'attribut) ne termine pas la balise ; `null` si la balise n'est jamais fermée.
+ */
+function lireBalise(html: string, i: number): Balise | null {
+  const n = html.length
+  let k = i + 1
+  const ferme = html[k] === '/'
+  if (ferme) k++
+  const debutNom = k
+  while (k < n && /[a-zA-Z0-9]/.test(html[k])) k++
+  const nom = html.slice(debutNom, k).toLowerCase()
+  const attr = new Map<string, string>()
+  if (nom === '' || !/^[a-z]/.test(nom)) {
+    const fin = html.indexOf('>', i)
+    return fin === -1 ? null : { ferme, nom: '', attr, fin }
+  }
+  while (k < n) {
+    const c = html[k]
+    if (c === '>') return { ferme, nom, attr, fin: k }
+    if (ESPACE.test(c) || c === '/') {
+      k++
+      continue
+    }
+    const debut = k
+    while (k < n && !ESPACE.test(html[k]) && html[k] !== '=' && html[k] !== '>' && html[k] !== '/') k++
+    if (k === debut) k++ // caractère isolé (guillemet, « = » sans nom) : on avance toujours
+    const cle = html.slice(debut, k).toLowerCase()
+    while (k < n && ESPACE.test(html[k])) k++
+    if (html[k] !== '=') continue
+    k++
+    while (k < n && ESPACE.test(html[k])) k++
+    let valeur: string
+    if (html[k] === '"' || html[k] === "'") {
+      const fin = html.indexOf(html[k], k + 1)
+      if (fin === -1) return null
+      valeur = html.slice(k + 1, fin)
+      k = fin + 1
+    } else {
+      const d = k
+      while (k < n && !ESPACE.test(html[k]) && html[k] !== '>') k++
+      valeur = html.slice(d, k)
+    }
+    if ((cle === 'href' || cle === 'add_date') && !attr.has(cle)) attr.set(cle, decoder(valeur))
+  }
+  return null
 }
 
 function dateMs(brut: string | undefined): number {
@@ -117,24 +165,35 @@ export function lireFavorisHtml(html: string): FavorisImportes {
   // Copie en minuscules ASCII (mêmes positions que le texte d'origine) pour chercher les fermetures.
   const bas = html.replace(/[A-Z]/g, (c) => c.toLowerCase())
   const fermeture = { a: { de: -1, a: -1 }, h3: { de: -1, a: -1 } }
+  /** Première `</nom\s*>` à partir de `depuis` (`</abbr>` n'est pas `</a>`) ; mémorisée tant qu'on ne l'a pas dépassée. */
   const prochaineFermeture = (nom: 'a' | 'h3', depuis: number): number => {
     const m = fermeture[nom]
-    if (m.de <= depuis && (m.a === -1 ? m.de === -2 : m.a >= depuis)) return m.a
-    m.a = bas.indexOf(`</${nom}`, depuis)
-    m.de = m.a === -1 ? -2 : depuis
-    return m.a
+    if (m.de >= 0 && m.de <= depuis && (m.a === -1 || m.a >= depuis)) return m.a
+    let p = depuis
+    let trouve = -1
+    for (;;) {
+      const c = bas.indexOf(`</${nom}`, p)
+      if (c === -1) break
+      let k = c + nom.length + 2
+      while (k < bas.length && ESPACE.test(bas[k])) k++
+      if (bas[k] === '>') {
+        trouve = c
+        break
+      }
+      p = c + 1
+    }
+    m.de = depuis
+    m.a = trouve
+    return trouve
   }
   let pos = 0
   while (pos < html.length) {
     const i = html.indexOf('<', pos)
     if (i === -1) break
-    const fin = html.indexOf('>', i)
-    if (fin === -1) break
-    const n = NOM_BALISE.exec(html.slice(i + 1, i + 24))
-    pos = fin + 1
-    if (!n) continue
-    const ferme = n[1] === '/'
-    const nom = n[2].toLowerCase()
+    const b = lireBalise(html, i)
+    if (!b) break
+    pos = b.fin + 1
+    const { ferme, nom } = b
     if (nom === 'dl') {
       if (ferme) {
         if (enTrop > 0) enTrop--
@@ -154,15 +213,14 @@ export function lireFavorisHtml(html: string): FavorisImportes {
         pos = g === -1 ? html.length : g + 1
       }
       const courant = pile[pile.length - 1]
-      const attr = attributs(html.slice(i + 1 + n[0].length, fin))
       if (nom === 'h3') {
-        const dossier: DossierFavori = { type: 'dossier', titre: texte, date: dateMs(attr.get('add_date')), enfants: [] }
+        const dossier: DossierFavori = { type: 'dossier', titre: texte, date: dateMs(b.attr.get('add_date')), enfants: [] }
         courant.push(dossier)
         attente = dossier
       } else {
         attente = undefined
-        const url = (attr.get('href') ?? '').trim()
-        if (url) courant.push({ type: 'lien', titre: texte, url, date: dateMs(attr.get('add_date')) })
+        const url = (b.attr.get('href') ?? '').trim()
+        if (url) courant.push({ type: 'lien', titre: texte, url, date: dateMs(b.attr.get('add_date')) })
       }
     }
   }

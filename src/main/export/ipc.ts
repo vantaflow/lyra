@@ -3,7 +3,7 @@
  * privée. La logique vit dans `operations.ts` et `sauvegardeAuto.ts` (sans Electron) ; ici, le contrôle de
  * l'expéditeur et les boîtes de dialogue natives. Sous LYRA_TEST=1 le chemin vient de la demande (aucune fenêtre).
  */
-import { dialog, type WebContents } from 'electron'
+import { app, dialog, type WebContents } from 'electron'
 import { isAbsolute } from 'node:path'
 import { handle } from '../ipc'
 import type { CiblesImport } from '../import/appliquer'
@@ -22,7 +22,8 @@ export interface DepsExportIpc {
   sauvegarde: SauvegardeAuto
 }
 
-const enTest = (): boolean => process.env.LYRA_TEST === '1'
+/** Chemins pris dans la demande : jamais dans une application empaquetée. */
+const enTest = (): boolean => process.env.LYRA_TEST === '1' && !app.isPackaged
 const OPTIONS_IMPORT = { fenetre: 'courante' as const, ouvrirMaintenant: false, moteurParDefaut: false, extensionsChoisies: [] }
 
 type Filtres = Array<{ name: string; extensions: string[] }>
