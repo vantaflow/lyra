@@ -355,6 +355,14 @@ export class TabManager {
     if (change) this.notifier()
   }
 
+  /** Recharge les étoiles dont la page est concernée (règle par site d'une extension modifiée, extension rechargée). */
+  rechargerPages(concerne: (url: string) => boolean): void {
+    for (const v of this.vues.values()) {
+      const wc = v.webContents
+      if (!wc.isDestroyed() && concerne(wc.getURL())) wc.reload()
+    }
+  }
+
   rechercher(id: string, texte: string, o: { suivant?: boolean; precedent?: boolean } = {}): void {
     const wc = this.vues.get(id)?.webContents
     if (wc) rechercherWc(wc, texte, o)

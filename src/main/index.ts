@@ -58,7 +58,7 @@ import { origineDe, type Shields } from './shields/Shields'
 import type { DureeDnd } from '../shared/ipc'
 import { creerExtensions, type Extensions } from './extensions/Extensions'
 import { creerChargeur } from './extensions/chargeur'
-import { creerSynchroSites } from './extensions/regleSite'
+import { creerSynchroSites, extensionChangeePour } from './extensions/regleSite'
 import { creerRegistre, migrerSourceUbo } from './extensions/registre'
 import { installerExtensionsIpc } from './extensions/ipc'
 import { creerInstallateurChrome } from './extensions/chrome'
@@ -736,7 +736,10 @@ void app.whenReady().then(async () => {
     sites: () => reglages.getSettings().sites,
     surChangement: (cb) => reglages.onChanged(cb),
     chargees: () => registreExtensions.lister().filter((x) => x.active).map((x) => x.id),
-    recharger: (id) => rechargerExtension(id)
+    recharger: (id) => rechargerExtension(id),
+    apresRechargement: (id, avant, apres) => {
+      for (const tm of onglets.values()) tm.rechargerPages((url) => extensionChangeePour(avant, apres, id, url))
+    }
   })
   const chargeurExtensions = creerChargeur({
     extensions: sessionLyra.extensions,

@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'no
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { RegleSite } from '../../shared/types'
-import { appliquerExclusions, creerSynchroSites, exclusionsSites, motifsExclusion, SIDECAR_EXCLUSIONS } from './regleSite'
+import { extensionChangeePour, appliquerExclusions, creerSynchroSites, exclusionsSites, motifsExclusion, SIDECAR_EXCLUSIONS } from './regleSite'
 
 const ID = 'a'.repeat(32)
 const AUTRE = 'b'.repeat(32)
@@ -140,6 +140,41 @@ describe('creerSynchroSites', () => {
     m.change({ 'x.fr': bloque() })
     await new Promise((r) => setTimeout(r, 0))
     expect(m.recharger).not.toHaveBeenCalled()
+    rmSync(d, { recursive: true, force: true })
+  })
+})
+
+describe('extensionChangeePour', () => {
+  it('vrai seulement pour les pages dont l’effet de l’extension change', () => {
+    const avant: Record<string, RegleSite> = {}
+    const apres: Record<string, RegleSite> = { 'x.fr': bloque(), '*.y.fr': bloque() }
+    expect(extensionChangeePour(avant, apres, ID, 'https://x.fr/a')).toBe(true)
+    expect(extensionChangeePour(avant, apres, ID, 'https://www.y.fr/')).toBe(true)
+    expect(extensionChangeePour(avant, apres, ID, 'https://y.fr/')).toBe(false)
+    expect(extensionChangeePour(avant, apres, ID, 'https://z.fr/')).toBe(false)
+    expect(extensionChangeePour(avant, apres, AUTRE, 'https://x.fr/')).toBe(false)
+    expect(extensionChangeePour(apres, avant, ID, 'https://x.fr/')).toBe(true)
+    expect(extensionChangeePour(avant, apres, ID, 'lyra://reglages')).toBe(false)
+  })
+  it('creerSynchroSites appelle apresRechargement avec les règles d’avant et d’après', async () => {
+    let courant: Record<string, RegleSite> = {}
+    let abonne: ((s: { sites: Record<string, RegleSite> }) => void) | undefined
+    const appels: Array<[string, Record<string, RegleSite>, Record<string, RegleSite>]> = []
+    const d = mkdtempSync(join(tmpdir(), 'lyra-sync-'))
+    writeFileSync(join(d, 'manifest.json'), JSON.stringify({ manifest_version: 3, name: 'x', content_scripts: [{ matches: ['<all_urls>'], js: ['a.js'] }] }))
+    const synchro = creerSynchroSites({
+      sites: () => courant,
+      surChangement: (cb) => ((abonne = cb), () => undefined),
+      chargees: () => [ID],
+      recharger: async () => synchro.preparer(ID, d),
+      apresRechargement: (id, a, b) => appels.push([id, a, b])
+    })
+    synchro.preparer(ID, d)
+    const apres = { 'x.fr': bloque() }
+    courant = apres
+    abonne!({ sites: apres })
+    await new Promise((r) => setTimeout(r, 5))
+    expect(appels).toEqual([[ID, {}, apres]])
     rmSync(d, { recursive: true, force: true })
   })
 })

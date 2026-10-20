@@ -10,7 +10,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { RegleSite } from '../../shared/types'
-import { cleDe } from '../settings/sites'
+import { cleDe, resoudre } from '../settings/sites'
 import { lireJsonTolerant } from './jsonc'
 
 export const SIDECAR_EXCLUSIONS = 'lyra-exclusions.json'
@@ -100,6 +100,13 @@ export function appliquerExclusions(dossier: string, motifs: string[], globs: st
   }
 }
 
+/** L'extension `id` agit-elle différemment sur cette page entre les deux jeux de règles ? (Alors la page doit être rechargée.) */
+export function extensionChangeePour(avant: Record<string, RegleSite>, apres: Record<string, RegleSite>, id: string, url: string): boolean {
+  if (!/^(https?|file):/i.test(url)) return false
+  const agit = (sites: Record<string, RegleSite>): boolean => resoudre(sites, url).extensions?.[id] !== false
+  return agit(avant) !== agit(apres)
+}
+
 export interface DepsSynchroSites {
   sites: () => Record<string, RegleSite>
   /** Abonnement aux changements de réglages ; rend le désabonnement. */
@@ -108,12 +115,16 @@ export interface DepsSynchroSites {
   chargees: () => string[]
   /** Retire puis recharge l'extension (sous son verrou) ; `preparer` est rappelé par le chargeur. */
   recharger: (id: string) => Promise<unknown>
+  /** Après un rechargement réussi : les étoiles ouvertes du site concerné se rechargent (les content scripts ne s'injectent qu'au chargement). */
+  apresRechargement?: (id: string, avant: Record<string, RegleSite>, apres: Record<string, RegleSite>) => void
 }
 
 /** Applique les règles au chargement (`preparer`) et recharge les extensions dont l'ensemble de motifs a changé. */
 export function creerSynchroSites(d: DepsSynchroSites) {
   /** id → motifs appliqués au dernier chargement (`null` : aucun content script, rien à recharger jamais). */
   const appliques = new Map<string, string | null>()
+  /** id → règles de site au dernier chargement. */
+  const sitesAppliquees = new Map<string, Record<string, RegleSite>>()
   let precedent = d.sites()
   const enCours = new Set<string>()
   const refaire = new Set<string>()
@@ -128,7 +139,9 @@ export function creerSynchroSites(d: DepsSynchroSites) {
     }
     enCours.add(id)
     try {
+      const avant = sitesAppliquees.get(id) ?? d.sites()
       await d.recharger(id)
+      d.apresRechargement?.(id, avant, d.sites())
     } catch (err) {
       console.warn('[extensions] rechargement après règle de site :', err)
     } finally {
@@ -148,6 +161,7 @@ export function creerSynchroSites(d: DepsSynchroSites) {
       const ex = exclusionsSites(d.sites(), id)
       const r = appliquerExclusions(dossier, ex.matches, ex.globs)
       appliques.set(id, r.concerne ? JSON.stringify(ex) : null)
+      sitesAppliquees.set(id, d.sites())
     },
     /** Retour sans exclusions (nouvel essai après un échec de chargement) ; le prochain `preparer` les réapplique. */
     sansExclusions(id: string, dossier: string): void {
