@@ -194,13 +194,13 @@ test('fidélité au design : boutons de ligne, Options en échec, panneau du pie
     const ligne = p.locator('.ext').first()
     const boutons = (): Promise<string[]> => ligne.locator('button').evaluateAll((bs) => bs.map((b) => (b.textContent || '').trim() || b.getAttribute('aria-label') || ''))
     // Ligne repliée : Options · Sites · Journal · interrupteur (pas de Supprimer).
-    expect(await boutons()).toEqual(['Options', 'Sites', 'Journal', 'Activer Lyra fixture minimale'])
+    await expect.poll(boutons).toEqual(['Options', 'Sites', 'Journal', 'Activer Lyra fixture minimale'])
     // Dépliée : Options · Sites · Replier (à la place de Journal) · Supprimer · interrupteur.
     await ligne.getByRole('button', { name: 'Journal' }).click()
-    expect(await boutons()).toEqual(['Options', 'Sites', 'Replier', 'Supprimer', 'Activer Lyra fixture minimale'])
+    await expect.poll(boutons).toEqual(['Options', 'Sites', 'Replier', 'Supprimer', 'Activer Lyra fixture minimale'])
     await expect(ligne.getByRole('button', { name: 'Supprimer' })).toHaveClass(/danger/)
     await ligne.getByRole('button', { name: 'Replier' }).click()
-    expect(await boutons()).toEqual(['Options', 'Sites', 'Journal', 'Activer Lyra fixture minimale'])
+    await expect.poll(boutons).toEqual(['Options', 'Sites', 'Journal', 'Activer Lyra fixture minimale'])
 
     // Options qui échoue (extension désactivée) : un message, pas un silence.
     await ligne.getByRole('switch').click()

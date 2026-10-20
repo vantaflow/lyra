@@ -40,8 +40,10 @@ test('lyra://extensions : en-tête, cartes, installation par fichier, interrupte
     await expect(p.getByText("Les extensions ne s'exécutent pas en fenêtre privée").first()).toBeVisible()
 
     // Installation par le sélecteur de fichier (chemin injecté sous LYRA_TEST).
-    await p.getByRole('button', { name: 'Choisir…' }).click()
-    await expect(p.getByRole('heading', { name: 'Installées — 1' })).toBeVisible()
+    await test.step('installation', async () => {
+      await p.getByRole('button', { name: 'Choisir…' }).click()
+      await expect(p.getByRole('heading', { name: 'Installées — 1' })).toBeVisible()
+    })
     const ligne = p.locator('.ext').first()
     await expect(ligne.locator('strong')).toHaveText('Lyra fixture minimale')
     await expect(ligne.getByText('1.0.0')).toBeVisible()
@@ -52,8 +54,10 @@ test('lyra://extensions : en-tête, cartes, installation par fichier, interrupte
     await p.screenshot({ path: CAPTURE })
 
     // Options : la page d'options de l'extension s'ouvre dans une nouvelle étoile.
-    await ligne.getByRole('button', { name: 'Options' }).click()
-    await expect.poll(() => app.windows().some((w) => /^chrome-extension:\/\/[a-p]{32}\/options\.html$/.test(w.url()))).toBe(true)
+    await test.step('options', async () => {
+      await ligne.getByRole('button', { name: 'Options' }).click()
+      await expect.poll(() => app.windows().some((w) => /^chrome-extension:\/\/[a-p]{32}\/options\.html$/.test(w.url()))).toBe(true)
+    })
 
     // Interrupteur : l'extension est désactivée dans le registre.
     await interrupteur.click()
@@ -76,11 +80,13 @@ test('lyra://extensions : en-tête, cartes, installation par fichier, interrupte
     await expect(p.getByText('Tous les sites sauf youtube.com (règle par site)')).toBeVisible()
 
     // Désinstallation.
-    await p.getByRole('button', { name: 'Supprimer' }).click()
-    await expect(p.getByRole('heading', { name: 'Installées — 0' })).toBeVisible()
-    expect(await fenetre.evaluate(() => window.lyra.invoke('extensions:lister'))).toEqual([])
+    await test.step('désinstallation', async () => {
+      await p.getByRole('button', { name: 'Supprimer' }).click()
+      await expect(p.getByRole('heading', { name: 'Installées — 0' })).toBeVisible()
+      expect(await fenetre.evaluate(() => window.lyra.invoke('extensions:lister'))).toEqual([])
+    })
   } finally {
-    await app.close()
+    await test.step('fermeture', () => app.close())
   }
 })
 
