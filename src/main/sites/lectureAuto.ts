@@ -37,24 +37,41 @@ export function fonctionLectureAuto(mode: ModeLectureAuto): string {
   function examiner(n) {
     try {
       if (!n) return
-      if (n instanceof HME) { if (n.hasAttribute('autoplay')) neutraliser(n); return }
+      if (n instanceof HME) { if (n.hasAttribute('autoplay') && !permis.has(n)) neutraliser(n); return }
       if (typeof n.querySelectorAll !== 'function') return
       var l = n.querySelectorAll('video,audio')
       for (var i = 0; i < l.length; i++) examiner(l[i])
     } catch (e) {}
   }
+  // Éléments dont la lecture a été autorisée par l'utilisateur (play() avec activation, ou démarrage par ses contrôles : évènement play
+  // sous activation) : leurs play() suivants (reprise après une pub, mise en mémoire tampon, MSE, plus de 5 s après le clic) passent.
+  // Le démarrage automatique d'un autre élément reste refusé.
+  var permis = new WeakSet()
   var d = Object.getOwnPropertyDescriptor(proto, 'play')
   try {
     Object.defineProperty(proto, 'play', {
       configurable: true, enumerable: d ? d.enumerable : true, writable: true,
       value: { play: function () {
-        if (geste()) return jouer.apply(this, arguments)
+        if (geste()) { permis.add(this); return jouer.apply(this, arguments) }
+        if (permis.has(this)) return jouer.apply(this, arguments)
         if (MODE === 'bloquer') return refus()
         try { this.muted = true } catch (e) {}
         return jouer.apply(this, arguments)
       } }.play
     })
   } catch (e) { return }
+  // « Sans le son » : sans activation, muted = false est ignoré (le média reste muet), comme Chromium refuse le son d'une lecture automatique.
+  // volume n'y change rien : muted l'emporte.
+  var muet = Object.getOwnPropertyDescriptor(proto, 'muted')
+  if (MODE === 'sans-son' && muet && muet.set) {
+    try {
+      var poserMuet = muet.set
+      Object.defineProperty(proto, 'muted', { configurable: true, enumerable: muet.enumerable, get: muet.get, set: function (v) {
+        if (!v && !geste() && !permis.has(this)) return
+        return poserMuet.call(this, v)
+      } })
+    } catch (e) {}
+  }
   var auto = Object.getOwnPropertyDescriptor(proto, 'autoplay')
   if (auto && auto.set) {
     try {
@@ -77,7 +94,9 @@ export function fonctionLectureAuto(mode: ModeLectureAuto): string {
     obs.observe(doc, { childList: true, subtree: true, attributes: true, attributeFilter: ['autoplay'] })
     doc.addEventListener('play', function (e) {
       var t = e && e.target
-      if (t instanceof HME && t.autoplay) neutraliser(t)
+      if (!(t instanceof HME)) return
+      if (geste()) permis.add(t)
+      else if (t.autoplay && !permis.has(t)) neutraliser(t)
     }, true)
   } catch (e) {}
 }`

@@ -60,14 +60,16 @@ if (WEB || HERITE) {
     const scripts = regles.scripts
     const lancer = (): void => {
       webFrame.setIsolatedWorldInfo(MONDE_SCRIPTS_PERSO, { name: 'Scripts personnalisés Lyra' })
-      // Chaque script a sa propre exécution : l'échec de l'un n'empêche pas les suivants ; son bloc évite les collisions de const/let.
+      // Chaque script a sa propre exécution : l'échec de l'un n'empêche pas les suivants ; sa fonction évite les collisions de const/let
+      // et préserve un 'use strict' placé en tête (les variables `var` ne sont donc plus partagées d'un script à l'autre).
       for (const s of scripts) {
         webFrame
-          .executeJavaScriptInIsolatedWorld(MONDE_SCRIPTS_PERSO, [{ code: '{\n' + s.code + '\n}' }])
+          .executeJavaScriptInIsolatedWorld(MONDE_SCRIPTS_PERSO, [{ code: '(function () {\n' + s.code + '\n})()' }])
           .catch((err: unknown) => console.warn('[lyra] script personnalisé en échec :', s.nom, err))
       }
     }
-    if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', lancer, { once: true })
+    // Écouteur en capture posé avant tout script de la page : un stopPropagation de la page ne l'empêche pas.
+    if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', lancer, { once: true, capture: true })
     else lancer()
   }
 }
@@ -98,7 +100,7 @@ if (WEB) {
       moniteur.start(window)
       window.addEventListener('pagehide', () => moniteur.stop(), { once: true })
     },
-    { once: true, passive: true }
+    { once: true, passive: true, capture: true }
   )
 }
 

@@ -9,7 +9,13 @@ function fenetre(o: { geste?: boolean | null } = {}) {
   const observateurs: Array<{ cb: (m: unknown[]) => void; options: unknown }> = []
   const etat = { geste: o.geste ?? false }
   class Media {
-    muted = false
+    _m = false
+    get muted(): boolean {
+      return this._m
+    }
+    set muted(v: boolean) {
+      this._m = v
+    }
     paused = true
     attrs = new Set<string>()
     get autoplay(): boolean {
@@ -20,7 +26,7 @@ function fenetre(o: { geste?: boolean | null } = {}) {
       else this.attrs.delete('autoplay')
     }
     play(): Promise<void> {
-      lectures.push({ muted: this.muted })
+      lectures.push({ muted: this._m })
       this.paused = false
       return Promise.resolve()
     }
@@ -158,6 +164,58 @@ describe('lecture automatique « Sans le son »', () => {
     const m = new f.Media()
     f.observateurs[0].cb([{ type: 'childList', addedNodes: [m] }])
     expect(m.muted).toBe(false)
+  })
+})
+
+describe('« Sans le son » : muted et reprise après une lecture autorisée', () => {
+  it('sans activation, muted = false est ignoré ; avec activation, il passe', async () => {
+    const f = fenetre()
+    appliquer('sans-son', f)
+    const m = new f.Media()
+    await m.play()
+    expect(m.muted).toBe(true)
+    m.muted = false
+    expect(m.muted).toBe(true)
+    f.etat.geste = true
+    m.muted = false
+    expect(m.muted).toBe(false)
+  })
+  it('« Bloquer » ne touche pas à muted', () => {
+    const f = fenetre()
+    appliquer('bloquer', f)
+    const m = new f.Media()
+    m._m = true
+    m.muted = false
+    expect(m.muted).toBe(false)
+  })
+  it('un élément lancé avec activation peut rejouer sans geste (reprise, tampon, MSE) ; un autre reste refusé', async () => {
+    for (const mode of ['bloquer', 'sans-son'] as const) {
+      const f = fenetre()
+      appliquer(mode, f)
+      const lu = new f.Media()
+      const autre = new f.Media()
+      f.etat.geste = true
+      await lu.play()
+      f.etat.geste = false
+      lu.pause()
+      await lu.play()
+      expect(f.lectures.at(-1)).toEqual({ muted: false })
+      expect(lu.paused).toBe(false)
+      if (mode === 'bloquer') await expect(autre.play()).rejects.toMatchObject({ name: 'NotAllowedError' })
+      else {
+        await autre.play()
+        expect(autre.muted).toBe(true)
+      }
+    }
+  })
+  it('démarré par les contrôles natifs (évènement play sous activation) : les play() suivants passent', async () => {
+    const f = fenetre()
+    appliquer('bloquer', f)
+    const m = new f.Media()
+    f.etat.geste = true
+    f.ecouteurs.play[0].f({ target: m })
+    f.etat.geste = false
+    await expect(m.play()).resolves.toBeUndefined()
   })
 })
 

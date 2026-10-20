@@ -39,6 +39,8 @@ const PAGES: Record<string, string> = {
       window.__auDcl = { valeur: getComputedStyle(document.documentElement).getPropertyValue('--lyra-perso').trim(), fond: getComputedStyle(document.body).backgroundColor, peintures: performance.getEntriesByType('paint').length }
     })
   </script><body><p>style</p></body>`,
+  // Page hôte avec une iframe d'un autre site (localhost) : elle ne reçoit ni les scripts perso ni le style du site hôte.
+  '/hote': '<!doctype html><title>hote</title><body><p>hote</p><iframe src="%TIERS%/zoom"></iframe></body>',
   '/zoom': '<!doctype html><title>zoom</title><body><p>zoom</p></body>',
   // Lecture sans geste : le play() de la page, au chargement, n'est précédé d'aucune activation utilisateur.
   '/media': `<!doctype html><title>media</title><body>
@@ -48,6 +50,9 @@ const PAGES: Record<string, string> = {
       window.__play = 'en-cours'
       var p = document.getElementById('a').play()
       p.then(function () { window.__play = 'ok' }, function (e) { window.__play = e instanceof DOMException ? e.name : String(e) })
+      // Sans geste : « Sans le son » ignore muted = false (le média reste muet).
+      document.getElementById('a').muted = false
+      window.__muetApres = document.getElementById('a').muted
     </script></body>`,
   // Monde isolé : la page pose une variable et lit celle du script (et le script fait l'inverse).
   '/monde': `<!doctype html><title>monde</title><script>window.variablePage = 'page'</script><body><p>monde</p>
@@ -67,7 +72,7 @@ test.beforeAll(async () => {
       return r.end()
     }
     r.setHeader('content-type', 'text/html; charset=utf-8')
-    r.end(page)
+    r.end(page.replace('%TIERS%', `http://localhost:${PORT}`))
   })
   await new Promise<void>((ok) => serveur.listen(0, '127.0.0.1', ok))
   PORT = (serveur.address() as AddressInfo).port
@@ -153,6 +158,7 @@ const etatMedias = (p: Page) =>
     return {
       play: (window as unknown as { __play: string }).__play,
       muet: a.muted,
+      muetApres: (window as unknown as { __muetApres: boolean }).__muetApres,
       autoplayAttribut: auto.hasAttribute('autoplay'),
       autoMuet: auto.muted,
       autoEnPause: auto.paused
@@ -166,7 +172,7 @@ test('lecture automatique : « Autoriser » laisse faire, « Bloquer » rejette 
     // Témoin (aucune règle) : play() sans geste réussit avec le son, et le média autoplay démarre.
     const t = await ouvrir(app, fenetre, '/media')
     await expect.poll(async () => (await etatMedias(t)).play).toBe('ok')
-    expect(await etatMedias(t)).toMatchObject({ muet: false, autoplayAttribut: true, autoMuet: false })
+    expect(await etatMedias(t)).toMatchObject({ muet: false, muetApres: false, autoplayAttribut: true, autoMuet: false })
     await expect.poll(async () => (await etatMedias(t)).autoEnPause).toBe(false)
 
     // « Bloquer » : play() sans geste rejeté par NotAllowedError, autoplay bloqué.
@@ -182,13 +188,64 @@ test('lecture automatique : « Autoriser » laisse faire, « Bloquer » rejette 
     await regle(fenetre, '127.0.0.1', { lectureAuto: 'sans-son' })
     const m = await ouvrir(app, fenetre, '/media?sans-son')
     await expect.poll(async () => (await etatMedias(m)).play).toBe('ok')
-    expect(await etatMedias(m)).toMatchObject({ muet: true, autoplayAttribut: true, autoMuet: true })
+    expect(await etatMedias(m)).toMatchObject({ muet: true, muetApres: true, autoplayAttribut: true, autoMuet: true })
 
     // « Autoriser » explicite : comme le témoin.
     await regle(fenetre, '127.0.0.1', { lectureAuto: 'autoriser' })
     const a = await ouvrir(app, fenetre, '/media?autoriser')
     await expect.poll(async () => (await etatMedias(a)).play).toBe('ok')
     expect(await etatMedias(a)).toMatchObject({ muet: false, autoMuet: false })
+  } finally {
+    await app.close()
+  }
+})
+
+test('lecture automatique : un média lancé par l’utilisateur peut reprendre 6 s plus tard sans geste ; un autre reste refusé', async () => {
+  test.setTimeout(120_000)
+  const { app, fenetre } = await lancerLyra()
+  try {
+    await regle(fenetre, '127.0.0.1', { lectureAuto: 'bloquer' })
+    const p = await ouvrir(app, fenetre, '/media?reprise')
+    await expect.poll(async () => (await etatMedias(p)).play).toBe('NotAllowedError')
+    // Clic simulé (évaluation avec geste) : play(), pause() ; puis, après 6 s (activation expirée), play() sans geste.
+    await p.evaluate(() => {
+      const a = document.getElementById('a') as HTMLAudioElement
+      const w = window as unknown as { __reprise?: string; __autre?: string }
+      void a.play()
+      a.pause()
+      setTimeout(() => {
+        ;(w as unknown as { __act: unknown }).__act = navigator.userActivation.isActive
+        a.play().then(() => (w.__reprise = 'ok'), (e: DOMException) => (w.__reprise = e.name))
+        ;(document.getElementById('auto') as HTMLAudioElement).play().then(() => (w.__autre = 'ok'), (e: DOMException) => (w.__autre = e.name))
+      }, 6000)
+    })
+    // Aucune évaluation (chacune simule un geste) pendant l'attente : l'activation transitoire doit expirer.
+    await new Promise((ok) => setTimeout(ok, 7000))
+    expect(await p.evaluate(() => (window as unknown as { __act: unknown }).__act)).toBe(false)
+    expect(await p.evaluate(() => (window as unknown as { __reprise?: string }).__reprise)).toBe('ok')
+    expect(await p.evaluate(() => (window as unknown as { __autre?: string }).__autre)).toBe('NotAllowedError')
+  } finally {
+    await app.close()
+  }
+})
+
+test('scripts personnalisés : une iframe d’un autre site ne reçoit ni scripts ni style du site hôte ; ils s’exécutent même sous « Scripts : Bloqués »', async () => {
+  test.setTimeout(120_000)
+  const { app, fenetre } = await lancerLyra()
+  try {
+    await regle(fenetre, '127.0.0.1', { style: 'html { --lyra-perso: hote }', scriptsPerso: [{ nom: 's', code: "document.documentElement.dataset.perso = 'oui'", actif: true }] })
+    const p = await ouvrir(app, fenetre, '/hote')
+    await expect.poll(() => p.evaluate(() => document.documentElement.dataset.perso)).toBe('oui')
+    expect(await p.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--lyra-perso').trim())).toBe('hote')
+    const tiers = p.frames().find((f) => f.url().startsWith(`http://localhost:${PORT}`))!
+    await expect.poll(() => tiers.evaluate(() => document.readyState)).toBe('complete')
+    await new Promise((ok) => setTimeout(ok, 500))
+    expect(await tiers.evaluate(() => ({ perso: document.documentElement.dataset.perso ?? null, style: getComputedStyle(document.documentElement).getPropertyValue('--lyra-perso').trim() }))).toEqual({ perso: null, style: '' })
+
+    // « Scripts : Bloqués » bloque les scripts de la PAGE (CSP) ; les scripts personnalisés de l'utilisateur, eux, s'exécutent (voulu).
+    await regle(fenetre, '127.0.0.1', { scripts: 'bloques', style: 'html { --lyra-perso: hote }', scriptsPerso: [{ nom: 's', code: "document.documentElement.dataset.perso = 'oui'", actif: true }] })
+    const b = await ouvrir(app, fenetre, '/zoom?bloques')
+    await expect.poll(() => b.evaluate(() => document.documentElement.dataset.perso)).toBe('oui')
   } finally {
     await app.close()
   }

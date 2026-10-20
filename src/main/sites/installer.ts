@@ -42,9 +42,11 @@ export function installerReglesSites(deps: { reglages: Reglages; estPage(wc: Web
         e.returnValue = AUCUNE_REGLE_PAGE
         return
       }
-      e.returnValue = reglesDePage(sites(), f.parent ? e.sender.getURL() : f.url, urlDeFrame(f.url, f.origin), undefined, {
+      // Une fenced frame n'a pas de parent mais n'est pas la frame principale de l'onglet : ni scripts perso, ni page « haute » à elle.
+      const principale = !f.parent && f === e.sender.mainFrame
+      e.returnValue = reglesDePage(sites(), principale ? f.url : e.sender.getURL(), urlDeFrame(f.url, f.origin), undefined, {
         globaux: deps.reglages.getSettings().styles,
-        principale: !f.parent
+        principale
       })
     } catch (err) {
       console.warn('[sites] règles de la frame :', err)
