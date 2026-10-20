@@ -62,3 +62,34 @@ describe('Bookmarks', () => {
     expect(n).toBe(2)
   })
 })
+
+describe('Bookmarks.ajouterLot', () => {
+  it('une seule écriture, dates d\'origine conservées, chemins de dossiers', () => {
+    const b = new Bookmarks(chemin)
+    let ecritures = 0
+    b.onChange(() => ecritures++)
+    const r = b.ajouterLot([
+      { url: 'https://a.fr/', title: 'A', dossier: 'Importés de Chrome / Lecture', date: 1_600_000_000_000 },
+      { url: 'https://b.fr/', title: 'B', dossier: 'Importés de Chrome' },
+      { url: 'https://a.fr/', title: 'A bis' },
+      { url: 'https://c.fr/', title: 'C', date: 0 }
+    ])
+    expect(r).toEqual({ ajoutes: 3, presents: 1 })
+    expect(ecritures).toBe(1)
+    const l = new Bookmarks(chemin).lister()
+    expect(l[0]).toEqual({ url: 'https://a.fr/', title: 'A', dossier: 'Importés de Chrome / Lecture', date: 1_600_000_000_000 })
+    expect(l[1].dossier).toBe('Importés de Chrome')
+    expect(l[2].dossier).toBeUndefined()
+    expect(l[2].date).toBeGreaterThan(1_600_000_000_000) // 0 → maintenant
+  })
+
+  it('déjà présent (même hors dossier) : compté, aucune écriture si rien à ajouter', () => {
+    const b = new Bookmarks(chemin)
+    b.ajouter({ url: 'https://a.fr/', title: 'A' })
+    let ecritures = 0
+    b.onChange(() => ecritures++)
+    expect(b.ajouterLot([{ url: 'https://a.fr/', title: 'A', dossier: 'X' }])).toEqual({ ajoutes: 0, presents: 1 })
+    expect(ecritures).toBe(0)
+    expect(b.lister()[0].dossier).toBeUndefined()
+  })
+})

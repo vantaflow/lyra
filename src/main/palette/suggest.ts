@@ -11,6 +11,8 @@ export interface ContexteSuggestion {
   etoiles: Star[]
   historique: HistoryEntry[]
   moteurParDefaut: string
+  /** Moteurs intégrés + personnalisés (`moteursDisponibles`) ; intégrés seuls si absent. */
+  moteurs?: Moteur[]
   constellations?: Constellation[]
   /** Position du ciel (démasqué) : sa commande « Déplacer le ciel à … » n'a pas de sens, elle est masquée. */
   positionCiel?: 'gauche' | 'droite' | 'haut' | 'bas'
@@ -50,18 +52,18 @@ const DOMAINE = /^[^\s/?#:]+\.[a-z]{2,}(:\d+)?([/?#]\S*)?$/i
 export const normaliser = (s: string): string => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
 /** « w véga » → Wikipédia / « véga » ; null si le premier mot n'est pas un mot-clé. */
-export function analyserMotCle(texte: string): { moteur: Moteur; requete: string } | null {
+export function analyserMotCle(texte: string, moteurs: readonly Moteur[] = MOTEURS): { moteur: Moteur; requete: string } | null {
   const m = /^(\S+)\s+(.+)$/.exec(texte.trim())
-  const moteur = m && moteurParMotCle(m[1])
+  const moteur = m && moteurParMotCle(m[1], moteurs)
   return m && moteur ? { moteur, requete: m[2].trim() } : null
 }
 
-export function interpreterSaisie(texte: string, moteurParDefaut: string): Saisie {
+export function interpreterSaisie(texte: string, moteurParDefaut: string, moteurs: readonly Moteur[] = MOTEURS): Saisie {
   const t = texte.trim()
   if (t.startsWith('>')) return { type: 'commande', nom: t.slice(1).trim() }
   if (t.startsWith('?')) return { type: 'recherche', moteur: moteurParDefaut, requete: t.slice(1).trim() }
   if (SCHEMA.test(t)) return { type: 'url', url: t }
-  const kw = analyserMotCle(t)
+  const kw = analyserMotCle(t, moteurs)
   if (kw) return { type: 'recherche', moteur: kw.moteur.id, requete: kw.requete }
   if (!/\s/.test(t) && (LOCALHOST.test(t) || IPV4.test(t) || DOMAINE.test(t))) return { type: 'url', url: `https://${t}` }
   return { type: 'recherche', moteur: moteurParDefaut, requete: t }
@@ -100,9 +102,10 @@ function ligneRecherche(moteur: Moteur, requete: string, aide?: string): Suggest
 }
 
 function lignesRecherche(requete: string, ctx: ContexteSuggestion, premier?: Moteur): Suggestion[] {
-  const defaut = moteurParId(ctx.moteurParDefaut)
+  const moteurs = ctx.moteurs ?? MOTEURS
+  const defaut = moteurParId(ctx.moteurParDefaut, moteurs)
   const ordre = premier ? [premier, defaut] : [defaut]
-  const autre = MOTEURS.find((m) => !ordre.includes(m))
+  const autre = moteurs.find((m) => !ordre.includes(m))
   if (!premier && autre) ordre.push(autre)
   return [...new Set(ordre)].map((m, i) =>
     ligneRecherche(m, requete, m.id === defaut.id && i === 0 ? '↩ pour rechercher' : `mot-clé  ${m.motCle}`)
@@ -153,7 +156,7 @@ export function suggerer(texte: string, ctx: ContexteSuggestion & { activeId?: s
     return q ? lignesRecherche(q, ctx).slice(0, 1) : []
   }
 
-  const kw = analyserMotCle(t)
+  const kw = analyserMotCle(t, ctx.moteurs)
   if (kw) return lignesRecherche(kw.requete, ctx, kw.moteur).slice(0, MAX)
 
   const ouvertes = etoiles.filter((s) => correspond(t, titreEtoile(s), s.url)).slice(0, 5).map((s) => ligneEtoile(s, ctx))
@@ -169,7 +172,7 @@ export function suggerer(texte: string, ctx: ContexteSuggestion & { activeId?: s
       icone: h.favori ? '★' : (h.title[0] ?? '·').toUpperCase()
     }))
 
-  const saisie = interpreterSaisie(t, ctx.moteurParDefaut)
+  const saisie = interpreterSaisie(t, ctx.moteurParDefaut, ctx.moteurs)
   const recherche: Suggestion[] = []
   if (saisie.type === 'url') {
     recherche.push({ type: 'recherche', titre: `Aller à ${t}`, sousTitre: 'adresse', url: saisie.url, icone: '→' })

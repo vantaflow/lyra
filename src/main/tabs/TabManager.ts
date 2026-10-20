@@ -15,7 +15,7 @@ import { estVraiePopup } from './popup'
 import { arreter as arreterRechercheWc, rechercher as rechercherWc } from './find'
 import { attacherComportements } from './comportements'
 import type { CrochetsPasserelles } from '../passerelles/Passerelles'
-import type { SkyState } from '../../shared/types'
+import type { Constellation, SkyState } from '../../shared/types'
 import type { AncreMenu, CanalEvenement, DemandePermission, EtatEtoile, Evenements, RouteOverlay, SkyChange } from '../../shared/ipc'
 
 const URL_NEWTAB = 'lyra://newtab'
@@ -102,6 +102,27 @@ export class TabManager {
     void vue.webContents.loadURL(url).catch(() => undefined)
     this.notifier()
     return star.id
+  }
+
+  /**
+   * Étoile endormie sans vue (import) : aucun chargement, titre affiché tout de suite, entrée de navigation comme
+   * `restaurer`, la vue naît au premier clic (`reveiller`). N'active rien. Constellation inconnue : ignorée.
+   */
+  ouvrirEndormie(url: string, o: { constellationId?: string; titre?: string; epingle?: boolean } = {}): string {
+    const constellationId = o.constellationId && this.tree.constellation(o.constellationId) ? o.constellationId : undefined
+    const star = this.tree.creer({ url, constellationId, position: 'fin' })
+    star.title = o.titre ?? ''
+    star.pinned = o.epingle === true
+    star.dormant = true
+    this.entrees.set(star.id, { entries: [{ url, title: star.title }], index: 0 })
+    this.notifier()
+    return star.id
+  }
+
+  creerConstellation(o: { name: string; color: string }): Constellation {
+    const c = this.tree.creerConstellation(o)
+    this.notifier()
+    return c
   }
 
   fermer(id: string): void {

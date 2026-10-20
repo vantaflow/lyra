@@ -108,3 +108,18 @@ describe('TabTree', () => {
     expect(t2.toJSON()).toEqual(json)
   })
 })
+
+describe('TabTree.creerConstellation', () => {
+  it('crée, retrouve par id et exporte la constellation', () => {
+    const t = new TabTree()
+    const c = t.creerConstellation({ name: 'Docs', color: '#5B8DEF' })
+    expect(c).toMatchObject({ name: 'Docs', color: '#5B8DEF' })
+    expect(c.id).toBeTruthy()
+    expect(t.constellation(c.id)).toEqual(c)
+    expect(t.constellation('x')).toBeUndefined()
+    expect(t.toJSON().constellations).toEqual([c])
+    const s = t.creer({ url: A, constellationId: c.id, position: 'fin' })
+    expect(t.star(s.id)?.constellationId).toBe(c.id)
+    expect(TabTree.fromJSON(t.toJSON()).constellation(c.id)).toEqual(c)
+  })
+})

@@ -20,7 +20,7 @@ import { Permissions, type DepsPermissions, type ReponsePermission } from './per
 import { Attentes, REFUS } from './permissions/attentes'
 import { nettoyerUserAgent } from './ua'
 import { continuerAutorise, estUrlErreur, exceptionsCertificat, hoteDe, urlOriginale } from './tabs/erreurs'
-import { moteurParId, urlDeRecherche } from './palette/engines'
+import { moteurParId, moteursDisponibles, urlDeRecherche } from './palette/engines'
 import type { ActionMenu, AncreMenu } from '../shared/ipc'
 import type { Reglages } from './settings/settings'
 import type { TypePermission } from '../shared/types'
@@ -184,7 +184,7 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
       // Fenêtre privée : le zoom par site n'est ni lu ni mémorisé.
       zoomDe: opts.privee ? undefined : (origine) => reglagesCourants().sites[origine]?.zoom,
       memoriserZoom: opts.privee ? undefined : (origine, zoom) => void reglagesStore?.setSettings({ sites: { [origine]: { zoom } } }),
-      rechercheUrl: (texte) => urlDeRecherche(moteurParId(reglagesCourants().moteurParDefaut), texte),
+      rechercheUrl: (texte) => urlDeRecherche(moteurParId(reglagesCourants().moteurParDefaut, moteursDisponibles(reglagesCourants())), texte),
       // Fenêtre privée : ni détection automatique ni proposition d'ajout (rien n'est écrit dans les réglages).
       passerelles: passerelles?.crochets({ privee: opts.privee === true }),
       surEchap: () => dnd.sortir(fenetre.id),
