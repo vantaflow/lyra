@@ -37,6 +37,7 @@
     "@ghostery/adblocker-electron": "2.20.1",
     "@ghostery/adblocker-electron-preload": "2.20.1",
     "@preact/signals": "^2.11.3",
+    "fflate": "0.8.2",
     "sql.js": "1.15.1",
     "tldts-experimental": "7.4.18"
   }

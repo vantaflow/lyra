@@ -99,7 +99,7 @@ function personnelle(v: unknown): Obj | undefined {
 const MAX_MOTEURS_PERSO = 100
 const MAX_EXTENSIONS_EN_ATTENTE = 200
 const MAGASINS = enumeration('chrome', 'edge', 'firefox', 'inconnu')
-const SOURCES = enumeration('chrome', 'edge', 'brave', 'vivaldi', 'firefox', 'safari', 'orion')
+const SOURCES = enumeration('chrome', 'edge', 'brave', 'vivaldi', 'firefox', 'safari', 'orion', 'lyra')
 
 /** moteursPerso : { id, nom, motCle (sans espace, 24 max), url https? avec %s } ; invalides et doublons d'id ignorés ; `[]` explicite accepté. */
 function moteursPerso(v: unknown): unknown[] | undefined {

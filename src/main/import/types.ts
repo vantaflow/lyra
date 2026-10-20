@@ -7,7 +7,8 @@
 // ---------------------------------------------------------------------------------------------------------------------
 // Sources et profils
 
-export type NavigateurSource = 'chrome' | 'edge' | 'brave' | 'vivaldi' | 'firefox' | 'safari' | 'orion'
+/** `lyra` : un fichier exporté par Lyra lui-même (favoris, ciel, paquet `.lyra`) ; jamais détecté comme profil. */
+export type NavigateurSource = 'chrome' | 'edge' | 'brave' | 'vivaldi' | 'firefox' | 'safari' | 'orion' | 'lyra'
 
 /** Navigateurs construits sur Chromium : même format de profil (Bookmarks, History, Preferences, Sessions…). */
 export const NAVIGATEURS_CHROMIUM = ['chrome', 'edge', 'brave', 'vivaldi'] as const satisfies readonly NavigateurSource[]
@@ -19,7 +20,8 @@ export const NOMS_NAVIGATEURS: Record<NavigateurSource, string> = {
   vivaldi: 'Vivaldi',
   firefox: 'Firefox',
   safari: 'Safari',
-  orion: 'Orion'
+  orion: 'Orion',
+  lyra: 'Lyra'
 }
 
 export const estChromium = (n: NavigateurSource): boolean => (NAVIGATEURS_CHROMIUM as readonly string[]).includes(n)
@@ -155,6 +157,8 @@ export interface GroupeImporte {
   /** Nom du groupe ; vide si l'utilisateur ne l'a pas nommé. */
   nom: string
   couleur: CouleurGroupe
+  /** Couleur exacte de la constellation (#rrggbb), pour un ciel exporté par Lyra ; prime sur `couleur`. */
+  couleurHex?: string
 }
 
 export interface FenetreImportee {

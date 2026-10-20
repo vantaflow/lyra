@@ -174,6 +174,16 @@ export class History {
     this.compacter()
   }
 
+  /** Export CSV : une entrée par page (dernière visite, nombre de visites), la plus récente d'abord n'est pas garantie. Lecture seule, tolérante aux ajouts pendant le parcours. */
+  *pages(): Generator<{ url: string; titre: string; date: number; visites: number }> {
+    for (const [url, f] of this.index) if (f.dates.length) yield { url, titre: f.title, date: Math.max(...f.dates), visites: f.dates.length }
+  }
+
+  /** Export du paquet : chaque visite, une par une (une réimportation retrouve exactement les mêmes dates). */
+  *visites(): Generator<{ url: string; titre: string; date: number }> {
+    for (const [url, f] of this.index) for (const date of [...f.dates]) yield { url, titre: f.title, date }
+  }
+
   /** Top n par visites sur 30 jours (égalité : la plus récente d'abord), sans lyra:// ni file://. */
   frequents(n: number, maintenant: number = Date.now()): HistoryEntry[] {
     const depuis = maintenant - 30 * JOUR

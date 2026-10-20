@@ -674,3 +674,22 @@ describe('robustesse', () => {
     expect(r.historique.etat).toBe('ok')
   })
 })
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Fichiers exportés par Lyra (jalon E, Task 4) : source `lyra`
+
+describe('source lyra (fichiers et paquet)', () => {
+  it('favoris : les dossiers gardent leur chemin, sans dossier « Importés de … »', async () => {
+    const f = faux()
+    const favoris: FavorisImportes = { barre: [], autres: [lien('Racine', 'https://r.example/'), { type: 'dossier', titre: 'A', date: 0, enfants: [{ type: 'dossier', titre: 'B', date: 0, enfants: [lien('Dans B', 'https://b.example/')] }] }] }
+    await appliquer(entree({ favoris }, 'lyra'), f.cibles, OPTIONS)
+    expect(f.favoris.map((x) => [x.url, x.dossier || undefined])).toEqual([['https://r.example/', undefined], ['https://b.example/', 'A / B']])
+  })
+
+  it('constellation : la couleur exacte du fichier est conservée, sinon la plus proche de la palette', async () => {
+    const f = faux()
+    const onglets = { fenetres: [{ groupes: [{ id: 'k', nom: 'Exacte', couleur: 'gris' as const, couleurHex: '#3FB187' }, { id: 'j', nom: 'Invalide', couleur: 'bleu' as const, couleurHex: 'rouge' }], onglets: [{ url: 'https://a.example/', titre: 'A', groupe: 'k' }] }] }
+    await appliquer(entree({ onglets }, 'lyra'), f.cibles, OPTIONS)
+    expect(f.constellations.map((c) => [c.name, c.color])).toEqual([['Exacte', '#3FB187'], ['Invalide', couleurConstellation(COULEURS_GROUPE.bleu)]])
+  })
+})

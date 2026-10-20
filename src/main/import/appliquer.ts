@@ -231,14 +231,15 @@ const termine = (r: ElementResultat): ElementResultat => ({ ...r, etat: r.etat =
 // --- Favoris ---------------------------------------------------------------------------------------------------------
 
 function appliquerFavoris(f: FavorisImportes, source: NavigateurSource, cible: CibleFavoris): ElementResultat {
-  const racine = `Importés de ${NOMS_NAVIGATEURS[source]}`
+  // Un fichier de Lyra garde ses dossiers tels quels (pas de dossier « Importés de … »).
+  const racine = source === 'lyra' ? '' : `Importés de ${NOMS_NAVIGATEURS[source]}`
   const items: Array<{ url: string; title: string; dossier: string; date: number }> = []
   let ignores = 0
   const parcourir = (noeuds: NoeudFavori[], dossier: string): void => {
     for (const n of noeuds) {
       if (n.type === 'dossier') {
         const titre = n.titre.replace(/\//g, '∕').trim() || 'Sans titre'
-        parcourir(n.enfants, `${dossier} / ${titre}`)
+        parcourir(n.enfants, dossier ? `${dossier} / ${titre}` : titre)
       } else if (FAVORI_OUVRABLE.test(n.url)) {
         const url = normaliserUrlFavori(n.url)
         if (url === null) ignores++
@@ -425,7 +426,8 @@ async function appliquerOnglets(o: OngletsImportes, cibles: CiblesImport, option
           constellationDe.set(g.id, existante)
           reutilisees++
         } else {
-          const c = ciel.creerConstellation({ name: nom, color: couleurConstellation(COULEURS_GROUPE[g.couleur]) })
+          const exacte = g.couleurHex !== undefined && /^#[0-9a-f]{6}$/i.test(g.couleurHex)
+          const c = ciel.creerConstellation({ name: nom, color: exacte ? g.couleurHex! : couleurConstellation(COULEURS_GROUPE[g.couleur]) })
           noms.set(normaliser(nom), c.id)
           constellationDe.set(g.id, c.id)
           creees++
