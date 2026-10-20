@@ -201,8 +201,8 @@ test("notification web : retenue pendant le mode (rien d'affiché), livrée à l
       return { titre: a.title, corps: a.body, instance: a instanceof Notification, permission: Notification.permission, nom: Notification.name }
     })
     expect(resume).toEqual({ titre: 'Première', corps: 'corps A', instance: true, permission: 'granted', nom: 'Notification' })
-    // Le pont vers le main n'est visible d'aucun script de la page : aucune propriété __lyra* sur window.
-    expect(await p.evaluate(() => Object.getOwnPropertyNames(window).filter((k) => k.startsWith('__lyra')))).toEqual([])
+    // Le pont vers le main n'est visible d'aucun script de la page : aucune propriété __lyra* sur window (hors la sonde de test __lyraShields des scriptlets, posée sur les pages http).
+    expect(await p.evaluate(() => Object.getOwnPropertyNames(window).filter((k) => k.startsWith('__lyra') && k !== '__lyraShields'))).toEqual([])
     await expect.poll(async () => (await etat(fenetre)).notifications).toBe(2)
     // Rien n'est livré (donc rien d'affiché) pendant le mode ; le rappel compte.
     expect(await livraisons(fenetre)).toEqual([])
