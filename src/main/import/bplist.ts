@@ -24,7 +24,7 @@ export class UidPlist {
 /** Profondeur maximale d'imbrication acceptée. */
 export const PROFONDEUR_MAX_PLIST = 200
 /** Nombre maximal d'objets décodés par plist (chacun une seule fois, grâce à la mémoïsation) : protège des fichiers hostiles aux références (ou aux objets) en nombre démesuré. */
-const NOEUDS_MAX = 5_000_000
+export const NOEUDS_MAX = 5_000_000
 /** Budget par défaut des octets produits par la lecture d'un plist binaire (voir `lireBplist`). */
 export const BUDGET_OCTETS_PLIST = 64 * 1024 * 1024
 /** Les dates plist comptent en secondes depuis le 1er janvier 2001 UTC. */
@@ -56,7 +56,11 @@ class LecteurBinaire {
   private debutTable = 0
   private finObjets = 0
 
-  constructor(octets: Uint8Array, budget: number) {
+  constructor(
+    octets: Uint8Array,
+    budget: number,
+    private noeudsMax = NOEUDS_MAX
+  ) {
     this.o = octets
     this.vue = new DataView(octets.buffer, octets.byteOffset, octets.byteLength)
     this.budget = budget
@@ -129,7 +133,7 @@ class LecteurBinaire {
     const pos = this.offsetObjet(index) // valide aussi l'index
     if (this.memo.has(index)) return this.memo.get(index) as ValeurPlist
     if (this.enCours.has(index)) throw corrompu('référence cyclique')
-    if (++this.noeuds > NOEUDS_MAX) throw corrompu("trop d'objets")
+    if (++this.noeuds > this.noeudsMax) throw corrompu("trop d'objets")
     this.enCours.add(index)
     try {
       const valeur = this.decoder(pos, profondeur)
@@ -235,9 +239,10 @@ class LecteurBinaire {
  * Lit un plist binaire `bplist00`. `budgetOctets` borne le total des octets produits (chaînes, données, éléments de
  * tableaux et de dictionnaires) : un fichier hostile ne peut pas gonfler la mémoire du processus principal.
  */
-export function lireBplist(octets: Uint8Array, budgetOctets = BUDGET_OCTETS_PLIST): ValeurPlist {
+/** `noeudsMax` : plafond d'objets décodés (tests seulement ; `NOEUDS_MAX` par défaut). */
+export function lireBplist(octets: Uint8Array, budgetOctets = BUDGET_OCTETS_PLIST, noeudsMax = NOEUDS_MAX): ValeurPlist {
   try {
-    return new LecteurBinaire(octets, budgetOctets).lire()
+    return new LecteurBinaire(octets, budgetOctets, noeudsMax).lire()
   } catch (e) {
     if (e instanceof ErreurImport) throw e
     throw corrompu('lecture impossible', e) // filet de sécurité : jamais de RangeError vers l'appelant

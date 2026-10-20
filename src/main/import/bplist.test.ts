@@ -198,8 +198,10 @@ describe('bplist corrompu : ErreurImport, jamais de RangeError', () => {
     expect(d.b).toBe(d.c) // même tableau, décodé une fois
   })
 
-  it("trop d'objets (au-delà de NOEUDS_MAX) : ErreurImport", () => {
-    const N = 5_000_000 // + la racine : un objet de plus que le plafond
+  it("trop d'objets (au-delà du plafond) : ErreurImport", () => {
+    // Même structure qu'un fichier hostile au-delà de NOEUDS_MAX, avec un plafond réduit pour rester rapide en CI.
+    const PLAFOND = 5_000
+    const N = PLAFOND // + la racine : un objet de plus que le plafond
     const octets = new Uint8Array(ENTETE.length + 6 + 4 * N + N + 4 * (N + 1) + 32)
     const dv = new DataView(octets.buffer)
     octets.set(ENTETE, 0)
@@ -213,8 +215,9 @@ describe('bplist corrompu : ErreurImport, jamais de RangeError', () => {
     dv.setUint32(debutTable, ENTETE.length)
     for (let i = 0; i < N; i++) dv.setUint32(debutTable + 4 * (i + 1), debutBools + i)
     octets.set(queue(N + 1, 0, debutTable, 4, 4), debutTable + 4 * (N + 1))
-    expect(() => lireBplist(octets)).toThrow(ErreurImport)
-    expect(() => lireBplist(octets)).toThrow(/trop d'objets/)
+    expect(() => lireBplist(octets, undefined, PLAFOND)).toThrow(ErreurImport)
+    expect(() => lireBplist(octets, undefined, PLAFOND)).toThrow(/trop d'objets/)
+    expect(() => lireBplist(octets, undefined, PLAFOND + 1)).not.toThrow()
   })
 
   it("budget d'octets : message lisible quand le contenu décodé dépasse la limite", () => {

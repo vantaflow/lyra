@@ -88,7 +88,8 @@ describe('SauvegardeAuto', () => {
     const c = await lirePaquet(readFileSync(join(dossier, noms[noms.length - 1])), PHRASE)
     expect(c.favoris[0].url).toBe('https://f.fr/')
     expect(c.cookies).toBeUndefined()
-    expect(statSync(join(dossier, noms[0])).mode & 0o077).toBe(0)
+    // Droits 0600 : POSIX seulement (Windows n'a pas de bits de mode, les ACL du dossier personnel s'appliquent).
+    if (process.platform !== 'win32') expect(statSync(join(dossier, noms[0])).mode & 0o077).toBe(0)
     expect(sa.etat().derniere).toBeGreaterThan(0)
   }, 60_000)
 
