@@ -115,6 +115,18 @@ describe('lireEtAppliquer', () => {
     expect(resultat.favoris.etat).toBe('ok')
   })
 
+  it('abandon avant l\'historique avec un lot en vol : le lot est acquitté, le lecteur s\'arrête aussitôt', async () => {
+    const { c } = cibles()
+    const ctl = new AbortController()
+    const t0 = Date.now()
+    const resultat = await Promise.race([
+      lireEtAppliquer({ processus: fauxProcessus(50, []), profil: PROFIL, params: {}, elements: ['favoris', 'historique'], cibles: { ...c, favoris: { ajouterLot: (items) => { ctl.abort(); return { ajoutes: items.length, presents: 0 } } } }, options: OPTIONS, signal: ctl.signal }),
+      new Promise<never>((_, ko) => setTimeout(() => ko(new Error('interblocage')), 3000))
+    ])
+    expect(Date.now() - t0).toBeLessThan(1500)
+    expect(resultat.historique.etat).toBe('annule')
+  })
+
   it('un élément non historique reçu hors ordre ne gêne pas ; sans historique, appliqué à la fin de la lecture', async () => {
     const { c } = cibles()
     const els: ElementImport[] = ['favoris']

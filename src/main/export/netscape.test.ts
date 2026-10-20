@@ -52,9 +52,14 @@ describe('favoris HTML Netscape', () => {
 </DL><p>`
     const lu = aplatir(html)
     expect(lu.map((x) => [x.url, x.title, x.dossier])).toEqual([
-      ['https://x.fr/', 'Café A &eacute;t&', 'Barre'],
+      ['https://x.fr/', 'Café A ét&', 'Barre'],
       ['https://y.fr/', 'Y', undefined]
     ])
+  })
+
+  it('décode les entités nommées latines courantes (accents, guillemets, tirets, euro)', () => {
+    const html = '<DL><p><DT><A HREF="https://x.fr/">&Eacute;t&eacute; &agrave; &Ccedil;a&nbsp;va &laquo;&nbsp;oui&nbsp;&raquo; &hellip; &ndash; &mdash; &rsquo;&lsquo; &ldquo;&rdquo; 5&euro; &ouml;&uuml;&yuml;&icirc;&ocirc;&ucirc;&egrave;&ecirc;&euml;&acirc;&auml;&iuml;&ugrave; &inconnue;</A></DL><p>'
+    expect(aplatir(html)[0].title).toBe('Été à Ça\u00a0va «\u00a0oui\u00a0» … – — ’‘ “” 5€ öüÿîôûèêëâäïù &inconnue;')
   })
 
   it('tolère le désordre : balises fermantes en trop, lien sans adresse, texte vide', () => {
@@ -125,7 +130,7 @@ describe('favoris HTML Netscape', () => {
     </DL><p>
 </DL><p>`
     expect(aplatir(html).map((x) => [x.url, x.title, x.dossier])).toEqual([
-      ['https://exemple.fr/?a=1&b=2', 'Caf&eacute; & Cie — "accueil"', 'Bookmarks bar'],
+      ['https://exemple.fr/?a=1&b=2', 'Café & Cie — "accueil"', 'Bookmarks bar'],
       ['https://b.fr/x', 'B <b>', 'Bookmarks bar / Travail'],
       ['https://c.fr/', 'C', 'Bookmarks bar / Travail / Archives'],
       ['https://d.fr/', 'D', 'Other bookmarks']
@@ -157,7 +162,7 @@ describe('favoris HTML Netscape', () => {
     <DT><A HREF="place:parent=1234&amp;type=6&amp;sort=14" ADD_DATE="1700000400">Requête</A>
 </DL>`
     expect(aplatir(html).map((x) => [x.url, x.title, x.dossier])).toEqual([
-      ['https://f.fr/?q=a&r=b', 'Fran&ccedil;ais & co', 'Barre personnelle'],
+      ['https://f.fr/?q=a&r=b', 'Français & co', 'Barre personnelle'],
       ['https://g.fr/', 'G', 'Barre personnelle / Sous-dossier'],
       ['place:parent=1234&type=6&sort=14', 'Requête', undefined]
     ])

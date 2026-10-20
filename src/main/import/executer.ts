@@ -133,7 +133,10 @@ export async function lireEtAppliquer(a: ArgumentsImport): Promise<ResultatImpor
       a.options,
       (p) => tentative(() => a.surProgression?.(p)),
       a.signal
-    )
+    ).finally(() => {
+      // Historique sauté (abandon) ou application terminée : le lot en vol est acquitté, le lecteur s'arrête à l'instant.
+      void file?.[Symbol.asyncIterator]().return?.()
+    })
   )
 
   const lecture = a.processus.lire(a.profil, a.params, ordre, {
