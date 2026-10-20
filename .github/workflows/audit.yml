@@ -1,0 +1,33 @@
+name: audit
+
+# Audit des boutons (@audit, tests/e2e/audit-*.spec.ts) : chaque contrôle découvert est actionné, sans erreur et avec
+# un effet observable. Lancement manuel ; le rapport test-results/audit-boutons.json est publié même en cas d'échec.
+on:
+  workflow_dispatch:
+
+jobs:
+  audit:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Audit des boutons
+        run: npx playwright test tests/e2e/audit
+      - name: Rapport de l'audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-boutons-${{ runner.os }}
+          path: |
+            test-results/audit-boutons.json
+            test-results/**/error-context.md
+          if-no-files-found: warn

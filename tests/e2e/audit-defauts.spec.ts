@@ -5,8 +5,12 @@ import { lancerLyra } from './helpers'
 
 const LIENS = pathToFileURL(resolve(__dirname, 'fixtures/liens.html')).href
 const reglage = (f: Page, ciel: Record<string, unknown>) => f.evaluate((c) => window.lyra.invoke('settings:set', { ciel: c } as never), ciel)
-const menuOuvert = (app: ElectronApplication): Page | undefined =>
-  app.windows().find((w) => w.url().includes('#overlay') || w.url().includes('ui.html'))
+/** Vue d'overlay (menus, panneaux) visible côté main : la dernière vue enfant de la fenêtre. */
+const overlayVisible = (app: ElectronApplication): Promise<boolean> =>
+  app.evaluate(({ BaseWindow }) => {
+    const v = BaseWindow.getAllWindows()[0]?.contentView.children.at(-1) as { getVisible?: () => boolean } | undefined
+    return v?.getVisible?.() ?? false
+  })
 
 const POSITIONS = [
   { position: 'gauche', masque: false },
@@ -18,6 +22,10 @@ const POSITIONS = [
 
 test('la recherche dans la page ne recouvre aucun bouton de la capsule : ⋯ cliquable, menu ouvert, à chaque position du ciel', async () => {
   const { app, fenetre } = await lancerLyra()
+  const avecMenu = async (): Promise<Page | undefined> => {
+    for (const w of app.windows()) if ((await w.getByRole('menu', { name: 'Menu de la page' }).count().catch(() => 0)) > 0) return w
+    return undefined
+  }
   try {
     await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), LIENS)
     await expect.poll(() => app.windows().some((w) => w.url() === LIENS)).toBe(true)
@@ -38,9 +46,12 @@ test('la recherche dans la page ne recouvre aucun bouton de la capsule : ⋯ cli
       })
       expect(inter, `position ${c.position}${c.masque ? ' masquée' : ''}`).toEqual([])
       await fenetre.getByRole('button', { name: 'Menu de la page' }).click({ timeout: 3000 })
-      await expect.poll(async () => (await Promise.all(app.windows().map((w) => w.getByRole('menu', { name: 'Menu de la page' }).count().catch(() => 0)))).some((n) => n > 0)).toBe(true)
-      await fenetre.keyboard.press('Escape')
-      await expect.poll(async () => (await Promise.all(app.windows().map((w) => w.getByRole('menu', { name: 'Menu de la page' }).count().catch(() => 0)))).every((n) => n === 0)).toBe(true)
+      await expect.poll(async () => (await overlayVisible(app)) && (await avecMenu()) !== undefined).toBe(true)
+      // Le menu vit dans l'overlay, qui prend le focus à l'ouverture (montrerOverlay) : c'est là qu'arrive l'Échap de
+      // l'utilisateur. Playwright, lui, envoie la touche à la page désignée, quel que soit le focus.
+      await (await avecMenu())!.keyboard.press('Escape')
+      // Fermé : la vue d'overlay est cachée côté main (son DOM, lui, garde le dernier menu rendu).
+      await expect.poll(() => overlayVisible(app)).toBe(false)
       await fenetre.locator('.findbar input').press('Escape').catch(() => undefined)
       await fenetre.getByRole('button', { name: 'Fermer la recherche' }).click({ timeout: 1000 }).catch(() => undefined)
       await expect(fenetre.locator('.findbar')).toHaveCount(0)
