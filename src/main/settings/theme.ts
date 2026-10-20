@@ -118,6 +118,8 @@ export interface DepsGestionnaireTheme {
 const ATTENTE_MAX_MS = 60 * 60_000
 /** Marge après l'échéance, pour tomber du bon côté du coucher ou du lever. */
 const MARGE_MS = 1000
+/** Intervalle minimal entre deux sondes du mode système, et période de leur relecture (ms). */
+const INTERVALLE_SONDE_MS = 15_000
 
 /**
  * Calcule le thème effectif, règle `nativeTheme.themeSource` (donc `prefers-color-scheme` des sites) et diffuse les variables
@@ -128,6 +130,8 @@ export class GestionnaireTheme {
   private minuteur: ReturnType<typeof setTimeout> | undefined
   private demarre = false
   private systemeSombre = false
+  private derniereSonde = Number.NEGATIVE_INFINITY
+  private sonde: ReturnType<typeof setInterval> | undefined
   private readonly surMiseAJour = (): void => this.recalculer()
 
   constructor(private readonly deps: DepsGestionnaireTheme) {}
@@ -145,6 +149,8 @@ export class GestionnaireTheme {
     this.deps.nativeTheme.off('updated', this.surMiseAJour)
     this.deps.energie?.off('resume', this.surMiseAJour)
     this.desarmer()
+    if (this.sonde !== undefined) clearInterval(this.sonde)
+    this.sonde = undefined
   }
 
   /** Thème effectif courant (sans effet de bord sur `nativeTheme`), au format diffusé. */
@@ -158,7 +164,7 @@ export class GestionnaireTheme {
   recalculer(): void {
     const r = this.deps.reglages()
     const nt = this.deps.nativeTheme
-    this.lireSysteme()
+    this.lireSysteme(r)
     const effectif = this.effectif()
     // Les sites suivent Lyra (« Demander aux sites leur version sombre quand Lyra est sombre ») ou restent en clair.
     const source = !r.couleurs.prefersColorScheme ? 'light' : suitLeSysteme(r) ? 'system' : effectif.mode === 'sombre' ? 'dark' : 'light'
@@ -169,6 +175,7 @@ export class GestionnaireTheme {
       this.deps.diffuser(effectif)
     }
     this.armer(r)
+    this.armerSonde(r)
   }
 
   private horloge(): Date {
@@ -183,13 +190,42 @@ export class GestionnaireTheme {
     return { systemeSombre: this.systemeSombre, maintenant: this.horloge(), fuseau: this.fuseau() }
   }
 
-  /** Mode du système : lu quand `themeSource` le suit, sinon dernière valeur connue (Windows : lecture directe). */
-  private lireSysteme(): void {
+  /**
+   * Mode du système. Lu directement quand `themeSource` le suit (ou, sous Windows, par la lecture dédiée). Quand « Thème du site
+   * dans la page » est coupé, `themeSource` est forcé à « light » : le mode système n'est alors plus visible. On le relit par
+   * une sonde : `themeSource` repasse un instant à « system », est lu, puis rétabli (dans le même tour, avant tout rendu).
+   * La sonde est espacée (`INTERVALLE_SONDE_MS`) : le « updated » qu'elle provoque ne la relance pas.
+   */
+  private lireSysteme(r: ReglagesTheme): void {
     const nt = this.deps.nativeTheme
     if (nt.themeSource === 'system') this.systemeSombre = nt.shouldUseDarkColors
     else if (process.platform === 'win32' && typeof nt.shouldUseDarkColorsForSystemIntegratedUI === 'boolean') {
       this.systemeSombre = nt.shouldUseDarkColorsForSystemIntegratedUI
+    } else if (suitLeSysteme(r)) {
+      const t = this.horloge().getTime()
+      if (t - this.derniereSonde < INTERVALLE_SONDE_MS) return
+      this.derniereSonde = t
+      const avant = nt.themeSource
+      try {
+        nt.themeSource = 'system'
+        this.systemeSombre = nt.shouldUseDarkColors
+      } finally {
+        nt.themeSource = avant
+      }
     }
+  }
+
+  /** Relecture périodique du système tant qu'il est suivi sans que `themeSource` le suive (aucun évènement n'arrive alors). */
+  private armerSonde(r: ReglagesTheme): void {
+    const besoin = this.demarre && suitLeSysteme(r) && this.deps.nativeTheme.themeSource !== 'system'
+    if (!besoin) {
+      if (this.sonde !== undefined) clearInterval(this.sonde)
+      this.sonde = undefined
+      return
+    }
+    if (this.sonde !== undefined) return
+    this.sonde = setInterval(() => this.recalculer(), INTERVALLE_SONDE_MS)
+    this.sonde.unref?.()
   }
 
   private desarmer(): void {

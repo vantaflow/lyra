@@ -166,6 +166,41 @@ describe('GestionnaireTheme', () => {
     g.arreter()
   })
 
+  it('« Avec le système » suit encore le système quand « Thème du site dans la page » est coupé (themeSource forcé)', () => {
+    const nt = nativeSimule(false)
+    const g = new GestionnaireTheme(depsGestionnaire(reglage('systeme', { prefersColorScheme: false }), nt))
+    g.demarrer()
+    expect(diffusions.at(-1)!.mode).toBe('clair')
+    expect(nt.themeSource).toBe('light')
+    // Le système passe en sombre : l'évènement, puis la relecture périodique, le voient malgré themeSource forcé.
+    nt.fixerSysteme(true)
+    vi.advanceTimersByTime(16_000)
+    expect(diffusions.at(-1)!.mode).toBe('sombre')
+    // Les sites voient toujours « clair » : themeSource est rétabli après la sonde.
+    expect(nt.themeSource).toBe('light')
+    nt.fixerSysteme(false)
+    vi.advanceTimersByTime(16_000)
+    expect(diffusions.at(-1)!.mode).toBe('clair')
+    expect(nt.themeSource).toBe('light')
+    g.arreter()
+  })
+
+  it('la sonde du système est espacée : un évènement updated rapproché ne la relance pas', () => {
+    const nt = nativeSimule(false)
+    const g = new GestionnaireTheme(depsGestionnaire(reglage('systeme', { prefersColorScheme: false }), nt))
+    g.demarrer()
+    let ecritures = 0
+    let source = nt.themeSource
+    Object.defineProperty(nt, 'themeSource', { get: () => source, set: (v) => { ecritures++; source = v } })
+    nt.emettre() // première relecture : une sonde (themeSource « system » puis rétabli)
+    expect(ecritures).toBe(2)
+    ecritures = 0
+    nt.emettre()
+    nt.emettre()
+    expect(ecritures).toBe(0)
+    g.arreter()
+  })
+
   it('« Au coucher du soleil » : bascule à l’heure dite, puis revient au lever, themeSource inclus', () => {
     const nt = nativeSimule()
     const g = new GestionnaireTheme(depsGestionnaire(reglage('programme', { passage: 'coucher' }), nt))
