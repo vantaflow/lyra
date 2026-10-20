@@ -5,7 +5,7 @@ import { envoyer } from '../ipc'
 import { CAPSULE } from '../window/layout'
 import { TabTree } from './TabTree'
 import { peutEndormir } from './dormance'
-import { domaineEnregistrable, placerEnfant, placerNouvelle, planRegroupement, type ModePlacement, type Placement } from './placement'
+import { domaineEnregistrable, ordreAffichage, placerEnfant, placerNouvelle, planRegroupement, type ModePlacement, type Placement } from './placement'
 import { cielRestaure } from './archivage'
 import { PALETTE_CONSTELLATIONS } from '../../shared/couleurs'
 import type { FenetreSession, HistoriqueEtoile } from '../session/SessionStore'
@@ -511,17 +511,18 @@ export class TabManager {
 
   /** Étoile voisine dans l'ordre du ciel ; delta = +1 / -1, circulaire. */
   voisine(delta: number): void {
-    const { stars, activeId } = this.tree.toJSON()
-    if (stars.length === 0) return
-    const i = stars.findIndex((s) => s.id === activeId)
-    this.activer(stars[(i + delta + stars.length) % stars.length].id)
+    const { activeId, ...ciel } = this.tree.toJSON()
+    const ids = ordreAffichage(ciel)
+    if (ids.length === 0) return
+    const i = ids.indexOf(activeId ?? '')
+    this.activer(ids[(i + delta + ids.length) % ids.length])
   }
 
   /** n-ième étoile (1-based) ; n = 9 → la dernière. */
   numero(n: number): void {
-    const { stars } = this.tree.toJSON()
-    const cible = n >= 9 ? stars.at(-1) : stars[n - 1]
-    if (cible) this.activer(cible.id)
+    const ids = ordreAffichage(this.tree.toJSON())
+    const cible = n >= 9 ? ids.at(-1) : ids[n - 1]
+    if (cible) this.activer(cible)
   }
 
   /** Sortie de Ne pas déranger : popup retenue ouverte en étoile d'arrière-plan, reliée à son opener s'il existe encore. */

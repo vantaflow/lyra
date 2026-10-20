@@ -39,6 +39,19 @@ export class TabTree {
     return res
   }
 
+  /** Racine (sans parent connu) de l'arbre qui contient `id`. */
+  private racineDe(id: string): string {
+    let courant = this.stars[this.indexDe(id)]
+    const vus = new Set<string>()
+    while (courant?.parentId && !vus.has(courant.id)) {
+      vus.add(courant.id)
+      const parent = this.stars[this.indexDe(courant.parentId)]
+      if (!parent) break
+      courant = parent
+    }
+    return courant.id
+  }
+
   creer(o: OptionsCreation): Star {
     const parentOk = o.parentId !== undefined && this.indexDe(o.parentId) >= 0
     const star: Star = {
@@ -55,8 +68,11 @@ export class TabTree {
       const dernier = this.descendants(o.parentId!).at(-1)
       this.stars.splice(this.indexDe((dernier ?? this.stars[this.indexDe(o.parentId!)]).id) + 1, 0, star)
     } else if (o.position === 'apres' && o.apresId !== undefined && this.indexDe(o.apresId) >= 0) {
-      const fin = this.descendants(o.apresId).at(-1)
-      this.stars.splice(this.indexDe((fin ?? this.stars[this.indexDe(o.apresId)]).id) + 1, 0, star)
+      // Si l'étoile est elle-même reliée, la nouvelle va après le sous-arbre de sa racine : insérée entre deux sœurs, une étoile sans lien
+      // couperait le sous-arbre de leur parent (l'ordre de la liste ne suivrait plus l'affichage).
+      const racine = this.racineDe(o.apresId)
+      const fin = this.descendants(racine).at(-1)
+      this.stars.splice(this.indexDe((fin ?? this.stars[this.indexDe(racine)]).id) + 1, 0, star)
     } else if (o.position === 'fin-constellation' && o.constellationId && this.stars.some((s) => s.constellationId === o.constellationId)) {
       // Après la dernière étoile de la constellation (et ses descendants, qui la suivent dans la liste).
       const dernier = this.stars.findLastIndex((s) => s.constellationId === o.constellationId)

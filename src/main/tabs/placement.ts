@@ -1,13 +1,14 @@
 /** Où naît une nouvelle étoile, et dans quelle constellation (placement et regroupement par site). Pur, sans Electron. */
 import { parse } from 'tldts-experimental'
 import type { SkyState } from '../../shared/types'
+import { regrouper } from '../../renderer/ui/cielCommun'
 
 export type ModePlacement = 'sous-active' | 'fin-constellation' | 'hors-constellation'
 
 /** Consigne de placement, directement lisible par `TabTree.creer`. */
 export interface Placement {
   parentId?: string
-  /** Avec la position `apres` : l'étoile après laquelle (et ses descendantes) la nouvelle est rangée, sans lien. */
+  /** Avec la position `apres` : l'étoile dont la racine (et tout le sous-arbre) précède la nouvelle, rangée sans lien. */
   apresId?: string
   constellationId?: string
   position: 'sous-parent' | 'apres' | 'fin' | 'fin-constellation'
@@ -29,6 +30,12 @@ export function placerNouvelle(ciel: Ciel, activeId: string | null, mode: ModePl
   const constellationId = active.constellationId && ciel.constellations.some((c) => c.id === active.constellationId) ? active.constellationId : undefined
   if (mode === 'sous-active') return { apresId: active.id, ...(constellationId ? { constellationId } : {}), position: 'apres' }
   return constellationId ? { constellationId, position: 'fin-constellation' } : { position: 'fin' }
+}
+
+/** Ordre dans lequel le ciel est affiché (épinglées, étoiles libres, puis chaque constellation) : celui de ⌘ 1-9 et de Ctrl+Tab. */
+export function ordreAffichage(ciel: Pick<SkyState, 'stars' | 'constellations'>): string[] {
+  const { epinglees, sans, constellations } = regrouper({ ...ciel, activeId: null, pinned: [] })
+  return [...epinglees, ...sans, ...constellations.flatMap((g) => g.etoiles)].map((s) => s.id)
 }
 
 /** Étoile ouverte depuis une autre (lien, popup) : toujours reliée à elle, dans sa constellation. */

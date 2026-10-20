@@ -16,6 +16,18 @@ describe('TabTree', () => {
     expect(e1.parentId).toBe(p.id)
   })
 
+  it('« après » une étoile reliée : rangée après le sous-arbre de sa racine, sans couper celui-ci', () => {
+    const t = new TabTree()
+    const p = t.creer({ url: A, position: 'fin' })
+    const e1 = t.creer({ url: A, parentId: p.id, position: 'sous-parent' })
+    const e2 = t.creer({ url: A, parentId: p.id, position: 'sous-parent' })
+    const pe = t.creer({ url: A, parentId: e1.id, position: 'sous-parent' })
+    const q = t.creer({ url: A, position: 'fin' })
+    const n = t.creer({ url: A, apresId: pe.id, position: 'apres' })
+    expect(t.toJSON().stars.map((s) => s.id)).toEqual([p.id, e1.id, pe.id, e2.id, n.id, q.id])
+    expect(n.parentId).toBeUndefined()
+  })
+
   it("fermer un parent rattache ses enfants au grand-parent", () => {
     const t = new TabTree()
     const g = t.creer({ url: A, position: 'fin' })

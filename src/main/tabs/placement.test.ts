@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { SkyState, Star } from '../../shared/types'
 import { TabTree } from './TabTree'
-import { domaineEnregistrable, placerEnfant, placerNouvelle, planRegroupement } from './placement'
+import { domaineEnregistrable, ordreAffichage, placerEnfant, placerNouvelle, planRegroupement } from './placement'
 
 const etoile = (id: string, o: Partial<Star> = {}): Star => ({ id, url: `https://${id}.test/`, title: '', pinned: false, dormant: false, index: 0, ...o })
 const ciel = (stars: Star[], constellations: SkyState['constellations'] = []): Pick<SkyState, 'stars' | 'constellations'> => ({ stars, constellations })
@@ -143,5 +143,16 @@ describe('TabTree : archivage', () => {
     b.inactifDepuis = 5
     t.fermer(b.id)
     expect(t.rouvrirDerniere()?.inactifDepuis).toBeUndefined()
+  })
+})
+
+describe('ordreAffichage (⌘ 1-9, Ctrl+Tab)', () => {
+  it('épinglées, étoiles libres, puis chaque constellation : l’ordre de la colonne, pas celui de la liste', () => {
+    const e = (id: string, o: Record<string, unknown> = {}) => ({ id, url: 'https://a.test/', title: '', pinned: false, dormant: false, index: 0, ...o })
+    const ciel = {
+      stars: [e('c1', { constellationId: 'K' }), e('libre1'), e('c2', { constellationId: 'K' }), e('epingle', { pinned: true }), e('orpheline', { constellationId: 'inconnue' })],
+      constellations: [{ id: 'K', name: 'K', color: '#fff' }]
+    }
+    expect(ordreAffichage(ciel as never)).toEqual(['epingle', 'libre1', 'orpheline', 'c1', 'c2'])
   })
 })
