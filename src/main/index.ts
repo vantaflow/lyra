@@ -16,6 +16,7 @@ import { History } from './history/History'
 import { Bookmarks } from './bookmarks/Bookmarks'
 import { Downloads } from './downloads/Downloads'
 import { installerReglagesIpc } from './settings/ipc'
+import { patchPage } from './settings/import'
 import { SessionStore, type FenetreSession } from './session/SessionStore'
 import { Permissions, type DepsPermissions, type ReponsePermission } from './permissions/Permissions'
 import { Attentes, REFUS } from './permissions/attentes'
@@ -502,7 +503,7 @@ void app.whenReady().then(async () => {
     if (m && origine && typeof id === 'number' && dnd.retirerNotification(m.fenetreId, id, origine)) cadresNotifications.delete(id)
   })
   handle('settings:get', () => reglages.getSettings())
-  handle('settings:set', (patch) => reglages.setSettings(patch))
+  handle('settings:set', (patch) => reglages.setSettings(patchPage(patch)))
   installerReglagesIpc(reglages)
   // Passerelles : rien n'est chargé ni appliqué tant qu'aucun site n'est contourné.
   const sessionsProxy = (): Session[] => [session.defaultSession, session.fromPartition('persist:lyra'), ...sessionsPrivees]
