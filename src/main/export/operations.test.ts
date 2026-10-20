@@ -47,6 +47,7 @@ function monde(nom = 'a') {
     historique,
     reglages,
     ciel: skyState,
+    ciels: () => [skyState()],
     cookies: { lire: async () => [...jar.values()], ecrire: async (c) => (jar.set(c.name + c.domain, c), true) }
   }
   const cibles: CiblesImport = { favoris, historique, ciel, reglages: { get: () => reglages.getSettings(), set: (p) => reglages.setSettings(p) } }
@@ -162,6 +163,30 @@ describe('export / import de fichiers (vrais magasins, sans Electron)', () => {
     expect(b.reglages.getSettings().theme).toBe('clair')
     expect(b.reglages.getSettings().sites['https://x.fr']).toEqual({ boucliers: false })
     expect(b.jar.size).toBe(0)
+  })
+
+  it('paquet à deux fenêtres normales : deux fenêtres restaurées, étoiles endormies (une fenêtre privée n’est jamais fournie)', async () => {
+    const a = monde('a')
+    const ciel = (u: string, i: number): SkyState => ({ constellations: [], stars: [{ id: `s${i}`, url: u, title: u, pinned: false, dormant: false, index: 0 }], activeId: `s${i}`, pinned: [] })
+    a.deps.ciels = () => [ciel('https://un.fr/', 1), ciel('https://deux.fr/', 2)]
+    await exporterPaquet(a.chemin('p.lyra'), a.deps, { phrase: PHRASE })
+    const b = monde('b')
+    const creees: string[][] = []
+    b.cibles.nouvelleFenetre = () => {
+      const urls: string[] = []
+      creees.push(urls)
+      return { constellations: () => [], creerConstellation: (o) => ({ id: 'k', ...o }), ouvrirEndormie: (url) => (urls.push(url), 'x'), sauver: () => undefined }
+    }
+    expect((await importerFichier({ type: 'paquet', chemin: a.chemin('p.lyra'), phrase: PHRASE }, b.cibles, b.deps, OPTIONS)).ok).toBe(true)
+    expect(creees).toEqual([['https://un.fr/'], ['https://deux.fr/']])
+    expect(b.etoiles).toEqual([])
+  })
+
+  it('ciel JSON : l’ancien format (une fenêtre à la racine) reste importable', async () => {
+    const a = monde('a')
+    writeFileSync(a.chemin('vieux.json'), JSON.stringify({ format: 'lyra-ciel', version: 1, date: 'x', constellations: [], etoiles: [{ url: 'https://vieux.fr/', titre: 'V', epingle: false }] }))
+    expect((await importerFichier({ type: 'ciel', chemin: a.chemin('vieux.json') }, a.cibles, a.deps, OPTIONS)).ok).toBe(true)
+    expect(a.etoiles.map((e) => e.url)).toEqual(['https://vieux.fr/'])
   })
 
   it('paquet : mauvaise phrase ou fichier endommagé → erreur claire, rien n’est écrit', async () => {

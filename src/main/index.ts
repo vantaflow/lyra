@@ -1,6 +1,6 @@
 import { app, BaseWindow, ipcMain, powerMonitor, Notification as NotificationSysteme, webContents, type WebContents, type WebFrameMain, protocol, session, type Session } from 'electron'
 import { WindowManager } from './window/WindowManager'
-import type { Settings } from '../shared/types'
+import type { Settings, SkyState } from '../shared/types'
 import { join } from 'node:path'
 import * as paths from './paths'
 import { definirFournisseurLangue } from '../shared/i18n'
@@ -509,6 +509,8 @@ void app.whenReady().then(async () => {
     const normale = (m: TabManager | undefined): TabManager | undefined => (m && !privees.has(m.fenetreId) ? m : undefined)
     return (wc ? normale(ongletsPossedant(wc)) : undefined) ?? normale(ongletsCourants()) ?? [...onglets].reverse().map(([, t]) => normale(t)).find(Boolean)
   }
+  // Ciels de toutes les fenêtres normales, jamais des privées (paquet et sauvegarde nocturne).
+  const cielsNormaux = (): SkyState[] => [...onglets].filter(([, m]) => !privees.has(m.fenetreId)).map(([, m]) => m.exporter().ciel)
   const ciblesImport = (wc: WebContents): CiblesImport => {
     const m = ongletsNormaux(wc) ?? nouvelleFenetreNormale()
     return {
@@ -527,13 +529,14 @@ void app.whenReady().then(async () => {
     historique: hist,
     reglages,
     ciel: () => ongletsNormaux(wc)?.exporter().ciel,
+    ciels: cielsNormaux,
     cookies: cookiesDeSession(session.fromPartition(PARTITION_COOKIES))
   })
   const sauvegardeAuto = new SauvegardeAuto({
     fichierConfig: join(paths.userData(), 'sauvegarde-auto.json'),
     coffre: process.env.LYRA_TEST === '1' && !app.isPackaged ? coffreDeTest : coffreSysteme(),
     horloge: { maintenant: () => Date.now(), planifier: (fn, ms) => { const t = setTimeout(fn, ms); t.unref(); return () => clearTimeout(t) } },
-    sources: () => ({ version: app.getVersion(), reglages: reglages.getSettings(), favoris: favoris.lister(), ciel: ongletsNormaux()?.exporter().ciel, visites: () => hist.visites() }),
+    sources: () => ({ version: app.getVersion(), reglages: reglages.getSettings(), favoris: favoris.lister(), ciels: cielsNormaux(), visites: () => hist.visites() }),
     delaiDemarrage: process.env.LYRA_TEST === '1' ? 500 : undefined
   })
   installerExportIpc({ estPrivee, operations: operationsPour, cibles: ciblesImport, sauvegarde: sauvegardeAuto })

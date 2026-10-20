@@ -16,7 +16,7 @@ import { strToU8, unzipSync, zip } from 'fflate'
 import type { Settings, SkyState } from '../../shared/types'
 import type { Favori } from '../bookmarks/Bookmarks'
 import type { ExtensionImportee, Visite } from '../import/types'
-import { cielDepuisJson, cielVersJson, type CielFichier } from './ciel'
+import { cielDepuisJson, cielsVersJson, type CielFichier } from './ciel'
 import { ErreurPaquet, chiffrer, chiffrerAvecCle, dechiffrer, type CleDerivee } from './chiffrement'
 
 export const FORMAT_PAQUET = 'lyra-paquet'
@@ -44,7 +44,8 @@ export interface SourcesPaquet {
   version: string
   reglages: Settings
   favoris: Favori[]
-  ciel?: SkyState
+  /** Ciels des fenêtres NORMALES (jamais les privées) ; écrits dans `ciel.json` (voir `CielFichier`). */
+  ciels?: SkyState[]
   /** Visites une à une ; peut être un générateur (jamais copié en entier avant d'être écrit). */
   visites(): Iterable<{ url: string; titre: string; date: number }>
   /** Présent seulement si l'utilisateur l'a demandé. */
@@ -74,7 +75,8 @@ export interface ContenuPaquet {
   avertissements: string[]
 }
 
-const SECRET = /pass(word|phrase)?|mdp|motdepasse|secret|credential|token/i
+/** Noms de clé ENTIERS : « passerelles » ne doit pas être pris pour « pass ». */
+const SECRET = /^(password|passphrase|motdepasse|mdp|secrets?|credentials?|tokens?)$/i
 
 /** Copie profonde d'un objet JSON sans aucune clé ressemblant à un secret. */
 function sansSecrets(v: unknown): unknown {
@@ -101,7 +103,7 @@ export async function construireZip(src: SourcesPaquet, opts: { pause?: () => Pr
     'extensions.json': strToU8(JSON.stringify(extensions, null, 2)),
     'favoris.json': strToU8(JSON.stringify(src.favoris.map((f) => ({ url: f.url, title: f.title, ...(f.dossier ? { dossier: f.dossier } : {}), date: f.date })), null, 2))
   }
-  if (src.ciel) fichiers['ciel.json'] = strToU8(cielVersJson(src.ciel, opts.date))
+  if (src.ciels) fichiers['ciel.json'] = strToU8(cielsVersJson(src.ciels, opts.date))
   const morceaux: string[] = []
   let lot: string[] = []
   let visites = 0
@@ -124,7 +126,7 @@ export async function construireZip(src: SourcesPaquet, opts: { pause?: () => Pr
     date: (opts.date ?? new Date()).toISOString(),
     contenu: [...Object.keys(fichiers)].sort(),
     cookies: src.cookies !== undefined,
-    comptes: { favoris: src.favoris.length, visites, etoiles: src.ciel?.stars.length ?? 0, extensions: extensions.length, cookies: src.cookies?.length ?? 0 }
+    comptes: { favoris: src.favoris.length, visites, etoiles: src.ciels?.reduce((n, c) => n + c.stars.length, 0) ?? 0, extensions: extensions.length, cookies: src.cookies?.length ?? 0 }
   }
   fichiers['manifest.json'] = strToU8(JSON.stringify(manifest, null, 2))
   await pause()

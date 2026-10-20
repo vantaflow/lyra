@@ -25,6 +25,8 @@ export interface DepsOperations {
   reglages: { getSettings(): Settings }
   /** Ciel de la fenêtre normale qui demande l'export ; `undefined` si aucune. */
   ciel(): SkyState | undefined
+  /** Ciels de TOUTES les fenêtres normales (jamais les privées), pour le paquet. */
+  ciels(): SkyState[]
   cookies: AccesCookies
 }
 
@@ -103,14 +105,14 @@ export async function exporterReglages(chemin: string, deps: DepsOperations): Pr
 
 export async function exporterPaquet(chemin: string, deps: DepsOperations, o: { phrase: string; cookies?: boolean }, opts: OptionsExport = {}): Promise<{ compte: number }> {
   const favoris = deps.favoris.lister()
-  const ciel = deps.ciel()
+  const ciels = deps.ciels()
   let visites = 0
   const paquet = await creerPaquet(
     {
       version: deps.version,
       reglages: deps.reglages.getSettings(),
       favoris,
-      ...(ciel ? { ciel } : {}),
+      ciels,
       visites: function* () {
         for (const v of deps.historique.visites()) {
           visites++
@@ -124,7 +126,7 @@ export async function exporterPaquet(chemin: string, deps: DepsOperations, o: { 
     opts
   )
   await ecrireAtomique(chemin, paquet, 0o600)
-  return { compte: favoris.length + (ciel ? cielVersFichier(ciel).etoiles.length : 0) + visites }
+  return { compte: favoris.length + ciels.reduce((n, c) => n + cielVersFichier(c).etoiles.length, 0) + visites }
 }
 
 // --- Import ----------------------------------------------------------------------------------------------------------
@@ -213,7 +215,9 @@ export async function importerFichier(d: DemandeImportFichier, cibles: CiblesImp
           extensions: contenu.extensions,
           ...(contenu.ciel ? { onglets: cielVersOnglets(contenu.ciel) } : {})
         }
-        const resultat = await appliquer({ ...base, profil: 'paquet', donnees }, cibles, options)
+        // Une fenêtre Lyra par fenêtre sauvegardée (étoiles endormies) ; une seule : la fenêtre courante.
+        const parFenetre = (contenu.ciel?.fenetres?.length ?? 0) > 1
+        const resultat = await appliquer({ ...base, profil: 'paquet', donnees }, cibles, parFenetre ? { ...options, fenetre: 'nouvelle-par-fenetre' } : options)
         let reglages = false
         const patch = patchImporte(contenu.reglages)
         delete patch.import

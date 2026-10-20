@@ -29,7 +29,7 @@ function sources(extra: Partial<SourcesPaquet> = {}): SourcesPaquet {
     version: '0.1.0',
     reglages,
     favoris: [{ url: 'https://f.fr/', title: 'F', dossier: 'Dossier / Sous', date: 1_700_000_000_000 }],
-    ciel,
+    ciels: [ciel],
     visites: () => [{ url: 'https://h.fr/', titre: 'H', date: 1_700_000_000_000 }, { url: 'https://h.fr/', titre: 'H', date: 1_700_000_100_000 }],
     ...extra
   }
@@ -82,8 +82,27 @@ describe('paquet .lyra', () => {
     const z = unzipSync(await construireZip(s))
     const tout = Object.values(z).map((u) => new TextDecoder().decode(u)).join('\n')
     expect(Object.keys(z).join()).not.toMatch(/pass|mdp|password/i)
-    expect(tout).not.toMatch(/"[^"]*(pass(word)?|mdp|motdepasse|secret)[^"]*"\s*:/i)
+    expect(tout).not.toMatch(/"(password|passphrase|mdp|motdepasse|secrets?|credentials?|tokens?)"\s*:/i)
     expect(tout).not.toContain('"y"')
+  })
+
+  it('« reseau.passerelles » n’est pas pris pour un secret : false reste false ; password et token restent retirés', async () => {
+    const s = sources()
+    s.reglages.reseau.passerelles = false
+    ;(s.reglages as unknown as { reseau: Record<string, unknown> }).reseau.token = 'z'
+    ;(s.reglages as unknown as { reseau: Record<string, unknown> }).reseau.password = 'y'
+    const c = await lirePaquet(await creerPaquet(s, PHRASE), PHRASE)
+    const reseau = c.reglages.reseau as Record<string, unknown>
+    expect(reseau.passerelles).toBe(false)
+    expect(reseau).not.toHaveProperty('token')
+    expect(reseau).not.toHaveProperty('password')
+  })
+
+  it('ciel.json : deux fenêtres normales relues dans l’ordre, la première aussi à la racine', async () => {
+    const autre: SkyState = { ...ciel, stars: [{ id: 'z', url: 'https://z.fr/', title: 'Z', pinned: false, dormant: false, index: 0 }], constellations: [], pinned: [] }
+    const c = await lirePaquet(await creerPaquet(sources({ ciels: [ciel, autre] }), PHRASE), PHRASE)
+    expect(c.ciel?.fenetres?.map((f) => f.etoiles.map((e) => e.url))).toEqual([['https://a.fr/', 'https://b.fr/'], ['https://z.fr/']])
+    expect(c.ciel?.etoiles).toHaveLength(2)
   })
 
   it('chiffré : en-tête LYRA1, itérations ≥ 600 000, ni zip ni JSON lisibles', async () => {
