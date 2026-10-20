@@ -202,6 +202,29 @@ test('une page ne peut pas déposer de page d’accueil en attente : la file `im
   }
 })
 
+test('moteurs perso : le processus principal refuse http, un %s dans l’hôte et un mot-clé déjà pris, même hors de la page', async () => {
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const ok = { id: 'perso-ok', nom: 'Mon wiki', motCle: 'mw', url: 'https://wiki.exemple.fr/?q=%s' }
+    await fenetre.evaluate(
+      (o) =>
+        window.lyra.invoke('settings:set', {
+          moteursPerso: [
+            o,
+            { ...o, id: 'a', motCle: 'a', url: 'http://wiki.exemple.fr/?q=%s' },
+            { ...o, id: 'b', motCle: 'b', url: 'https://%s.pirate.exemple.fr/' },
+            { ...o, id: 'c', motCle: 'w' },
+            { ...o, id: 'd', motCle: 'MW' }
+          ]
+        } as never),
+      ok
+    )
+    expect((await reglages(fenetre)).moteursPerso).toEqual([ok])
+  } finally {
+    await app.close()
+  }
+})
+
 test('« Importer et exporter » rend le composant d’import, et « Sauvegarde et profils » y renvoie', async () => {
   const { app, fenetre } = await lancerLyra()
   try {
