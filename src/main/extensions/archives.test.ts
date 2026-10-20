@@ -3,7 +3,8 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { zipSync, strToU8 } from 'fflate'
-import { copierDossier, extraireZip, lireCrx3, ErreurArchive } from './archives'
+import { crx3Signe } from './crxTest'
+import { copierDossier, extraireZip, lireCrx3, verifierCrx3, ErreurArchive } from './archives'
 
 let tmp: string
 beforeEach(() => {
@@ -116,6 +117,15 @@ describe('extraireZip', () => {
     zip = patch32(zip, SIG_LOCALE, 22, 10)
     refuse(zip, { octets: 4_000 })
   })
+  it('refuse une bombe de décompression (60 Mio de zéros annoncés comme 10 Ko) sans pic mémoire', () => {
+    let zip: Uint8Array = zipSync({ 'a.bin': new Uint8Array(60 * 1024 * 1024) })
+    expect(zip.length).toBeLessThan(200_000)
+    zip = patch32(zip, SIG_CENTRALE, 24, 10_000)
+    zip = patch32(zip, SIG_LOCALE, 22, 10_000)
+    const avant = process.memoryUsage().arrayBuffers
+    refuse(zip)
+    expect(process.memoryUsage().arrayBuffers - avant).toBeLessThan(20 * 1024 * 1024)
+  })
   it('refuse un lien symbolique', () => {
     const zip = zipSync({ 'lien': strToU8('/etc/passwd') })
     // attributs externes : lien symbolique Unix (0o120777 << 16), « made by » Unix (3 << 8)
@@ -141,5 +151,33 @@ describe('copierDossier', () => {
     symlinkSync('/etc/hosts', join(src, 'lien'))
     expect(() => copierDossier(src, join(tmp, 'copie2'))).toThrow(ErreurArchive)
     expect(existsSync(join(tmp, 'copie2'))).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------------------------- signature CRX3
+describe('verifierCrx3', () => {
+  it('accepte un CRX3 correctement signé (id attendu ou déclaré)', () => {
+    const zip = sain()
+    const { octets, id } = crx3Signe(zip)
+    expect(verifierCrx3(octets, id).zip).toEqual(zip)
+    expect(verifierCrx3(octets).cle.length).toBeGreaterThan(100)
+  })
+  it('refuse un payload altéré', () => {
+    const { octets, id } = crx3Signe(sain())
+    const alt = octets.slice()
+    alt[alt.length - 40] ^= 0xff
+    expect(() => verifierCrx3(alt, id)).toThrow(ErreurArchive)
+  })
+  it("refuse la clé d'un autre identifiant", () => {
+    const { octets } = crx3Signe(sain())
+    expect(() => verifierCrx3(octets, 'a'.repeat(32))).toThrow(ErreurArchive)
+  })
+  it('refuse un crx_id déclaré qui ne vient pas de la clé', () => {
+    const { octets, id } = crx3Signe(sain(), { declarer: Buffer.alloc(16, 9) })
+    expect(() => verifierCrx3(octets, id)).toThrow(ErreurArchive)
+    expect(() => verifierCrx3(octets)).toThrow(ErreurArchive)
+  })
+  it('refuse un CRX3 sans preuve ni identifiant signé', () => {
+    expect(() => verifierCrx3(crx3(sain(), new Uint8Array([1, 2, 3, 4, 5])))).toThrow(ErreurArchive)
   })
 })

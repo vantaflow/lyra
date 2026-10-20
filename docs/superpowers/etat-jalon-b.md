@@ -22,7 +22,7 @@ Plan : `docs/superpowers/plans/2026-10-19-lyra-jalon-b.md` (6 tâches). Branche 
 - Tâches 3 à 6 : Firefox (convertisseur), compatibilité MV2 et journal, page `lyra://extensions`, file d'import et finition.
 
 ## Points à connaître
-- Tâche 2 : le CRX du Web Store est téléchargé par Lyra (`clients2.google.com`, redirections Google acceptées, 30 s, 128 Mio) au lieu d'`installExtension` de la bibliothèque, pour que tout passe par l'extraction sûre et le registre ; `updateExtensions` de la bibliothèque reste utilisé pour les mises à jour (dossiers `<version>_0`, le registre suit). Les redirections de uBO vers `*.githubusercontent.com` sont acceptées.
+- Tâche 2 : le CRX du Web Store est téléchargé par Lyra (`clients2.google.com`, redirections Google acceptées, 30 s, 128 Mio) au lieu d'`installExtension` de la bibliothèque, pour que tout passe par l'extraction sûre et le registre. Redirections suivies à la main (https, hôtes listés, 5 max) ; signature CRX3 vérifiée ; mises à jour par l'endpoint updatecheck de Google puis `installerCws`.
 - `requestPermissions` (permissions optionnelles) refuse tout tant que la page `lyra://extensions` n'existe pas (tâche 5).
 - Popups d'action et pages d'options : tâche 5 (fenêtres cachées sous `LYRA_TEST`).
 - Test `ne-pas-deranger.spec.ts` « noopener … about:blank » : échoue aussi sur la base `0c9abee` (non lié à ce jalon).

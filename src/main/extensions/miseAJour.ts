@@ -1,11 +1,11 @@
 /**
  * Mises à jour des extensions : au démarrage puis toutes les 6 h (réglage `extensions.majAuto`) et à la demande.
- * Extensions du Chrome Web Store : `updateExtensions` d'electron-chrome-web-store ; uBlock Origin : version de la dernière
- * release GitHub comparée à la version installée. Sans Electron (tout est injecté).
+ * Extensions du Chrome Web Store (`source === 'cws'`, actives ou non) : version annoncée par l'endpoint de mise à jour de Google
+ * comparée à la version installée, puis réinstallation par le chemin normal de Lyra ; uBlock Origin : version de la dernière
+ * release GitHub. Sans Electron (tout est injecté).
  */
-import { relative, sep } from 'node:path'
 import type { ResultatInstallation } from '../../shared/types'
-import { dossierRelatifValide, type Registre, type StoreReglages } from './registre'
+import type { Registre, StoreReglages } from './registre'
 
 export const INTERVALLE_MAJ_MS = 6 * 3600_000
 
@@ -19,12 +19,10 @@ export interface ResultatVerification {
 export interface OptionsMiseAJour {
   registre: Registre
   reglages: StoreReglages
-  /** `updateExtensions(session)` d'electron-chrome-web-store. */
-  updateExtensions: () => Promise<void>
-  /** Extensions chargées dans la session (version et dossier courants). */
-  extensionsChargees: () => Array<{ id: string; version: string; path: string }>
-  /** `userData/extensions`. */
-  base: string
+  /** Version la plus récente au Chrome Web Store (undefined : rien d'annoncé). */
+  versionDistanteCws: (id: string) => Promise<string | undefined>
+  /** Réinstalle depuis le Chrome Web Store. */
+  mettreAJourCws: (id: string) => Promise<ResultatInstallation>
   derniereVersionUbo?: () => Promise<string>
   installerUbo?: () => Promise<ResultatInstallation>
   maintenant?: () => Date
@@ -69,25 +67,15 @@ export function creerMiseAJour(o: OptionsMiseAJour): MiseAJour {
       journal(`mise à jour : ${m}`)
     }
 
-    const cws = o.registre.lister().filter((e) => e.source === 'cws')
-    if (cws.length > 0) {
+    for (const e of o.registre.lister().filter((x) => x.source === 'cws')) {
       try {
-        await o.updateExtensions()
-        // La bibliothèque a pu poser une nouvelle version sous un autre dossier : le registre suit.
-        const chargees = o.extensionsChargees()
-        for (const e of cws) {
-          const c = chargees.find((x) => x.id === e.id)
-          if (!c || comparerVersions(c.version, e.version) <= 0) continue
-          const dossier = relative(o.base, c.path).split(sep).join('/')
-          if (!dossierRelatifValide(dossier)) {
-            echec(`${e.nom} : dossier de mise à jour inattendu (${dossier})`)
-            continue
-          }
-          o.registre.ajouter({ ...e, version: c.version, dossier, miseAJourLe: maintenant().toISOString() })
-          misesAJour.push({ id: e.id, nom: e.nom, de: e.version, vers: c.version })
-        }
+        const distante = await o.versionDistanteCws(e.id)
+        if (!distante || comparerVersions(distante, e.version) <= 0) continue
+        const r = await o.mettreAJourCws(e.id)
+        if (r.etat === 'installee') misesAJour.push({ id: r.id, nom: r.nom, de: e.version, vers: r.version })
+        else echec(`${e.nom} : ${r.etat === 'erreur' ? r.raison : 'installation manuelle requise'}`)
       } catch (err) {
-        echec(`Chrome Web Store : ${err instanceof Error ? err.message : String(err)}`)
+        echec(`${e.nom} : ${err instanceof Error ? err.message : String(err)}`)
       }
     }
 

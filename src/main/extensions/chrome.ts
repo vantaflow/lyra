@@ -7,7 +7,7 @@ import { generateKeyPairSync, randomUUID } from 'node:crypto'
 import { existsSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ExtensionInstallee, MagasinExtension, ResultatInstallation, SourceExtension } from '../../shared/types'
-import { copierDossier, extraireZip, idDepuisCle, lireCrx3, MAX_ARCHIVE, ErreurArchive } from './archives'
+import { copierDossier, extraireZip, idDepuisCle, verifierCrx3, MAX_ARCHIVE, ErreurArchive } from './archives'
 import type { Chargeur } from './chargeur'
 import { dossierAbsolu, dossierRelatifValide, ID_EXTENSION, type Registre } from './registre'
 
@@ -110,8 +110,10 @@ async function lireCorps(r: Response, max: number): Promise<Uint8Array> {
   return Buffer.concat(morceaux)
 }
 
-const hoteGoogle = (h: string): boolean => h === 'google.com' || h.endsWith('.google.com') || h.endsWith('.googleusercontent.com')
-const hoteGithub = (h: string): boolean => h === 'github.com' || h.endsWith('.githubusercontent.com')
+const hoteCws = (h: string): boolean => h === 'clients2.google.com' || h === 'clients2.googleusercontent.com' || h.endsWith('.gvt1.com')
+const hoteApiGithub = (h: string): boolean => h === 'api.github.com'
+const hoteGithub = (h: string): boolean => h === 'github.com' || h === 'objects.githubusercontent.com' || h === 'release-assets.githubusercontent.com'
+const MAX_SAUTS = 5
 
 function urlCrx(id: string): string {
   const u = new URL('https://clients2.google.com/service/update2/crx')
@@ -120,6 +122,25 @@ function urlCrx(id: string): string {
   u.searchParams.set('x', new URLSearchParams({ id, uc: '' }).toString())
   u.searchParams.set('prodversion', process.versions.chrome ?? '131.0.6778.109')
   return u.toString()
+}
+
+function urlVersionCws(id: string): string {
+  const u = new URL('https://clients2.google.com/service/update2/crx')
+  u.searchParams.set('response', 'updatecheck')
+  u.searchParams.set('acceptformat', 'crx3')
+  u.searchParams.set('prodversion', process.versions.chrome ?? '131.0.6778.109')
+  u.searchParams.set('x', new URLSearchParams({ id, uc: '' }).toString())
+  return u.toString()
+}
+
+/** Version annoncée par la réponse XML de l'endpoint de mise à jour (`<updatecheck status="ok" version="…"/>`). */
+export function versionDepuisReponseMaj(xml: string, id: string): string | undefined {
+  const app = new RegExp(`<app\\b[^>]*\\bappid="${id}"[^>]*>([\\s\\S]*?)(?:</app>|$)`).exec(xml)
+  const balise = app && /<updatecheck\b([^>]*)>/.exec(app[1])
+  if (!balise) return undefined
+  if (!/\bstatus="ok"/.test(balise[1])) return undefined
+  const v = /\bversion="([0-9][0-9.]{0,40})"/.exec(balise[1])
+  return v?.[1]
 }
 
 // ------------------------------------------------------------------------------------------------- installateur
@@ -141,6 +162,10 @@ export interface InstallateurChrome {
   installerUbo(): Promise<ResultatInstallation>
   /** Version de la dernière release GitHub de uBlock Origin. */
   derniereVersionUbo(): Promise<string>
+  /** Version la plus récente d'une extension du Chrome Web Store (undefined si le magasin n'en propose pas). */
+  versionDistanteCws(id: string): Promise<string | undefined>
+  /** Retélécharge et réinstalle une extension du Chrome Web Store (même chemin que l'installation : bornes, signature, registre). */
+  mettreAJourCws(id: string): Promise<ResultatInstallation>
 }
 
 interface Finalisation {
@@ -207,9 +232,27 @@ export function creerInstallateurChrome(d: DepsInstallateurChrome): Installateur
     const cible = join(d.base, id, version)
     // Une version déjà chargée sous cet id est retirée de la session avant de charger la nouvelle.
     if (precedente) await d.chargeur.activer(id, false)
-    rmSync(cible, { recursive: true, force: true })
+    // Le dossier existant (même version) est mis de côté, pas supprimé : il revient si l'installation échoue.
     mkdirSync(join(d.base, id), { recursive: true })
-    renameSync(racine, cible)
+    const ancien = existsSync(cible) ? `${cible}.ancien-${randomUUID().slice(0, 8)}` : undefined
+    if (ancien) renameSync(cible, ancien)
+    const restaurer = async (): Promise<void> => {
+      rmSync(cible, { recursive: true, force: true })
+      if (ancien) renameSync(ancien, cible)
+      if (precedente) {
+        d.registre.ajouter(precedente)
+        if (precedente.active) await d.chargeur.charger(id)
+      } else {
+        d.registre.retirer(id)
+        rmSync(join(d.base, id), { recursive: true, force: true })
+      }
+    }
+    try {
+      renameSync(racine, cible)
+    } catch (err) {
+      await restaurer()
+      throw err
+    }
     const maintenantIso = maintenant().toISOString()
     const entree: ExtensionInstallee = {
       id,
@@ -226,18 +269,11 @@ export function creerInstallateurChrome(d: DepsInstallateurChrome): Installateur
     if (entree.active) {
       const r = await d.chargeur.charger(id)
       if (!r.ok) {
-        // Retour arrière : la version précédente (encore sur disque) reprend sa place.
-        rmSync(cible, { recursive: true, force: true })
-        if (precedente) {
-          d.registre.ajouter(precedente)
-          if (precedente.active) await d.chargeur.charger(id)
-        } else {
-          d.registre.retirer(id)
-          rmSync(join(d.base, id), { recursive: true, force: true })
-        }
+        await restaurer()
         return echec(`chargement impossible : ${r.erreur ?? 'erreur inconnue'}`)
       }
     }
+    if (ancien) rmSync(ancien, { recursive: true, force: true })
     // Versions antérieures : supprimées une fois la nouvelle en place.
     for (const v of readdirSync(join(d.base, id))) if (v !== version) rmSync(join(d.base, id, v), { recursive: true, force: true })
     journal(`${nom} ${version} installée (${o.source}, ${id})`)
@@ -263,21 +299,41 @@ export function creerInstallateurChrome(d: DepsInstallateurChrome): Installateur
     return readFileSync(chemin)
   }
 
+  /** GET avec redirections suivies à la main (5 au plus) : https et hôte autorisé à chaque saut, délai global de 30 s. */
   async function requete(url: string, accepte: (hote: string) => boolean, max: number, entetes?: Record<string, string>): Promise<Uint8Array> {
-    const r = await f(url, { signal: AbortSignal.timeout(delai), redirect: 'follow', headers: entetes })
-    if (r.status === 204) throw new Error("le magasin ne propose plus ce paquet (HTTP 204)")
-    if (!r.ok) throw new Error(`HTTP ${r.status}`)
-    if (r.url && !accepte(new URL(r.url).hostname)) throw new Error(`redirection refusée vers ${new URL(r.url).hostname}`)
-    return lireCorps(r, max)
+    const signal = AbortSignal.timeout(delai)
+    let courante = url
+    for (let saut = 0; saut <= MAX_SAUTS; saut++) {
+      const u = new URL(courante)
+      if (u.protocol !== 'https:') throw new Error(`adresse non sécurisée refusée (${u.protocol})`)
+      if (!accepte(u.hostname)) throw new Error(`hôte refusé : ${u.hostname}`)
+      const r = await f(courante, { signal, redirect: 'manual', headers: entetes })
+      if (r.status >= 300 && r.status < 400) {
+        const lieu = r.headers.get('location')
+        if (!lieu) throw new Error(`redirection sans destination (HTTP ${r.status})`)
+        courante = new URL(lieu, courante).toString()
+        continue
+      }
+      if (r.status === 204) throw new Error('le magasin ne propose plus ce paquet (HTTP 204)')
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      return lireCorps(r, max)
+    }
+    throw new Error(`trop de redirections (plus de ${MAX_SAUTS})`)
   }
 
-  async function installerCws(id: string): Promise<ResultatInstallation> {
+  async function installerCws(id: string, forcer = false): Promise<ResultatInstallation> {
     const deja = d.registre.trouver(id)
-    if (deja && deja.source === 'cws') return { etat: 'installee', id, nom: deja.nom, version: deja.version }
-    const octets = await requete(urlCrx(id), hoteGoogle, MAX_ARCHIVE)
-    const { zip, cle } = lireCrx3(octets)
-    if (!cle) return echec("l'en-tête du .crx ne contient pas de clé publique")
+    if (!forcer && deja && deja.source === 'cws') return { etat: 'installee', id, nom: deja.nom, version: deja.version }
+    const octets = await requete(urlCrx(id), hoteCws, MAX_ARCHIVE)
+    // Signature vérifiée : une des preuves RSA porte la clé dont dérive l'identifiant demandé.
+    const { zip, cle } = verifierCrx3(octets, id)
     return depuisZip(zip, { source: 'cws', magasin: 'chrome', cle, idAttendu: id })
+  }
+
+  async function versionDistanteCws(id: string): Promise<string | undefined> {
+    if (!ID_EXTENSION.test(id)) return undefined
+    const brut = await requete(urlVersionCws(id), hoteCws, 1024 * 1024)
+    return versionDepuisReponseMaj(Buffer.from(brut).toString('utf8'), id)
   }
 
   interface Release {
@@ -285,7 +341,7 @@ export function creerInstallateurChrome(d: DepsInstallateurChrome): Installateur
     url: string
   }
   async function releaseUbo(): Promise<Release> {
-    const brut = await requete('https://api.github.com/repos/gorhill/uBlock/releases/latest', (h) => h === 'api.github.com', 5 * 1024 * 1024, { accept: 'application/vnd.github+json' })
+    const brut = await requete('https://api.github.com/repos/gorhill/uBlock/releases/latest', hoteApiGithub, 5 * 1024 * 1024, { accept: 'application/vnd.github+json' })
     const json = JSON.parse(Buffer.from(brut).toString('utf8')) as { assets?: Array<{ name?: unknown; browser_download_url?: unknown }> }
     for (const a of json.assets ?? []) {
       const m = typeof a.name === 'string' ? /^uBlock0_(\d[\w.-]*)\.chromium\.zip$/.exec(a.name) : null
@@ -314,7 +370,7 @@ export function creerInstallateurChrome(d: DepsInstallateurChrome): Installateur
         case 'ubo':
           return await installerUbo()
         case 'crx': {
-          const { zip, cle } = lireCrx3(lireFichier(source.trim()))
+          const { zip, cle } = verifierCrx3(lireFichier(source.trim()))
           return await depuisZip(zip, { source: 'crx', magasin: 'inconnu', cle })
         }
         case 'zip':
@@ -335,5 +391,8 @@ export function creerInstallateurChrome(d: DepsInstallateurChrome): Installateur
     }
   }
 
-  return { installerChrome, installerUbo: () => installerUbo().catch((e) => echec(`installation impossible : ${message(e)}`)), derniereVersionUbo: async () => (await releaseUbo()).version }
+  return { installerChrome, installerUbo: () => installerUbo().catch((e) => echec(`installation impossible : ${message(e)}`)), derniereVersionUbo: async () => (await releaseUbo()).version,
+    versionDistanteCws,
+    mettreAJourCws: (id) => installerCws(id, true).catch((e) => echec(`mise à jour impossible : ${message(e)}`))
+  }
 }

@@ -2,7 +2,7 @@
  * Archives d'extensions : lecture de l'en-tête CRX3, extraction sûre d'un zip (pure JS, `fflate`) et copie d'un dossier.
  * Aucune dépendance à Electron. Tout refus lève `ErreurArchive` (message lisible), jamais autre chose.
  */
-import { createHash, randomUUID } from 'node:crypto'
+import { createHash, createPublicKey, randomUUID, verify } from 'node:crypto'
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve, sep } from 'node:path'
 import { Inflate } from 'fflate'
@@ -74,26 +74,41 @@ function champsProto(b: Uint8Array): Array<{ num: number; octets?: Uint8Array }>
   return sortie
 }
 
+interface EnteteCrx {
+  /** Preuves RSA : clé publique (DER) et signature. */
+  rsa: Array<{ cle: Buffer; signature: Buffer }>
+  /** `signed_header_data` brut et `crx_id` qu'il déclare. */
+  signe?: Buffer
+  crxId?: Buffer
+}
+
+function analyserEntete(entete: Uint8Array): EnteteCrx {
+  const champs = champsProto(entete)
+  const rsa: EnteteCrx['rsa'] = []
+  for (const c of champs.filter((x) => x.num === 2 && x.octets)) {
+    const p = champsProto(c.octets!)
+    const cle = p.find((x) => x.num === 1)?.octets
+    const signature = p.find((x) => x.num === 2)?.octets
+    if (cle && cle.length > 0) rsa.push({ cle: Buffer.from(cle), signature: Buffer.from(signature ?? []) })
+  }
+  const signe = champs.find((c) => c.num === 10000)?.octets
+  const crxId = signe ? champsProto(signe).find((c) => c.num === 1)?.octets : undefined
+  return { rsa, ...(signe ? { signe: Buffer.from(signe) } : {}), ...(crxId ? { crxId: Buffer.from(crxId) } : {}) }
+}
+
 /** Clé publique (DER) de l'en-tête dont l'id correspond au `crx_id` déclaré, sinon la première clé RSA ; undefined si illisible. */
 function cleDeEntete(entete: Uint8Array): Buffer | undefined {
   try {
-    const champs = champsProto(entete)
-    const cles = champs
-      .filter((c) => c.num === 2 && c.octets)
-      .map((c) => champsProto(c.octets!).find((p) => p.num === 1)?.octets)
-      .filter((k): k is Uint8Array => k !== undefined && k.length > 0)
-    const signe = champs.find((c) => c.num === 10000)?.octets
-    const crxId = signe ? champsProto(signe).find((c) => c.num === 1)?.octets : undefined
-    const attendu = crxId && crxId.length === 16 ? enLettres(Buffer.from(crxId).toString('hex')) : undefined
-    const choisie = (attendu && cles.find((k) => idDepuisOctets(k) === attendu)) || cles[0]
-    return choisie ? Buffer.from(choisie) : undefined
+    const { rsa, crxId } = analyserEntete(entete)
+    const attendu = crxId && crxId.length === 16 ? enLettres(crxId.toString('hex')) : undefined
+    return (attendu && rsa.find((k) => idDepuisOctets(k.cle) === attendu)?.cle) || rsa[0]?.cle
   } catch {
     return undefined
   }
 }
 
 /** CRX3 → zip (payload) et clé publique de l'extension si l'en-tête la donne. Refuse tout autre format. */
-export function lireCrx3(octets: Uint8Array): { zip: Uint8Array; cle?: Buffer } {
+export function lireCrx3(octets: Uint8Array): { zip: Uint8Array; cle?: Buffer; entete: Uint8Array } {
   if (octets.length < 12) throw new ErreurArchive('fichier .crx trop court')
   const v = new DataView(octets.buffer, octets.byteOffset, octets.byteLength)
   if (v.getUint32(0, false) !== 0x43723234) throw new ErreurArchive("ce fichier n'est pas un .crx (en-tête « Cr24 » absent)")
@@ -105,7 +120,39 @@ export function lireCrx3(octets: Uint8Array): { zip: Uint8Array; cle?: Buffer } 
   if (!(zip[0] === 0x50 && zip[1] === 0x4b && ((zip[2] === 3 && zip[3] === 4) || (zip[2] === 5 && zip[3] === 6)))) {
     throw new ErreurArchive("le contenu du .crx n'est pas une archive zip")
   }
-  return { zip, cle: cleDeEntete(octets.subarray(12, 12 + tailleEntete)) }
+  const entete = octets.subarray(12, 12 + tailleEntete)
+  return { zip, cle: cleDeEntete(entete), entete }
+}
+
+/**
+ * CRX3 signé : le format est lu, puis une preuve RSA portant la clé dont dérive `idAttendu` (ou, à défaut, le `crx_id`
+ * déclaré) doit signer « CRX3 SignedData\0 + taille + signed_header_data + zip » (SHA-256). Refus sinon.
+ */
+export function verifierCrx3(octets: Uint8Array, idAttendu?: string): { zip: Uint8Array; cle: Buffer } {
+  const { zip, entete } = lireCrx3(octets)
+  let h: EnteteCrx
+  try {
+    h = analyserEntete(entete)
+  } catch {
+    throw new ErreurArchive("en-tête .crx illisible")
+  }
+  if (!h.signe || !h.crxId || h.crxId.length !== 16) throw new ErreurArchive('.crx sans identifiant signé')
+  const declare = enLettres(h.crxId.toString('hex'))
+  const id = idAttendu ?? declare
+  if (declare !== id) throw new ErreurArchive(`le .crx déclare l'identifiant ${declare}, pas ${id}`)
+  const preuve = h.rsa.find((p) => idDepuisOctets(p.cle) === id)
+  if (!preuve) throw new ErreurArchive("aucune clé du .crx ne correspond à l'identifiant de l'extension")
+  const taille = Buffer.alloc(4)
+  taille.writeUInt32LE(h.signe.length)
+  const message = Buffer.concat([Buffer.from('CRX3 SignedData\0', 'latin1'), taille, h.signe, zip])
+  let ok = false
+  try {
+    ok = verify('sha256', message, createPublicKey({ key: preuve.cle, format: 'der', type: 'spki' }), preuve.signature)
+  } catch {
+    ok = false
+  }
+  if (!ok) throw new ErreurArchive('signature du .crx invalide')
+  return { zip, cle: preuve.cle }
 }
 
 // ---------------------------------------------------------------------------------------------------------- ZIP
@@ -184,22 +231,30 @@ function decompresser(zip: Uint8Array, e: EntreeZip, restant: { octets: number }
   const donnees = zip.subarray(debut, debut + e.tailleCompressee)
   const morceaux: Uint8Array[] = []
   let n = 0
+  // Plafond de l'entrée : sa taille annoncée (le répertoire central a déjà été borné), sans dépasser le budget restant.
+  const plafond = Math.min(e.tailleReelle, restant.octets)
   const ajouter = (c: Uint8Array): void => {
     n += c.length
-    restant.octets -= c.length
-    if (restant.octets < 0) throw new ErreurArchive('archive refusée : taille décompressée réelle au-delà de la limite')
+    if (n > plafond) {
+      throw new ErreurArchive(
+        n > e.tailleReelle ? `taille décompressée supérieure à celle annoncée pour ${e.nom}` : 'archive refusée : taille décompressée réelle au-delà de la limite'
+      )
+    }
     morceaux.push(c)
   }
   if (e.methode === 0) ajouter(donnees)
   else if (e.methode === 8) {
+    // Entrée par petits morceaux : Deflate gonfle au plus ~1 000 fois, donc le dépassement est détecté avant tout pic mémoire.
     const inf = new Inflate((c) => ajouter(c))
     try {
-      inf.push(donnees, true)
+      for (let i = 0; i < donnees.length; i += 512) inf.push(donnees.subarray(i, i + 512), i + 512 >= donnees.length)
+      if (donnees.length === 0) inf.push(donnees, true)
     } catch (err) {
       if (err instanceof ErreurArchive) throw err
       throw new ErreurArchive(`données corrompues pour ${e.nom}`)
     }
   } else throw new ErreurArchive(`méthode de compression ${e.methode} non prise en charge (${e.nom})`)
+  restant.octets -= n
   if (n !== e.tailleReelle) throw new ErreurArchive(`taille annoncée incohérente pour ${e.nom}`)
   return Buffer.concat(morceaux)
 }

@@ -31,65 +31,87 @@ describe('comparerVersions', () => {
   })
 })
 
+const base = (r: StoreReglages, o: Partial<Parameters<typeof creerMiseAJour>[0]> = {}): Parameters<typeof creerMiseAJour>[0] => ({
+  registre: creerRegistre(r),
+  reglages: r,
+  versionDistanteCws: async () => undefined,
+  mettreAJourCws: async () => ({ etat: 'erreur', raison: 'non prévu' }),
+  journal: () => {},
+  ...o
+})
+
 describe('verifier', () => {
   const NOW = new Date('2026-10-20T08:00:00.000Z')
-  it('met à jour les extensions du Web Store, réconcilie le registre et horodate', async () => {
-    const r = reglages([ext('a'), ext('b', { source: 'dossier', magasin: 'inconnu', dossier: `${id('b')}/1.0.0` })])
-    const registre = creerRegistre(r)
-    const updateExtensions = vi.fn(async () => {})
-    const m = creerMiseAJour({
-      registre, reglages: r, updateExtensions,
-      extensionsChargees: () => [{ id: id('a'), version: '1.1.0', path: `/base/${id('a')}/1.1.0_0` }],
-      base: '/base', maintenant: () => NOW, journal: () => {}
-    })
+  it('met à jour toutes les extensions du Web Store (actives ou non) dont la version distante est plus récente, et horodate', async () => {
+    const r = reglages([ext('a'), ext('b', { active: false }), ext('c'), ext('d', { source: 'dossier', magasin: 'inconnu', dossier: `${id('d')}/1.0.0` })])
+    const distantes: Record<string, string> = { [id('a')]: '1.1.0', [id('b')]: '2.0.0', [id('c')]: '1.0.0' }
+    const interroges: string[] = []
+    const installes: string[] = []
+    const m = creerMiseAJour(
+      base(r, {
+        maintenant: () => NOW,
+        versionDistanteCws: async (i) => {
+          interroges.push(i)
+          return distantes[i]
+        },
+        mettreAJourCws: async (i) => {
+          installes.push(i)
+          return { etat: 'installee', id: i, nom: 'x', version: distantes[i] }
+        }
+      })
+    )
     const res = await m.verifier()
-    expect(updateExtensions).toHaveBeenCalledTimes(1)
-    expect(res.misesAJour).toEqual([{ id: id('a'), nom: 'Ext a', de: '1.0.0', vers: '1.1.0' }])
-    expect(registre.trouver(id('a'))).toMatchObject({ version: '1.1.0', dossier: `${id('a')}/1.1.0_0`, miseAJourLe: NOW.toISOString() })
-    expect(registre.trouver(id('b'))?.version).toBe('1.0.0')
+    expect(interroges).toEqual([id('a'), id('b'), id('c')]) // jamais l'extension « dossier »
+    expect(installes).toEqual([id('a'), id('b')])
+    expect(res.misesAJour.map((x) => [x.id, x.de, x.vers])).toEqual([[id('a'), '1.0.0', '1.1.0'], [id('b'), '1.0.0', '2.0.0']])
+    expect(res.erreurs).toEqual([])
     expect(r.getSettings().extensions.derniereVerification).toBe(NOW.toISOString())
+  })
+
+  it('une erreur de mise à jour est journalisée, les autres extensions sont traitées, la date n\'est pas posée', async () => {
+    const r = reglages([ext('a'), ext('b')])
+    const installes: string[] = []
+    const journal = vi.fn()
+    const m = creerMiseAJour(
+      base(r, {
+        journal,
+        versionDistanteCws: async (i) => {
+          if (i === id('a')) throw new Error('hors ligne')
+          return '2.0.0'
+        },
+        mettreAJourCws: async (i) => {
+          installes.push(i)
+          return { etat: 'installee', id: i, nom: 'x', version: '2.0.0' }
+        }
+      })
+    )
+    const res = await m.verifier()
+    expect(res.erreurs).toEqual([expect.stringContaining('hors ligne')])
+    expect(installes).toEqual([id('b')])
+    expect(res.misesAJour).toHaveLength(1)
+    expect(journal).toHaveBeenCalled()
+    expect(r.getSettings().extensions.derniereVerification).toBeUndefined()
   })
 
   it('uBO : compare la version de la release et réinstalle si plus récente', async () => {
     const ubo = ext('u', { nom: 'uBlock Origin', source: 'zip', version: '1.63.0', dossier: `${id('u')}/1.63.0` })
     const r = reglages([ubo])
-    const registre = creerRegistre(r)
     const installerUbo = vi.fn(async () => ({ etat: 'installee' as const, id: id('u'), nom: 'uBlock Origin', version: '1.64.0' }))
-    const m = creerMiseAJour({
-      registre, reglages: r, updateExtensions: async () => {}, extensionsChargees: () => [], base: '/base', maintenant: () => NOW, journal: () => {},
-      derniereVersionUbo: async () => '1.64.0', installerUbo
-    })
+    const m = creerMiseAJour(base(r, { maintenant: () => NOW, derniereVersionUbo: async () => '1.64.0', installerUbo }))
     const res = await m.verifier()
     expect(installerUbo).toHaveBeenCalledTimes(1)
     expect(res.misesAJour).toEqual([{ id: id('u'), nom: 'uBlock Origin', de: '1.63.0', vers: '1.64.0' }])
-    // À jour : rien à faire
     installerUbo.mockClear()
-    const m2 = creerMiseAJour({
-      registre: creerRegistre(reglages([{ ...ubo, version: '1.64.0' }])), reglages: reglages([]), updateExtensions: async () => {}, extensionsChargees: () => [], base: '/base', journal: () => {},
-      derniereVersionUbo: async () => '1.64.0', installerUbo
-    })
-    expect((await m2.verifier()).misesAJour).toEqual([])
+    const r2 = reglages([{ ...ubo, version: '1.64.0' }])
+    expect((await creerMiseAJour(base(r2, { derniereVersionUbo: async () => '1.64.0', installerUbo })).verifier()).misesAJour).toEqual([])
     expect(installerUbo).not.toHaveBeenCalled()
-  })
-
-  it('une erreur réseau est journalisée sans lever ; la date n\'est pas posée', async () => {
-    const r = reglages([ext('a')])
-    const journal = vi.fn()
-    const m = creerMiseAJour({
-      registre: creerRegistre(r), reglages: r, updateExtensions: async () => { throw new Error('hors ligne') }, extensionsChargees: () => [], base: '/base', journal
-    })
-    const res = await m.verifier()
-    expect(res.erreurs).toEqual([expect.stringContaining('hors ligne')])
-    expect(journal).toHaveBeenCalled()
-    expect(r.getSettings().extensions.derniereVerification).toBeUndefined()
   })
 
   it('sans extension du magasin ni uBO : aucun appel réseau', async () => {
     const r = reglages([ext('b', { source: 'dossier', dossier: `${id('b')}/1.0.0` })])
-    const updateExtensions = vi.fn()
-    const m = creerMiseAJour({ registre: creerRegistre(r), reglages: r, updateExtensions, extensionsChargees: () => [], base: '/base', journal: () => {} })
-    await m.verifier()
-    expect(updateExtensions).not.toHaveBeenCalled()
+    const versionDistanteCws = vi.fn()
+    await creerMiseAJour(base(r, { versionDistanteCws })).verifier()
+    expect(versionDistanteCws).not.toHaveBeenCalled()
   })
 })
 
@@ -103,7 +125,7 @@ describe('planification', () => {
     const verifier = vi.fn(async () => ({ misesAJour: [], erreurs: [] }))
     const m = creerMiseAJour({
       registre: creerRegistre(r), reglages: { ...r, getSettings: () => ({ ...r.getSettings(), extensions: { ...r.getSettings().extensions, majAuto: auto } }) as Settings },
-      updateExtensions: async () => {}, extensionsChargees: () => [], base: '/b', journal: () => {}
+      versionDistanteCws: async () => undefined, mettreAJourCws: async () => ({ etat: 'erreur', raison: '' }), journal: () => {}
     })
     m.verifier = verifier
     m.demarrer()
@@ -120,14 +142,16 @@ describe('planification', () => {
     expect(verifier).toHaveBeenCalledTimes(2)
   })
 
-  it('le minuteur ne retient pas le processus (unref)', () => {
+  it('les minuteurs ne retiennent pas le processus (unref)', () => {
+    const unref = vi.fn()
+    const si = vi.spyOn(globalThis, 'setInterval').mockImplementation((() => ({ unref })) as never)
+    const st = vi.spyOn(globalThis, 'setTimeout').mockImplementation((() => ({ unref })) as never)
     const r = reglages([])
-    const unref = vi.spyOn(globalThis, 'setInterval')
-    const m = creerMiseAJour({ registre: creerRegistre(r), reglages: r, updateExtensions: async () => {}, extensionsChargees: () => [], base: '/b', journal: () => {} })
+    const m = creerMiseAJour(base(r))
     m.demarrer()
-    const t = unref.mock.results[0].value as unknown as { unref?: () => void }
-    expect(t).toBeDefined()
+    expect(unref).toHaveBeenCalledTimes(2)
+    si.mockRestore()
+    st.mockRestore()
     m.arreter()
-    unref.mockRestore()
   })
 })

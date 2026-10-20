@@ -36,7 +36,6 @@ import { creerRegistre } from './extensions/registre'
 import { installerExtensionsIpc } from './extensions/ipc'
 import { creerInstallateurChrome } from './extensions/chrome'
 import { creerMiseAJour } from './extensions/miseAJour'
-import { updateExtensions } from 'electron-chrome-web-store'
 import { installerFixtures } from './extensions/fixturesTest'
 
 definirFournisseurLangue(() => app.getLocale())
@@ -498,9 +497,8 @@ void app.whenReady().then(async () => {
   const miseAJourExtensions = creerMiseAJour({
     registre: registreExtensions,
     reglages,
-    updateExtensions: () => updateExtensions(sessionLyra),
-    extensionsChargees: () => sessionLyra.extensions.getAllExtensions().map((x) => ({ id: x.id, version: x.version, path: x.path })),
-    base: baseExtensions,
+    versionDistanteCws: installateurChrome.versionDistanteCws,
+    mettreAJourCws: installateurChrome.mettreAJourCws,
     derniereVersionUbo: installateurChrome.derniereVersionUbo,
     installerUbo: installateurChrome.installerUbo,
     delaiDemarrageMs: 15_000
@@ -527,6 +525,7 @@ void app.whenReady().then(async () => {
   await chargeurExtensions.chargerAuDemarrage()
   // Mises à jour : jamais sous test (pas de réseau inattendu), et seulement si le réglage est actif.
   if (process.env.LYRA_TEST !== '1') miseAJourExtensions.demarrer()
+  app.on('will-quit', () => miseAJourExtensions.arreter())
   if (process.env.LYRA_TEST === '1') {
     handle('test:navigate', async (url) => {
       const m = ongletsCourants()

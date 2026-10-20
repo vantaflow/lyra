@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { createHash, generateKeyPairSync } from 'node:crypto'
+import { generateKeyPairSync } from 'node:crypto'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { strToU8, zipSync } from 'fflate'
-import { creerInstallateurChrome } from './chrome'
+import { creerInstallateurChrome, versionDepuisReponseMaj } from './chrome'
 import { creerChargeur, type SessionExtensions } from './chargeur'
 import { creerRegistre, type StoreReglages } from './registre'
 import { idDepuisCle } from './archives'
+import { crx3Signe } from './crxTest'
 import { validerPatch } from '../settings/validate'
 import { reglagesParDefaut } from '../settings/defaults'
 import type { Settings } from '../../shared/types'
@@ -31,7 +32,8 @@ function sessionSimulee() {
   const chargees = new Map<string, string>()
   const api: SessionExtensions = {
     async loadExtension(chemin) {
-      const m = JSON.parse(readFileSync(join(chemin, 'manifest.json'), 'utf8')) as { key?: string }
+      const m = JSON.parse(readFileSync(join(chemin, 'manifest.json'), 'utf8')) as { key?: string; casse?: boolean }
+      if (m.casse) throw new Error('manifest refusé')
       const id = idDepuisCle(m.key ?? '')
       chargees.set(id, chemin)
       return { id }
@@ -44,36 +46,12 @@ function sessionSimulee() {
   return { api, chargees }
 }
 
-const varint = (n: number): number[] => {
-  const o: number[] = []
-  while (n > 0x7f) { o.push((n & 0x7f) | 0x80); n >>>= 7 }
-  o.push(n)
-  return o
-}
-const champ = (num: number, octets: Uint8Array | number[]): number[] => [...varint((num << 3) | 2), ...varint(octets.length), ...octets]
-
-/** CRX3 signé en apparence : en-tête avec la clé publique et le crx_id déclaré (pas de vraie signature). */
-function crx3(zip: Uint8Array, der: Buffer): Uint8Array {
-  const crxId = createHash('sha256').update(der).digest().subarray(0, 16)
-  const entete = Uint8Array.from([...champ(2, champ(1, der)), ...champ(10000, champ(1, crxId))])
-  const sortie = new Uint8Array(12 + entete.length + zip.length)
-  sortie.set([0x43, 0x72, 0x32, 0x34])
-  const v = new DataView(sortie.buffer)
-  v.setUint32(4, 3, true)
-  v.setUint32(8, entete.length, true)
-  sortie.set(entete, 12)
-  sortie.set(zip, 12 + entete.length)
-  return sortie
-}
-
 const manifest = (o: Record<string, unknown> = {}): Uint8Array =>
   strToU8(JSON.stringify({ manifest_version: 3, name: 'Mon extension', version: '1.2.3', ...o }))
 
-const reponse = (octets: Uint8Array | string, init: { status?: number; url?: string } = {}): Response => {
-  const r = new Response(typeof octets === 'string' ? octets : Buffer.from(octets), { status: init.status ?? 200 })
-  if (init.url) Object.defineProperty(r, 'url', { value: init.url })
-  return r
-}
+const reponse = (octets: Uint8Array | string, init: { status?: number } = {}): Response =>
+  new Response(typeof octets === 'string' ? octets : Buffer.from(octets), { status: init.status ?? 200 })
+const redirection = (vers: string): Response => new Response(null, { status: 302, headers: { location: vers } })
 
 let base: string
 let tmp: string
@@ -135,11 +113,38 @@ describe('installation depuis un .zip, un .crx ou un dossier', () => {
     expect(r).toMatchObject({ etat: 'installee', nom: 'Super extension' })
   })
 
-  it('crx : en-tête retiré, clé de l\'en-tête utilisée comme Chrome', async () => {
-    const der = cleDer()
+  it('crx : en-tête retiré, signature vérifiée, clé de l\'en-tête utilisée comme Chrome', async () => {
     const { inst } = monter()
-    const r = await inst.installerChrome(ecrire('e.crx', crx3(zipSync({ 'manifest.json': manifest() }), der)))
-    expect(r).toMatchObject({ etat: 'installee', id: idDepuisCle(der.toString('base64')) })
+    const { octets, id } = crx3Signe(zipSync({ 'manifest.json': manifest() }))
+    const r = await inst.installerChrome(ecrire('e.crx', octets))
+    expect(r).toMatchObject({ etat: 'installee', id })
+  })
+
+  it('crx à la signature invalide : refusé', async () => {
+    const { inst, registre } = monter()
+    const { octets } = crx3Signe(zipSync({ 'manifest.json': manifest() }))
+    octets[octets.length - 30] ^= 0xff
+    expect(await inst.installerChrome(ecrire('e.crx', octets))).toMatchObject({ etat: 'erreur' })
+    expect(registre.lister()).toEqual([])
+  })
+
+  it('réinstaller la même version garde l\'ancien dossier jusqu\'au chargement, et le restaure si le chargement échoue', async () => {
+    const der = cleDer().toString('base64')
+    const { inst, registre, s } = monter()
+    const bon = zipSync({ 'manifest.json': manifest({ key: der }), 'js/a.js': strToU8('ancien') })
+    const r = await inst.installerChrome(ecrire('a.zip', bon))
+    if (r.etat !== 'installee') throw new Error(JSON.stringify(r))
+    const casse = zipSync({ 'manifest.json': manifest({ key: der, casse: true }), 'js/a.js': strToU8('nouveau') })
+    expect(await inst.installerChrome(ecrire('b.zip', casse))).toMatchObject({ etat: 'erreur' })
+    expect(readFileSync(join(base, r.id, '1.2.3', 'js', 'a.js'), 'utf8')).toBe('ancien')
+    expect(readdirSync(join(base, r.id))).toEqual(['1.2.3']) // aucun résidu « .ancien-… »
+    expect(registre.trouver(r.id)).toMatchObject({ version: '1.2.3', active: true })
+    expect(s.chargees.has(r.id)).toBe(true) // l'ancienne version est rechargée
+    // Réinstallation réussie : le nouveau contenu remplace l'ancien, sans résidu.
+    const neuf = zipSync({ 'manifest.json': manifest({ key: der }), 'js/a.js': strToU8('nouveau') })
+    expect(await inst.installerChrome(ecrire('c.zip', neuf))).toMatchObject({ etat: 'installee' })
+    expect(readFileSync(join(base, r.id, '1.2.3', 'js', 'a.js'), 'utf8')).toBe('nouveau')
+    expect(readdirSync(join(base, r.id))).toEqual(['1.2.3'])
   })
 
   it('dossier : copié sous <id>/<version>', async () => {
@@ -184,14 +189,16 @@ describe('installation depuis un .zip, un .crx ou un dossier', () => {
 })
 
 describe('installation depuis le Chrome Web Store', () => {
-  it('télécharge le CRX3, vérifie l\'identifiant et installe (source cws, magasin chrome)', async () => {
-    const der = cleDer()
-    const id = idDepuisCle(der.toString('base64'))
+  const crx = (extra: Record<string, unknown> = {}): { octets: Uint8Array; id: string } => crx3Signe(zipSync({ 'manifest.json': manifest(extra) }))
+
+  it('télécharge le CRX3 (redirection manuelle), vérifie signature et identifiant, installe (source cws, magasin chrome)', async () => {
+    const { octets, id } = crx()
     const appels: string[] = []
     const f = (async (url: string | URL | Request, init?: RequestInit) => {
       appels.push(String(url))
       expect(init?.signal).toBeDefined() // délai d'attente
-      return reponse(crx3(zipSync({ 'manifest.json': manifest() }), der), { url: 'https://clients2.googleusercontent.com/crx/blobs/x.crx' })
+      expect(init?.redirect).toBe('manual')
+      return appels.length === 1 ? redirection('https://clients2.googleusercontent.com/crx/blobs/x.crx') : reponse(octets)
     }) as typeof fetch
     const { inst, registre } = monter(f)
     const r = await inst.installerChrome(id)
@@ -200,39 +207,109 @@ describe('installation depuis le Chrome Web Store', () => {
     const u = new URL(appels[0])
     expect(u.hostname).toBe('clients2.google.com')
     expect(decodeURIComponent(u.searchParams.get('x') ?? '')).toContain(`id=${id}`)
+    expect(appels[1]).toBe('https://clients2.googleusercontent.com/crx/blobs/x.crx')
     // déjà installée : pas de second téléchargement
     expect(await inst.installerChrome(id)).toMatchObject({ etat: 'installee', id })
-    expect(appels).toHaveLength(1)
+    expect(appels).toHaveLength(2)
   })
 
-  it('refuse un CRX dont la clé ne correspond pas à l\'identifiant demandé', async () => {
-    const f = (async () => reponse(crx3(zipSync({ 'manifest.json': manifest() }), cleDer()), { url: 'https://clients2.google.com/x' })) as typeof fetch
+  it("refuse un CRX dont la clé ne correspond pas à l'identifiant demandé", async () => {
+    const f = (async () => reponse(crx().octets)) as typeof fetch
     const { inst, registre } = monter(f)
     expect(await inst.installerChrome('a'.repeat(32))).toMatchObject({ etat: 'erreur' })
     expect(registre.lister()).toEqual([])
   })
 
+  it('refuse un CRX dont le payload a été altéré (signature invalide)', async () => {
+    const { octets, id } = crx()
+    octets[octets.length - 30] ^= 0xff
+    const { inst, registre } = monter((async () => reponse(octets)) as typeof fetch)
+    const r = await inst.installerChrome(id)
+    expect(r).toMatchObject({ etat: 'erreur', raison: expect.stringContaining('signature') })
+    expect(registre.lister()).toEqual([])
+  })
+
   it('HTTP 204 (extension retirée du magasin) et erreur réseau : erreur claire', async () => {
     const { inst } = monter((async () => reponse('', { status: 204 })) as typeof fetch)
-    const r = await inst.installerChrome('a'.repeat(32))
-    expect(r).toMatchObject({ etat: 'erreur' })
+    expect(await inst.installerChrome('a'.repeat(32))).toMatchObject({ etat: 'erreur' })
     const { inst: inst2 } = monter((async () => { throw new Error('réseau coupé') }) as typeof fetch)
     expect(await inst2.installerChrome('a'.repeat(32))).toMatchObject({ etat: 'erreur', raison: expect.stringContaining('réseau coupé') })
   })
 
   it('refuse un thème du magasin', async () => {
-    const der = cleDer()
-    const f = (async () => reponse(crx3(zipSync({ 'manifest.json': manifest({ theme: {} }) }), der), { url: 'https://clients2.google.com/x' })) as typeof fetch
-    const { inst, registre } = monter(f)
-    expect(await inst.installerChrome(idDepuisCle(der.toString('base64')))).toMatchObject({ etat: 'erreur' })
+    const { octets, id } = crx({ theme: {} })
+    const { inst, registre } = monter((async () => reponse(octets)) as typeof fetch)
+    expect(await inst.installerChrome(id)).toMatchObject({ etat: 'erreur' })
     expect(registre.lister()).toEqual([])
   })
 
-  it('refuse une redirection hors des hôtes Google', async () => {
-    const der = cleDer()
-    const f = (async () => reponse(crx3(zipSync({ 'manifest.json': manifest() }), der), { url: 'https://evil.example/x.crx' })) as typeof fetch
-    const { inst } = monter(f)
-    expect(await inst.installerChrome(idDepuisCle(der.toString('base64')))).toMatchObject({ etat: 'erreur' })
+  it.each([
+    ['hôte hors liste', 'https://evil.example/x.crx'],
+    ['downgrade en http', 'http://clients2.googleusercontent.com/x.crx'],
+    ['sous-domaine googleusercontent non listé', 'https://lh3.googleusercontent.com/x.crx']
+  ])('refuse une redirection : %s', async (_nom, vers) => {
+    const { id } = crx()
+    const { inst } = monter((async () => redirection(vers)) as typeof fetch)
+    expect(await inst.installerChrome(id)).toMatchObject({ etat: 'erreur' })
+  })
+
+  it('refuse plus de 5 redirections', async () => {
+    const { id } = crx()
+    let n = 0
+    const { inst } = monter((async () => redirection(`https://clients2.google.com/r${++n}`)) as typeof fetch)
+    expect(await inst.installerChrome(id)).toMatchObject({ etat: 'erreur', raison: expect.stringContaining('redirections') })
+    expect(n).toBe(6)
+  })
+})
+
+describe('mises à jour du Chrome Web Store', () => {
+  const xml = (id: string, version: string, statut = 'ok'): string =>
+    `<?xml version="1.0" encoding="UTF-8"?><gupdate protocol="2.0"><app appid="${id}" status="ok"><updatecheck codebase="https://clients2.googleusercontent.com/x.crx" status="${statut}" version="${version}"/></app></gupdate>`
+
+  it('lit la version annoncée dans la réponse XML', () => {
+    const id = 'a'.repeat(32)
+    expect(versionDepuisReponseMaj(xml(id, '4.9.133'), id)).toBe('4.9.133')
+    expect(versionDepuisReponseMaj(xml(id, '4.9.133', 'noupdate'), id)).toBeUndefined()
+    expect(versionDepuisReponseMaj(xml('b'.repeat(32), '1.0'), id)).toBeUndefined()
+    expect(versionDepuisReponseMaj('<gupdate/>', id)).toBeUndefined()
+    expect(versionDepuisReponseMaj(xml(id, 'abc'), id)).toBeUndefined()
+  })
+
+  it('interroge l\'endpoint updatecheck par identifiant puis réinstalle la nouvelle version par le chemin normal', async () => {
+    const paire = generateKeyPairSync('rsa', { modulusLength: 2048 })
+    const v1 = crx3Signe(zipSync({ 'manifest.json': manifest({ version: '1.0.0' }) }), { cle: paire })
+    const v2 = crx3Signe(zipSync({ 'manifest.json': manifest({ version: '2.0.0' }) }), { cle: paire })
+    const id = v1.id
+    let servi = v1.octets
+    const appels: string[] = []
+    const f = (async (url: string | URL | Request) => {
+      const u = new URL(String(url))
+      appels.push(u.searchParams.get('response') ?? '')
+      return u.searchParams.get('response') === 'updatecheck' ? reponse(xml(id, '2.0.0')) : reponse(servi)
+    }) as typeof fetch
+    const { inst, registre, s } = monter(f)
+    expect(await inst.installerChrome(id)).toMatchObject({ etat: 'installee', version: '1.0.0' })
+    expect(await inst.versionDistanteCws(id)).toBe('2.0.0')
+    servi = v2.octets
+    expect(await inst.mettreAJourCws(id)).toMatchObject({ etat: 'installee', id, version: '2.0.0' })
+    expect(registre.trouver(id)).toMatchObject({ version: '2.0.0', dossier: `${id}/2.0.0`, source: 'cws' })
+    expect(readdirSync(join(base, id))).toEqual(['2.0.0'])
+    expect(s.chargees.get(id)).toContain('2.0.0')
+    expect(appels).toEqual(['redirect', 'updatecheck', 'redirect'])
+  })
+
+  it('met à jour aussi une extension désactivée sans la charger', async () => {
+    const paire = generateKeyPairSync('rsa', { modulusLength: 2048 })
+    const v1 = crx3Signe(zipSync({ 'manifest.json': manifest({ version: '1.0.0' }) }), { cle: paire })
+    const v2 = crx3Signe(zipSync({ 'manifest.json': manifest({ version: '2.0.0' }) }), { cle: paire })
+    let servi = v1.octets
+    const { inst, registre, chargeur, s } = monter((async () => reponse(servi)) as typeof fetch)
+    await inst.installerChrome(v1.id)
+    await chargeur.activer(v1.id, false)
+    servi = v2.octets
+    expect(await inst.mettreAJourCws(v1.id)).toMatchObject({ etat: 'installee', version: '2.0.0' })
+    expect(registre.trouver(v1.id)).toMatchObject({ version: '2.0.0', active: false })
+    expect(s.chargees.has(v1.id)).toBe(false)
   })
 })
 
@@ -254,7 +331,7 @@ describe('uBlock Origin (release GitHub)', () => {
       const u = String(url)
       appels.push(u)
       if (u.startsWith('https://api.github.com/')) return reponse(release('1.64.0'))
-      return reponse(zipUbo('1.64.0'), { url: u })
+      return reponse(zipUbo('1.64.0'))
     }) as typeof fetch
     const { inst, registre } = monter(f)
     const r = await inst.installerChrome('ubo')
