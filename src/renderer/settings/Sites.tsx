@@ -14,7 +14,10 @@ import {
   celluleZoom,
   decoderRoute,
   encoderRoute,
+  idZoom,
+  optionsZoom,
   pastille,
+  zoomDepuisId,
   type Cellule
 } from './sitesCellules'
 import './sections.css'
@@ -37,6 +40,10 @@ const COOKIES: { id: NonNullable<Regle['cookies']>; libelle: string }[] = [
   { id: 'premiere-partie', libelle: '1re partie' },
   { id: 'bloques', libelle: 'Bloqués' },
   { id: 'session', libelle: 'Session seulement' }
+]
+const SCRIPTS: { id: NonNullable<Regle['scripts']>; libelle: string }[] = [
+  { id: 'autorises', libelle: 'Autorisés' },
+  { id: 'bloques', libelle: 'Bloqués' }
 ]
 const LECTURE: { id: NonNullable<Regle['lectureAuto']>; libelle: string }[] = [
   { id: 'autoriser', libelle: 'Autoriser' },
@@ -128,6 +135,12 @@ function Detail({ cle, regle, existe, focus }: { cle: string; regle: Regle; exis
     else regler({ boucliers: v, bouclierAvant: null })
   }
 
+  // « Par défaut » retire `zoom` de la règle (écrit `null`) ; choisir le zoom déjà en place n'écrit rien.
+  const reglerZoom = (id: string): void => {
+    const zoom = zoomDepuisId(id)
+    if (zoom !== undefined && id !== idZoom(regle.zoom)) regler({ zoom })
+  }
+
   const notifications: Notifications = regle.permissions?.notifications ?? 'demander'
   const reglerNotifications = async (v: Notifications): Promise<void> => {
     if (v !== 'demander') return ecrire(cle, { permissions: { notifications: v } })
@@ -172,6 +185,12 @@ function Detail({ cle, regle, existe, focus }: { cle: string; regle: Regle; exis
         </Ligne>
         <Ligne reglage="sites.cookies" titre="Cookies">
           <Segments valeur={regle.cookies ?? 'tous'} options={COOKIES} surChange={(v) => regler({ cookies: v })} />
+        </Ligne>
+        <Ligne reglage="sites.scripts" titre="Scripts" aide="Bloqués : aucun script de la page ne s'exécute">
+          <Segments valeur={regle.scripts ?? 'autorises'} options={SCRIPTS} surChange={(v) => regler({ scripts: v })} />
+        </Ligne>
+        <Ligne reglage="sites.zoom" titre="Zoom" aide="Appliqué à chaque page du site">
+          <Selecteur valeur={idZoom(regle.zoom)} options={optionsZoom(regle.zoom)} libelle="Zoom" surChange={reglerZoom} />
         </Ligne>
         <Ligne reglage="sites.lectureAuto" titre="Lecture automatique des vidéos">
           <Segments valeur={regle.lectureAuto ?? 'autoriser'} options={LECTURE} surChange={(v) => regler({ lectureAuto: v })} />

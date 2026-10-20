@@ -80,6 +80,8 @@ export const INDEX: EntreeIndex[] = [
   ligne('sites', 'boucliers', 'Boucliers du site', ['strict', 'standard', 'désactivés', 'publicités', 'règle']),
   ligne('sites', 'scriptlets', 'Scriptlets anti-publicité YouTube', ['youtube', 'publicités', 'scriptlets']),
   ligne('sites', 'cookies', 'Cookies du site', ['1re partie', 'première partie', 'bloqués', 'session seulement', 'règle']),
+  ligne('sites', 'scripts', 'Scripts du site', ['javascript', 'autorisés', 'bloqués', 'site', 'règle']),
+  ligne('sites', 'zoom', 'Zoom du site', ['agrandir', 'réduire', 'pourcentage', 'taille', 'site', 'règle']),
   ligne('sites', 'lectureAuto', 'Lecture automatique des vidéos', ['sans le son', 'bloquer', 'autoriser', 'vidéo', 'site']),
   ligne('sites', 'notifications', 'Notifications du site', ['demander', 'autoriser', 'refuser', 'permission']),
   ligne('sites', 'extensions', 'Extensions autorisées sur ce site', ['module', 'site', 'règle']),
@@ -124,7 +126,7 @@ export const REPLI_LIGNE: Record<string, string> = {
   'couleurs.heure': 'couleurs.passage',
   // Le détail d'une règle n'existe que pour le site choisi : sans site choisi, la recherche saute au bouton « Nouvelle règle ».
   ...Object.fromEntries(
-    ['boucliers', 'scriptlets', 'cookies', 'lectureAuto', 'notifications', 'extensions', 'dnd', 'ua', 'style', 'scriptsPerso'].map((r) => [`sites.${r}`, 'sites.nouvelle'])
+    ['boucliers', 'scriptlets', 'cookies', 'scripts', 'zoom', 'lectureAuto', 'notifications', 'extensions', 'dnd', 'ua', 'style', 'scriptsPerso'].map((r) => [`sites.${r}`, 'sites.nouvelle'])
   )
 }
 

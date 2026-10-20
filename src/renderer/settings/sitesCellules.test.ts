@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   PALETTE_PASTILLES,
+  PALIERS_ZOOM,
   celluleBoucliers,
   celluleCookies,
   celluleDnd,
@@ -10,7 +11,10 @@ import {
   celluleZoom,
   decoderRoute,
   encoderRoute,
-  pastille
+  idZoom,
+  optionsZoom,
+  pastille,
+  zoomDepuisId
 } from './sitesCellules'
 
 describe('cellules du tableau', () => {
@@ -100,5 +104,31 @@ describe('route profonde', () => {
     expect(decoderRoute('#/sites/%E0%A4%A')).toBeNull()
     expect(decoderRoute('#/sites/pas%20un%20site')).toBeNull()
     expect(decoderRoute('#/general')).toBeNull()
+  })
+})
+
+describe('Zoom du détail (14b) : cellule ↔ valeur', () => {
+  it('les paliers sont ceux de la décision A', () => {
+    expect(PALIERS_ZOOM).toEqual([0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2])
+  })
+  it('chaque palier fait l’aller-retour valeur → option → valeur', () => {
+    for (const z of PALIERS_ZOOM) expect(zoomDepuisId(idZoom(z))).toBe(z)
+  })
+  it('« Par défaut » : absent ↔ null (retire zoom)', () => {
+    expect(idZoom(undefined)).toBe('defaut')
+    expect(zoomDepuisId('defaut')).toBeNull()
+  })
+  it('les options : Par défaut puis les 11 paliers, libellés en %', () => {
+    expect(optionsZoom(undefined).map((x) => x.libelle)).toEqual([
+      'Par défaut', '50 %', '67 %', '75 %', '80 %', '90 %', '100 %', '110 %', '125 %', '150 %', '175 %', '200 %'
+    ])
+  })
+  it('un zoom hors palier (zoom au clavier) s’ajoute à sa place, sans être perdu', () => {
+    const o = optionsZoom(1.2)
+    expect(o.findIndex((x) => x.libelle === '120 %')).toBe(o.findIndex((x) => x.libelle === '110 %') + 1)
+    expect(optionsZoom(1)).toHaveLength(12)
+  })
+  it('identifiant inconnu : rien à écrire', () => {
+    expect(zoomDepuisId('abc')).toBeUndefined()
   })
 })

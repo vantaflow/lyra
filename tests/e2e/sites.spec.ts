@@ -63,6 +63,8 @@ test('Règles par site : création → tableau et détail ; Boucliers, Cookies e
       'Boucliers',
       'Scriptlets anti-publicité YouTube',
       'Cookies',
+      'Scripts',
+      'Zoom',
       'Lecture automatique des vidéos',
       'Notifications',
       'Extensions autorisées sur ce site',
@@ -71,7 +73,6 @@ test('Règles par site : création → tableau et détail ; Boucliers, Cookies e
       'Style personnalisé',
       'Script personnalisé'
     ])
-    await expect(r.locator('.detail-regle')).not.toContainText('Zoom')
     await expect(r.getByRole('button', { name: 'Modifier', exact: true })).toBeDisabled()
 
     // Boucliers : Strict.
@@ -94,6 +95,32 @@ test('Règles par site : création → tableau et détail ; Boucliers, Cookies e
     await expect(rangee.locator('td').nth(6)).toHaveText('Exception')
     await r.getByRole('switch', { name: 'Exception Ne pas déranger' }).click()
     await expect.poll(async () => (await lister(fenetre))['youtube.com']?.exceptionDnd).toBeUndefined()
+
+    // Scripts (Tâche 14b) : Autorisés par défaut, Bloqués → colonne rouge ; la cellule reste en lecture seule.
+    await expect(ligne(r, 'scripts').getByRole('button', { name: 'Autorisés' })).toHaveAttribute('aria-pressed', 'true')
+    await ligne(r, 'scripts').getByRole('button', { name: 'Bloqués' }).click()
+    await expect.poll(async () => (await lister(fenetre))['youtube.com']?.scripts).toBe('bloques')
+    await expect(rangee.locator('td').nth(3).locator('.etiq.rouge')).toHaveText('Bloqués')
+    await ligne(r, 'scripts').getByRole('button', { name: 'Autorisés' }).click()
+    await expect.poll(async () => (await lister(fenetre))['youtube.com']?.scripts).toBe('autorises')
+
+    // Zoom : paliers, puis « Par défaut » retire `zoom` de la règle.
+    await expect(ligne(r, 'zoom').getByRole('button', { name: 'Zoom' })).toHaveText('Par défaut')
+    await ligne(r, 'zoom').getByRole('button', { name: 'Zoom' }).click()
+    await expect(r.getByRole('option')).toHaveText(['Par défaut', '50 %', '67 %', '75 %', '80 %', '90 %', '100 %', '110 %', '125 %', '150 %', '175 %', '200 %'])
+    await r.getByRole('option', { name: '110 %' }).click()
+    await expect.poll(async () => (await lister(fenetre))['youtube.com']?.zoom).toBe(1.1)
+    await expect(rangee.locator('td').nth(5)).toHaveText('110 %')
+    await ligne(r, 'zoom').getByRole('button', { name: 'Zoom' }).click()
+    await r.getByRole('option', { name: '67 %' }).click()
+    await expect.poll(async () => (await lister(fenetre))['youtube.com']?.zoom).toBe(0.67)
+    await ligne(r, 'zoom').getByRole('button', { name: 'Zoom' }).click()
+    await r.getByRole('option', { name: 'Par défaut' }).click()
+    await expect.poll(async () => 'zoom' in (await lister(fenetre))['youtube.com']).toBe(false)
+    await expect(rangee.locator('td').nth(5)).toHaveText('—')
+    // Un zoom hors palier (zoom au clavier) reste affiché et choisissable.
+    await fenetre.evaluate(() => window.lyra.invoke('sites:ecrire', { cle: 'youtube.com', regle: { zoom: 1.2 } }))
+    await expect(ligne(r, 'zoom').getByRole('button', { name: 'Zoom' })).toHaveText('120 %')
 
     // Lecture automatique, notifications, user-agent.
     await ligne(r, 'lectureAuto').getByRole('button', { name: 'Sans le son' }).click()
@@ -176,6 +203,32 @@ test('Règles par site : route profonde avec port, motif, et site sans règle', 
     // Hash invalide : pas de détail.
     await r.evaluate(() => { location.hash = '#/sites/pas%20un%20site' })
     await expect(r.locator('.detail-regle')).toHaveCount(0)
+  } finally {
+    await app.close()
+  }
+})
+
+test('Règles par site : le suffixe /style ouvre le détail avec le focus sur « Style personnalisé »', async () => {
+  test.setTimeout(90_000)
+  const { app, fenetre } = await lancerLyra()
+  try {
+    await fenetre.evaluate(() => window.lyra.invoke('sites:ecrire', { cle: 'https://x.fr:8443', regle: { style: 'a { color: red }' } }))
+    const r = await ouvrirReglages(app, fenetre, `sites/${encodeURIComponent('https://x.fr:8443')}/style`)
+    await expect(r.locator('h2.titre-section')).toHaveText('https://x.fr:8443 — détail de la règle')
+    const editeur = r.getByLabel('Style personnalisé', { exact: true })
+    await expect(editeur).toBeFocused()
+    await expect(editeur).toHaveValue('a { color: red }')
+    // Sans le suffixe, le focus n'est pas volé ; avec lui, il revient sur l'éditeur.
+    await r.evaluate((h) => { location.hash = h }, `#/sites/${encodeURIComponent('https://x.fr:8443')}`)
+    await r.locator('h1').focus()
+    await r.evaluate((h) => { location.hash = h }, `#/sites/${encodeURIComponent('https://x.fr:8443')}/style`)
+    await expect(editeur).toBeFocused()
+    // Même route sur un site qui n'a pas encore de règle (Tâche 15) : l'éditeur est là, vide, et sa saisie crée la règle.
+    await r.evaluate((h) => { location.hash = h }, `#/sites/${encodeURIComponent('https://neuf.fr')}/style`)
+    await expect(r.locator('h2.titre-section')).toHaveText('https://neuf.fr — détail de la règle')
+    await expect(editeur).toBeFocused()
+    await editeur.fill('p { margin: 0 }')
+    await expect.poll(async () => (await lister(fenetre))['https://neuf.fr']).toEqual({ style: 'p { margin: 0 }' })
   } finally {
     await app.close()
   }

@@ -34,6 +34,27 @@ export const celluleExtensions = (_r: RegleSite): Cellule => sans('Toutes')
 
 /** « 110 % » ; le facteur de zoom est mémorisé en rapport (1,1). */
 export const libelleZoom = (zoom: number): string => `${Math.round(zoom * 100)} %`
+/** Paliers du sélecteur de zoom d'une règle (Décision A). */
+export const PALIERS_ZOOM: readonly number[] = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2]
+
+/** Identifiant de l'option d'un zoom : « defaut » (absent) ou le pourcentage (« 110 »). */
+export const idZoom = (zoom: number | undefined): string => (typeof zoom === 'number' ? String(Math.round(zoom * 100)) : 'defaut')
+
+/** Zoom d'une option : `null` pour « Par défaut » (retire `zoom` de la règle), `undefined` si l'identifiant n'en est pas un. */
+export function zoomDepuisId(id: string): number | null | undefined {
+  if (id === 'defaut') return null
+  const pourcent = Number(id)
+  return Number.isInteger(pourcent) && pourcent >= 25 && pourcent <= 500 ? pourcent / 100 : undefined
+}
+
+/** Options du sélecteur : « Par défaut », les paliers, et le zoom actuel s'il n'en est pas un (zoom au clavier : 120 %…). */
+export function optionsZoom(zoom: number | undefined): { id: string; libelle: string }[] {
+  const valeurs = [...PALIERS_ZOOM]
+  if (typeof zoom === 'number' && !valeurs.some((v) => idZoom(v) === idZoom(zoom))) valeurs.push(Math.round(zoom * 100) / 100)
+  valeurs.sort((a, b) => a - b)
+  return [{ id: 'defaut', libelle: 'Par défaut' }, ...valeurs.map((v) => ({ id: idZoom(v), libelle: libelleZoom(v) }))]
+}
+
 export const celluleZoom = (r: RegleSite): Cellule => (typeof r.zoom === 'number' ? sans(libelleZoom(r.zoom)) : AUCUNE)
 
 export const celluleDnd = (r: RegleSite): Cellule => (r.exceptionDnd === true ? sans('Exception') : AUCUNE)
