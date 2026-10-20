@@ -34,7 +34,7 @@ export function reglagesParDefautD(): ReglagesD {
     raccourcis: {},
     gestes: { defilementHorizontal: true, clicMolette: true, molettePlusCmdZoom: true },
     dnd: { duree: 60 },
-    demarrage: { restaurer: true, pageAccueil: '', nouvelleFenetre: 'accueil' },
+    demarrage: { restaurer: true, pageAccueil: '', nouvelleFenetre: 'vide' },
     styles: { css: '', scripts: [] },
     labo: {}
   }

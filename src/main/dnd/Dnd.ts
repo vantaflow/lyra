@@ -13,8 +13,8 @@ export const PLAFOND_NOTIFICATIONS = 50
 export const PLAFOND_POPUPS = 10
 /** Durée d'affichage du rappel complet avant qu'il ne laisse que le croissant. */
 export const DELAI_RAPPEL_MS = 5000
-/** Durée de ⌘ ⇧ D et du croissant (design : « Ne pas déranger pendant 1 h »). */
-export const DUREE_PAR_DEFAUT: DureeDnd = 60
+/** Durée de repli quand les réglages ne sont pas fournis (design : « Ne pas déranger pendant 1 h »). */
+const DUREE_DE_REPLI: DureeDnd = 60
 
 export interface NotificationRetenue {
   id: number
@@ -42,6 +42,8 @@ export interface DepsDnd {
   ouvrirPopups(fenetre: number, popups: PopupRetenue[]): void
   /** L'état d'une fenêtre a changé (entrée, sortie, compteur, rappel). */
   surChangement(fenetre: number, etat: EtatDnd): void
+  /** Durée proposée par ⌘ ⇧ D et le croissant : `dnd.duree` des réglages, lue à chaque entrée (1 h par défaut). */
+  dureeParDefaut?(): DureeDnd
   /** Horloge murale (ms) ; Date.now par défaut. Injectée pour tester la reprise après une mise en veille. */
   maintenant?(): number
 }
@@ -65,6 +67,10 @@ export class Dnd {
 
   constructor(private deps: DepsDnd) {}
 
+  private dureeParDefaut(): DureeDnd {
+    return this.deps.dureeParDefaut?.() ?? DUREE_DE_REPLI
+  }
+
   actif(fenetre: number): boolean {
     return this.fenetres.has(fenetre)
   }
@@ -86,7 +92,7 @@ export class Dnd {
   }
 
   /** Entre (ou relance avec une autre durée, sans perdre ce qui est retenu). */
-  entrer(fenetre: number, duree: DureeDnd = DUREE_PAR_DEFAUT, maintenant = this.deps.maintenant?.() ?? Date.now()): void {
+  entrer(fenetre: number, duree: DureeDnd = this.dureeParDefaut(), maintenant = this.deps.maintenant?.() ?? Date.now()): void {
     const f: Fenetre = this.fenetres.get(fenetre) ?? { fin: null, duree, notifications: [], popups: [], rappel: true, attentes: [] }
     clearTimeout(f.minuterie)
     f.duree = duree
@@ -115,7 +121,7 @@ export class Dnd {
   }
 
   /** Bascule : sort si actif, sinon entre avec la durée donnée. */
-  basculer(fenetre: number, duree: DureeDnd = DUREE_PAR_DEFAUT): void {
+  basculer(fenetre: number, duree: DureeDnd = this.dureeParDefaut()): void {
     if (this.actif(fenetre)) this.sortir(fenetre)
     else this.entrer(fenetre, duree)
   }

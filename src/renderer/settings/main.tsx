@@ -17,6 +17,12 @@ import { BouclierSection } from './BouclierSection'
 import { Couleurs } from './Couleurs'
 import { Raccourcis } from './Raccourcis'
 import { Emplacement } from './Emplacement'
+import { Confidentialite } from './Confidentialite'
+import { Dnd } from './Dnd'
+import { Demarrage } from './Demarrage'
+import { Styles } from './Styles'
+import { Sauvegarde } from './Sauvegarde'
+import { Labo } from './Labo'
 import { chercher, REPLI_LIGNE } from './recherche'
 import { routeDepuisHash, SECTIONS } from './sections'
 
@@ -163,18 +169,18 @@ function App() {
         {route === 'extensions' && (
           <Emplacement description="Les extensions se gèrent dans leur page." lien={{ href: 'lyra://extensions', libelle: 'Ouvrir les extensions' }} />
         )}
-        {route === 'confidentialite' && <Emplacement description="Effacer l'historique, cookies et données de site." />}
+        {route === 'confidentialite' && <Confidentialite />}
         {route === 'telechargements' && <Telechargements />}
         {route === 'raccourcis' && <Raccourcis />}
         {route === 'gestes' && <Emplacement description="Gestes de souris et molette." />}
-        {route === 'nepasderanger' && <Emplacement description="Silence des notifications et exceptions par site." />}
-        {route === 'demarrage' && <Emplacement description="Page de démarrage et restauration des sessions." />}
-        {route === 'styles' && <Emplacement description="Styles et scripts personnalisés." />}
+        {route === 'nepasderanger' && <Dnd />}
+        {route === 'demarrage' && <Demarrage />}
+        {route === 'styles' && <Styles />}
         {route === 'reseau' && <Reseau />}
         {route === 'apropos' && <Apropos />}
         {route === 'importer' && <PageImport />}
-        {route === 'sauvegarde' && <Emplacement description="Sauvegarde des réglages et profils." />}
-        {route === 'labo' && <Emplacement description="Fonctions expérimentales." />}
+        {route === 'sauvegarde' && <Sauvegarde />}
+        {route === 'labo' && <Labo />}
         {route === 'historique' && <Historique />}
         {route === 'favoris' && <Favoris />}
       </main>

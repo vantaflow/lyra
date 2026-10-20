@@ -7,6 +7,7 @@ import type { HistoryEntry, Settings, Suggestion } from '../../shared/types'
 import { moteurParId, moteursDisponibles, urlDeRecherche } from './engines'
 import type { History } from '../history/History'
 import type { Bookmarks } from '../bookmarks/Bookmarks'
+import { sourcesDeSuggestions } from './prive'
 import { interpreterSaisie, suggerer, trouverCommande } from './suggest'
 
 export interface DepsPalette {
@@ -15,6 +16,8 @@ export interface DepsPalette {
   historique: History
   favoris: Bookmarks
   creerFenetre(opts: { privee?: boolean }): void
+  /** La fenêtre de cet onglet est privée (la palette n'y propose pas l'historique ni les favoris, sauf réglage). */
+  privee(tabs: TabManager): boolean
   /** Déplace le ciel (démasqué) à la position donnée. */
   deplacerCiel(position: 'gauche' | 'droite' | 'haut' | 'bas'): void
   /** Ne pas déranger est actif dans la fenêtre de cet onglet. */
@@ -24,12 +27,12 @@ export interface DepsPalette {
 }
 
 /** Favoris puis historique correspondant à la saisie (les favoris sont marqués pour la palette). */
-function historiquePalette(deps: DepsPalette, texte: string): HistoryEntry[] {
+function historiquePalette(deps: DepsPalette, texte: string, sources: { historique: boolean; favoris: boolean }): HistoryEntry[] {
   const t = texte.trim()
   if (!t || /^[>?#]/.test(t)) return []
-  const favoris: HistoryEntry[] = deps.favoris.rechercher(t).map((f) => ({ url: f.url, title: f.title, favori: true }))
+  const favoris: HistoryEntry[] = sources.favoris ? deps.favoris.rechercher(t).map((f) => ({ url: f.url, title: f.title, favori: true })) : []
   const vus = new Set(favoris.map((f) => f.url))
-  const histo = deps.historique.rechercher(t, 8).filter((h) => !vus.has(h.url))
+  const histo = sources.historique ? deps.historique.rechercher(t, 8).filter((h) => !vus.has(h.url)) : []
   return [...favoris, ...histo]
 }
 
@@ -57,7 +60,7 @@ export function installerPalette(deps: DepsPalette): void {
       etoiles: sky.stars,
       activeId: sky.activeId ?? undefined,
       constellations: sky.constellations,
-      historique: historiquePalette(deps, texte),
+      historique: historiquePalette(deps, texte, sourcesDeSuggestions(deps.privee(tabs), deps.reglages().palette)),
       moteurParDefaut: deps.reglages().moteurParDefaut,
       moteurs: moteursDisponibles(deps.reglages()),
       // Démasqué seulement : masqué, « à gauche » est une vraie commande (elle réaffiche le ciel).

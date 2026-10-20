@@ -284,6 +284,8 @@ export type Requetes = {
   'history:search': [{ texte: string; limite?: number }, HistoryEntry[]]
   'history:delete': [{ url: string }, void]
   'history:clear': [void, void]
+  /** Efface maintenant l'historique, les cookies et le cache des pages web (le bouton avec confirmation de « Confidentialité »). */
+  'confidentialite:purger': [void, void]
   'history:frequent': [{ n: number }, HistoryEntry[]]
   /** Renvoie vrai si l'adresse est désormais en favori. */
   'bookmarks:toggle': [{ url: string; title: string }, boolean]

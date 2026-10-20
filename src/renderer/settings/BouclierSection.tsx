@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks'
 import type { StatsBoucliers } from '../../shared/ipc'
 import { Interrupteur, Ligne, Segments, Selecteur, Titre } from './controles'
 import { useReglages } from './reglages'
+import './sections.css'
 
 const HEURES = [1, 6, 12, 24].map((h) => ({ id: String(h), libelle: h === 1 ? '1 heure' : `${h} heures` }))
 function dateDeMaj(iso: string): string {
@@ -46,6 +47,11 @@ export function BouclierSection() {
             options={HEURES}
             surChange={(h) => regler({ boucliers: { majHeures: Number(h) } })}
           />
+        </Ligne>
+        <Ligne reglage="boucliers.sites" titre="Boucliers site par site" aide="Désactivez la protection ou renforcez-la pour un site précis">
+          <a class="btn lien" href="#/sites">
+            Règles par site
+          </a>
         </Ligne>
         <Ligne reglage="boucliers.listes" titre="Listes de blocage" aide={date ? `Dernière mise à jour : ${date}` : undefined}>
           <button class="btn" type="button" id="maj-boucliers" disabled={maj} onClick={() => void mettreAJour()}>

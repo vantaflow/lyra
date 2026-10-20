@@ -1,0 +1,55 @@
+/* Sections restantes des réglages (Confidentialité, Ne pas déranger, Démarrage, Styles et scripts, Sauvegarde, Labo) :
+   mêmes lignes, interrupteurs, segments et cartes que les sections du design (Parametres.dc.html). */
+.btn.danger {
+  color: var(--danger);
+}
+.btn.lien {
+  text-decoration: none;
+}
+.note {
+  margin: 14px 2px 0;
+  color: var(--texte-secondaire);
+  font-size: 12.5px;
+}
+.row .actions-ligne {
+  display: flex;
+  gap: 8px;
+  flex: none;
+  align-items: center;
+}
+.row.entree-site .site-cle {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row.wrap {
+  flex-wrap: wrap;
+}
+.zone-code {
+  flex-basis: 100%;
+  min-height: 84px;
+  padding: 8px 12px;
+  border: 1px solid var(--bordure-champ);
+  border-radius: 9px;
+  background: var(--champ-fond);
+  color: var(--texte);
+  font: 12.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  resize: vertical;
+  box-sizing: border-box;
+}
+.zone-code:disabled {
+  opacity: 0.6;
+}
+.inp:disabled {
+  opacity: 0.6;
+}
+.champ-accueil {
+  flex: 0 1 320px;
+}
+.seg button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { validerPatch } from './validate'
+import { migrer } from './migrations'
 import { reglagesParDefaut } from './defaults'
 import { COULEURS_INDIGO_NUIT } from '../../shared/types-reglages'
 
@@ -89,8 +90,31 @@ describe('palette, confidentialité, gestes, démarrage', () => {
     expect(validerPatch({ gestes: { clicMolette: 'x' } })).toEqual({})
     expect(validerPatch({ demarrage: { restaurer: false, pageAccueil: 'https://a.fr', nouvelleFenetre: 'vide' } })).toEqual({ demarrage: { restaurer: false, pageAccueil: 'https://a.fr', nouvelleFenetre: 'vide' } })
     expect(validerPatch({ demarrage: { pageAccueil: '' } })).toEqual({ demarrage: { pageAccueil: '' } })
-    expect(validerPatch({ demarrage: { nouvelleFenetre: 'ailleurs' } })).toEqual({})
+    expect(validerPatch({ demarrage: { nouvelleFenetre: 42 } })).toEqual({})
     expect(validerPatch({ demarrage: { pageAccueil: 'x'.repeat(2049) } })).toEqual({})
+  })
+  it("demarrage.nouvelleFenetre : 'vide' ou 'accueil' ; toute autre chaîne (dont l'ancien 'session') retombe sur 'vide'", () => {
+    expect(validerPatch({ demarrage: { nouvelleFenetre: 'accueil' } })).toEqual({ demarrage: { nouvelleFenetre: 'accueil' } })
+    expect(validerPatch({ demarrage: { nouvelleFenetre: 'vide' } })).toEqual({ demarrage: { nouvelleFenetre: 'vide' } })
+    for (const v of ['session', 'ailleurs', '', 'ACCUEIL']) {
+      expect(validerPatch({ demarrage: { nouvelleFenetre: v } }), v).toEqual({ demarrage: { nouvelleFenetre: 'vide' } })
+    }
+    for (const v of [null, 0, true, {}, []]) expect(validerPatch({ demarrage: { nouvelleFenetre: v } }), String(v)).toEqual({})
+  })
+  it('demarrage.nouvelleFenetre : un ancien settings.json (session, valeur inconnue) relu donne vide, accueil est conservé', () => {
+    const lu = (v: unknown) => migrer({ version: 2, demarrage: { nouvelleFenetre: v } }).settings.demarrage.nouvelleFenetre
+    expect(lu('session')).toBe('vide')
+    expect(lu('n-importe-quoi')).toBe('vide')
+    expect(lu('accueil')).toBe('accueil')
+    expect(lu(undefined)).toBe('vide')
+    expect(migrer({ version: 2 }).settings.demarrage.nouvelleFenetre).toBe('vide')
+  })
+  it("demarrage.pageAccueil : refuse javascript:, file: et tout ce qui n'est ni http(s) ni lyra://", () => {
+    for (const u of ['javascript:alert(1)', 'JavaScript:alert(1)', 'file:///etc/passwd', 'FILE:///tmp/x', 'data:text/html,x', 'exemple.fr', 'https://a b.fr', 'ftp://a.fr']) {
+      expect(validerPatch({ demarrage: { pageAccueil: u } }), u).toEqual({})
+    }
+    expect(validerPatch({ demarrage: { pageAccueil: 'https://exemple.fr/accueil', restaurer: false } })).toEqual({ demarrage: { pageAccueil: 'https://exemple.fr/accueil', restaurer: false } })
+    expect(validerPatch({ demarrage: { pageAccueil: 'lyra://history' } })).toEqual({ demarrage: { pageAccueil: 'lyra://history' } })
   })
 })
 

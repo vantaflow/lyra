@@ -1,0 +1,32 @@
+/* Palette et recherche : liste des moteurs et mots-clés (mêmes cartes, lignes, pastilles et étiquettes que les autres sections). */
+.row.moteur .pastille-moteur {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  flex: none;
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.row.moteur strong {
+  font-size: 13.5px;
+}
+.row.moteur .tag.mot-cle {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  text-transform: none;
+}
+.row.ajout-moteur {
+  flex-wrap: wrap;
+}
+.row.ajout-moteur .inp.nom {
+  flex: 1 1 150px;
+}
+.row.ajout-moteur .inp.cle {
+  flex: 0 1 110px;
+}
+.row.ajout-moteur .inp.adresse {
+  flex: 2 1 260px;
+}

@@ -17,6 +17,7 @@ import { Bookmarks } from './bookmarks/Bookmarks'
 import { Downloads } from './downloads/Downloads'
 import { installerReglagesIpc } from './settings/ipc'
 import { patchPage } from './settings/import'
+import { installerAccueilImporte } from './settings/accueil-importe'
 import { installerImportIpc } from './import/ipc'
 import { installerExportIpc } from './export/ipc'
 import { enTest } from './modeTest'
@@ -45,6 +46,8 @@ import { couleurFaviconEnCache } from './theme/couleurFavicon'
 import { reglagesHorsSitesChanges } from './sites/service'
 import { resoudre } from './settings/sites'
 import { Dnd, type NotificationRetenue } from './dnd/Dnd'
+import { installerConfidentialite, type Confidentialite } from './confidentialite/installer'
+import { NOUVEL_ONGLET, pageDeDemarrage, restaurerSession, urlNouvelleFenetre } from '../shared/accueil'
 import { origineDe, type Shields } from './shields/Shields'
 import type { DureeDnd } from '../shared/ipc'
 import { creerExtensions, type Extensions } from './extensions/Extensions'
@@ -140,6 +143,7 @@ function livrerNotifications(fenetre: number, notifications: NotificationRetenue
 
 const dnd = new Dnd({
   exception: (origine) => resoudre(reglagesCourants().sites, origine).exceptionDnd === true,
+  dureeParDefaut: () => reglagesCourants().dnd.duree,
   livrerNotifications,
   // Popups retenues : ouvertes en étoiles d'arrière-plan, reliées à leur opener s'il existe encore.
   ouvrirPopups: (fenetre, popups) => {
@@ -173,6 +177,8 @@ function etatSession(): { version: 1; fenetres: FenetreSession[] } | null {
 }
 
 let enFermeture = false
+/** Effacement à la fermeture (Confidentialité) : branché au démarrage, prévenu à chaque nouvelle fenêtre. */
+let confidentialite: Confidentialite | undefined
 
 function sauverSession(): void {
   if (enFermeture) return
@@ -195,6 +201,8 @@ function ongletsDe(wc: WebContents): TabManager {
 
 function creerFenetre(opts: { privee?: boolean; urlInitiale?: string } = {}, restauration?: FenetreSession): BaseWindow {
   const fenetre = manager.creerFenetre(opts)
+  // Une fenêtre privée n'écrit rien dans `persist:lyra` : seul le profil normal remet l'effacement à faire.
+  if (!opts.privee) confidentialite?.fenetreOuverte()
   // Fenêtre privée : session mémoire à elle (cookies, cache, stockage jetés à la fermeture).
   // Toujours créée, jamais de repli sur `persist:lyra` : la première navigation attend l'équipement (démarrage compris).
   const sesPrivee = opts.privee ? session.fromPartition(partitionPrivee(fenetre.id)) : undefined
@@ -256,8 +264,14 @@ function creerFenetre(opts: { privee?: boolean; urlInitiale?: string } = {}, res
     void equipement.catch(echecEquipement)
   }
   // Une session privée est équipée (PAC compris) avant la première navigation : aucune requête ne part sans passerelle.
-  else void equipement.then(() => !fenetre.win.isDestroyed() && tabs.ouvrir(opts.urlInitiale ?? 'lyra://newtab')).catch(echecEquipement)
+  else void equipement.then(() => !fenetre.win.isDestroyed() && tabs.ouvrir(opts.urlInitiale ?? NOUVEL_ONGLET)).catch(echecEquipement)
   return fenetre.win
+}
+
+/** Nouvelle fenêtre normale demandée par l'utilisateur (⌘ N, menu) : première page selon `demarrage.nouvelleFenetre`. */
+function ouvrirNouvelleFenetre(): BaseWindow {
+  const { nouvelleFenetre, pageAccueil } = reglagesCourants().demarrage
+  return creerFenetre({ urlInitiale: urlNouvelleFenetre(nouvelleFenetre, pageAccueil) })
 }
 
 /** Fermeture d'une fenêtre privée : plus rien ne subsiste de sa session. */
@@ -356,6 +370,8 @@ void app.whenReady().then(async () => {
   const reglages = creerReglages(join(paths.userData(), 'settings.json'), app.getPath('downloads'), 60)
   reglagesCourants = () => reglages.getSettings()
   reglagesStore = reglages
+  // Page d'accueil importée d'un autre navigateur : copiée une seule fois dans Démarrage (avant la première fenêtre).
+  installerAccueilImporte(reglages)
   const depsPermissions: DepsPermissions = {
     lire: (origine, type) => resoudre(reglages.getSettings().sites, origine).permissions?.[type],
     memoriser: (origine, type, decision) => void reglages.setSettings({ sites: { [origine]: { permissions: { [type]: decision } } } }),
@@ -391,6 +407,7 @@ void app.whenReady().then(async () => {
   handle('history:search', ({ texte, limite }) => hist.rechercher(texte, limite))
   handle('history:delete', ({ url }) => hist.supprimer(url))
   handle('history:clear', () => hist.effacer())
+  confidentialite = installerConfidentialite({ reglages, historique: hist, sessions: () => [session.fromPartition('persist:lyra')] })
   handle('history:frequent', ({ n }) => hist.frequents(n))
   // Fenêtre privée : jamais de favori écrit (le bouton y est désactivé) ; l'état renvoyé reste celui du favori existant.
   handle('bookmarks:toggle', (f, e) => (estPrivee(e.sender) ? favoris.existe(f.url) : favoris.toggle(f)))
@@ -866,7 +883,7 @@ void app.whenReady().then(async () => {
     const m = ongletsDe(e.sender)
     m.fermerOverlay()
     if (action === 'nouvelle-etoile') m.ouvrir('lyra://newtab')
-    else if (action === 'nouvelle-fenetre') creerFenetre()
+    else if (action === 'nouvelle-fenetre') ouvrirNouvelleFenetre()
     else if (action === 'fenetre-privee') creerFenetre({ privee: true })
     else if (action === 'favori') basculerFavori(m)
     else if (action === 'recherche') m.ouvrirRecherche()
@@ -876,7 +893,7 @@ void app.whenReady().then(async () => {
     else if (action === 'extensions') m.ouvrir('lyra://extensions')
     else m.ouvrir('lyra://settings')
   })
-  installerPalette({ ongletsDe, historique: hist, favoris, reglages: () => reglages.getSettings(), creerFenetre,
+  installerPalette({ ongletsDe, historique: hist, favoris, reglages: () => reglages.getSettings(), creerFenetre, privee: (m) => privees.has(m.fenetreId),
     dndActif: (m) => dnd.actif(m.fenetreId),
     dnd: (m, action) => (action === 'sortir' ? dnd.sortir(m.fenetreId) : entrerDnd(m.fenetreId, action)),
     deplacerCiel: (position) => void reglages.setSettings({ ciel: { position, masque: false } } as Partial<Settings>)
@@ -889,7 +906,7 @@ void app.whenReady().then(async () => {
     if (/^(https?|file):/i.test(url) && wc) favoris.toggle({ url, title: wc.getTitle() || url })
   }
   const menuApp = installerMenu(ongletsCourants, {
-    nouvelleFenetre: () => creerFenetre(),
+    nouvelleFenetre: () => ouvrirNouvelleFenetre(),
     nouvelleFenetrePrivee: () => creerFenetre({ privee: true }),
     basculerFavori,
     basculerDnd: () => {
@@ -942,10 +959,11 @@ void app.whenReady().then(async () => {
     sauverSession()
     sessionStore?.vider()
     enFermeture = true
-    // « Session seulement » : les cookies de ces sites sont purgés avant de quitter.
-    void hist
-      .attendre()
+    // « Effacer à la fermeture » (Confidentialité), puis « Session seulement » (cookies de ces sites purgés),
+    // avant d'attendre les écritures de l'historique.
+    void (confidentialite?.aLaFermeture() ?? Promise.resolve())
       .then(() => Promise.all(sessionsWeb.map((ses) => reglesSites.purger(ses))))
+      .then(() => hist.attendre())
       .finally(() => app.quit())
   })
   // Les règles par site (jusqu'à 10 000) ont leur évènement `sites:changed` : jamais rediffusées ici.
@@ -958,9 +976,9 @@ void app.whenReady().then(async () => {
     for (const wc of webContents.getAllWebContents()) envoyer(wc, 'settings:changed', { ...s, sites: {} })
   })
   sessionStore = new SessionStore(join(paths.userData(), 'session.json'))
-  const restauree = sessionStore.charger()
+  const restauree = restaurerSession(reglages.getSettings().demarrage.restaurer, sessionStore.charger())
   if (restauree) for (const f of restauree.fenetres) creerFenetre({}, f)
-  else creerFenetre()
+  else creerFenetre({ urlInitiale: pageDeDemarrage(reglages.getSettings().demarrage.pageAccueil) })
   app.on('activate', () => {
     if (BaseWindow.getAllWindows().length === 0) creerFenetre()
   })
@@ -968,4 +986,6 @@ void app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+  // macOS garde l'application ouverte sans fenêtre : l'effacement à la fermeture a lieu dès la dernière fenêtre fermée.
+  else void confidentialite?.aLaFermeture()
 })

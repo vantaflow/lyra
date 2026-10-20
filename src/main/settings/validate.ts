@@ -1,6 +1,7 @@
 import type { Settings } from '../../shared/types'
 import { fusion } from './store'
 import { hoteValide, octets } from '../passerelles/liste'
+import { adresseWebValide } from '../../shared/accueil'
 import { SCHEMA_D, booleen, champsRegleSiteD, entier, enumeration, estObjet, pixels, propre, texte, type Obj, type Schema } from './validate-d'
 import { migrer } from './migrations'
 import { cleCanonique } from './sites'
@@ -177,7 +178,7 @@ const SCHEMA: Schema = {
   moteursPerso,
   import: {
     extensionsEnAttente,
-    reglagesEnAttente: { pageAccueil: texte(2048) }
+    reglagesEnAttente: { pageAccueil: (v) => (typeof v === 'string' && v.length <= 2048 && adresseWebValide(v) ? v : undefined) }
   },
   reseau: {
     passerelles: booleen,

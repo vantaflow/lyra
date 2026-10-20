@@ -3,6 +3,7 @@ import { reglagesParDefaut } from './defaults'
 import { JsonStore, conserverCopieCorrompue } from './store'
 import { migrer } from './migrations'
 import { validerPatch } from './validate'
+import { accueilImporteConsomme } from './accueil-importe'
 
 export interface Reglages {
   getSettings(): Settings
@@ -13,6 +14,8 @@ export interface Reglages {
   supprimerSite(cle: string): Settings
   /** Retire des champs d'une règle de site ; la règle disparaît si elle devient vide. */
   retirerChampsSite(cle: string, champs: readonly string[]): Settings
+  /** Applique la page d'accueil importée en attente (voir `accueil-importe.ts`) ; ne fait rien s'il n'y en a pas. */
+  consommerAccueilImporte(): Settings
   /** Écrit tout de suite une écriture différée en attente (fermeture de l'application). */
   vider(): void
   /** Équivalent de l'évènement `settings:changed` ; renvoie la fonction de désabonnement. */
@@ -49,6 +52,7 @@ export function creerReglages(chemin: string, dossierTelechargements: string, de
         const { [cle]: _ancienne, ...autres } = s.sites
         return { ...s, sites: Object.keys(reste).length ? { ...autres, [cle]: reste } : autres }
       }),
+    consommerAccueilImporte: () => store.remplacer((s) => accueilImporteConsomme(s) ?? s),
     vider: () => store.vider(),
     onChanged: (cb) => store.onChange(cb)
   }

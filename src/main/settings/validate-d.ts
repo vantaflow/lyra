@@ -1,4 +1,5 @@
 /** Valideurs du jalon D (schéma v2) : blocs de réglages et champs de règle de site. */
+import { adresseAccueilValide } from '../../shared/accueil'
 import { HEURE_VALIDE } from '../../shared/heure-sombre'
 import { CLES_COULEUR, COULEURS_INDIGO_NUIT, NOMS_THEMES } from '../../shared/types-reglages'
 
@@ -124,6 +125,9 @@ export function champsRegleSiteD(regle: Obj): Obj {
   return champs
 }
 
+/** 'accueil' ou 'vide' ; toute autre chaîne (dont l'ancien 'session') retombe sur 'vide', le reste est refusé. */
+const nouvelleFenetre = (v: unknown): 'vide' | 'accueil' | undefined => (typeof v === 'string' ? (v === 'accueil' ? 'accueil' : 'vide') : undefined)
+
 /** Blocs de réglages du jalon D, à étaler dans le schéma principal. */
 export const SCHEMA_D: Schema = {
   apparence: {
@@ -159,8 +163,8 @@ export const SCHEMA_D: Schema = {
   dnd: { duree: (v) => (v === 30 || v === 60 || v === 'arret' ? v : undefined) },
   demarrage: {
     restaurer: booleen,
-    pageAccueil: chaine(2048),
-    nouvelleFenetre: enumeration('accueil', 'session', 'vide')
+    pageAccueil: (v) => (typeof v === 'string' && v.length <= 2048 && adresseAccueilValide(v) ? v : undefined),
+    nouvelleFenetre: nouvelleFenetre
   },
   styles: { css: code, scripts: scriptsPerso },
   labo
