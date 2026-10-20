@@ -605,7 +605,19 @@ void app.whenReady().then(async () => {
   for (const ses of sessionsWeb) reglesSites.equiper(ses, { privee: false })
   // Reliquats d'un arrêt brutal (cookies « Session seulement » et « Bloqués », service workers des sites aux scripts bloqués) :
   // terminé avant la restauration des onglets, donc avant la moindre page.
-  const nettoyageDemarrage = Promise.all(sessionsWeb.map((ses) => reglesSites.demarrer(ses)))
+  // Borné à 3 s (et jamais rejeté) : un nettoyage bloqué ne doit pas empêcher d'ouvrir la première fenêtre.
+  let delaiNettoyage: NodeJS.Timeout | undefined
+  const nettoyageDemarrage = Promise.race([
+    Promise.all(sessionsWeb.map((ses) => reglesSites.demarrer(ses))),
+    new Promise<void>((ok) => {
+      delaiNettoyage = setTimeout(() => {
+        console.error('[sites] nettoyage du démarrage trop long : abandonné après 3 s')
+        ok()
+      }, 3000)
+    })
+  ])
+    .catch((err) => console.error('[sites] nettoyage du démarrage impossible', err))
+    .finally(() => clearTimeout(delaiNettoyage))
   // Le PAC initial est en place avant toute fenêtre (une étoile restaurée ne part pas en direct).
   await pass.demarrer()
   // Extensions : branchées et chargées avant la création de la moindre vue (donc de la première fenêtre).

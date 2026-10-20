@@ -148,9 +148,14 @@ describe('cookies visés par une règle « Session seulement » ou « Bloqués �
     const liste = [c('exemple.test'), c('.exemple.test'), c('www.exemple.test'), c('.google.com'), c('.pixel.tiers.test'), c('autre.test')]
     expect(cookiesAPurger(liste, sites).map((x) => x.domain)).toEqual(['exemple.test', '.exemple.test'])
   })
-  it('un cookie de domaine d’un parent est visé (il est envoyé à l’hôte de la règle), pas un cookie hôte d’un parent ni d’un sous-domaine', () => {
+  it('un cookie de domaine d’un parent est visé si la règle du parent est elle-même visée', () => {
+    const sites: Sites = { 'www.exemple.test': { cookies: 'bloques' }, 'exemple.test': { cookies: 'bloques' } }
+    expect(cookiesAPurger([c('.exemple.test'), c('exemple.test'), c('www.exemple.test'), c('api.www.exemple.test')], sites).map((x) => x.domain)).toEqual(['.exemple.test', 'exemple.test', 'www.exemple.test'])
+  })
+  it('un cookie de domaine d’un parent sans règle est épargné (posé par un autre sous-domaine), comme un cookie hôte d’un parent ou d’un sous-domaine', () => {
     const sites: Sites = { 'www.exemple.test': { cookies: 'bloques' } }
-    expect(cookiesAPurger([c('.exemple.test'), c('exemple.test'), c('www.exemple.test'), c('api.www.exemple.test')], sites).map((x) => x.domain)).toEqual(['.exemple.test', 'www.exemple.test'])
+    expect(cookiesAPurger([c('.exemple.test'), c('exemple.test'), c('www.exemple.test'), c('api.www.exemple.test')], sites).map((x) => x.domain)).toEqual(['www.exemple.test'])
+    expect(cookiesAPurger([c('.exemple.test')], { 'www.exemple.test': { cookies: 'bloques' }, 'exemple.test': { cookies: 'tous' } })).toEqual([])
   })
   it('les règles par origine http:// et avec port comptent (cookies sans schéma ni port)', () => {
     const sites: Sites = { 'http://127.0.0.1:8123': { cookies: 'session' }, 'https://exemple.test:8443': { cookies: 'bloques' } }

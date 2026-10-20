@@ -144,7 +144,9 @@ export function ciblesCookies(sites: Sites, modes: ReadonlySet<ModeCookies>): Ci
 
 /**
  * Cookies qui relèvent d'un site dont la règle est l'un des `modes` : cookie de cet hôte, cookie de domaine d'un parent de cet hôte
- * (il lui est envoyé), ou, pour un motif `*.hôte`, cookie d'un sous-domaine. Les cookies d'un autre site (tiers d'un iframe) ne sont jamais visés.
+ * seulement si la règle résolue pour ce parent est elle-même visée, ou, pour un motif `*.hôte`, cookie d'un sous-domaine.
+ * Les cookies d'un autre site (tiers d'un iframe) ne sont jamais visés. Une règle d'origine avec port (`https://hôte:8443`) vise les cookies
+ * de l'hôte pour tous les ports (un cookie n'a ni port ni schéma).
  */
 export function cookiesVises<C extends CookieMin>(cookies: readonly C[], sites: Sites, modes: ReadonlySet<ModeCookies>): C[] {
   const liste = ciblesCookies(sites, modes)
@@ -154,7 +156,15 @@ export function cookiesVises<C extends CookieMin>(cookies: readonly C[], sites: 
     const domaine = c.domain.startsWith('.')
     const d = c.domain.replace(/^\./, '').toLowerCase()
     return liste.some((t) => {
-      if (!t.motif) return d === t.hote || (domaine && t.hote.endsWith(`.${d}`))
+      if (!t.motif) {
+        if (d === t.hote) return true
+        // Cookie de domaine d'un parent : visé seulement si la règle de ce parent est elle-même visée (sinon il appartient aussi à des
+        // sites sans règle, accounts.google.com pour .google.com : le supprimer les déconnecterait). La page elle-même reste protégée
+        // par le retrait de l'en-tête Cookie de ses requêtes.
+        if (!domaine || !t.hote.endsWith(`.${d}`)) return false
+        const effectif = resoudre(sites, `https://${d}`).cookies
+        return effectif !== undefined && (modes as ReadonlySet<string>).has(effectif)
+      }
       // Motif : sous-domaines (et cookie de domaine du motif lui-même, envoyé à ses sous-domaines) ; une règle plus précise peut les contredire.
       const sonde = d.endsWith(`.${t.hote}`) ? d : domaine && d === t.hote ? `x.${t.hote}` : ''
       const effectif = sonde ? resoudre(sites, `https://${sonde}`).cookies : undefined

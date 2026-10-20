@@ -77,6 +77,41 @@ describe('script de règles d’une frame', () => {
     expect(runInNewContext('new HTMLIFrameElement().contentDocument', w)).toBeTruthy()
   })
 
+  it('récursif : l’iframe imbriquée créée dans le document de l’enfant (prototype du realm enfant) est alignée aussi', () => {
+    const petite = fenetre()
+    const enfant = avecIframe(() => petite)
+    const w = avecIframe(() => enfant)
+    runInNewContext(scriptRegles([FONCTION_UA, FONCTION_COOKIES_NEUTRALISES]), w)
+    runInNewContext('new HTMLIFrameElement().contentWindow', w)
+    expect(runInNewContext('new Navigator().userAgent', enfant)).toBe('alternatif')
+    expect(runInNewContext('new Navigator().userAgent', petite)).toBe('reel')
+    runInNewContext('new HTMLIFrameElement().contentWindow', enfant)
+    expect(runInNewContext('new Navigator().userAgent', petite)).toBe('alternatif')
+    const doc = runInNewContext('new Document()', petite) as { cookie: string }
+    doc.cookie = 'a=1'
+    expect(doc.cookie).toBe('')
+  })
+
+  it('le getter natif emprunté au prototype du realm enfant passe aussi par le relais', () => {
+    const petite = fenetre()
+    const enfant = avecIframe(() => petite)
+    const w = avecIframe(() => enfant)
+    runInNewContext(scriptRegles([FONCTION_UA]), w)
+    runInNewContext('new HTMLIFrameElement().contentWindow', w)
+    const emprunte = runInNewContext("Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'contentWindow').get", enfant) as () => unknown
+    emprunte.call({})
+    expect(runInNewContext('new Navigator().userAgent', petite)).toBe('alternatif')
+  })
+
+  it('idempotent : appliquer deux fois à la même fenêtre n’empile pas les relais', () => {
+    const enfant = fenetre()
+    const w = avecIframe(() => enfant)
+    runInNewContext(scriptRegles([FONCTION_UA]), w)
+    const avant = runInNewContext("Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'contentWindow').get", w)
+    runInNewContext('new HTMLIFrameElement().contentWindow; new HTMLIFrameElement().contentWindow', w)
+    expect(runInNewContext("Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'contentWindow').get", w)).toBe(avant)
+  })
+
   it('sans iframe dans la fenêtre : appliqué à la frame, sans erreur', () => {
     const w = fenetre()
     expect(() => runInNewContext(scriptRegles([FONCTION_UA]), w)).not.toThrow()

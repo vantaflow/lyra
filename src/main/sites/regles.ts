@@ -58,7 +58,14 @@ export function creerReglesSites(deps: DepsRegles) {
   }
   /** Efface les service workers installés de ces origines. N'échoue jamais. */
   async function effacerWorkers(ses: SessionRegles, origines: readonly string[]): Promise<void> {
-    for (const origin of origines) await ses.clearStorageData({ origin, storages: ['serviceworkers'] }).catch((err) => console.error('[sites] service workers non effacés', err))
+    // Quatre à la fois (pas en séquence : le démarrage attend ce nettoyage).
+    const file = [...origines]
+    const un = async (): Promise<void> => {
+      for (let origin = file.shift(); origin !== undefined; origin = file.shift()) {
+        await ses.clearStorageData({ origin, storages: ['serviceworkers'] }).catch((err) => console.error('[sites] service workers non effacés', err))
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(4, file.length) }, un))
   }
 
   return {

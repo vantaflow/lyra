@@ -52,6 +52,22 @@ test.beforeAll(async () => {
         window.__fini = true
       </script>`)
     }
+    // Contournements du relais d'iframes : iframe imbriquée créée dans le document de l'enfant, getter natif emprunté au realm enfant.
+    if (chemin === '/page-contourne') {
+      r.setHeader('content-type', 'text/html')
+      return r.end(`<!doctype html><title>contourne</title><body><script>
+        var att = '=1; Max-Age=3600; SameSite=None; Secure'
+        var a = document.createElement('iframe'); document.body.append(a)
+        var cw = a.contentWindow, d = cw.document
+        var g = d.createElement('iframe'); d.body.append(g)
+        try { g.contentDocument.cookie = 'petitefille' + att } catch (e) {}
+        var emprunte = Object.getOwnPropertyDescriptor(cw.HTMLIFrameElement.prototype, 'contentWindow').get
+        var h = d.createElement('iframe'); d.body.append(h)
+        var w = emprunte.call(h)
+        try { w.document.cookie = 'emprunte' + att } catch (e) {}
+        window.__r = { petite: g.contentDocument.cookie, emprunte: w.document.cookie, store: typeof w.cookieStore }
+      </script>`)
+    }
     if (chemin === '/tiers.gif') {
       r.setHeader('content-type', 'image/gif')
       // SameSite=None : sans cela Chromium refuserait déjà tout cookie tiers, et le test ne prouverait rien.
@@ -126,7 +142,8 @@ const etatCadre = (p: Page, debut: string) =>
 async function charger(app: ElectronApplication, f: Page, url: string, premiere = false, scriptServi = true): Promise<Page> {
   const p = await naviguer(app, f, url, premiere, url.split('/page')[0])
   await expect.poll(() => vues.some((v) => v.chemin === '/tiers.gif') && (!scriptServi || vues.some((v) => v.chemin === '/ext.js'))).toBe(true)
-  await expect.poll(() => p.evaluate(() => document.readyState)).toBe('complete')
+  // Une navigation en cours détruit le contexte d'évaluation : on réessaie.
+  await expect.poll(() => p.evaluate(() => document.readyState).catch(() => '')).toBe('complete')
   return p
 }
 
@@ -216,6 +233,38 @@ test('cookies « Bloqués » : ni envoyés ni reçus, ni lus ou écrits en JavaS
     expect(await etatCadre(p, `${SITE()}/cadre`)).toEqual({ lecture: [], store: 'undefined', herite: [] })
     expect(await etatCadre(p, TIERS())).toEqual({ lecture: [], store: 'undefined', herite: [] })
 
+    // Frames srcdoc et blob: : leur propre script lit et écrit (postMessage vers le parent, sans contentWindow) : rien, et rien dans le pot.
+    expect(
+      await p.evaluate(async () => {
+        const html = '<script>document.cookie = "heritemsg=1; Max-Age=3600; SameSite=None; Secure"; parent.postMessage({ c: document.cookie, s: typeof cookieStore }, "*")<\/script>'
+        const monter = (regler: (f: HTMLIFrameElement) => void): Promise<{ c: string; s: string }> =>
+          new Promise((ok) => {
+            const f = document.createElement('iframe')
+            const ecoute = (e: MessageEvent): void => {
+              window.removeEventListener('message', ecoute)
+              ok(e.data as { c: string; s: string })
+            }
+            window.addEventListener('message', ecoute)
+            regler(f)
+            document.body.append(f)
+          })
+        return {
+          srcdoc: await monter((f) => void (f.srcdoc = html)),
+          blob: await monter((f) => void (f.src = URL.createObjectURL(new Blob([html], { type: 'text/html' }))))
+        }
+      })
+    ).toEqual({ srcdoc: { c: '', s: 'undefined' }, blob: { c: '', s: 'undefined' } })
+    await page_attendre()
+    expect(await cles(app)).toEqual(['localhost:ailleurs'])
+
+    // Contournements du relais d'iframes (sous « Bloqués », toutes les frames) : petite-fille créée dans le document de l'enfant,
+    // getter natif emprunté au prototype du realm enfant : cookie illisible et non écrit.
+    const c = await naviguer(app, fenetre, `${SITE()}/page-contourne`, false, `${SITE()}/page-contourne`)
+    await expect.poll(() => c.evaluate(() => (window as unknown as { __r?: unknown }).__r !== undefined)).toBe(true)
+    expect(await c.evaluate(() => (window as unknown as { __r: unknown }).__r)).toEqual({ petite: '', emprunte: '', store: 'undefined' })
+    await page_attendre()
+    expect(await cles(app)).toEqual(['localhost:ailleurs'])
+
     // Page avec en-têtes : le Set-Cookie du serveur est retiré, le cookie du site n'est pas envoyé.
     await charger(app, fenetre, `${SITE()}/page`, false)
     await page_attendre()
@@ -226,6 +275,36 @@ test('cookies « Bloqués » : ni envoyés ni reçus, ni lus ou écrits en JavaS
   }
 })
 const page_attendre = (): Promise<void> => new Promise((ok) => setTimeout(ok, 500))
+
+test('cookies « Bloqués » sur un sous-domaine : le cookie du domaine parent posé ailleurs survit, celui de l’hôte est supprimé', async () => {
+  test.setTimeout(120_000)
+  const { app, fenetre } = await lancerLyra()
+  const A = (): string => `http://a.exemple.localhost:${PORT}`
+  const B = (): string => `http://b.exemple.localhost:${PORT}`
+  const poserParent = (): Promise<void> =>
+    app.evaluate(({ session }, [p, u]) => session.fromPartition(p).cookies.set({ url: u, domain: '.exemple.localhost', name: 'parent', value: '1', expirationDate: Math.floor(Date.now() / 1000) + 3600 }), [PARTITION, B()])
+  try {
+    await poserParent()
+    await poserCookie(app, A(), 'hote')
+    await poserCookie(app, B(), 'frere')
+    expect(await cles(app)).toEqual(['a.exemple.localhost:hote', 'b.exemple.localhost:frere', 'exemple.localhost:parent'])
+    // Règle sur a.exemple.localhost seul : son cookie hôte part ; le cookie de domaine parent (posé par b.exemple.localhost, sans règle) et celui du frère restent.
+    await regle(fenetre, 'a.exemple.localhost', { cookies: 'bloques' })
+    await expect.poll(() => cles(app)).toEqual(['b.exemple.localhost:frere', 'exemple.localhost:parent'])
+    // Réinséré par un autre chemin que la page : il reste aussi.
+    await poserParent()
+    await page_attendre()
+    expect(await cles(app)).toEqual(['b.exemple.localhost:frere', 'exemple.localhost:parent'])
+    // La page elle-même ne reçoit pas le cookie parent (en-tête Cookie retiré).
+    await charger(app, fenetre, `${A()}/page`, true)
+    expect(vues.find((v) => v.chemin === '/page')!.hote).toBe('a.exemple.localhost')
+    expect(vues.find((v) => v.chemin === '/page')!.entetes.cookie).toBeUndefined()
+    await page_attendre()
+    expect(await cles(app)).toEqual(['b.exemple.localhost:frere', 'exemple.localhost:parent'])
+  } finally {
+    await app.close()
+  }
+})
 
 /**
  * Cookies (`domaine:nom`) du lancement suivant (même dossier de données) quand la règle du site « 127.0.0.1 » est `mode`.
@@ -302,13 +381,19 @@ test('user-agent par site : seul le site de la page principale reçoit l’alter
     expect(ua).not.toContain('Chrome')
     // Timing : le script inline de la page (exécuté pendant l'analyse du document) a déjà vu l'identité alternative.
     expect(await s.evaluate(() => (window as unknown as { __uaInline: string }).__uaInline)).toBe(ua)
-    // Frames héritées (about:blank, srcdoc, blob:) : même identité que la page principale, dès leur création.
+    // Frames héritées (about:blank, srcdoc, blob:) : même identité que la page principale. srcdoc et blob: lisent navigator.userAgent
+    // depuis LEUR propre script (postMessage vers le parent), sans passer par `contentWindow` : c'est le preload hérité qui répond.
     expect(
       await s.evaluate(async () => {
+        const html = '<script>parent.postMessage({ ua: navigator.userAgent, c: document.cookie }, "*")<\/script>'
         const monter = (regler: (f: HTMLIFrameElement) => void): Promise<string> =>
           new Promise((ok) => {
             const f = document.createElement('iframe')
-            f.onload = () => ok(f.contentWindow!.navigator.userAgent)
+            const ecoute = (e: MessageEvent): void => {
+              window.removeEventListener('message', ecoute)
+              ok((e.data as { ua: string }).ua)
+            }
+            window.addEventListener('message', ecoute)
             regler(f)
             document.body.append(f)
           })
@@ -316,8 +401,8 @@ test('user-agent par site : seul le site de la page principale reçoit l’alter
         document.body.append(vide)
         return {
           blank: vide.contentWindow!.navigator.userAgent,
-          srcdoc: await monter((f) => void (f.srcdoc = '<p>x</p>')),
-          blob: await monter((f) => void (f.src = URL.createObjectURL(new Blob(['<p>x</p>'], { type: 'text/html' }))))
+          srcdoc: await monter((f) => void (f.srcdoc = html)),
+          blob: await monter((f) => void (f.src = URL.createObjectURL(new Blob([html], { type: 'text/html' }))))
         }
       })
     ).toEqual({ blank: ua, srcdoc: ua, blob: ua })
