@@ -234,3 +234,14 @@ describe('taille des réglages', () => {
     expect(() => serialiserReglages(avecSites(165))).toThrow(/^Réglages trop volumineux pour être exportés \(\d+\.\d Mo, maximum 16 Mo\)\.$/)
   })
 })
+
+describe('champs inconnus d’une règle de site', () => {
+  it('sont conservés au chargement, la règle valide aussi, et restent après une migration de plus', () => {
+    const brut = { version: 2, sites: { 'a.com': { zoom: 1.5, futur: { x: 1 } }, 'b.com': { futur: 'oui' }, 'c.com': { zoom: 2 } } }
+    const { settings } = migrer(brut, reglagesParDefaut('/tmp'))
+    expect(settings.sites['a.com']).toEqual({ zoom: 1.5, futur: { x: 1 } })
+    expect(settings.sites['b.com']).toEqual({ futur: 'oui' })
+    expect(settings.sites['c.com']).toEqual({ zoom: 2 })
+    expect(migrer(settings, reglagesParDefaut('/tmp')).settings.sites).toEqual(settings.sites)
+  })
+})

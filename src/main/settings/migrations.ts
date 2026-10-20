@@ -2,7 +2,7 @@
 import type { Settings } from '../../shared/types'
 import { reglagesParDefaut } from './defaults'
 import { fusion } from './store'
-import { clesRejetees, inconnus, largeurRamenee, validerPatch } from './validate'
+import { champsInconnusDesSites, clesRejetees, inconnus, largeurRamenee, validerPatch } from './validate'
 import { estObjet } from './validate-d'
 
 export const VERSION_COURANTE = 2
@@ -29,5 +29,12 @@ export function migrer(brut: unknown, defauts: Settings = reglagesParDefaut(''))
   for (const cle of clesRejetees(brut, valide)) avertissements.push(`Réglage invalide ignoré : ${cle}`)
   const base = fusion(defauts, valide)
   const settings = fusion(fusion<Record<string, unknown>>(inconnus(brut), base), { version: VERSION_COURANTE }) as unknown as Settings
+  // Champs inconnus d'une règle de site (version plus récente) : gardés, la règle reste valide pour le reste.
+  const horsSchema = champsInconnusDesSites(brut)
+  if (Object.keys(horsSchema).length > 0) {
+    const sites = { ...settings.sites }
+    for (const [cle, champs] of Object.entries(horsSchema)) sites[cle] = { ...champs, ...(sites[cle] ?? {}) } as Settings['sites'][string]
+    settings.sites = sites
+  }
   return { settings, avertissements }
 }

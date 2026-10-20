@@ -70,6 +70,25 @@ function sites(v: unknown): Obj | undefined {
   return Object.keys(sortie).length > 0 ? sortie : undefined
 }
 
+/** Champs d'une règle de site que le schéma connaît ; tout autre champ vient d'une version plus récente. */
+const CHAMPS_REGLE_CONNUS = new Set(['boucliers', 'scriptletsYoutube', 'bouclierAvant', 'cookies', 'scripts', 'lectureAuto', 'ua', 'style', 'scriptsPerso', 'permissions', 'zoom', 'exceptionDnd', 'extensions'])
+
+/**
+ * Champs inconnus des règles de site d'un fichier relu (écrits par une version plus récente), par clé canonique : conservés à la réécriture,
+ * comme les réglages inconnus. Jamais pour un patch venu de l'interface (`validerPatch` les ignore).
+ */
+export function champsInconnusDesSites(brut: unknown): Record<string, Obj> {
+  const sortie: Record<string, Obj> = {}
+  if (!estObjet(brut) || !estObjet(brut.sites)) return sortie
+  for (const [origine, regle] of Object.entries(brut.sites)) {
+    const cle = cleCanonique(origine)
+    if (!cle || !estObjet(regle)) continue
+    const inconnus = Object.entries(regle).filter(([k]) => !CHAMPS_REGLE_CONNUS.has(k) && k !== '__proto__' && k !== 'constructor' && k !== 'prototype')
+    if (inconnus.length > 0) sortie[cle] = { ...sortie[cle], ...Object.fromEntries(inconnus) }
+  }
+  return sortie
+}
+
 const MAX_SITES_CONTOURNES = 500
 const port = entier(1, 65535)
 
