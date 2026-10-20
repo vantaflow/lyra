@@ -31,6 +31,14 @@ describe('patchImporte', () => {
   })
 })
 
+describe('patchImporte : file d\'import', () => {
+  const non = (): boolean => false
+  it("ignore import : un fichier de réglages n'alimente jamais la file d'installation", () => {
+    const attente = [{ id: 'a'.repeat(32), nom: 'X', magasin: 'chrome', actif: true, source: 'chrome', date: 1, imposee: false }]
+    expect(patchImporte({ import: { extensionsEnAttente: attente, reglagesEnAttente: { pageAccueil: 'https://a.fr' } }, theme: 'clair' }, non)).toEqual({ theme: 'clair' })
+  })
+})
+
 describe('patchPage (settings:set depuis une page)', () => {
   const inst = { id: 'a'.repeat(32), nom: 'X', version: '1', source: 'cws', magasin: 'chrome', dossier: `${'a'.repeat(32)}/1`, active: true, installeeLe: '2026-10-19T10:00:00.000Z', miseAJourLe: '2026-10-19T10:00:00.000Z' }
   it('retire installees et derniereVerification, garde majAuto et le reste', () => {
@@ -41,4 +49,15 @@ describe('patchPage (settings:set depuis une page)', () => {
     const personnelle = { type: 'socks5', hote: '127.0.0.1', port: 40000 }
     expect(patchPage({ reseau: { personnelle } })).toEqual({ reseau: { personnelle } })
   })
+  it("ignore import (file d'import et réglages en attente) : seul le processus principal l'écrit", () => {
+    const attente = [{ id: 'a'.repeat(32), nom: 'X', magasin: 'chrome', actif: true, source: 'chrome', date: 1, imposee: true }]
+    expect(patchPage({ import: { extensionsEnAttente: attente, reglagesEnAttente: { pageAccueil: 'https://a.fr' } }, theme: 'sombre' })).toEqual({ theme: 'sombre' })
+    expect(patchPage({ import: { extensionsEnAttente: [] } })).toEqual({})
+  })
+  it('en fenêtre privée, refuse les règles par site (comme le zoom et les permissions)', () => {
+    const patch = { sites: { 'https://a.fr': { extensions: { ['a'.repeat(32)]: true } } }, theme: 'sombre' }
+    expect(patchPage(patch, { privee: true })).toEqual({ theme: 'sombre' })
+    expect(patchPage(patch)).toEqual(patch)
+  })
 })
+

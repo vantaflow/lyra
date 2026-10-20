@@ -517,7 +517,7 @@ void app.whenReady().then(async () => {
     if (m && origine && typeof id === 'number' && dnd.retirerNotification(m.fenetreId, id, origine)) cadresNotifications.delete(id)
   })
   handle('settings:get', () => reglages.getSettings())
-  handle('settings:set', (patch) => reglages.setSettings(patchPage(patch)))
+  handle('settings:set', (patch, e) => reglages.setSettings(patchPage(patch, { privee: estPrivee(e.sender) })))
   installerReglagesIpc(reglages)
   // Importation depuis un autre navigateur : les onglets importés vont toujours dans une fenêtre NORMALE.
   const cibleCiel = (m: TabManager): CibleCiel => ({
