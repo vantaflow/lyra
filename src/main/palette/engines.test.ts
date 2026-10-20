@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { MOTEURS, moteursDisponibles, moteurParId, moteurParMotCle } from './engines'
+import { MOTEURS, moteursDisponibles, moteurParId, moteurParMotCle, urlDeRecherche } from './engines'
 import { analyserMotCle, interpreterSaisie } from './suggest'
 import { reglagesParDefaut } from '../settings/defaults'
 
@@ -32,5 +32,21 @@ describe('moteursDisponibles', () => {
     expect(analyserMotCle('mw lyre', l)?.moteur.id).toBe('perso-1')
     expect(analyserMotCle('mw lyre')).toBeNull()
     expect(interpreterSaisie('mw lyre', 'duckduckgo', l)).toEqual({ type: 'recherche', moteur: 'perso-1', requete: 'lyre' })
+  })
+})
+
+describe('urlDeRecherche', () => {
+  const l = moteursDisponibles({ ...reglagesParDefaut('/dl'), moteursPerso: [perso] })
+  const wiki = l.at(-1)!
+
+  it('encode la requête : elle ne sort jamais du paramètre ni de l\'hôte', () => {
+    for (const requete of ['a&q=2#x', 'x/../@evil.fr', '$& $1 $$', 'évé 100%s %s', 'https://evil.fr/', 'a\\@evil.fr']) {
+      const u = new URL(urlDeRecherche(wiki, requete))
+      expect(u.origin, requete).toBe('https://wiki.exemple.fr')
+      expect(u.username).toBe('')
+      expect(u.hash).toBe('')
+      expect(u.searchParams.get('q'), requete).toBe(requete)
+      expect([...u.searchParams.keys()]).toEqual(['q'])
+    }
   })
 })

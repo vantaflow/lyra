@@ -26,6 +26,28 @@ const normaliser = (s: string): string => s.normalize('NFD').replace(/[̀-ͯ]/g,
 /** `https://hôte` suivi de ce qui contient le `%s` : le `%s` ne peut pas être dans le nom d'hôte. */
 const ADRESSE = /^https:\/\/([^\s/?#%]+)([/?#]\S*)$/i
 
+/**
+ * Adresse de recherche acceptable : https, exactement un `%s`, placé après le nom d'hôte (la requête ne choisit jamais le site),
+ * sans identifiants. Vérifié aussi par analyse : une requête hostile (`/ ? # @ \\`) ne change ni l'origine ni les identifiants.
+ */
+export function adresseMoteurValide(url: string): boolean {
+  const decoupe = ADRESSE.exec(url)
+  if (url.length > LONGUEUR_MAX_URL || !decoupe || url.split('%s').length !== 2 || !decoupe[2].includes('%s')) return false
+  try {
+    const avec = (requete: string): URL => new URL(url.replace('%s', () => encodeURIComponent(requete)))
+    const a = avec('test')
+    const b = avec('x/?#@\\:%s')
+    return a.protocol === 'https:' && a.username === '' && a.password === '' && a.origin === b.origin && b.username === '' && b.password === ''
+  } catch {
+    return false
+  }
+}
+
+/** Mot-clé sans espace, de 24 caractères au plus, qui ne commence pas par un préfixe de la palette (`>`, `?`, `#`). */
+export function motCleMoteurValide(motCle: string): boolean {
+  return motCle.length > 0 && motCle.length <= LONGUEUR_MAX_MOT_CLE && !/\s/.test(motCle) && !/^[>?#]/.test(motCle)
+}
+
 function identifiant(nom: string, pris: Set<string>): string {
   const base = `perso-${normaliser(nom).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'moteur'}`
   if (!pris.has(base)) return base
@@ -54,15 +76,8 @@ export function creerMoteurPerso(saisie: SaisieMoteur, existants: readonly Moteu
   const pris = existants.find((m) => m.motCle.toLowerCase() === motCle)
   if (pris) return refus('motCle', `Le mot-clé « ${motCle} » est déjà utilisé par ${pris.nom}.`)
 
-  const decoupe = ADRESSE.exec(url)
-  const marques = url.split('%s').length - 1
-  if (url.length > LONGUEUR_MAX_URL || !decoupe || marques !== 1 || !decoupe[2].includes('%s'))
+  if (!adresseMoteurValide(url))
     return refus('url', 'Saisissez une adresse https contenant %s à l’endroit de la requête (ex. https://exemple.fr/?q=%s).')
-  try {
-    new URL(url.replace('%s', 'test'))
-  } catch {
-    return refus('url', 'Cette adresse n’est pas valable.')
-  }
 
   return { ok: true, moteur: { id: identifiant(nom, new Set(existants.map((m) => m.id))), nom, motCle, url } }
 }

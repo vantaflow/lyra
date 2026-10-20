@@ -2,6 +2,8 @@ import type { Settings } from '../../shared/types'
 import { fusion } from './store'
 import { hoteValide, octets } from '../passerelles/liste'
 import { adresseWebValide } from '../../shared/accueil'
+import { adresseMoteurValide, motCleMoteurValide } from '../../shared/moteursPerso'
+import { MOTEURS } from '../palette/engines'
 import { SCHEMA_D, booleen, champsRegleSiteD, entier, enumeration, estObjet, pixels, propre, texte, type Obj, type Schema } from './validate-d'
 import { migrer } from './migrations'
 import { cleCanonique } from './sites'
@@ -108,20 +110,28 @@ const MAX_EXTENSIONS_EN_ATTENTE = 200
 const MAGASINS = enumeration('chrome', 'edge', 'firefox', 'inconnu')
 const SOURCES = enumeration('chrome', 'edge', 'brave', 'vivaldi', 'firefox', 'safari', 'orion', 'lyra')
 
-/** moteursPerso : { id, nom, motCle (sans espace, 24 max), url https? avec %s } ; invalides et doublons d'id ignorés ; `[]` explicite accepté. */
+/**
+ * moteursPerso : { id, nom, motCle, url } ; seul chemin d'écriture (page, import de réglages, import d'un navigateur, paquet .lyra, fichier relu).
+ * Adresse https avec un seul `%s` hors du nom d'hôte ; mot-clé en minuscules, sans espace, unique et distinct de ceux des moteurs intégrés ;
+ * identifiant distinct de ceux des intégrés ; 100 au plus. Invalides et doublons ignorés ; `[]` explicite accepté.
+ */
 function moteursPerso(v: unknown): unknown[] | undefined {
   if (!Array.isArray(v)) return undefined
   const sortie: Obj[] = []
-  const vus = new Set<string>()
+  const ids = new Set<string>(MOTEURS.map((m) => m.id))
+  const motsCles = new Set<string>(MOTEURS.map((m) => m.motCle.toLowerCase()))
   for (const e of v) {
     if (sortie.length >= MAX_MOTEURS_PERSO) break
     if (!estObjet(e)) continue
     const id = texte(64)(propre(e, 'id'))
     const nom = texte(100)(propre(e, 'nom'))
-    const motCle = texte(24, /^\S+$/)(propre(e, 'motCle'))
-    const url = texte(2000, /^https?:\/\/\S*%s\S*$/i)(propre(e, 'url'))
-    if (!id || !nom || !motCle || !url || vus.has(id)) continue
-    vus.add(id)
+    const brutCle = texte(24)(propre(e, 'motCle'))
+    const motCle = brutCle?.toLowerCase()
+    const url = texte(2000)(propre(e, 'url'))
+    if (!id || !nom || !motCle || !url || ids.has(id) || motsCles.has(motCle)) continue
+    if (!motCleMoteurValide(motCle) || !adresseMoteurValide(url)) continue
+    ids.add(id)
+    motsCles.add(motCle)
     sortie.push({ id, nom, motCle, url })
   }
   return v.length > 0 && sortie.length === 0 ? undefined : sortie
