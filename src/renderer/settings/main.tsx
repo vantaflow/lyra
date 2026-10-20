@@ -8,6 +8,7 @@ import { Telechargements } from './Telechargements'
 import { General } from './General'
 import { ActionsReglages } from './ActionsReglages'
 import { Reseau } from './Reseau'
+import { PageImport } from './PageImport'
 
 interface Section {
   id: string
@@ -74,6 +75,7 @@ function App() {
         {route === 'favoris' && <Favoris />}
         {route === 'telechargements' && <Telechargements />}
         {route === 'reseau' && <Reseau />}
+        {route === 'importer' && <PageImport />}
       </main>
     </div>
   )

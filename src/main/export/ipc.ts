@@ -30,7 +30,12 @@ type Filtres = Array<{ name: string; extensions: string[] }>
 
 /** Chemin choisi par l'utilisateur ; sous LYRA_TEST=1, celui de la demande (absolu). `null` : annulé. */
 async function choisirChemin(mode: 'enregistrer' | 'ouvrir', d: { chemin?: unknown } | undefined, nomParDefaut: string, filtres: Filtres): Promise<string | null> {
-  if (enTest()) return typeof d?.chemin === 'string' && isAbsolute(d.chemin) ? d.chemin : null
+  if (enTest()) {
+    // Le test fournit le chemin dans la demande, ou (page pilotée par clics) par une file posée côté main.
+    const file = (globalThis as { __lyraCheminsTest?: string[] }).__lyraCheminsTest
+    const chemin = typeof d?.chemin === 'string' ? d.chemin : file?.shift()
+    return typeof chemin === 'string' && isAbsolute(chemin) ? chemin : null
+  }
   if (mode === 'enregistrer') {
     const r = await dialog.showSaveDialog({ defaultPath: nomParDefaut, filters: filtres })
     return r.canceled || !r.filePath ? null : r.filePath
