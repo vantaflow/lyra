@@ -216,4 +216,14 @@ describe('Shields : masquer les gênes (boucliers.genes)', () => {
     reglages = { ...reglages, boucliers: { ...reglages.boucliers, genes: true }, sites: { 'https://site.test': { boucliers: false } } }
     expect(envoyer(ses, requete('https://cookies.exemple.test/banniere.js'))).toEqual({})
   })
+
+  it('exception (@@) des listes de base : les gênes ne bloquent pas ce que la base autorise exprès', () => {
+    const base = ElectronBlocker.parse(['||ads.exemple.test^', '@@||cookies.exemple.test/permis.js^'].join('\n'), CONFIG_MOTEUR)
+    const s = creerShields({ moteurInitial: base, reglages: () => ({ ...reglages, boucliers: { ...reglages.boucliers, genes: true } }) })
+    const f = fausseSession()
+    s.attacher(f)
+    s.remplacerMoteurGenes(genes())
+    expect(envoyer(f, requete('https://cookies.exemple.test/permis.js'))).toEqual({})
+    expect(envoyer(f, requete('https://cookies.exemple.test/autre.js'))).toEqual({ cancel: true })
+  })
 })

@@ -53,4 +53,26 @@ describe('JsonStore sous Windows', () => {
     fs.writeFileSync(chemin, '﻿{"theme":"clair","n":3}')
     expect(new JsonStore<Conf>(chemin, defauts).get()).toEqual({ theme: 'clair', n: 3 })
   })
+
+  it('écriture directe : copie .bak de l’ancien fichier prise avant ; fichier tronqué ensuite → la copie est relue', () => {
+    const s = new JsonStore<Conf>(chemin, defauts)
+    s.set({ theme: 'clair' })
+    vi.mocked(fs.renameSync).mockImplementation(verrou('EPERM'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    try {
+      s.set({ n: 5 })
+      expect(JSON.parse(fs.readFileSync(`${chemin}.bak`, 'utf8'))).toEqual({ theme: 'clair', n: 1 })
+      // Coupure pendant l'écriture directe : fichier à moitié écrit.
+      fs.writeFileSync(chemin, '{"theme":"cl')
+      expect(new JsonStore<Conf>(chemin, defauts).get()).toEqual({ theme: 'clair', n: 1 })
+    } finally {
+      vi.mocked(fs.renameSync).mockReset()
+      warn.mockRestore()
+    }
+  })
+
+  it('fichier absent : valeurs par défaut, même si une vieille copie .bak traîne', () => {
+    fs.writeFileSync(`${chemin}.bak`, '{"theme":"sombre","n":9}')
+    expect(new JsonStore<Conf>(chemin, defauts).get()).toEqual(defauts)
+  })
 })

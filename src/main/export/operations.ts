@@ -196,7 +196,7 @@ export async function importerFichier(d: DemandeImportFichier, cibles: CiblesImp
         if (refus) return refus
         let patch: Partial<Settings>
         try {
-          patch = patchImporte(JSON.parse(await readFile(d.chemin!, 'utf8')))
+          patch = patchImporte(JSON.parse((await readFile(d.chemin!, 'utf8')).replace(/^\uFEFF/, '')))
         } catch {
           return echec('illisible', 'Ce fichier n’est pas un fichier de réglages valide.')
         }

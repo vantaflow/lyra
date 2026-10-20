@@ -123,7 +123,10 @@ export function creerShields(opts: OptionsShields): Shields {
     if (!estActif(origineDe(haut))) return cb({})
     const req = requeteGhostery(d, haut)
     let resultat = moteur.match(req)
-    if (!resultat.match && !resultat.redirect && moteurGenes && opts.reglages().boucliers?.genes === true) resultat = moteurGenes.match(req)
+    // Une exception (@@) des listes de base l'emporte aussi sur les gênes : un site débloqué exprès ne casse pas.
+    if (!resultat.match && !resultat.redirect && moteurGenes && opts.reglages().boucliers?.genes === true && !moteur.exceptions.match(req)) {
+      resultat = moteurGenes.match(req)
+    }
     const { match, redirect } = resultat
     if (!match && !redirect) return cb({})
     compteurs.ajouter(d.webContentsId, d.url)

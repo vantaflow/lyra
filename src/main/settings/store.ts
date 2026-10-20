@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, renameSync, mkdirSync, rmSync } from 'node:fs'
+import { readFileSync, writeFileSync, renameSync, mkdirSync, rmSync, copyFileSync, existsSync } from 'node:fs'
 import { dirname } from 'node:path'
 
 function estObjet(v: unknown): v is Record<string, unknown> {
@@ -61,18 +61,32 @@ export class JsonStore<T extends object> {
 
   private lire(): T {
     try {
-      // Un fichier réenregistré par le Bloc-notes de Windows commence par un BOM : JSON.parse le refuserait.
-      const brut: unknown = JSON.parse(readFileSync(this.chemin, 'utf8').replace(/^\uFEFF/, ''))
-      if (this.migrer) return this.migrer(brut)
-      return fusion(this.defauts, brut)
-    } catch {
+      return this.lireFichier(this.chemin)
+    } catch (e) {
+      // Fichier présent mais illisible (écriture directe interrompue) : la copie de sauvegarde prise juste avant.
+      if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+        try {
+          const v = this.lireFichier(`${this.chemin}.bak`)
+          console.warn(`[réglages] ${this.chemin} illisible, copie de sauvegarde relue :`, e)
+          return v
+        } catch {
+          // Pas de copie lisible : valeurs par défaut.
+        }
+      }
       return this.defauts
     }
   }
 
+  private lireFichier(chemin: string): T {
+    // Un fichier réenregistré par le Bloc-notes de Windows commence par un BOM : JSON.parse le refuserait.
+    const brut: unknown = JSON.parse(readFileSync(chemin, 'utf8').replace(/^\uFEFF/, ''))
+    if (this.migrer) return this.migrer(brut)
+    return fusion(this.defauts, brut)
+  }
+
   /**
    * Écriture atomique (.tmp puis renommage). Sous Windows, un antivirus ou l'indexeur qui ouvre le fichier un instant
-   * fait échouer le renommage (EPERM, EBUSY, EACCES) : on réessaie, puis on écrit directement. Si rien ne passe, la
+   * fait échouer le renommage (EPERM, EBUSY, EACCES) : on réessaie, puis on écrit directement (après une copie .bak). Si rien ne passe, la
    * valeur reste appliquée en mémoire (les écouteurs sont prévenus) et l'erreur part au journal.
    */
   private ecrire(): void {
@@ -93,6 +107,8 @@ export class JsonStore<T extends object> {
     } catch (e) {
       rmSync(tmp, { force: true })
       try {
+        // Écriture directe, non atomique : copie de l'ancien fichier d'abord, relue si l'écriture est interrompue.
+        if (existsSync(this.chemin)) copyFileSync(this.chemin, `${this.chemin}.bak`)
         writeFileSync(this.chemin, contenu)
         console.warn(`[réglages] renommage impossible, écriture directe de ${this.chemin} :`, e)
       } catch (e2) {
