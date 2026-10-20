@@ -17,6 +17,7 @@ function monde() {
   class NavigatorUAData {
     get platform() { return 'macOS' }
     get mobile() { return false }
+    getHighEntropyValues() { return Promise.resolve({ platform: 'macOS', mobile: false, platformVersion: '15.0.0', architecture: 'arm', brands: [] }) }
   }
   const navigator = new Navigator()
   const ctx: Record<string, unknown> = { Navigator, NavigatorUAData, navigator }
@@ -51,6 +52,14 @@ describe('scriptNavigateur : navigator aligné sur le profil (monde principal)',
     expect(evaluer('chrome-windows', 'navigator.platform')).toBe('Win32')
     expect(evaluer('chrome-windows', 'navigator.userAgentData.platform')).toBe('Windows')
     expect(evaluer('chrome-windows', 'navigator.userAgentData.mobile')).toBe(false)
+  })
+  it('Chrome (Windows) : getHighEntropyValues aligné sur le profil, valeurs de la vraie machine vidées', async () => {
+    const r = (await evaluer('chrome-windows', 'navigator.userAgentData.getHighEntropyValues(["platformVersion"])')) as Record<string, unknown>
+    expect(r.platform).toBe('Windows')
+    expect(r.mobile).toBe(false)
+    expect(r.platformVersion).toBe('')
+    expect(r.architecture).toBe('')
+    expect(r.brands).toEqual([])
   })
   it('Chrome (Android) : mobile', () => {
     expect(evaluer('chrome-android', 'navigator.userAgentData.mobile')).toBe(true)

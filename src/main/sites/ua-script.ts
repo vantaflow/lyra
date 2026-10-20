@@ -21,7 +21,28 @@ export function fonctionNavigateur(p: ProfilUa): string {
   def(N.prototype, 'vendor', ${dans(p.vendeur)})
   ${
     p.chromium
-      ? `if (U) { def(U.prototype, 'platform', ${dans(p.plateforme)}); def(U.prototype, 'mobile', ${dans(p.mobile === true)}) }`
+      ? `if (U) {
+    def(U.prototype, 'platform', ${dans(p.plateforme)}); def(U.prototype, 'mobile', ${dans(p.mobile === true)})
+    // getHighEntropyValues : même plate-forme que les en-têtes ; les valeurs de la vraie machine (version, architecture…) sont vidées, comme les Sec-CH-UA-* retirés.
+    try {
+      var orig = U.prototype.getHighEntropyValues
+      if (typeof orig === 'function') {
+        Object.defineProperty(U.prototype, 'getHighEntropyValues', { configurable: true, writable: true, value: function (h) {
+          return orig.call(this, h).then(function (r) {
+            var o = {}
+            for (var k in r) o[k] = r[k]
+            o.platform = ${dans(p.plateforme)}; o.mobile = ${dans(p.mobile === true)}
+            if ('platformVersion' in o) o.platformVersion = ''
+            if ('architecture' in o) o.architecture = ''
+            if ('bitness' in o) o.bitness = ''
+            if ('model' in o) o.model = ''
+            if ('wow64' in o) o.wow64 = false
+            return o
+          })
+        } })
+      }
+    } catch (e) {}
+  }`
       : `def(N.prototype, 'userAgentData', undefined)`
   }
 }`
