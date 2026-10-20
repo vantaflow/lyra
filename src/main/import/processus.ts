@@ -94,7 +94,8 @@ function piloter(
     const armerInactivite = (): void => {
       if (gardeInactif) clearTimeout(gardeInactif)
       gardeInactif = undefined
-      if (garde.inactiviteMs !== undefined && !fini) gardeInactif = setTimeout(() => terminer('inactif'), garde.inactiviteMs)
+      // Après « annuler », seul le délai d'abandon tranche.
+      if (garde.inactiviteMs !== undefined && !fini && !signal?.aborted) gardeInactif = setTimeout(() => terminer('inactif'), garde.inactiviteMs)
     }
     const terminer = (issue: Issue, erreur?: unknown): void => {
       if (fini) return
@@ -112,6 +113,8 @@ function piloter(
     }
     const surAbandon = (): void => {
       if (fini) return
+      if (gardeInactif) clearTimeout(gardeInactif)
+      gardeInactif = undefined
       try {
         enfant.postMessage({ type: 'annuler' })
       } catch {
@@ -173,7 +176,7 @@ const abandonne = (): Indisponible => indisponible('Lecture annulée.', 'annule'
 export function creerProcessus(fork: Fork, delais: DelaisProcessus = DELAIS_PAR_DEFAUT): Processus {
   return {
     async detecter() {
-      let profils: ProfilDetecte[] = []
+      let profils: ProfilDetecte[] | undefined
       const { issue } = await piloter(
         fork,
         { type: 'detecter' },
@@ -184,8 +187,10 @@ export function creerProcessus(fork: Fork, delais: DelaisProcessus = DELAIS_PAR_
         undefined,
         { globalMs: delais.detecterMs }
       )
+      // Profils reçus avant l'expiration (la `fin` n'était pas encore traitée) : la détection a abouti.
+      if (profils) return profils
       if (issue === 'delai') throw new Error('La détection des navigateurs a pris trop longtemps : elle a été arrêtée. Réessayez.')
-      return profils
+      return []
     },
 
     async apercu(profil, elements, depuisJours, opts = {}) {

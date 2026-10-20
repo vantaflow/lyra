@@ -308,6 +308,35 @@ describe('chien de garde du lecteur', () => {
     expect(enfant.tue).toBe(true)
   })
 
+  it('lire : après « annuler », le délai d’abandon tranche (« Lecture annulée. »), jamais l’inactivité', async () => {
+    vi.useFakeTimers()
+    const { enfant, p } = avecDelais()
+    const ctl = new AbortController()
+    const els: Array<[string, unknown]> = []
+    const promesse = p.lire(profil, {}, ['favoris', 'historique'], { signal: ctl.signal, delaiAbandon: 3000, surElement: (e, v) => void els.push([e, v]) })
+    await vi.advanceTimersByTimeAsync(900)
+    ctl.abort()
+    // Un message tardif ne relance pas le décompte d'inactivité.
+    enfant.dire({ type: 'progression', element: 'favoris', fait: 1 })
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(enfant.tue).toBe(false)
+    await vi.advanceTimersByTimeAsync(1001)
+    await promesse
+    expect(enfant.tue).toBe(true)
+    expect(els.map(([, v]) => (v as { raison: string }).raison)).toEqual(['Lecture annulée.', 'Lecture annulée.'])
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('detecter : profils reçus juste avant l’expiration (fin pas encore arrivée), ils sont rendus', async () => {
+    vi.useFakeTimers()
+    const { enfant, p } = avecDelais()
+    const promesse = p.detecter()
+    enfant.dire({ type: 'profils', profils: [profil] })
+    await vi.advanceTimersByTimeAsync(501)
+    expect(await promesse).toEqual([profil])
+    expect(enfant.tue).toBe(true)
+  })
+
   it('detecter et apercu : réponse dans le délai, minuterie annulée', async () => {
     vi.useFakeTimers()
     const { enfant, p } = avecDelais()
