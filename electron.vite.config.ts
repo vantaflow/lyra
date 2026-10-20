@@ -1,6 +1,9 @@
 import { resolve } from 'node:path'
 import { defineConfig } from 'electron-vite'
 import preact from '@preact/preset-vite'
+import { readFileSync } from 'node:fs'
+
+const version: string = JSON.parse(readFileSync(resolve('package.json'), 'utf8')).version
 
 export default defineConfig({
   main: {
@@ -24,6 +27,8 @@ export default defineConfig({
   },
   renderer: {
     plugins: [preact()],
+    // Version affichée dans « À propos » (réglages).
+    define: { __LYRA_VERSION__: JSON.stringify(version) },
     // Les pages lyra:// ont pour origine lyra://<hôte> : le HMR doit viser explicitement le serveur Vite.
     server: { hmr: { protocol: 'ws', host: 'localhost', port: 5173 } },
     build: {

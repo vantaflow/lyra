@@ -13,13 +13,20 @@ files:
   - node_modules/sql.js/dist/sql-wasm.wasm
 asar: true
 asarUnpack: [resources/**]          # listes de filtres et polyfill embarqués
-extraResources: resources/
+extraResources:
+  - resources/
+  - { from: build/icon.png, to: icon.png }   # icône de fenêtre (Windows, Linux), cf. src/main/icone.ts
 mac:
   icon: build/icon.png
   target: [{ target: dmg, arch: arm64 }, { target: zip, arch: arm64 }]
   identity: "-"                      # signature ad hoc explicite
   hardenedRuntime: false             # obligatoire avec ad hoc
 win:
-  icon: build/icon.png
+  icon: build/icon.ico                 # 16 à 256 px, généré par scripts/icone.mjs
   target: [{ target: nsis, arch: x64 }]
-nsis: { oneClick: false, allowToChangeInstallationDirectory: true }
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
