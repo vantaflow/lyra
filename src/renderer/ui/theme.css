@@ -12,8 +12,10 @@
 }
 
 :root {
-  /* Les 13 éléments du thème et leurs dérivées (src/shared/themes.ts, `deriver`) : valeurs d'Indigo nuit en clair.
-     Le test tests/e2e/theme-tokens.spec.ts et src/shared/themes.test.ts vérifient que ces valeurs restent celles de `deriver`. */
+  /* Valeurs par défaut (Indigo nuit, clair) en attendant que le processus principal diffuse le thème effectif : toutes
+     les variables de `deriver` (src/shared/themes.ts), 13 éléments et dérivées. Le test src/shared/themes.test.ts et
+     tests/e2e/theme-tokens.spec.ts vérifient que ces valeurs restent celles de `deriver`. Ensuite, `theme:variables` les
+     remplace en direct sur <html> (fenêtres privées : le thème privé, Aurore par défaut). */
   --ciel: #15152e;
   --ciel-texte: #c9c9ea;
   --etoile-active: #f4c56a;
@@ -35,9 +37,8 @@
   --libelles-ciel: #8e8ebe;
   --libelles-groupe: #7f7fb0;
   --bouclier-ciel: #5fd3b3;
-  --ligne-selection: rgba(244, 197, 106, 0.7);
-  /* Teintes des pages Lyra qui n'ont pas de variable de thème : valeur claire = couleur d'origine ; en sombre elles
-     reprennent une variable existante (aucune valeur nouvelle), voir le bloc suivant. */
+  --halo-etoile: rgba(244, 197, 106, 0.7);
+  --halo-anneau: rgba(244, 197, 106, 0.22);
   --bordure-champ: #d6d6e2;
   --separateur: #eeeef4;
   --teinte-accent: #e6e6f7;
@@ -51,8 +52,8 @@
   --texte-icone: #4a4a66;
   --texte-inactif: #b8b8cc;
   --piste: #c9c9d6;
-  --danger: #8e2e22;
   --danger-fond: #fbe9e6;
+  --danger: #8e2e22;
   --attention-fond: #fbefd8;
   --attention-texte: #6b4a10;
   --succes-fond: #ddf5ec;
@@ -60,6 +61,8 @@
   --favori: #d99a12;
   --lien: #4a48c4;
   --fenetre-fond: #e9e9f3;
+  --pilule-discrete: #8e8ebe;
+  --bouclier-inactif: #9a9ab0;
 }
 
 /* Mode sombre : valeurs d'Indigo nuit (`deriver(COULEURS_INDIGO_NUIT, 'sombre')`). Posé par l'attribut data-mode="sombre" de <html>. */
@@ -85,35 +88,32 @@
   --libelles-ciel: #8c8cb7;
   --libelles-groupe: #7a7aa0;
   --bouclier-ciel: #5fd3b3;
-  --ligne-selection: rgba(244, 197, 106, 0.7);
-  --bordure-champ: var(--trait);
-  --separateur: var(--trait);
-  --teinte-accent: var(--pilule);
-  --teinte-accent-texte: var(--accent);
-  --texte-doux: var(--texte);
-  --survol: var(--pilule);
-  --survol-menu: var(--pilule);
-  --champ-fond: var(--pilule);
-  --texte-discret: var(--texte-secondaire);
-  --texte-url: var(--texte-secondaire);
-  --texte-icone: var(--texte-secondaire);
-  --texte-inactif: var(--libelles-groupe);
-  --piste: var(--texte-secondaire);
-  --danger: var(--attention);
-  --danger-fond: var(--pilule);
-  --attention-fond: var(--pilule);
-  --attention-texte: var(--attention);
-  --succes-fond: var(--pilule);
-  --succes-texte: var(--bouclier);
-  --favori: var(--etoile-active);
-  --lien: var(--accent);
-  --fenetre-fond: var(--page);
-}
-
-/* Thème Aurore des fenêtres privées (docs/design/project/Couleurs.dc.html) : seul le ciel change (valeur statique d'Aurore
-   en attendant les variables du thème privé). Après le bloc sombre : la fenêtre privée garde son ciel dans les deux modes. */
-:root.privee {
-  --ciel: #2a1540;
+  --halo-etoile: rgba(244, 197, 106, 0.7);
+  --halo-anneau: rgba(244, 197, 106, 0.22);
+  --bordure-champ: #646472;
+  --separateur: #1d1d1f;
+  --teinte-accent: #272746;
+  --teinte-accent-texte: #8b8af0;
+  --texte-doux: #c8c8d2;
+  --survol: #262638;
+  --survol-menu: #212134;
+  --champ-fond: #1d1d30;
+  --texte-discret: #7d7d84;
+  --texte-url: #7d7d84;
+  --texte-icone: #a8a8b1;
+  --texte-inactif: #525257;
+  --piste: #414145;
+  --danger-fond: #231929;
+  --danger: #b4746c;
+  --attention-fond: #322c32;
+  --attention-texte: #f4c56a;
+  --succes-fond: #21313d;
+  --succes-texte: #5fd3b3;
+  --favori: #f4c56a;
+  --lien: #8b8af0;
+  --fenetre-fond: #121214;
+  --pilule-discrete: #858594;
+  --bouclier-inactif: #68686e;
 }
 
 html,
@@ -275,8 +275,8 @@ body,
 .star.active .dot {
   background: var(--etoile-active);
   box-shadow:
-    0 0 0 3px rgba(244, 197, 106, 0.22),
-    0 0 14px var(--ligne-selection);
+    0 0 0 3px var(--halo-anneau),
+    0 0 14px var(--halo-etoile);
 }
 .star.terne:not(.active) {
   opacity: 0.72;
@@ -497,7 +497,7 @@ body,
   white-space: nowrap;
 }
 .pilule.discrete {
-  color: var(--libelles-ciel);
+  color: var(--pilule-discrete);
 }
 .pilule .chemin {
   color: var(--texte-discret);
@@ -1139,7 +1139,7 @@ html.overlay #app {
   padding: 0;
   border-radius: 2px;
   background: var(--etoile-active);
-  box-shadow: 0 0 10px var(--ligne-selection);
+  box-shadow: 0 0 10px var(--halo-etoile);
   cursor: pointer;
 }
 .poignee:focus-visible {
@@ -1359,8 +1359,8 @@ html.revele #app,
 .hs.active .dot {
   background: var(--etoile-active);
   box-shadow:
-    0 0 0 3px rgba(244, 197, 106, 0.22),
-    0 0 14px var(--ligne-selection);
+    0 0 0 3px var(--halo-anneau),
+    0 0 14px var(--halo-etoile);
 }
 .hs.dim {
   color: #8686b4;
@@ -1405,7 +1405,7 @@ html.revele #app,
 }
 .hc.active b {
   background: var(--etoile-active);
-  box-shadow: 0 0 8px var(--ligne-selection);
+  box-shadow: 0 0 8px var(--halo-etoile);
 }
 .hc.dim b {
   background: var(--etoiles-endormies);

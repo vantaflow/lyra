@@ -2,6 +2,7 @@ import { render } from 'preact'
 import { useState } from 'preact/hooks'
 import { messageErreur } from '../ui/messageErreur'
 import '../ui/theme.css'
+import { demarrerTheme } from '../ui/themeVivant'
 import './erreur.css'
 
 type Type = 'reseau' | 'introuvable' | 'certificat' | 'passerelles' | 'http'
@@ -122,4 +123,5 @@ function Erreur() {
   )
 }
 
+demarrerTheme()
 render(<Erreur />, document.getElementById('app')!)

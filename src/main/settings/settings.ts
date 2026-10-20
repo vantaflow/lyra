@@ -13,18 +13,21 @@ export interface Reglages {
   supprimerSite(cle: string): Settings
   /** Retire des champs d'une règle de site ; la règle disparaît si elle devient vide. */
   retirerChampsSite(cle: string, champs: readonly string[]): Settings
+  /** Écrit tout de suite une écriture différée en attente (fermeture de l'application). */
+  vider(): void
   /** Équivalent de l'évènement `settings:changed` ; renvoie la fonction de désabonnement. */
   onChanged(cb: (s: Settings) => void): () => void
 }
 
-export function creerReglages(chemin: string, dossierTelechargements: string): Reglages {
+/** `delaiEcritureMs` : intervalle minimal entre deux écritures disque (60 ms en production : un sélecteur de couleur en envoie en rafale). */
+export function creerReglages(chemin: string, dossierTelechargements: string, delaiEcritureMs = 0): Reglages {
   const defauts = reglagesParDefaut(dossierTelechargements)
   const store = new JsonStore<Settings>(chemin, defauts, (brut) => {
     const { settings, avertissements } = migrer(brut, defauts)
     for (const a of avertissements) console.warn(`[reglages] ${a}`)
     if (typeof brut !== 'object' || brut === null || Array.isArray(brut)) conserverCopieCorrompue(chemin)
     return settings
-  })
+  }, delaiEcritureMs)
   return {
     getSettings: () => store.get(),
     setSettings: (patch) => store.set(validerPatch(patch) as Partial<Settings>),
@@ -46,6 +49,7 @@ export function creerReglages(chemin: string, dossierTelechargements: string): R
         const { [cle]: _ancienne, ...autres } = s.sites
         return { ...s, sites: Object.keys(reste).length ? { ...autres, [cle]: reste } : autres }
       }),
+    vider: () => store.vider(),
     onChanged: (cb) => store.onChange(cb)
   }
 }

@@ -48,7 +48,8 @@ test('⌘ ⇧ N : entrée de menu active ; thème Aurore sur la fenêtre privée
     expect(item).toEqual({ label: 'Nouvelle fenêtre privée', accelerator: 'CmdOrCtrl+Shift+N', enabled: true })
     const privee = await ouvrirPrivee(app)
     const ciel = (p: Page): Promise<string> => p.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--ciel').trim())
-    expect(await ciel(privee)).toBe('#2a1540')
+    // Les variables du thème privé (Aurore) arrivent par `theme:variables` juste après le chargement de la vue.
+    await expect.poll(() => ciel(privee)).toBe('#2a1540')
     expect(await ciel(fenetre)).toBe('#15152e')
     await expect(privee.locator('html')).toHaveClass(/privee/)
     // Le bouton favori n'existe pas en privé : désactivé avec une explication.

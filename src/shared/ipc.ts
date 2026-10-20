@@ -1,5 +1,7 @@
 import type { DemandeExportFichier, DemandeExportPaquet, DemandeImportFichier, DemandeSauvegardeAuto, EtatSauvegardeAutoIpc, ReponseImportFichier, ReponseSauvegardeAuto, ResultatExport } from '../main/export/types'
 import type { Compteurs, ElementImport, ExtensionImportee, Indisponible, OptionsApplication, ProfilDetecte, ResultatImport } from '../main/import/types'
+import type { Mode } from './contraste'
+import type { NomTheme } from './types-reglages'
 import type { DecisionPermission, DownloadInfo, HistoryEntry, PasserellePerso, RegleSite, Settings, SiteContourne, SkyState, Suggestion, TypePermission } from './types'
 
 export interface RectIpc {
@@ -99,6 +101,18 @@ export interface StatsBoucliers {
   semaine: number
   date: string
   source: string
+}
+
+/**
+ * Thème effectif diffusé à toutes les vues Lyra (interface, overlay, pages lyra://) : `variables` pour une vue normale,
+ * `privee` pour une vue portant la classe `privee` (thème des fenêtres privées). Chaque vue pose ces variables sur <html>.
+ */
+export interface ThemeDiffuse {
+  mode: Mode
+  /** Thème actif du profil (`couleurs.actif`). */
+  nom: NomTheme
+  variables: Record<string, string>
+  privee: Record<string, string>
 }
 
 /** Durée du mode Ne pas déranger : minutes, ou jusqu'à l'arrêt. */
@@ -218,6 +232,8 @@ export type Requetes = {
   'sites:lister': [void, Record<string, RegleSite>]
   'sites:ecrire': [{ cle: string; regle: { [C in keyof RegleSite]?: RegleSite[C] | null } }, void]
   'sites:supprimer': [string, void]
+  /** Vue Lyra (interface, overlay, page lyra://) → main : thème effectif courant (rattrapage au chargement ; ensuite `theme:variables`). */
+  'theme:effectif': [void, ThemeDiffuse]
   'shields:stats': [void, StatsBoucliers]
   /** Relit les listes de blocage maintenant ; renvoie les statistiques à jour. */
   'shields:update': [void, StatsBoucliers | { ignore: true; date: string }]
@@ -305,6 +321,8 @@ export type Evenements = {
   'settings:changed': Settings
   /** Règles par site : diffusé seulement quand elles changent. */
   'sites:changed': Record<string, RegleSite>
+  /** Main → vues Lyra (jamais une page web) : variables CSS du thème effectif, posées sur <html> sans rechargement. */
+  'theme:variables': ThemeDiffuse
   /** Main → chrome : le ciel masqué est révélé (vue chrome élargie au-dessus de la page) ou retiré. */
   'ciel:revele': boolean
   /** Main → chrome : l'état du mode Ne pas déranger a changé. */

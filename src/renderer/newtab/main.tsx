@@ -1,6 +1,7 @@
 import { render } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import '../ui/theme.css'
+import { demarrerTheme } from '../ui/themeVivant'
 import './newtab.css'
 import { MOTEURS, moteurParId } from '../../main/palette/engines'
 import type { Constellation, HistoryEntry, Settings, Star } from '../../shared/types'
@@ -193,4 +194,5 @@ function Racine() {
   return privee === null ? null : <NouvelOnglet privee={privee} />
 }
 
+demarrerTheme()
 render(<Racine />, document.getElementById('app')!)

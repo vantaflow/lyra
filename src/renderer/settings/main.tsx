@@ -1,6 +1,7 @@
 import { render } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import '../ui/theme.css'
+import { demarrerTheme } from '../ui/themeVivant'
 import './settings.css'
 import { Historique } from './Historique'
 import { Favoris } from './Favoris'
@@ -167,4 +168,5 @@ function App() {
   )
 }
 
+demarrerTheme()
 render(<App />, document.getElementById('app')!)

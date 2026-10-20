@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mkdtempSync, writeFileSync, readFileSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -61,6 +61,54 @@ describe('JsonStore', () => {
       a: (brut as { ancien: number }).ancien
     }))
     expect(s.get().a).toBe(7)
+  })
+})
+
+describe('JsonStore : écritures disque throttlées (sélecteur de couleur)', () => {
+  const fichier = (): Conf => JSON.parse(readFileSync(chemin, 'utf8'))
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('une rafale d’écritures dans 60 ms : la première est immédiate, la dernière valeur suit après 60 ms, la mémoire est toujours à jour', () => {
+    const s = new JsonStore(chemin, defauts, undefined, 60)
+    const vues: number[] = []
+    s.onChange((v) => vues.push(v.a))
+    s.set({ a: 2 })
+    expect(fichier().a).toBe(2)
+    vi.advanceTimersByTime(10)
+    s.set({ a: 3 })
+    vi.advanceTimersByTime(10)
+    s.set({ a: 4 })
+    expect(s.get().a).toBe(4)
+    expect(vues).toEqual([2, 3, 4])
+    expect(fichier().a).toBe(2)
+    vi.advanceTimersByTime(60)
+    expect(fichier().a).toBe(4)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('une seule écriture différée pour toute la rafale', () => {
+    const s = new JsonStore(chemin, defauts, undefined, 60)
+    s.set({ a: 2 })
+    for (let i = 3; i < 20; i++) s.set({ a: i })
+    expect(vi.getTimerCount()).toBe(1)
+  })
+
+  it('vider écrit tout de suite la dernière valeur (fermeture de l’application)', () => {
+    const s = new JsonStore(chemin, defauts, undefined, 60)
+    s.set({ a: 2 })
+    s.set({ a: 9 })
+    expect(fichier().a).toBe(2)
+    s.vider()
+    expect(fichier().a).toBe(9)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('sans délai (défaut) : chaque écriture est immédiate', () => {
+    const s = new JsonStore(chemin, defauts)
+    s.set({ a: 2 })
+    s.set({ a: 3 })
+    expect(fichier().a).toBe(3)
   })
 })
 

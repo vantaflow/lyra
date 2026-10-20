@@ -119,7 +119,8 @@ test('thème clair par défaut : les couleurs calculées de toutes les vues Lyra
   }
 })
 
-const SOMBRE = (p: Page): Promise<void> => p.evaluate(() => document.documentElement.setAttribute('data-mode', 'sombre'))
+/** Attend que la vue ait reçu le thème sombre diffusé par le processus principal (`theme:variables`, tâche 8a). */
+const SOMBRE = (p: Page): Promise<void> => expect(p.locator('html')).toHaveAttribute('data-mode', 'sombre')
 
 const lumi = (rgb: string): number | null => {
   const m = rgb.match(/rgba?\((\d+), (\d+), (\d+)(?:, ([\d.]+))?\)/)
@@ -135,6 +136,7 @@ test('mode sombre : la capsule vaut rgb(23,23,42) et la page rgb(18,18,20), plus
   test.setTimeout(120_000)
   const { app, fenetre } = await lancerLyra()
   try {
+    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { theme: 'sombre' }))
     await SOMBRE(fenetre)
     const fonds = await fenetre.evaluate(() => ({
       carte: getComputedStyle(document.querySelector('.carte')!).backgroundColor,

@@ -89,9 +89,10 @@ describe('deriver', () => {
     expect(v['--page']).toBe('#F7F7FB')
     expect(v['--bouclier']).toBe('#1E7F6C')
     expect(v['--texte']).toBe('#1C1C2E')
-    for (const nom of ['--texte-secondaire', '--trait', '--pilule', '--attention', '--libelles-ciel', '--bouclier-ciel', '--ligne-selection'])
+    for (const nom of ['--texte-secondaire', '--trait', '--pilule', '--attention', '--libelles-ciel', '--bouclier-ciel', '--halo-etoile'])
       expect(v[nom], nom).toBeTruthy()
-    expect(v['--ligne-selection']).toBe('rgba(244,197,106,0.7)')
+    expect(v['--halo-etoile']).toBe('rgba(244,197,106,0.7)')
+    expect(v['--halo-anneau']).toBe('rgba(244,197,106,0.22)')
   })
   it('suit le mode', () => {
     const v = deriver(THEMES['indigo-nuit'].couleurs, 'sombre')
@@ -134,6 +135,78 @@ describe('deriver', () => {
       })
     }
   }
+})
+
+describe('deriver : variables résiduelles et mode sombre (jalon D, tâche 8a)', () => {
+  const tous = NOMS_THEMES.flatMap((nom) => (['clair', 'sombre'] as const).map((mode) => [nom, mode] as const))
+  it('« danger » reste distinct d’« attention » en sombre, rouge, lisible (≥ 4,5:1) sur la capsule et sur son fond', () => {
+    for (const nom of NOMS_THEMES) {
+      const v = deriver(THEMES[nom].couleurs, 'sombre')
+      expect(v['--danger'], nom).not.toBe(v['--attention'])
+      const [r, g, b] = [1, 3, 5].map((i) => parseInt(v['--danger'].slice(i, i + 2), 16))
+      expect(r, `${nom} rouge dominant`).toBeGreaterThan(g)
+      expect(r, `${nom} rouge dominant`).toBeGreaterThan(b)
+      expect(rapport(v['--danger'], v['--capsule-fond']), nom).toBeGreaterThanOrEqual(4.5)
+      expect(rapport(v['--danger'], v['--danger-fond']), nom).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+  it('le danger clair d’Indigo nuit est #8E2E22 (valeur d’origine), non éclairci', () => {
+    expect(deriver(THEMES['indigo-nuit'].couleurs, 'clair')['--danger']).toBe('#8E2E22')
+  })
+  it('bordures de champ et de bouton ≥ 3:1 sur la capsule en sombre (contraste d’un composant)', () => {
+    for (const nom of NOMS_THEMES) {
+      const v = deriver(THEMES[nom].couleurs, 'sombre')
+      expect(rapport(v['--bordure-champ'], v['--capsule-fond']), nom).toBeGreaterThanOrEqual(3)
+    }
+  })
+  it('textes sur teinte (accent, attention, succès, danger, lien) ≥ 4,5:1 dans tous les thèmes et les deux modes', () => {
+    for (const [nom, mode] of tous) {
+      const v = deriver(THEMES[nom].couleurs, mode)
+      const paires: Array<[string, string]> = [
+        ['--teinte-accent-texte', '--teinte-accent'], ['--attention-texte', '--attention-fond'], ['--succes-texte', '--succes-fond'],
+        ['--danger', '--danger-fond'], ['--lien', '--capsule-fond'], ['--texte-doux', '--capsule-fond']
+      ]
+      for (const [t, f] of paires) expect(rapport(v[t], v[f]), `${nom} ${mode} ${t}/${f}`).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+  it('les teintes résiduelles suivent le thème actif, y compris en clair', () => {
+    const indigo = deriver(THEMES['indigo-nuit'].couleurs, 'clair')
+    const perso: CouleursTheme = structuredClone(COULEURS_INDIGO_NUIT)
+    perso.accent.clair = '#C0392B'
+    perso.boucliers.clair = '#2E7D32'
+    perso['pages-fond'].clair = '#F0EAD8'
+    const cas: Array<[string, CouleursTheme, string[]]> = [
+      ['sable', THEMES.sable.couleurs, ['--champ-fond', '--survol', '--teinte-accent', '--succes-fond', '--fenetre-fond', '--separateur', '--texte-discret']],
+      ['personnalisé', perso, ['--teinte-accent', '--teinte-accent-texte', '--succes-fond', '--succes-texte', '--lien', '--fenetre-fond', '--separateur']]
+    ]
+    for (const [nom, couleurs, noms] of cas) {
+      const v = deriver(couleurs, 'clair')
+      for (const t of noms) expect(v[t], `${nom} ${t}`).not.toBe(indigo[t])
+    }
+  })
+  it('les teintes résiduelles ne sont plus des alias de variables : toutes dérivées et en #RRGGBB', () => {
+    for (const [nom, mode] of tous) {
+      const v = deriver(THEMES[nom].couleurs, mode)
+      for (const t of ['--bordure-champ', '--separateur', '--teinte-accent', '--teinte-accent-texte', '--texte-doux', '--survol', '--survol-menu', '--champ-fond',
+        '--texte-discret', '--texte-url', '--texte-icone', '--texte-inactif', '--piste', '--danger', '--danger-fond', '--attention-fond', '--attention-texte',
+        '--succes-fond', '--succes-texte', '--favori', '--lien', '--fenetre-fond', '--pilule-discrete', '--bouclier-inactif'])
+        expect(v[t], `${nom} ${mode} ${t}`).toMatch(/^#[0-9A-F]{6}$/)
+    }
+  })
+  it('variables propres au lieu du réemploi des variables du ciel : pilule discrète, bouclier inactif, halos', () => {
+    for (const mode of ['clair', 'sombre'] as const) {
+      const v = deriver(THEMES.aurore.couleurs, mode)
+      expect(v['--halo-etoile']).toMatch(/^rgba\(/)
+      expect(v['--halo-anneau']).toMatch(/^rgba\(/)
+    }
+    // En clair la valeur d'origine (#8E8EBE, discrète par design) est conservée ; en sombre elle atteint 3:1 sur la pilule.
+    for (const nom of NOMS_THEMES) {
+      const v = deriver(THEMES[nom].couleurs, 'sombre')
+      expect(rapport(v['--pilule-discrete'], v['--pilule']), nom).toBeGreaterThanOrEqual(3)
+    }
+    expect(deriver(THEMES['indigo-nuit'].couleurs, 'clair')['--pilule-discrete']).toBe('#8E8EBE')
+    expect(deriver(THEMES['indigo-nuit'].couleurs, 'clair')['--bouclier-inactif']).toBe('#9A9AB0')
+  })
 })
 
 describe('objets partagés', () => {

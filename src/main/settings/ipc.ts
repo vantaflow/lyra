@@ -1,22 +1,11 @@
-/** IPC des réglages qui dépendent d'Electron : thème, dialogues de dossier, export et import. */
-import { dialog, nativeTheme } from 'electron'
+/** IPC des réglages qui dépendent d'Electron : dialogues de dossier, export et import (le thème : `theme/installer.ts`). */
+import { dialog } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
-import type { Settings } from '../../shared/types'
 import { handle } from '../ipc'
 import type { Reglages } from './settings'
 import { TAILLE_MAX_IMPORT, ErreurReglagesVolumineux, patchImporte, serialiserReglages } from './import'
 
-const THEMES: Record<Settings['theme'], 'system' | 'light' | 'dark'> = { systeme: 'system', clair: 'light', sombre: 'dark', programme: 'system' }
-
-/** Le thème des réglages devient celui d'Electron (prefers-color-scheme des pages comprise). */
-export function appliquerTheme(theme: Settings['theme']): void {
-  nativeTheme.themeSource = THEMES[theme]
-}
-
 export function installerReglagesIpc(reglages: Reglages): void {
-  appliquerTheme(reglages.getSettings().theme)
-  reglages.onChanged((s) => appliquerTheme(s.theme))
-
   handle('settings:choisirDossier', async () => {
     const r = await dialog.showOpenDialog({
       defaultPath: reglages.getSettings().telechargements.dossier,

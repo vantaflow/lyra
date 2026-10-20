@@ -64,7 +64,7 @@ export function MenuPanel({ ancre }: { ancre: AncreMenu | null }) {
         <Ligne label={`Règles pour ${ancre.hote || 'ce site'}`} />
         {ancre.basculable && (
           <button class="mi" type="button" role="menuitem" onClick={basculer}>
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#5452C8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M4 8h13l-3-3" />
               <path d="M20 16H7l3 3" />
             </svg>

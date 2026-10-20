@@ -96,20 +96,74 @@ const CIBLES_INDIGO_CLAIR: Record<string, string> = {
   '--trait': '#E6E6EE',
   '--pilule': '#F3F3F9',
   '--libelles-ciel': '#8E8EBE',
-  '--libelles-groupe': '#7F7FB0'
+  '--libelles-groupe': '#7F7FB0',
+  '--bordure-champ': '#D6D6E2',
+  '--separateur': '#EEEEF4',
+  '--teinte-accent': '#E6E6F7',
+  '--teinte-accent-texte': '#2F2D8A',
+  '--texte-doux': '#3A3A50',
+  '--survol': '#EEEEF6',
+  '--survol-menu': '#F1F1F8',
+  '--champ-fond': '#F8F8FC',
+  '--texte-discret': '#8A8AA6',
+  '--texte-url': '#8A8AA0',
+  '--texte-icone': '#4A4A66',
+  '--texte-inactif': '#B8B8CC',
+  '--piste': '#C9C9D6',
+  '--danger-fond': '#FBE9E6',
+  '--attention-fond': '#FBEFD8',
+  '--attention-texte': '#6B4A10',
+  '--succes-fond': '#DDF5EC',
+  '--succes-texte': '#146A52',
+  '--lien': '#4A48C4',
+  '--fenetre-fond': '#E9E9F3',
+  '--pilule-discrete': '#8E8EBE',
+  '--bouclier-inactif': '#9A9AB0'
 }
+
+/** Rouge de « danger » (design, valeur claire) : éclairci par `corriger` quand le fond est sombre. */
+const DANGER = '#8E2E22'
+/** Jaune des favoris en clair (design) ; en sombre, l'étoile active. */
+const FAVORI_CLAIR = '#D99A12'
+const ATTENTION_CLAIR = '#8A5A10'
+const ATTENTION_SOMBRE = '#F4C56A'
 
 /** Formules brutes (sans calage ni correction) des variables dérivées par mélange. */
 function formules(couleurs: CouleursTheme, mode: Mode): Record<string, string> {
   const c = (k: CleCouleur): string => couleurs[k][mode]
+  const clair = mode === 'clair'
   const texte = c('capsule-texte')
+  const fond = c('capsule-fond')
   const page = c('pages-fond')
+  const attention = luminance(page) > SEUIL_CIEL_CLAIR ? ATTENTION_CLAIR : ATTENTION_SOMBRE
   return {
     '--texte-secondaire': melanger(texte, page, 0.38),
     '--trait': melanger(page, texte, 0.08),
-    '--pilule': melanger(c('capsule-fond'), texte, 0.05),
+    '--pilule': melanger(fond, texte, 0.05),
     '--libelles-ciel': melanger(c('etoiles'), c('ciel-fond'), 0.18),
-    '--libelles-groupe': melanger(c('etoiles'), c('ciel-fond'), 0.3)
+    '--libelles-groupe': melanger(c('etoiles'), c('ciel-fond'), 0.3),
+    '--bordure-champ': melanger(fond, texte, 0.16),
+    '--separateur': melanger(page, texte, 0.05),
+    '--teinte-accent': melanger(fond, c('accent'), 0.14),
+    '--teinte-accent-texte': clair ? melanger(c('accent'), NOIR, 0.4) : c('accent'),
+    '--texte-doux': melanger(texte, page, 0.15),
+    '--survol': melanger(fond, texte, 0.07),
+    '--survol-menu': melanger(fond, texte, 0.05),
+    '--champ-fond': melanger(fond, texte, 0.03),
+    '--texte-discret': melanger(texte, page, 0.5),
+    '--texte-url': melanger(texte, page, 0.5),
+    '--texte-icone': melanger(texte, page, 0.3),
+    '--texte-inactif': melanger(texte, page, 0.7),
+    '--piste': melanger(texte, page, 0.78),
+    '--danger-fond': melanger(fond, DANGER, 0.1),
+    '--attention-fond': melanger(fond, attention, 0.12),
+    '--attention-texte': clair ? melanger(attention, NOIR, 0.3) : attention,
+    '--succes-fond': melanger(fond, c('boucliers'), 0.14),
+    '--succes-texte': clair ? melanger(c('boucliers'), NOIR, 0.15) : c('boucliers'),
+    '--lien': c('accent'),
+    '--fenetre-fond': clair ? melanger(page, texte, 0.08) : page,
+    '--pilule-discrete': melanger(texte, melanger(fond, texte, 0.05), 0.5),
+    '--bouclier-inactif': melanger(texte, page, 0.6)
   }
 }
 
@@ -128,23 +182,52 @@ const REFERENCE_CLAIR = formules(COULEURS_INDIGO_NUIT, 'clair')
 /**
  * Variables CSS d'un mode : les 13 éléments (noms de `CLES_COULEURS`) et les variables dérivées utilisées par le reste de l'interface.
  * En clair, les formules sont calées pour retrouver exactement `theme.css` sur Indigo nuit ; texte secondaire (4,5:1 sur la page),
- * libellés du ciel et de groupe (3:1 sur le ciel) sont ensuite corrigés pour rester lisibles dans tous les thèmes.
+ * libellés du ciel et de groupe (3:1 sur le ciel), textes sur teinte (4,5:1 sur leur teinte) et, en sombre, bordures de champ (3:1 sur la
+ * capsule) sont ensuite corrigés pour rester lisibles dans tous les thèmes. « Danger » (rouge) et « attention » (ambre) restent distincts.
  */
 export function deriver(couleurs: CouleursTheme, mode: Mode): Record<string, string> {
   const c = (k: CleCouleur): string => couleurs[k][mode]
+  const sombre = mode === 'sombre'
   const vars: Record<string, string> = {}
   for (const { cle, variable } of CLES_COULEURS) vars[variable] = c(cle)
   const brut = formules(couleurs, mode)
   const v = (nom: string): string => (mode === 'clair' ? caler(brut[nom], REFERENCE_CLAIR[nom], CIBLES_INDIGO_CLAIR[nom]) : brut[nom])
+  const fond = c('capsule-fond')
   vars['--texte'] = c('capsule-texte')
   vars['--texte-secondaire'] = corriger(v('--texte-secondaire'), c('pages-fond'), SEUIL)
   vars['--trait'] = v('--trait')
   vars['--pilule'] = v('--pilule')
-  vars['--attention'] = luminance(c('pages-fond')) > SEUIL_CIEL_CLAIR ? '#8A5A10' : '#F4C56A'
+  vars['--attention'] = luminance(c('pages-fond')) > SEUIL_CIEL_CLAIR ? ATTENTION_CLAIR : ATTENTION_SOMBRE
   vars['--libelles-ciel'] = corriger(v('--libelles-ciel'), c('ciel-fond'), 3)
   vars['--libelles-groupe'] = corriger(v('--libelles-groupe'), c('ciel-fond'), 3)
   vars['--bouclier-ciel'] = corriger(couleurs.boucliers.sombre, c('ciel-fond'), SEUIL)
-  vars['--ligne-selection'] = rgba(c('etoile-active'), 0.7)
+  vars['--halo-etoile'] = rgba(c('etoile-active'), 0.7)
+  vars['--halo-anneau'] = rgba(c('etoile-active'), 0.22)
+  // Teintes des pages Lyra : dérivées du thème dans les deux modes (Indigo nuit en clair = valeurs d'origine de theme.css).
+  vars['--bordure-champ'] = sombre ? corriger(v('--bordure-champ'), fond, 3) : v('--bordure-champ')
+  vars['--separateur'] = v('--separateur')
+  vars['--teinte-accent'] = v('--teinte-accent')
+  vars['--teinte-accent-texte'] = corriger(v('--teinte-accent-texte'), vars['--teinte-accent'], SEUIL)
+  vars['--texte-doux'] = corriger(v('--texte-doux'), fond, SEUIL)
+  vars['--survol'] = v('--survol')
+  vars['--survol-menu'] = v('--survol-menu')
+  vars['--champ-fond'] = v('--champ-fond')
+  vars['--texte-discret'] = corriger(v('--texte-discret'), fond, 3)
+  vars['--texte-url'] = corriger(v('--texte-url'), fond, 3)
+  vars['--texte-icone'] = corriger(v('--texte-icone'), fond, 3)
+  vars['--texte-inactif'] = v('--texte-inactif')
+  vars['--piste'] = v('--piste')
+  vars['--danger-fond'] = v('--danger-fond')
+  vars['--danger'] = corriger(corriger(DANGER, fond, SEUIL), vars['--danger-fond'], SEUIL)
+  vars['--attention-fond'] = v('--attention-fond')
+  vars['--attention-texte'] = corriger(v('--attention-texte'), vars['--attention-fond'], SEUIL)
+  vars['--succes-fond'] = v('--succes-fond')
+  vars['--succes-texte'] = corriger(v('--succes-texte'), vars['--succes-fond'], SEUIL)
+  vars['--favori'] = sombre ? c('etoile-active') : FAVORI_CLAIR
+  vars['--lien'] = corriger(v('--lien'), fond, SEUIL)
+  vars['--fenetre-fond'] = v('--fenetre-fond')
+  vars['--pilule-discrete'] = sombre ? corriger(v('--pilule-discrete'), vars['--pilule'], 3) : v('--pilule-discrete')
+  vars['--bouclier-inactif'] = v('--bouclier-inactif')
   return vars
 }
 

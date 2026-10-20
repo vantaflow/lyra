@@ -328,11 +328,11 @@ body,
   clip: rect(0 0 0 0);
 }
 
-/* Variante privée (thème Aurore, docs/design/project/Couleurs.dc.html : ciel #2A1540) */
+/* Variante privée : le ciel du thème privé (Aurore par défaut, #2A1540), variable posée par `theme:variables` */
 html.privee,
 html.privee body,
 html.privee #app {
-  background: #2a1540;
+  background: var(--ciel);
 }
 .bandeau-prive {
   position: absolute;

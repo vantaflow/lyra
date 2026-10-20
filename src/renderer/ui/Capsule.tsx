@@ -99,26 +99,26 @@ export function Capsule() {
       <span class="souple"></span>
       <button class={`pilule${p.discret ? ' discrete' : ''}`} type="button" aria-label={p.etiquette} title={via ? 'Via une passerelle' : undefined} onClick={palette}>
         {via && (
-          <svg class="relais" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#5452C8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Via une passerelle">
+          <svg class="relais" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Via une passerelle">
             <path d="M4 8h13l-3-3" />
             <path d="M20 16H7l3 3" />
           </svg>
         )}
         {p.icone === 'cadenas' && (
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#1E7F6C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--bouclier)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <rect x="5" y="11" width="14" height="10" rx="2" />
             <path d="M8 11V8a4 4 0 0 1 8 0v3" />
           </svg>
         )}
         {p.icone === 'alerte' && (
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#8E2E22" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" aria-hidden="true">
             <path d="M12 9v4" />
             <path d="M12 17h.01" />
             <path d="M10.3 3.9L2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
           </svg>
         )}
         {p.icone === 'engrenage' && (
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#5452C8" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
             <circle cx="12" cy="12" r="3.2" />
             <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" />
           </svg>

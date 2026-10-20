@@ -9,6 +9,7 @@ import { cielAppui, cielCible, cielMasque, cielPosition, cielRevele, dnd, initia
 import { RappelDnd } from './Rappel'
 import { Overlay } from './Overlay'
 import { FindBar } from './FindBar'
+import { demarrerTheme } from './themeVivant'
 
 function App() {
   const winStyle = window.lyra.plateforme === 'win32' ? ' win' : window.lyra.plateforme === 'darwin' ? ' mac' : ''
@@ -54,8 +55,10 @@ if (location.hash === '#overlay') {
   document.documentElement.classList.add('overlay')
   render(<Overlay />, document.getElementById('app')!)
 } else {
-  // Fenêtre privée : thème Aurore (le ciel prend #2A1540, variables de theme.css).
+  // Fenêtre privée : la classe `privee` fait prendre à cette vue les variables du thème privé (Aurore par défaut), voir themeVivant.
   if (location.hash === '#privee') document.documentElement.classList.add('privee')
   void initialiserEtat()
   render(<Racine />, document.getElementById('app')!)
 }
+
+demarrerTheme()

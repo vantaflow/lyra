@@ -30,11 +30,15 @@ export function conserverCopieCorrompue(chemin: string): void {
 export class JsonStore<T extends object> {
   private valeur: T
   private ecouteurs = new Set<(v: T) => void>()
+  private minuteur: ReturnType<typeof setTimeout> | undefined
+  private derniereEcriture = 0
 
+  /** `delaiEcritureMs` : intervalle minimal entre deux écritures disque (0 : chaque changement est écrit tout de suite). */
   constructor(
     private chemin: string,
     private defauts: T,
-    private migrer?: (brut: unknown) => T
+    private migrer?: (brut: unknown) => T,
+    private delaiEcritureMs = 0
   ) {
     this.valeur = this.lire()
   }
@@ -45,7 +49,7 @@ export class JsonStore<T extends object> {
 
   set(patch: Partial<T>): T {
     this.valeur = fusion(this.valeur, patch)
-    this.ecrire()
+    this.planifierEcriture()
     for (const cb of this.ecouteurs) cb(this.valeur)
     return this.valeur
   }
@@ -53,9 +57,17 @@ export class JsonStore<T extends object> {
   /** Remplace la valeur entière (seul moyen de supprimer une clé : `fusion` n'en retire jamais). */
   remplacer(fn: (v: T) => T): T {
     this.valeur = fn(this.valeur)
-    this.ecrire()
+    this.planifierEcriture()
     for (const cb of this.ecouteurs) cb(this.valeur)
     return this.valeur
+  }
+
+  /** Écrit tout de suite une écriture différée en attente (fermeture de l'application). */
+  vider(): void {
+    if (this.minuteur === undefined) return
+    clearTimeout(this.minuteur)
+    this.minuteur = undefined
+    this.ecrire()
   }
 
   onChange(cb: (v: T) => void): () => void {
@@ -81,7 +93,27 @@ export class JsonStore<T extends object> {
     }
   }
 
+  /** Premier changement : écrit tout de suite ; dans la fenêtre du délai : une seule écriture différée, avec la dernière valeur. */
+  private planifierEcriture(): void {
+    const attente = this.derniereEcriture + this.delaiEcritureMs - Date.now()
+    if (this.minuteur !== undefined) return
+    if (this.delaiEcritureMs <= 0 || attente <= 0) {
+      this.ecrire()
+      return
+    }
+    this.minuteur = setTimeout(() => {
+      this.minuteur = undefined
+      try {
+        this.ecrire()
+      } catch (e) {
+        console.warn(`[reglages] écriture différée impossible : ${(e as Error).message}`)
+      }
+    }, attente)
+    this.minuteur.unref?.()
+  }
+
   private ecrire(): void {
+    this.derniereEcriture = Date.now()
     const tmp = `${this.chemin}.tmp`
     try {
       mkdirSync(dirname(this.chemin), { recursive: true })

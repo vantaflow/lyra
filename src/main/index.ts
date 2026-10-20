@@ -38,6 +38,7 @@ import type { Passerelles } from './passerelles/Passerelles'
 import { creerPasserelles } from './passerelles/electron'
 import { installerPasserellesIpc } from './passerelles/ipc'
 import { installerSites } from './sites/installer'
+import { installerTheme } from './theme/installer'
 import { reglagesHorsSitesChanges } from './sites/service'
 import { resoudre } from './settings/sites'
 import { Dnd, type NotificationRetenue } from './dnd/Dnd'
@@ -322,7 +323,7 @@ void app.whenReady().then(async () => {
   void balayerOrphelins({ dossierTemp: app.getPath('temp') })
     .then((n) => n > 0 && console.log(`[import] ${n} dossier(s) temporaire(s) orphelin(s) supprimé(s)`))
     .catch((err) => console.error('[import] balayage des copies temporaires impossible', err))
-  const reglages = creerReglages(join(paths.userData(), 'settings.json'), app.getPath('downloads'))
+  const reglages = creerReglages(join(paths.userData(), 'settings.json'), app.getPath('downloads'), 60)
   reglagesCourants = () => reglages.getSettings()
   reglagesStore = reglages
   const depsPermissions: DepsPermissions = {
@@ -494,6 +495,7 @@ void app.whenReady().then(async () => {
   handle('settings:get', () => reglages.getSettings())
   handle('settings:set', (patch) => reglages.setSettings(patch))
   installerReglagesIpc(reglages)
+  installerTheme({ reglages })
   // Importation depuis un autre navigateur : les onglets importés vont toujours dans une fenêtre NORMALE.
   const cibleCiel = (m: TabManager): CibleCiel => ({
     constellations: () => m.constellations(),
