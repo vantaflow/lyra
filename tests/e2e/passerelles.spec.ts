@@ -241,7 +241,8 @@ test('@reseau https://example.com contourné : CONNECT compté, icône relais da
     await expect.poll(async () => (await ciel(fenetre)).etats[id].viaPasserelle).toBe(true)
     const icone = fenetre.locator('.pilule svg.relais')
     await expect(icone).toBeVisible()
-    await expect(icone).toHaveAttribute('stroke', '#5452C8')
+    // L'icône est tokenisée (var(--accent)) : on vérifie la couleur calculée, pas l'attribut.
+    await expect.poll(() => icone.evaluate((e) => getComputedStyle(e).stroke)).toBe('rgb(84, 82, 200)')
     await expect(fenetre.locator('.pilule')).toHaveAttribute('title', 'Via une passerelle')
     // Retirer le site : plus d'icône.
     await fenetre.evaluate(() => window.lyra.invoke('passerelles:retirer', { hote: 'example.com' }))

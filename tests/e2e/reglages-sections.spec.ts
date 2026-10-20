@@ -245,6 +245,9 @@ test('Réglages : plus de section Général ni Labo, #/general mène à la premi
     await expect(r.locator('.nav a', { hasText: /^(Général|Labo)$/ })).toHaveCount(0)
     await expect(r.locator('.nav a', { hasText: 'Extensions' })).toHaveAttribute('href', 'lyra://extensions')
     await r.fill('#chercher-reglage', 'extensions')
+    // Clavier : Flèche bas jusqu'à la section Extensions (après « Règles par site »), puis Entrée.
+    const n = await r.locator('.nav a').evaluateAll((l) => l.findIndex((a) => a.textContent === 'Extensions'))
+    for (let i = 0; i <= n; i++) await r.press('#chercher-reglage', 'ArrowDown')
     await r.press('#chercher-reglage', 'Enter')
     await expect.poll(async () => (await fenetre.evaluate(() => window.lyra.invoke('sky:get'))).sky.stars.map((e) => e.url)).toContain('lyra://extensions')
   } finally {

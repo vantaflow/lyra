@@ -189,7 +189,7 @@ export function Reseau() {
             aria-describedby={refus ? 'ajout-refus' : undefined}
             onInput={(ev) => setSaisie((ev.currentTarget as HTMLInputElement).value)}
           />
-          <button class="btn pri" type="submit">
+          <button class="btn pri" type="submit" disabled={!saisie.trim()}>
             Ajouter
           </button>
         </form>
@@ -223,7 +223,7 @@ export function Reseau() {
             Port
           </label>
           <input id="port-p" class="inp port" type="text" inputMode="numeric" placeholder="Port" value={port} onInput={(ev) => setPort((ev.currentTarget as HTMLInputElement).value)} />
-          <button class="btn" type="button" id="tester-perso" disabled={occupe} onClick={() => void tester()}>
+          <button class="btn" type="button" id="tester-perso" disabled={occupe || !hote.trim() || !port.trim()} onClick={() => void tester()}>
             Tester
           </button>
           {e.personnelle && (

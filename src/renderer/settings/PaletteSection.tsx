@@ -110,7 +110,7 @@ export function PaletteSection() {
             Adresse de recherche
           </label>
           <input id="moteur-url" class="inp adresse" type="text" inputMode="url" placeholder="https://exemple.fr/?q=%s" {...champ('url')} />
-          <button class="btn pri" type="submit">
+          <button class="btn pri" type="submit" disabled={!saisie.nom.trim() || !saisie.motCle.trim() || !saisie.url.trim()}>
             Ajouter
           </button>
         </form>

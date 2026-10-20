@@ -22,6 +22,7 @@ import { Demarrage } from './Demarrage'
 import { Styles } from './Styles'
 import { Sauvegarde } from './Sauvegarde'
 import { Gestes } from './Gestes'
+import { useReglages } from './reglages'
 import { chercher, REPLI_LIGNE } from './recherche'
 import { routeDepuisHash, SECTIONS } from './sections'
 
@@ -41,6 +42,8 @@ function App() {
     if (route === 'extensions') location.replace('lyra://extensions')
   }, [route])
 
+  // Les sections de réglages attendent la lecture des réglages : un état de chargement évite un contenu absent sous le titre.
+  const [reglagesLus] = useReglages()
   const [recherche, setRecherche] = useState('')
   const resultats = chercher(recherche)
   const filtre = recherche.trim() !== ''
@@ -170,6 +173,11 @@ function App() {
             )}
             {route === 'apparence' && <ActionsReglages />}
           </div>
+        )}
+        {reglagesLus === null && !['historique', 'favoris', 'telechargements', 'importer', 'apropos', 'sites', 'couleurs'].includes(route) && (
+          <p class="vide" role="status">
+            Chargement des réglages…
+          </p>
         )}
         {route === 'apparence' && <Apparence />}
         {route === 'couleurs' && <Couleurs />}
