@@ -57,7 +57,7 @@ export function patchImporte(brut: unknown, estRepertoire: (chemin: string) => b
     delete patch.reseau.personnelle
     if (Object.keys(patch.reseau).length === 0) delete patch.reseau
   }
-  desactiverScriptsImportes(patch)
+  desactiverScriptsImportes(patch as Partial<Settings>)
   return retirerRegistreExtensions(patch) as Partial<Settings>
 }
 

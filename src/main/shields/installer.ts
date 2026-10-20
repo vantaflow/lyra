@@ -141,7 +141,7 @@ export async function demarrerBoucliers(deps: DepsBoucliers): Promise<Shields> {
     const sites = deps.reglages.getSettings().sites
     if (actif) {
       const { ecrire, retirer } = reactiverBoucliers(sites, origine)
-      deps.reglages.modifierSite(cle, ecrire, retirer)
+      deps.reglages.modifierSite(cle, ecrire as Record<string, unknown>, retirer)
     } else {
       deps.reglages.setSettings({ sites: { [cle]: desactiverBoucliers(sites, origine).ecrire } } as Partial<Settings>)
     }
