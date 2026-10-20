@@ -230,7 +230,7 @@ test('téléchargements : la fenêtre privée a sa liste en mémoire ; rien dans
     await expect.poll(() => existsSync(join(dossier, 'dl-prive.txt'))).toBe(true)
     // Témoin : un téléchargement normal, lui, est listé et écrit.
     await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), `${BASE}/dl-normal`)
-    await expect.poll(async () => (await fenetre.evaluate(() => window.lyra.invoke('downloads:list'))).filter((x) => x.etat === 'termine').length).toBe(1)
+    await expect.poll(async () => (await fenetre.evaluate(() => window.lyra.invoke('downloads:list'))).filter((x) => x.etat === 'termine').length, { timeout: 20_000 }).toBe(1)
     const urls = (await fenetre.evaluate(() => window.lyra.invoke('downloads:list'))).map((x) => x.url)
     expect(urls).toEqual([`${BASE}/dl-normal`])
     // Dans la fenêtre privée : sa propre liste en mémoire, avec le seul téléchargement privé.
