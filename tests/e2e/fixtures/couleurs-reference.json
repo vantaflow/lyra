@@ -284,7 +284,7 @@
   "i": [
    "color=rgba(16, 16, 16, 0.3) | backgroundColor=rgb(255, 255, 255) | borderTopColor=rgba(16, 16, 16, 0.3) | borderRightColor=rgba(16, 16, 16, 0.3) | borderBottomColor=rgba(16, 16, 16, 0.3) | borderLeftColor=rgba(16, 16, 16, 0.3) | outlineColor=rgba(16, 16, 16, 0.3) | boxShadow=rgba(0, 0, 0, 0.25) 0px 1px 2px 0px | textDecorationColor=rgba(16, 16, 16, 0.3) | caretColor=rgba(16, 16, 16, 0.3) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
-  "div.pn-compteurs": [
+  "div.pn-compteurs.pn-un": [
    "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "div.pn-n": [
@@ -301,9 +301,6 @@
   ],
   "span.pn-seg": [
    "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(214, 214, 226) | borderRightColor=rgb(214, 214, 226) | borderBottomColor=rgb(214, 214, 226) | borderLeftColor=rgb(214, 214, 226) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "button.on": [
-   "color=rgb(255, 255, 255) | backgroundColor=rgb(30, 127, 108) | borderTopColor=rgb(255, 255, 255) | borderRightColor=rgb(255, 255, 255) | borderBottomColor=rgb(255, 255, 255) | borderLeftColor=rgb(255, 255, 255) | outlineColor=rgb(255, 255, 255) | boxShadow=none | textDecorationColor=rgb(255, 255, 255) | caretColor=rgb(255, 255, 255) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "button": [
    "color=rgb(58, 58, 80) | backgroundColor=rgb(248, 248, 252) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
@@ -433,9 +430,9 @@
    "color=rgb(236, 236, 250) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(236, 236, 250) | borderRightColor=rgb(236, 236, 250) | borderBottomColor=rgb(236, 236, 250) | borderLeftColor=rgb(236, 236, 250) | outlineColor=rgb(236, 236, 250) | boxShadow=none | textDecorationColor=rgb(236, 236, 250) | caretColor=rgb(236, 236, 250) | fill=none | stroke=rgb(158, 158, 200) | backgroundImage=none"
   ],
   "path": [
-   "color=rgb(142, 142, 190) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(142, 142, 190) | borderRightColor=rgb(142, 142, 190) | borderBottomColor=rgb(142, 142, 190) | borderLeftColor=rgb(142, 142, 190) | outlineColor=rgb(142, 142, 190) | boxShadow=none | textDecorationColor=rgb(142, 142, 190) | caretColor=rgb(142, 142, 190) | fill=none | stroke=rgb(142, 142, 190) | backgroundImage=none",
+   "color=rgb(158, 158, 200) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(158, 158, 200) | borderRightColor=rgb(158, 158, 200) | borderBottomColor=rgb(158, 158, 200) | borderLeftColor=rgb(158, 158, 200) | outlineColor=rgb(158, 158, 200) | boxShadow=none | textDecorationColor=rgb(158, 158, 200) | caretColor=rgb(158, 158, 200) | fill=none | stroke=rgb(158, 158, 200) | backgroundImage=none",
    "color=rgb(168, 168, 216) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(168, 168, 216) | borderRightColor=rgb(168, 168, 216) | borderBottomColor=rgb(168, 168, 216) | borderLeftColor=rgb(168, 168, 216) | outlineColor=rgb(168, 168, 216) | boxShadow=none | textDecorationColor=rgb(168, 168, 216) | caretColor=rgb(168, 168, 216) | fill=none | stroke=rgb(90, 90, 168) | backgroundImage=none",
-   "color=rgb(201, 201, 234) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(201, 201, 234) | borderRightColor=rgb(201, 201, 234) | borderBottomColor=rgb(201, 201, 234) | borderLeftColor=rgb(201, 201, 234) | outlineColor=rgb(201, 201, 234) | boxShadow=none | textDecorationColor=rgb(201, 201, 234) | caretColor=rgb(201, 201, 234) | fill=none | stroke=rgb(201, 201, 234) | backgroundImage=none",
+   "color=rgb(217, 217, 240) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(217, 217, 240) | borderRightColor=rgb(217, 217, 240) | borderBottomColor=rgb(217, 217, 240) | borderLeftColor=rgb(217, 217, 240) | outlineColor=rgb(217, 217, 240) | boxShadow=none | textDecorationColor=rgb(217, 217, 240) | caretColor=rgb(217, 217, 240) | fill=none | stroke=rgb(217, 217, 240) | backgroundImage=none",
    "color=rgb(236, 236, 250) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(236, 236, 250) | borderRightColor=rgb(236, 236, 250) | borderBottomColor=rgb(236, 236, 250) | borderLeftColor=rgb(236, 236, 250) | outlineColor=rgb(236, 236, 250) | boxShadow=none | textDecorationColor=rgb(236, 236, 250) | caretColor=rgb(236, 236, 250) | fill=none | stroke=rgb(158, 158, 200) | backgroundImage=none",
    "color=rgb(95, 211, 179) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(95, 211, 179) | borderRightColor=rgb(95, 211, 179) | borderBottomColor=rgb(95, 211, 179) | borderLeftColor=rgb(95, 211, 179) | outlineColor=rgb(95, 211, 179) | boxShadow=none | textDecorationColor=rgb(95, 211, 179) | caretColor=rgb(95, 211, 179) | fill=none | stroke=rgb(95, 211, 179) | backgroundImage=none"
   ],
@@ -458,8 +455,8 @@
    "color=rgb(236, 236, 250) | backgroundColor=rgb(26, 26, 60) | borderTopColor=rgb(48, 48, 95) | borderRightColor=rgb(48, 48, 95) | borderBottomColor=rgb(48, 48, 95) | borderLeftColor=rgb(48, 48, 95) | outlineColor=rgb(236, 236, 250) | boxShadow=rgba(0, 0, 0, 0.35) 0px 12px 40px 0px | textDecorationColor=rgb(236, 236, 250) | caretColor=rgb(236, 236, 250) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "svg": [
-   "color=rgb(142, 142, 190) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(142, 142, 190) | borderRightColor=rgb(142, 142, 190) | borderBottomColor=rgb(142, 142, 190) | borderLeftColor=rgb(142, 142, 190) | outlineColor=rgb(142, 142, 190) | boxShadow=none | textDecorationColor=rgb(142, 142, 190) | caretColor=rgb(142, 142, 190) | fill=none | stroke=rgb(142, 142, 190) | backgroundImage=none",
-   "color=rgb(201, 201, 234) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(201, 201, 234) | borderRightColor=rgb(201, 201, 234) | borderBottomColor=rgb(201, 201, 234) | borderLeftColor=rgb(201, 201, 234) | outlineColor=rgb(201, 201, 234) | boxShadow=none | textDecorationColor=rgb(201, 201, 234) | caretColor=rgb(201, 201, 234) | fill=none | stroke=rgb(201, 201, 234) | backgroundImage=none",
+   "color=rgb(158, 158, 200) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(158, 158, 200) | borderRightColor=rgb(158, 158, 200) | borderBottomColor=rgb(158, 158, 200) | borderLeftColor=rgb(158, 158, 200) | outlineColor=rgb(158, 158, 200) | boxShadow=none | textDecorationColor=rgb(158, 158, 200) | caretColor=rgb(158, 158, 200) | fill=none | stroke=rgb(158, 158, 200) | backgroundImage=none",
+   "color=rgb(217, 217, 240) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(217, 217, 240) | borderRightColor=rgb(217, 217, 240) | borderBottomColor=rgb(217, 217, 240) | borderLeftColor=rgb(217, 217, 240) | outlineColor=rgb(217, 217, 240) | boxShadow=none | textDecorationColor=rgb(217, 217, 240) | caretColor=rgb(217, 217, 240) | fill=none | stroke=rgb(217, 217, 240) | backgroundImage=none",
    "color=rgb(236, 236, 250) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(236, 236, 250) | borderRightColor=rgb(236, 236, 250) | borderBottomColor=rgb(236, 236, 250) | borderLeftColor=rgb(236, 236, 250) | outlineColor=rgb(236, 236, 250) | boxShadow=none | textDecorationColor=rgb(236, 236, 250) | caretColor=rgb(236, 236, 250) | fill=none | stroke=rgb(158, 158, 200) | backgroundImage=none",
    "color=rgb(95, 211, 179) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(95, 211, 179) | borderRightColor=rgb(95, 211, 179) | borderBottomColor=rgb(95, 211, 179) | borderLeftColor=rgb(95, 211, 179) | outlineColor=rgb(95, 211, 179) | boxShadow=none | textDecorationColor=rgb(95, 211, 179) | caretColor=rgb(95, 211, 179) | fill=none | stroke=rgb(95, 211, 179) | backgroundImage=none"
   ],
@@ -473,19 +470,19 @@
    "color=rgb(236, 236, 250) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(236, 236, 250) | borderRightColor=rgb(236, 236, 250) | borderBottomColor=rgb(236, 236, 250) | borderLeftColor=rgb(236, 236, 250) | outlineColor=rgb(236, 236, 250) | boxShadow=none | textDecorationColor=rgb(236, 236, 250) | caretColor=rgb(236, 236, 250) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "button.moteur-chip": [
-   "color=rgb(201, 201, 234) | backgroundColor=rgb(42, 42, 85) | borderTopColor=rgb(201, 201, 234) | borderRightColor=rgb(201, 201, 234) | borderBottomColor=rgb(201, 201, 234) | borderLeftColor=rgb(201, 201, 234) | outlineColor=rgb(201, 201, 234) | boxShadow=none | textDecorationColor=rgb(201, 201, 234) | caretColor=rgb(201, 201, 234) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+   "color=rgb(217, 217, 240) | backgroundColor=rgb(42, 42, 85) | borderTopColor=rgb(217, 217, 240) | borderRightColor=rgb(217, 217, 240) | borderBottomColor=rgb(217, 217, 240) | borderLeftColor=rgb(217, 217, 240) | outlineColor=rgb(217, 217, 240) | boxShadow=none | textDecorationColor=rgb(217, 217, 240) | caretColor=rgb(217, 217, 240) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "section.bloc": [
    "color=rgb(236, 236, 250) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(236, 236, 250) | borderRightColor=rgb(236, 236, 250) | borderBottomColor=rgb(236, 236, 250) | borderLeftColor=rgb(236, 236, 250) | outlineColor=rgb(236, 236, 250) | boxShadow=none | textDecorationColor=rgb(236, 236, 250) | caretColor=rgb(236, 236, 250) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "h2": [
-   "color=rgb(127, 127, 176) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(127, 127, 176) | borderRightColor=rgb(127, 127, 176) | borderBottomColor=rgb(127, 127, 176) | borderLeftColor=rgb(127, 127, 176) | outlineColor=rgb(127, 127, 176) | boxShadow=none | textDecorationColor=rgb(127, 127, 176) | caretColor=rgb(127, 127, 176) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+   "color=rgb(158, 158, 200) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(158, 158, 200) | borderRightColor=rgb(158, 158, 200) | borderBottomColor=rgb(158, 158, 200) | borderLeftColor=rgb(158, 158, 200) | outlineColor=rgb(158, 158, 200) | boxShadow=none | textDecorationColor=rgb(158, 158, 200) | caretColor=rgb(158, 158, 200) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "div.chips": [
    "color=rgb(236, 236, 250) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(236, 236, 250) | borderRightColor=rgb(236, 236, 250) | borderBottomColor=rgb(236, 236, 250) | borderLeftColor=rgb(236, 236, 250) | outlineColor=rgb(236, 236, 250) | boxShadow=none | textDecorationColor=rgb(236, 236, 250) | caretColor=rgb(236, 236, 250) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "button.chip.inerte": [
-   "color=rgb(142, 142, 190) | backgroundColor=rgb(22, 22, 58) | borderTopColor=rgb(46, 46, 92) | borderRightColor=rgb(46, 46, 92) | borderBottomColor=rgb(46, 46, 92) | borderLeftColor=rgb(46, 46, 92) | outlineColor=rgb(142, 142, 190) | boxShadow=none | textDecorationColor=rgb(142, 142, 190) | caretColor=rgb(142, 142, 190) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+   "color=rgb(158, 158, 200) | backgroundColor=rgb(22, 22, 58) | borderTopColor=rgb(46, 46, 92) | borderRightColor=rgb(46, 46, 92) | borderBottomColor=rgb(46, 46, 92) | borderLeftColor=rgb(46, 46, 92) | outlineColor=rgb(158, 158, 200) | boxShadow=none | textDecorationColor=rgb(158, 158, 200) | caretColor=rgb(158, 158, 200) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "section.bloc.bloc-sites": [
    "color=rgb(236, 236, 250) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(236, 236, 250) | borderRightColor=rgb(236, 236, 250) | borderBottomColor=rgb(236, 236, 250) | borderLeftColor=rgb(236, 236, 250) | outlineColor=rgb(236, 236, 250) | boxShadow=none | textDecorationColor=rgb(236, 236, 250) | caretColor=rgb(236, 236, 250) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
@@ -494,141 +491,22 @@
    "color=rgb(236, 236, 250) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(236, 236, 250) | borderRightColor=rgb(236, 236, 250) | borderBottomColor=rgb(236, 236, 250) | borderLeftColor=rgb(236, 236, 250) | outlineColor=rgb(236, 236, 250) | boxShadow=none | textDecorationColor=rgb(236, 236, 250) | caretColor=rgb(236, 236, 250) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "div.pied": [
-   "color=rgb(127, 127, 176) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(38, 38, 74) | borderRightColor=rgb(127, 127, 176) | borderBottomColor=rgb(127, 127, 176) | borderLeftColor=rgb(127, 127, 176) | outlineColor=rgb(127, 127, 176) | boxShadow=none | textDecorationColor=rgb(127, 127, 176) | caretColor=rgb(127, 127, 176) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+   "color=rgb(158, 158, 200) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(38, 38, 74) | borderRightColor=rgb(158, 158, 200) | borderBottomColor=rgb(158, 158, 200) | borderLeftColor=rgb(158, 158, 200) | outlineColor=rgb(158, 158, 200) | boxShadow=none | textDecorationColor=rgb(158, 158, 200) | caretColor=rgb(158, 158, 200) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "span.bouclier": [
    "color=rgb(95, 211, 179) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(95, 211, 179) | borderRightColor=rgb(95, 211, 179) | borderBottomColor=rgb(95, 211, 179) | borderLeftColor=rgb(95, 211, 179) | outlineColor=rgb(95, 211, 179) | boxShadow=none | textDecorationColor=rgb(95, 211, 179) | caretColor=rgb(95, 211, 179) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "span": [
-   "color=rgb(127, 127, 176) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(127, 127, 176) | borderRightColor=rgb(127, 127, 176) | borderBottomColor=rgb(127, 127, 176) | borderLeftColor=rgb(127, 127, 176) | outlineColor=rgb(127, 127, 176) | boxShadow=none | textDecorationColor=rgb(127, 127, 176) | caretColor=rgb(127, 127, 176) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+   "color=rgb(158, 158, 200) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(158, 158, 200) | borderRightColor=rgb(158, 158, 200) | borderBottomColor=rgb(158, 158, 200) | borderLeftColor=rgb(158, 158, 200) | outlineColor=rgb(158, 158, 200) | boxShadow=none | textDecorationColor=rgb(158, 158, 200) | caretColor=rgb(158, 158, 200) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "span.souple": [
-   "color=rgb(127, 127, 176) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(127, 127, 176) | borderRightColor=rgb(127, 127, 176) | borderBottomColor=rgb(127, 127, 176) | borderLeftColor=rgb(127, 127, 176) | outlineColor=rgb(127, 127, 176) | boxShadow=none | textDecorationColor=rgb(127, 127, 176) | caretColor=rgb(127, 127, 176) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+   "color=rgb(158, 158, 200) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(158, 158, 200) | borderRightColor=rgb(158, 158, 200) | borderBottomColor=rgb(158, 158, 200) | borderLeftColor=rgb(158, 158, 200) | outlineColor=rgb(158, 158, 200) | boxShadow=none | textDecorationColor=rgb(158, 158, 200) | caretColor=rgb(158, 158, 200) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "a": [
    "color=rgb(158, 158, 200) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(158, 158, 200) | borderRightColor=rgb(158, 158, 200) | borderBottomColor=rgb(158, 158, 200) | borderLeftColor=rgb(158, 158, 200) | outlineColor=rgb(158, 158, 200) | boxShadow=none | textDecorationColor=rgb(158, 158, 200) | caretColor=rgb(158, 158, 200) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "html": [
    "color=rgb(168, 168, 216) | backgroundColor=rgb(15, 15, 38) | borderTopColor=rgb(168, 168, 216) | borderRightColor=rgb(168, 168, 216) | borderBottomColor=rgb(168, 168, 216) | borderLeftColor=rgb(168, 168, 216) | outlineColor=rgb(168, 168, 216) | boxShadow=none | textDecorationColor=rgb(168, 168, 216) | caretColor=rgb(168, 168, 216) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ]
- },
- "settings-general": {
-  "div#app": [
-   "color=rgb(28, 28, 46) | backgroundColor=rgb(247, 247, 251) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "div.reglages": [
-   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "nav.nav": [
-   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "label.sr-only": [
-   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "input#chercher-reglage.chercher": [
-   "color=rgb(28, 28, 46) | backgroundColor=rgb(255, 255, 255) | borderTopColor=rgb(214, 214, 226) | borderRightColor=rgb(214, 214, 226) | borderBottomColor=rgb(214, 214, 226) | borderLeftColor=rgb(214, 214, 226) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "div#resultats-reglages.liste": [
-   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-general.on": [
-   "color=rgb(47, 45, 138) | backgroundColor=rgb(230, 230, 247) | borderTopColor=rgb(47, 45, 138) | borderRightColor=rgb(47, 45, 138) | borderBottomColor=rgb(47, 45, 138) | borderLeftColor=rgb(47, 45, 138) | outlineColor=rgb(47, 45, 138) | boxShadow=none | textDecorationColor=rgb(47, 45, 138) | caretColor=rgb(47, 45, 138) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-apparence": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-couleurs": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-palette": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-boucliers": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-sites": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-extensions": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-confidentialite": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-telechargements": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-raccourcis": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-gestes": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-nepasderanger": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-demarrage": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-styles": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-reseau": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-importer": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-sauvegarde": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-labo": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-apropos": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "main.contenu": [
-   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "div.entete": [
-   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "h1": [
-   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "button.btn": [
-   "color=rgb(28, 28, 46) | backgroundColor=rgb(255, 255, 255) | borderTopColor=rgb(214, 214, 226) | borderRightColor=rgb(214, 214, 226) | borderBottomColor=rgb(214, 214, 226) | borderLeftColor=rgb(214, 214, 226) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "svg": [
-   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=none | stroke=rgb(28, 28, 46) | backgroundImage=none"
-  ],
-  "path": [
-   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=none | stroke=rgb(28, 28, 46) | backgroundImage=none"
-  ],
-  "h2.titre-section": [
-   "color=rgb(107, 107, 128) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(107, 107, 128) | borderRightColor=rgb(107, 107, 128) | borderBottomColor=rgb(107, 107, 128) | borderLeftColor=rgb(107, 107, 128) | outlineColor=rgb(107, 107, 128) | boxShadow=none | textDecorationColor=rgb(107, 107, 128) | caretColor=rgb(107, 107, 128) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "div.card": [
-   "color=rgb(28, 28, 46) | backgroundColor=rgb(255, 255, 255) | borderTopColor=rgb(230, 230, 238) | borderRightColor=rgb(230, 230, 238) | borderBottomColor=rgb(230, 230, 238) | borderLeftColor=rgb(230, 230, 238) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "div.row": [
-   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "div.lbl": [
-   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "span": [
-   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "div.sel-zone": [
-   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "button.sel": [
-   "color=rgb(28, 28, 46) | backgroundColor=rgb(248, 248, 252) | borderTopColor=rgb(214, 214, 226) | borderRightColor=rgb(214, 214, 226) | borderBottomColor=rgb(214, 214, 226) | borderLeftColor=rgb(214, 214, 226) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "html": [
-   "color=rgb(28, 28, 46) | backgroundColor=rgb(247, 247, 251) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ]
  },
  "settings-apparence": {
@@ -649,9 +527,6 @@
   ],
   "div#resultats-reglages.liste": [
    "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-general": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "a#opt-apparence.on": [
    "color=rgb(47, 45, 138) | backgroundColor=rgb(230, 230, 247) | borderTopColor=rgb(47, 45, 138) | borderRightColor=rgb(47, 45, 138) | borderBottomColor=rgb(47, 45, 138) | borderLeftColor=rgb(47, 45, 138) | outlineColor=rgb(47, 45, 138) | boxShadow=none | textDecorationColor=rgb(47, 45, 138) | caretColor=rgb(47, 45, 138) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
@@ -699,9 +574,6 @@
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "a#opt-sauvegarde": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-labo": [
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "a#opt-apropos": [
@@ -829,9 +701,6 @@
   "div#resultats-reglages.liste": [
    "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
-  "a#opt-general": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
   "a#opt-apparence": [
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
@@ -878,9 +747,6 @@
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "a#opt-sauvegarde": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-labo": [
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "a#opt-apropos": [
@@ -1002,9 +868,6 @@
   "div#resultats-reglages.liste": [
    "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
-  "a#opt-general": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
   "a#opt-apparence": [
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
@@ -1051,9 +914,6 @@
    "color=rgb(47, 45, 138) | backgroundColor=rgb(230, 230, 247) | borderTopColor=rgb(47, 45, 138) | borderRightColor=rgb(47, 45, 138) | borderBottomColor=rgb(47, 45, 138) | borderLeftColor=rgb(47, 45, 138) | outlineColor=rgb(47, 45, 138) | boxShadow=none | textDecorationColor=rgb(47, 45, 138) | caretColor=rgb(47, 45, 138) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "a#opt-sauvegarde": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-labo": [
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "a#opt-apropos": [
@@ -1229,9 +1089,6 @@
   "div#resultats-reglages.liste": [
    "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
-  "a#opt-general": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
   "a#opt-apparence": [
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
@@ -1278,9 +1135,6 @@
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "a#opt-sauvegarde": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-labo": [
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "a#opt-apropos": [
@@ -1330,9 +1184,6 @@
   "div#resultats-reglages.liste": [
    "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
-  "a#opt-general": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
   "a#opt-apparence": [
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
@@ -1381,9 +1232,6 @@
   "a#opt-sauvegarde": [
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
-  "a#opt-labo": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
   "a#opt-apropos": [
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
@@ -1395,9 +1243,6 @@
   ],
   "h1": [
    "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "h2.titre-section": [
-   "color=rgb(107, 107, 128) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(107, 107, 128) | borderRightColor=rgb(107, 107, 128) | borderBottomColor=rgb(107, 107, 128) | borderLeftColor=rgb(107, 107, 128) | outlineColor=rgb(107, 107, 128) | boxShadow=none | textDecorationColor=rgb(107, 107, 128) | caretColor=rgb(107, 107, 128) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "div.card": [
    "color=rgb(28, 28, 46) | backgroundColor=rgb(255, 255, 255) | borderTopColor=rgb(230, 230, 238) | borderRightColor=rgb(230, 230, 238) | borderBottomColor=rgb(230, 230, 238) | borderLeftColor=rgb(230, 230, 238) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
@@ -1459,9 +1304,6 @@
   "div#resultats-reglages.liste": [
    "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
-  "a#opt-general": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
   "a#opt-apparence": [
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
@@ -1508,9 +1350,6 @@
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "a#opt-sauvegarde": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-labo": [
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "a#opt-apropos": [
@@ -1629,9 +1468,6 @@
   "div#resultats-reglages.liste": [
    "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
-  "a#opt-general": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
   "a#opt-apparence": [
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
@@ -1678,9 +1514,6 @@
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "a#opt-sauvegarde": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "a#opt-labo": [
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "a#opt-apropos": [
@@ -1730,9 +1563,6 @@
   "div#resultats-reglages.liste": [
    "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
-  "a#opt-general": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
   "a#opt-apparence": [
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
@@ -1781,9 +1611,6 @@
   "a#opt-sauvegarde": [
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
-  "a#opt-labo": [
-   "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
   "a#opt-apropos": [
    "color=rgb(58, 58, 80) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(58, 58, 80) | borderRightColor=rgb(58, 58, 80) | borderBottomColor=rgb(58, 58, 80) | borderLeftColor=rgb(58, 58, 80) | outlineColor=rgb(58, 58, 80) | boxShadow=none | textDecorationColor=rgb(58, 58, 80) | caretColor=rgb(58, 58, 80) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
@@ -1795,9 +1622,6 @@
   ],
   "h1": [
    "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
-  ],
-  "h2.titre-section": [
-   "color=rgb(107, 107, 128) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(107, 107, 128) | borderRightColor=rgb(107, 107, 128) | borderBottomColor=rgb(107, 107, 128) | borderLeftColor=rgb(107, 107, 128) | outlineColor=rgb(107, 107, 128) | boxShadow=none | textDecorationColor=rgb(107, 107, 128) | caretColor=rgb(107, 107, 128) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "div.card": [
    "color=rgb(28, 28, 46) | backgroundColor=rgb(255, 255, 255) | borderTopColor=rgb(230, 230, 238) | borderRightColor=rgb(230, 230, 238) | borderBottomColor=rgb(230, 230, 238) | borderLeftColor=rgb(230, 230, 238) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"

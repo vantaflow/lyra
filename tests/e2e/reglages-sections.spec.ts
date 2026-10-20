@@ -249,7 +249,7 @@ test('Réglages : plus de section Général ni Labo, #/general mène à la premi
     const n = await r.locator('.nav a').evaluateAll((l) => l.findIndex((a) => a.textContent === 'Extensions'))
     for (let i = 0; i <= n; i++) await r.press('#chercher-reglage', 'ArrowDown')
     await r.press('#chercher-reglage', 'Enter')
-    await expect.poll(async () => (await fenetre.evaluate(() => window.lyra.invoke('sky:get'))).sky.stars.map((e) => e.url)).toContain('lyra://extensions')
+    await expect.poll(async () => (await fenetre.evaluate(() => window.lyra.invoke('sky:get'))).sky.stars.map((e) => e.url)).toContain('lyra://extensions/')
   } finally {
     await app.close()
   }
