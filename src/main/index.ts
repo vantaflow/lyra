@@ -654,6 +654,24 @@ void app.whenReady().then(async () => {
   }
   const chargeurExtensions = creerChargeur({
     extensions: sessionLyra.extensions,
+    // Comme Chrome : les étoiles qui montrent une page de l'extension se ferment avant son retrait (sous Windows, retirer
+    // une extension dont une page est ouverte bloque le processus principal).
+    avantRetrait: async (idElectron) => {
+      const pages = webContents.getAllWebContents().filter((w) => !w.isDestroyed() && w.getURL().startsWith(`chrome-extension://${idElectron}/`))
+      await Promise.all(
+        pages.map((wc) => {
+          const m = ongletsPossedant(wc)
+          const idEtoile = m?.idDe(wc)
+          if (!m || !idEtoile) return undefined
+          const fermee = new Promise<void>((r) => {
+            wc.once('destroyed', () => r())
+            setTimeout(r, 1000).unref()
+          })
+          m.fermer(idEtoile)
+          return fermee
+        })
+      )
+    },
     registre: registreExtensions,
     base: baseExtensions,
     // Extensions déjà installées avant la tâche 4 : stubs posés au premier chargement (marqueur manquant).

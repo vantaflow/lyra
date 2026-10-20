@@ -70,6 +70,8 @@ test('lyra://extensions : en-tête, cartes, installation par fichier, interrupte
     await interrupteur.click()
     await expect(interrupteur).toHaveAttribute('aria-checked', 'false')
     await expect.poll(async () => (await fenetre.evaluate(() => window.lyra.invoke('extensions:lister')))[0]?.active).toBe(false)
+    // Comme Chrome : la page d'options de l'extension désactivée s'est fermée.
+    await expect.poll(() => app.windows().some((w) => w.url().startsWith('chrome-extension://'))).toBe(false)
     await interrupteur.click()
     await expect(interrupteur).toHaveAttribute('aria-checked', 'true')
 

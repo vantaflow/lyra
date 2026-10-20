@@ -22,6 +22,8 @@ export interface OptionsChargeur {
   avantChargement?: (e: ExtensionInstallee, dossier: string) => void
   /** Appelé après un chargement réussi (journal de compatibilité) ; une exception est journalisée, jamais propagée. */
   apresChargement?: (e: ExtensionInstallee, dossier: string) => void
+  /** Ferme les pages ouvertes de l'extension (options…) juste avant son retrait de la session ; une exception est journalisée. */
+  avantRetrait?: (idElectron: string) => void | Promise<void>
 }
 
 export interface ResultatChargement {
@@ -88,6 +90,11 @@ export function creerChargeur(o: OptionsChargeur): Chargeur {
     const idElectron = chargees.get(id)
     if (idElectron === undefined) return
     chargees.delete(id)
+    try {
+      await o.avantRetrait?.(idElectron)
+    } catch (err) {
+      journal(`${id} : fermeture des pages impossible — ${message(err)}`)
+    }
     try {
       await o.extensions.removeExtension(idElectron)
     } catch (err) {

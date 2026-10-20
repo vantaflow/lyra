@@ -118,6 +118,20 @@ describe('activer', () => {
     expect(reglages.getSettings().extensions.installees[0].active).toBe(true)
   })
 
+  it("les pages ouvertes de l'extension sont fermées avant son retrait (comme Chrome ; sous Windows, le retrait d'une extension dont une page est ouverte bloque)", async () => {
+    installerDossier(ext('a'))
+    const s = sessionSimulee()
+    const c = creerChargeur({
+      extensions: s.api,
+      registre: creerRegistre(reglagesSimules([ext('a')])),
+      base,
+      avantRetrait: (idElectron) => void s.appels.push(`fermer pages ${idElectron}`)
+    })
+    await c.chargerAuDemarrage()
+    await c.activer(id('a'), false)
+    expect(s.appels.slice(-2)).toEqual([`fermer pages ${id('a')}`, `remove ${id('a')}`])
+  })
+
   it('id inconnu : faux, rien ne bouge', async () => {
     const s = sessionSimulee()
     const c = creerChargeur({ extensions: s.api, registre: creerRegistre(reglagesSimules([ext('a')])), base })
