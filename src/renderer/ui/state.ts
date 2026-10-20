@@ -7,6 +7,8 @@ const CIEL_VIDE: SkyState = { stars: [], constellations: [], activeId: null, pin
 /** lyra://newtab, avec ou sans « / » final (Chromium normalise l'URL). */
 export const estNouvelleEtoile = (url: string): boolean => /^lyra:\/\/newtab\/?$/.test(url)
 
+/** Fenêtre privée (la vue chrome est chargée avec #privee) : pas de favoris, thème Aurore. */
+export const fenetrePrivee = location.hash === '#privee'
 export const sky = signal<SkyState>(CIEL_VIDE)
 export const etats = signal<Record<string, EtatEtoile>>({})
 export const actif = computed<Star | undefined>(() => sky.value.stars.find((s) => s.id === sky.value.activeId))

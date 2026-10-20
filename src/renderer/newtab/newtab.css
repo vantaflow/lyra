@@ -327,3 +327,31 @@ body,
   overflow: hidden;
   clip: rect(0 0 0 0);
 }
+
+/* Variante privée (thème Aurore, docs/design/project/Couleurs.dc.html : ciel #2A1540) */
+html.privee,
+html.privee body,
+html.privee #app {
+  background: #2a1540;
+}
+.bandeau-prive {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #d9c9f0;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.bandeau-prive b {
+  color: #f6f6ff;
+  font-weight: 700;
+}

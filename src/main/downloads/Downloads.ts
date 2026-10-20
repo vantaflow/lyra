@@ -37,6 +37,8 @@ interface Actif {
   info: DownloadInfo
   item: DownloadItem
   dernierTick: number
+  /** Venu d'une session privée : jamais écrit ni listé (aucune trace dans Lyra). */
+  privee: boolean
 }
 
 export class Downloads {
@@ -48,11 +50,11 @@ export class Downloads {
     this.store = new JsonStore<Contenu>(opts.fichier, VIDE, migrer)
   }
 
-  attacher(ses: Session): void {
-    ses.on('will-download', (_e, item) => this.demarrer(item))
+  attacher(ses: Session, o: { privee?: boolean } = {}): void {
+    ses.on('will-download', (_e, item) => this.demarrer(item, o.privee === true))
   }
 
-  private demarrer(item: DownloadItem): void {
+  private demarrer(item: DownloadItem, privee: boolean): void {
     const { dossier, demander } = this.opts.reglages()
     let nom = item.getFilename()
     let chemin = ''
@@ -67,7 +69,8 @@ export class Downloads {
     const actif: Actif = {
       info: { id, nom, chemin, url: item.getURL(), total: item.getTotalBytes(), recu: 0, etat: 'en-cours', date: Date.now() },
       item,
-      dernierTick: Date.now()
+      dernierTick: Date.now(),
+      privee
     }
     this.actifs.set(id, actif)
 
@@ -89,7 +92,7 @@ export class Downloads {
       this.completerChemin(actif)
       actif.info = reduire(actif.info, { type: 'done', resultat: etat, recu: item.getReceivedBytes(), total: item.getTotalBytes() })
       this.actifs.delete(id)
-      this.persister(actif.info)
+      if (!privee) this.persister(actif.info)
       this.signaler()
     })
     this.signaler()
@@ -106,7 +109,7 @@ export class Downloads {
   }
 
   liste(): DownloadInfo[] {
-    const enMemoire = [...this.actifs.values()].map((a) => a.info)
+    const enMemoire = [...this.actifs.values()].filter((a) => !a.privee).map((a) => a.info)
     const ids = new Set(enMemoire.map((i) => i.id))
     return [...enMemoire, ...this.store.get().items.filter((i) => !ids.has(i.id))].sort((a, b) => b.date - a.date).slice(0, MAX)
   }

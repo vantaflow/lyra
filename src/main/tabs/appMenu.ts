@@ -4,6 +4,7 @@ import type { TabManager } from './TabManager'
 /** Menu d'application : les accélérateurs pilotent le TabManager de la fenêtre courante. */
 export interface ActionsMenu {
   nouvelleFenetre(): void
+  nouvelleFenetrePrivee(): void
   basculerFavori(m: TabManager): void
   /** Replie le ciel (rail) ou l'épingle de nouveau : bascule `ciel.masque`. */
   basculerCiel(): void
@@ -31,6 +32,7 @@ export function installerMenu(courant: () => TabManager | undefined, actions: Ac
         { id: 'fermer-etoile', label: "Fermer l'étoile", accelerator: 'CmdOrCtrl+W', click: agir((m, id) => id && m.fermer(id)) },
         { id: 'rouvrir-etoile', label: 'Rouvrir la dernière étoile', accelerator: 'CmdOrCtrl+Shift+T', click: agir((m) => m.rouvrirDerniere()) },
         { id: 'nouvelle-fenetre', label: 'Nouvelle fenêtre', accelerator: 'CmdOrCtrl+N', click: actions.nouvelleFenetre },
+        { id: 'fenetre-privee', label: 'Nouvelle fenêtre privée', accelerator: 'CmdOrCtrl+Shift+N', click: actions.nouvelleFenetrePrivee },
         { type: 'separator' },
         { id: 'palette', label: 'Aller à…', accelerator: 'CmdOrCtrl+L', click: agir((m) => m.ouvrirPalette()) },
         ...(process.platform === 'darwin'

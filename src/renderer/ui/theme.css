@@ -24,6 +24,11 @@
   --texte-secondaire: #6b6b80;
 }
 
+/* Thème Aurore des fenêtres privées (docs/design/project/Couleurs.dc.html) : seul le ciel change. */
+:root.privee {
+  --ciel: #2a1540;
+}
+
 html,
 body,
 #app {

@@ -1,4 +1,4 @@
-import { app, BaseWindow, dialog, ipcMain, Notification as NotificationSysteme, webContents, type WebContents, type WebFrameMain, protocol, session } from 'electron'
+import { app, BaseWindow, dialog, ipcMain, Notification as NotificationSysteme, webContents, type WebContents, type WebFrameMain, protocol, session, type Session } from 'electron'
 import { WindowManager } from './window/WindowManager'
 import type { Settings } from '../shared/types'
 import { join } from 'node:path'
@@ -16,7 +16,7 @@ import { Bookmarks } from './bookmarks/Bookmarks'
 import { Downloads } from './downloads/Downloads'
 import { installerReglagesIpc } from './settings/ipc'
 import { SessionStore, type FenetreSession } from './session/SessionStore'
-import { Permissions, type ReponsePermission } from './permissions/Permissions'
+import { Permissions, type DepsPermissions, type ReponsePermission } from './permissions/Permissions'
 import { Attentes, REFUS } from './permissions/attentes'
 import { nettoyerUserAgent } from './ua'
 import { continuerAutorise, estUrlErreur, exceptionsCertificat, hoteDe, urlOriginale } from './tabs/erreurs'
@@ -28,7 +28,7 @@ import type { Passerelles } from './passerelles/Passerelles'
 import { creerPasserelles } from './passerelles/electron'
 import { installerPasserellesIpc } from './passerelles/ipc'
 import { Dnd, type NotificationRetenue } from './dnd/Dnd'
-import { origineDe } from './shields/Shields'
+import { origineDe, type Shields } from './shields/Shields'
 import type { DureeDnd } from '../shared/ipc'
 import { creerExtensions, type Extensions } from './extensions/Extensions'
 import { creerChargeur } from './extensions/chargeur'
@@ -57,6 +57,15 @@ let passerelles: Passerelles | undefined
 /** Extensions (chrome.tabs) : absent tant que le démarrage n'a pas fini de les brancher. */
 let extensionsLyra: Extensions | undefined
 const privees = new Set<number>()
+/** Équipe une session privée (UA, permissions, téléchargements, Boucliers, passerelles) ; fourni au démarrage : une fenêtre privée ouverte avant attend, jamais de repli sur la session persistante. */
+let fournirEquipementPrive: (equiper: (ses: Session) => Promise<void>) => void = () => undefined
+const equipementPret = new Promise<(ses: Session) => Promise<void>>((ok) => {
+  fournirEquipementPrive = ok
+})
+/** Sessions des fenêtres privées ouvertes : elles suivent les passerelles comme les sessions normales. */
+const sessionsPrivees: Session[] = []
+/** Partition d'une fenêtre privée : en mémoire (sans `persist:`), propre à la fenêtre. */
+const partitionPrivee = (fenetre: number): string => `privee-${fenetre}`
 
 /** Cadres (iframes comprises) d'où viennent les notifications retenues : un clic y est rejoué. */
 const cadresNotifications = new Map<number, WebFrameMain>()
@@ -163,6 +172,10 @@ function ongletsDe(wc: WebContents): TabManager {
 
 function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSession): BaseWindow {
   const fenetre = manager.creerFenetre(opts)
+  // Fenêtre privée : session mémoire à elle (cookies, cache, stockage jetés à la fermeture).
+  // Toujours créée, jamais de repli sur `persist:lyra` : la première navigation attend l'équipement (démarrage compris).
+  const sesPrivee = opts.privee ? session.fromPartition(partitionPrivee(fenetre.id)) : undefined
+  const equipement = sesPrivee ? equipementPret.then((equiper) => equiper(sesPrivee)) : Promise.resolve()
   // Une fenêtre privée n'alimente jamais l'historique.
   const h = historique
   const tabs = new TabManager(
@@ -176,8 +189,10 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
     {
       endormirApresMin: () => reglagesCourants().ciel.endormirApresMin,
       surChangement: sauverSession,
-      zoomDe: (origine) => reglagesCourants().sites[origine]?.zoom,
-      memoriserZoom: (origine, zoom) => void reglagesStore?.setSettings({ sites: { [origine]: { zoom } } }),
+      session: sesPrivee,
+      // Fenêtre privée : le zoom par site n'est ni lu ni mémorisé.
+      zoomDe: opts.privee ? undefined : (origine) => reglagesCourants().sites[origine]?.zoom,
+      memoriserZoom: opts.privee ? undefined : (origine, zoom) => void reglagesStore?.setSettings({ sites: { [origine]: { zoom } } }),
       rechercheUrl: (texte) => urlDeRecherche(moteurParId(reglagesCourants().moteurParDefaut), texte),
       // Fenêtre privée : ni détection automatique ni proposition d'ajout (rien n'est écrit dans les réglages).
       passerelles: passerelles?.crochets({ privee: opts.privee === true }),
@@ -204,10 +219,31 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
     privees.delete(fenetre.id)
     dnd.fermer(fenetre.id)
     sauverSession()
+    if (sesPrivee) void jeterSessionPrivee(sesPrivee)
   })
   if (restauration) tabs.restaurer(restauration)
-  else tabs.ouvrir('lyra://newtab')
+  // Une session privée est équipée (PAC compris) avant la première navigation : aucune requête ne part sans passerelle.
+  else void equipement.then(() => !fenetre.win.isDestroyed() && tabs.ouvrir('lyra://newtab'))
   return fenetre.win
+}
+
+/** Fermeture d'une fenêtre privée : plus rien ne subsiste de sa session. */
+async function jeterSessionPrivee(ses: Session): Promise<void> {
+  const i = sessionsPrivees.indexOf(ses)
+  if (i !== -1) sessionsPrivees.splice(i, 1)
+  try {
+    await ses.clearStorageData()
+    await ses.clearCache()
+    await ses.closeAllConnections()
+  } catch {
+    // session déjà détruite
+  }
+}
+
+/** La fenêtre qui possède ce contenu (chrome, overlay ou page) est-elle privée ? */
+function estPrivee(wc: WebContents): boolean {
+  const id = manager.deWebContents(wc)?.id ?? ongletsPossedant(wc)?.fenetreId
+  return id !== undefined && privees.has(id)
 }
 
 app.on('session-created', installerProtocoleLyra)
@@ -281,7 +317,7 @@ void app.whenReady().then(async () => {
   const reglages = creerReglages(join(paths.userData(), 'settings.json'), app.getPath('downloads'))
   reglagesCourants = () => reglages.getSettings()
   reglagesStore = reglages
-  const permissions = new Permissions({
+  const depsPermissions: DepsPermissions = {
     lire: (origine, type) => reglages.getSettings().sites[origine]?.permissions?.[type],
     memoriser: (origine, type, decision) => void reglages.setSettings({ sites: { [origine]: { permissions: { [type]: decision } } } }),
     demander: demanderPermission,
@@ -295,7 +331,10 @@ void app.whenReady().then(async () => {
       if (m) return dnd.retient(m.fenetreId, origine)
       return !wc && dnd.actifQuelquePart() && reglages.getSettings().sites[origine]?.exceptionDnd !== true
     }
-  })
+  }
+  const permissions = new Permissions(depsPermissions)
+  // Fenêtres privées : rien n'est lu ni mémorisé par site, la demande revient à chaque fois.
+  const permissionsPrivees = new Permissions({ ...depsPermissions, lire: () => undefined, memoriser: () => undefined })
   permissions.attacher(session.defaultSession)
   permissions.attacher(session.fromPartition('persist:lyra'))
   handle('permission:answer', (d, e) => {
@@ -314,7 +353,9 @@ void app.whenReady().then(async () => {
   handle('history:delete', ({ url }) => hist.supprimer(url))
   handle('history:clear', () => hist.effacer())
   handle('history:frequent', ({ n }) => hist.frequents(n))
-  handle('bookmarks:toggle', (f) => favoris.toggle(f))
+  // Fenêtre privée : jamais de favori écrit (le bouton y est désactivé) ; l'état renvoyé reste celui du favori existant.
+  handle('bookmarks:toggle', (f, e) => (estPrivee(e.sender) ? favoris.existe(f.url) : favoris.toggle(f)))
+  handle('fenetre:privee', (_d, e) => estPrivee(e.sender))
   handle('bookmarks:exists', ({ url }) => favoris.existe(url))
   handle('bookmarks:list', () => favoris.lister())
   handle('bookmarks:remove', ({ url }) => favoris.retirer(url))
@@ -434,11 +475,11 @@ void app.whenReady().then(async () => {
   handle('settings:set', (patch) => reglages.setSettings(patch))
   installerReglagesIpc(reglages)
   // Passerelles : rien n'est chargé ni appliqué tant qu'aucun site n'est contourné.
-  const sessionsProxy = [session.defaultSession, session.fromPartition('persist:lyra')]
+  const sessionsProxy = (): Session[] => [session.defaultSession, session.fromPartition('persist:lyra'), ...sessionsPrivees]
   const pass = creerPasserelles({
     reglages,
     cacheFichier: join(paths.userData(), 'passerelles.json'),
-    sessions: () => sessionsProxy,
+    sessions: sessionsProxy,
     surChangement: (etat) => {
       for (const wc of webContents.getAllWebContents()) {
         const url = wc.getURL()
@@ -598,17 +639,19 @@ void app.whenReady().then(async () => {
       basculable: pass.basculable(urlOriginale(url), privees.has(f.id)),
       contourne: pass.contourne(urlOriginale(url)),
       favori: favoris.existe(urlOriginale(url)),
+      privee: privees.has(f.id),
       zoom: wc?.getZoomFactor() ?? 1
     }
     m.ancrerMenu(ancre)
   })
-  const ACTIONS: ActionMenu[] = ['nouvelle-etoile', 'nouvelle-fenetre', 'favori', 'recherche', 'imprimer', 'devtools', 'historique', 'reglages']
+  const ACTIONS: ActionMenu[] = ['nouvelle-etoile', 'nouvelle-fenetre', 'fenetre-privee', 'favori', 'recherche', 'imprimer', 'devtools', 'historique', 'reglages']
   handle('menu:action', ({ action }, e) => {
     if (!ACTIONS.includes(action)) return
     const m = ongletsDe(e.sender)
     m.fermerOverlay()
     if (action === 'nouvelle-etoile') m.ouvrir('lyra://newtab')
     else if (action === 'nouvelle-fenetre') creerFenetre()
+    else if (action === 'fenetre-privee') creerFenetre({ privee: true })
     else if (action === 'favori') basculerFavori(m)
     else if (action === 'recherche') m.ouvrirRecherche()
     else if (action === 'imprimer') m.imprimer()
@@ -624,10 +667,13 @@ void app.whenReady().then(async () => {
   const basculerFavori = (m: TabManager): void => {
     const wc = m.wcActif()
     const url = wc ? urlOriginale(wc.getURL()) : ''
+    // Fenêtre privée : aucun favori n'est écrit (le bouton et l'entrée de menu sont désactivés, ⌘ D est sans effet).
+    if (privees.has(m.fenetreId)) return
     if (/^(https?|file):/i.test(url) && wc) favoris.toggle({ url, title: wc.getTitle() || url })
   }
   installerMenu(ongletsCourants, {
     nouvelleFenetre: () => creerFenetre(),
+    nouvelleFenetrePrivee: () => creerFenetre({ privee: true }),
     basculerFavori,
     basculerDnd: () => {
       const id = BaseWindow.getFocusedWindow()?.id ?? manager.premiere()?.id
@@ -647,14 +693,24 @@ void app.whenReady().then(async () => {
     }
   })
   // Les Boucliers sont prêts avant la première fenêtre : aucune page ne se charge sans eux.
-  await demarrerBoucliers({
+  const boucliers: Shields = await demarrerBoucliers({
     reglages,
     sessions: [session.defaultSession, session.fromPartition('persist:lyra')],
     cacheDir: join(paths.userData(), 'shields'),
     onglets: () => onglets.values(),
     ongletsDe,
+    privee: (tm) => privees.has(tm.fenetreId),
     // http/ws vers un site contourné : annulé avant tout envoi, quel que soit l'état (asynchrone) du PAC.
     garde: (d) => /^(http|ws):/i.test(d.url) && pass.refusHttp(d.url) !== null
+  })
+  fournirEquipementPrive(async (ses) => {
+    ses.setUserAgent(ua)
+    installerProtocoleLyra(ses)
+    permissionsPrivees.attacher(ses)
+    telechargements.attacher(ses, { privee: true })
+    boucliers.attacher(ses)
+    sessionsPrivees.push(ses)
+    await pass.attacherSession(ses)
   })
   // Laisse les écritures de l'historique se terminer avant de quitter (une seule fois).
   let ecrituresAttendues = false

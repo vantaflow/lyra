@@ -7,8 +7,13 @@ import type { RouteOverlay } from '../../shared/ipc'
 import { envoyer } from '../ipc'
 import { optionsFenetreCachee, prefsPageCachee } from '../modeTest'
 
+/** Ciel du thème Aurore (fenêtres privées), cf. docs/design/project/Couleurs.dc.html. */
+const CIEL_PRIVE = '#2A1540'
+
 export interface LyraWindow {
   id: number
+  /** Fenêtre privée : thème Aurore, session mémoire propre à la fenêtre. */
+  privee: boolean
   win: BaseWindow
   chrome: WebContentsView
   overlay: WebContentsView
@@ -72,7 +77,7 @@ export class WindowManager {
   }
 
   creerFenetre(opts: { privee?: boolean } = {}): LyraWindow {
-    void opts.privee // la navigation privée est traitée par une tâche ultérieure
+    const privee = opts.privee === true
     const win = new BaseWindow({
       width: 1280,
       height: 800,
@@ -81,7 +86,7 @@ export class WindowManager {
       minHeight: FENETRE_MIN.height,
       title: 'Lyra',
       // Derrière le ciel révélé et la page : jamais de blanc quand la vue chrome change de taille.
-      backgroundColor: '#15152E',
+      backgroundColor: privee ? CIEL_PRIVE : '#15152E',
       ...optionsFenetreCachee(),
       ...(process.platform === 'darwin'
         ? { titleBarStyle: 'hidden' as const, trafficLightPosition: positionFeux(this.lireCiel()) }
@@ -156,6 +161,7 @@ export class WindowManager {
 
     const lw: LyraWindow = {
       id: win.id,
+      privee,
       win,
       chrome,
       overlay,
@@ -232,7 +238,7 @@ export class WindowManager {
 
     this.fenetres.set(lw.id, lw)
     relayout()
-    charger(chrome)
+    charger(chrome, privee ? '#privee' : '')
     charger(overlay, '#overlay')
     return lw
   }

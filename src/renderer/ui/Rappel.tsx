@@ -1,4 +1,4 @@
-import { useEffect } from 'preact/hooks'
+import { useLayoutEffect } from 'preact/hooks'
 import { texteFenetres, texteNotifications, texteReste } from '../../main/dnd/Dnd'
 import { dnd, maintenant } from './state'
 
@@ -12,7 +12,9 @@ const sortir = (): void => void window.lyra.invoke('dnd:sortir')
  */
 export function RappelDnd() {
   const e = dnd.value
-  useEffect(() => {
+  // Écouteur posé dès le rendu (useLayoutEffect) : un useEffect attend la prochaine image, qui ne vient pas tout de suite
+  // dans une fenêtre cachée ou en arrière-plan, et un Échap tapé juste après l'entrée dans le mode serait perdu.
+  useLayoutEffect(() => {
     const echap = (ev: KeyboardEvent): void => {
       if (ev.key === 'Escape') sortir()
     }

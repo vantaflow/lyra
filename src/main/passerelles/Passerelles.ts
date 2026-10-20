@@ -689,6 +689,19 @@ export class Passerelles implements CrochetsPasserelles {
     return this.file
   }
 
+  /**
+   * Met une session créée après coup (fenêtre privée) au même état que les autres : le PAC appliqué, ou le proxy
+   * système. Rien n'est détecté ni écrit ; la session doit aussi figurer dans `deps.sessions()` pour les mises à jour.
+   */
+  attacherSession(s: SessionProxy): Promise<void> {
+    this.file = this.file
+      .then(async () => {
+        await s.setProxy(typeof this.applique === 'string' ? { mode: 'pac_script', pacScript: pacDataUrl(this.applique) } : { mode: 'system' })
+      })
+      .catch(() => undefined)
+    return this.file
+  }
+
   /** Tant qu'un PAC est appliqué, relit le proxy système toutes les 60 s (résolution locale, sans requête). */
   private veillerSysteme(): void {
     if (typeof this.applique === 'string' && this.deps.proxySysteme) {
