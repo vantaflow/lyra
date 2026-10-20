@@ -32,3 +32,33 @@ export async function lancerLyra(
   if (!options.premierLancement) await fenetre.evaluate(() => window.lyra.invoke('settings:set', { moteurChoisi: true }))
   return { app, fenetre }
 }
+
+/**
+ * Sert tests/e2e/fixtures en http sur 127.0.0.1 (les règles par site ne s'appliquent pas aux fichiers locaux, file://) :
+ * `base` est l'origine (« http://127.0.0.1:port »), `url('x.html')` l'adresse d'une fixture.
+ */
+export async function servirFixtures(): Promise<{ base: string; url: (nom: string) => string; fermer: () => Promise<void> }> {
+  const { createServer } = await import('node:http')
+  const { readFile } = await import('node:fs/promises')
+  const dossier = resolve(__dirname, 'fixtures')
+  const serveur = createServer((q, r) => {
+    const nom = decodeURIComponent(new URL(q.url ?? '/', 'http://x').pathname).replace(/^\/+/, '')
+    if (nom.includes('..')) {
+      r.statusCode = 400
+      return r.end()
+    }
+    readFile(join(dossier, nom)).then(
+      (b) => {
+        r.setHeader('content-type', nom.endsWith('.html') ? 'text/html; charset=utf-8' : nom.endsWith('.js') ? 'text/javascript' : 'application/octet-stream')
+        r.end(b)
+      },
+      () => {
+        r.statusCode = 404
+        r.end()
+      }
+    )
+  })
+  await new Promise<void>((ok) => serveur.listen(0, '127.0.0.1', ok))
+  const base = `http://127.0.0.1:${(serveur.address() as import('node:net').AddressInfo).port}`
+  return { base, url: (nom) => `${base}/${nom}`, fermer: () => new Promise((ok) => serveur.close(() => ok())) }
+}

@@ -4,7 +4,7 @@ import type { AddressInfo } from 'node:net'
 import { existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { lancerLyra } from './helpers'
+import { lancerLyra, servirFixtures } from './helpers'
 
 // Petit serveur http local : /pose pose un cookie, toute autre adresse enregistre le cookie reçu.
 let serveur: Server
@@ -286,12 +286,13 @@ const fixture = (nom: string): string => pathToFileURL(resolve(__dirname, 'fixtu
 const pageOuverte = (app: ElectronApplication, adresse: string): Page | undefined => app.windows().find((w) => w.url() === adresse)
 
 test("Ne pas déranger en fenêtre privée : rien n'est retenu ni livré, Notification.permission n'est pas « granted »", async () => {
+  const fixtures = await servirFixtures()
   const { app, fenetre } = await lancerLyra()
   try {
-    // Site autorisé dans le profil normal : la fenêtre privée ne doit pas le lire.
-    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { sites: { 'file://': { permissions: { notifications: 'autoriser' } } } }))
+    // Site autorisé dans le profil normal : la fenêtre privée ne doit pas le lire (page servie en http : pas de règle pour file://).
+    await fenetre.evaluate((o) => window.lyra.invoke('settings:set', { sites: { [o]: { permissions: { notifications: 'autoriser' } } } }), fixtures.base)
     const privee = await ouvrirPrivee(app)
-    const adresse = fixture('dnd.html')
+    const adresse = fixtures.url('dnd.html')
     await privee.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), adresse)
     await expect.poll(() => pageOuverte(app, adresse)).toBeDefined()
     const p = pageOuverte(app, adresse)!
@@ -308,6 +309,7 @@ test("Ne pas déranger en fenêtre privée : rien n'est retenu ni livré, Notifi
     expect(await privee.evaluate(() => window.lyra.invoke('test:livraisons'))).toEqual([])
   } finally {
     await app.close()
+    await fixtures.fermer()
   }
 })
 

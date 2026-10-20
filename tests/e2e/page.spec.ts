@@ -1,12 +1,18 @@
 import { test, expect, type ElectronApplication, type Page } from '@playwright/test'
 import { pathToFileURL } from 'node:url'
 import { resolve } from 'node:path'
-import { lancerLyra } from './helpers'
+import { lancerLyra, servirFixtures } from './helpers'
 import type { SkyChange } from '../../src/shared/ipc'
 
 const url = (nom: string): string => pathToFileURL(resolve(__dirname, 'fixtures', nom)).href
 const LIENS = url('liens.html')
 const PERMISSIONS = url('permissions.html')
+// Zoom et permissions mémorisés par site : pages servies en http (pas de règle par site pour file://).
+let fixtures: Awaited<ReturnType<typeof servirFixtures>>
+test.beforeAll(async () => {
+  fixtures = await servirFixtures()
+})
+test.afterAll(() => fixtures.fermer())
 
 const ciel = (f: Page): Promise<SkyChange> => f.evaluate(() => window.lyra.invoke('sky:get'))
 const menu = (app: ElectronApplication, id: string): Promise<void> =>
@@ -87,19 +93,20 @@ test("une page introuvable ou injoignable affiche la page d'erreur Lyra", async 
 test('⌘ + zoome la page et le zoom est mémorisé par site', async () => {
   const { app, fenetre } = await lancerLyra()
   try {
-    await ouvrir(app, fenetre, LIENS)
-    expect(await zoomDe(app, LIENS)).toBeCloseTo(1, 2)
+    const L = fixtures.url('liens.html')
+    await ouvrir(app, fenetre, L)
+    expect(await zoomDe(app, L)).toBeCloseTo(1, 2)
     await menu(app, 'zoom-plus')
-    await expect.poll(() => zoomDe(app, LIENS)).toBeGreaterThan(1)
+    await expect.poll(() => zoomDe(app, L)).toBeGreaterThan(1)
     await expect(fenetre.locator('.zoom-ind')).toHaveText('110 %')
     const reglages = await fenetre.evaluate(() => window.lyra.invoke('settings:get'))
-    expect(reglages.sites['file://']?.zoom).toBe(1.1)
+    expect(reglages.sites[fixtures.base]?.zoom).toBe(1.1)
     // Rechargée, la page retrouve son zoom.
     const id = (await ciel(fenetre)).sky.activeId!
-    await fenetre.evaluate(({ i, u }) => window.lyra.invoke('tabs:navigate', { id: i, url: u }), { i: id, u: LIENS + '?autre' })
-    await expect.poll(() => zoomDe(app, LIENS + '?autre')).toBeGreaterThan(1)
+    await fenetre.evaluate(({ i, u }) => window.lyra.invoke('tabs:navigate', { id: i, url: u }), { i: id, u: L + '?autre' })
+    await expect.poll(() => zoomDe(app, L + '?autre')).toBeGreaterThan(1)
     await menu(app, 'zoom-zero')
-    await expect.poll(() => zoomDe(app, LIENS + '?autre')).toBeCloseTo(1, 2)
+    await expect.poll(() => zoomDe(app, L + '?autre')).toBeCloseTo(1, 2)
     await expect(fenetre.locator('.zoom-ind')).toHaveCount(0)
   } finally {
     await app.close()
@@ -109,7 +116,7 @@ test('⌘ + zoome la page et le zoom est mémorisé par site', async () => {
 test("une demande de permission s'affiche dans l'overlay ; Refuser la refuse", async () => {
   const { app, fenetre } = await lancerLyra()
   try {
-    const p = await ouvrir(app, fenetre, PERMISSIONS)
+    const p = await ouvrir(app, fenetre, fixtures.url('permissions.html'))
     await p.evaluate(() => void Notification.requestPermission().then((r) => (document.title = `notif:${r}`)))
     await expect.poll(() => overlay(app) !== undefined).toBe(true)
     const o = overlay(app)!
@@ -125,7 +132,7 @@ test("une demande de permission s'affiche dans l'overlay ; Refuser la refuse", a
 test("ouvrir la palette pendant une demande la refuse et n'empêche pas la suivante", async () => {
   const { app, fenetre } = await lancerLyra()
   try {
-    const p = await ouvrir(app, fenetre, PERMISSIONS)
+    const p = await ouvrir(app, fenetre, fixtures.url('permissions.html'))
     await p.evaluate(() => void Notification.requestPermission().then((r) => (document.title = `notif:${r}`)))
     await expect.poll(() => overlay(app) !== undefined).toBe(true)
     const o = overlay(app)!
@@ -144,7 +151,7 @@ test("ouvrir la palette pendant une demande la refuse et n'empêche pas la suiva
 test('« Autoriser » avec « Se souvenir » mémorise la décision, sans nouvelle demande', async () => {
   const { app, fenetre } = await lancerLyra()
   try {
-    const p = await ouvrir(app, fenetre, PERMISSIONS)
+    const p = await ouvrir(app, fenetre, fixtures.url('permissions.html'))
     await p.evaluate(() => void Notification.requestPermission().then((r) => (document.title = `notif:${r}`)))
     await expect.poll(() => overlay(app) !== undefined).toBe(true)
     const o = overlay(app)!
@@ -152,7 +159,7 @@ test('« Autoriser » avec « Se souvenir » mémorise la décision, sans nouvel
     await o.getByRole('button', { name: 'Autoriser' }).click()
     await expect.poll(() => p.title()).toBe('notif:granted')
     const reglages = await fenetre.evaluate(() => window.lyra.invoke('settings:get'))
-    expect(reglages.sites['file://']?.permissions?.notifications).toBe('autoriser')
+    expect(reglages.sites[fixtures.base]?.permissions?.notifications).toBe('autoriser')
   } finally {
     await app.close()
   }
@@ -183,7 +190,7 @@ test('le menu ⋯ de la capsule s’ouvre sous le bouton et agit', async () => {
     await fenetre.getByRole('button', { name: 'Menu de la page' }).click()
     await expect.poll(() => overlay(app) !== undefined).toBe(true)
     const o = overlay(app)!
-    await expect(o.getByRole('menuitem')).toHaveCount(13)
+    await expect(o.getByRole('menuitem')).toHaveCount(12)
     await expect(o.getByRole('menuitem', { name: /Règles pour/ })).toBeVisible()
     await o.getByRole('button', { name: 'Zoom avant' }).click()
     await expect(o.getByRole('button', { name: 'Revenir à 100 %' })).toHaveText('110 %')

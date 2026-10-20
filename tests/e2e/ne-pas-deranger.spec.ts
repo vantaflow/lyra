@@ -1,10 +1,19 @@
 import { test, expect, type ElectronApplication, type Page } from '@playwright/test'
 import { pathToFileURL } from 'node:url'
 import { resolve } from 'node:path'
-import { lancerLyra } from './helpers'
+import { lancerLyra, servirFixtures } from './helpers'
 import type { SkyChange } from '../../src/shared/ipc'
 
-const DND = pathToFileURL(resolve(__dirname, 'fixtures/dnd.html')).href
+// Page de test en http local : les règles par site (notifications, exception) ne s'appliquent pas aux fichiers locaux.
+let DND = ''
+let ORIGINE = ''
+let fixtures: Awaited<ReturnType<typeof servirFixtures>>
+test.beforeAll(async () => {
+  fixtures = await servirFixtures()
+  DND = fixtures.url('dnd.html')
+  ORIGINE = fixtures.base
+})
+test.afterAll(() => fixtures.fermer())
 
 const layout = (f: Page) => f.evaluate(() => window.lyra.invoke('layout:get'))
 const etat = (f: Page) => f.evaluate(() => window.lyra.invoke('dnd:get'))
@@ -176,7 +185,7 @@ test("notification web : retenue pendant le mode (rien d'affiché), livrée à l
   const { app, fenetre } = await lancerLyra()
   try {
     // Les notifications du site sont autorisées : sans le mode, elles s'afficheraient.
-    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { sites: { 'file://': { permissions: { notifications: 'autoriser' } } } }))
+    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { sites: { [ORIGINE]: { permissions: { notifications: 'autoriser' } } } }))
     const p = await ouvrir(app, fenetre, DND)
     const id = (await ciel(fenetre)).sky.activeId!
     await menu(app, 'ne-pas-deranger')
@@ -203,8 +212,8 @@ test("notification web : retenue pendant le mode (rien d'affiché), livrée à l
     await expect.poll(async () => (await etat(fenetre)).actif).toBe(false)
     // Livrées à la sortie, dans l'ordre, avec l'étoile d'origine.
     expect(await livraisons(fenetre)).toEqual([
-      { titre: 'Première', corps: 'corps A', origine: 'file://', etoileId: id },
-      { titre: 'Seconde', corps: 'corps B', origine: 'file://', etoileId: id }
+      { titre: 'Première', corps: 'corps A', origine: ORIGINE, etoileId: id },
+      { titre: 'Seconde', corps: 'corps B', origine: ORIGINE, etoileId: id }
     ])
     expect((await etat(fenetre)).notifications).toBe(0)
   } finally {
@@ -276,7 +285,7 @@ test("noopener n'est pas une popup (étoile normale) ; about:blank avec features
 test("exception par site : la popup de ce site s'ouvre normalement même en mode", async () => {
   const { app, fenetre } = await lancerLyra()
   try {
-    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { sites: { 'file://': { exceptionDnd: true } } }))
+    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { sites: { [ORIGINE]: { exceptionDnd: true } } }))
     const p = await ouvrir(app, fenetre, DND)
     await menu(app, 'ne-pas-deranger')
     await expect.poll(async () => (await etat(fenetre)).actif).toBe(true)
@@ -285,7 +294,7 @@ test("exception par site : la popup de ce site s'ouvre normalement même en mode
     await expect.poll(() => app.windows().length).toBeGreaterThan(avant)
     expect((await etat(fenetre)).popups).toBe(0)
     // La règle se retire : le site redevient soumis au mode.
-    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { sites: { 'file://': { exceptionDnd: false } } }))
+    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { sites: { [ORIGINE]: { exceptionDnd: false } } }))
     const maintenant = app.windows().length
     await p.evaluate(() => void document.getElementById('popup')!.click())
     await expect.poll(async () => (await etat(fenetre)).popups).toBe(1)
@@ -352,7 +361,7 @@ test('⌘ ⇧ D au clavier (page au premier plan) : entre puis sort, sans passer
 test('notification depuis une iframe srcdoc : surcharge posée et retenue, origine héritée du site', async () => {
   const { app, fenetre } = await lancerLyra()
   try {
-    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { sites: { 'file://': { permissions: { notifications: 'autoriser' } } } }))
+    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { sites: { [ORIGINE]: { permissions: { notifications: 'autoriser' } } } }))
     const p = await ouvrir(app, fenetre, DND)
     await menu(app, 'ne-pas-deranger')
     await expect.poll(async () => (await etat(fenetre)).actif).toBe(true)
@@ -369,7 +378,7 @@ test('notification depuis une iframe srcdoc : surcharge posée et retenue, origi
     expect(await livraisons(fenetre)).toEqual([])
     await menu(app, 'ne-pas-deranger')
     await expect.poll(async () => (await livraisons(fenetre)).length).toBe(1)
-    expect((await livraisons(fenetre))[0]).toMatchObject({ titre: 'depuis srcdoc', origine: 'file://' })
+    expect((await livraisons(fenetre))[0]).toMatchObject({ titre: 'depuis srcdoc', origine: ORIGINE })
   } finally {
     await app.close()
   }
