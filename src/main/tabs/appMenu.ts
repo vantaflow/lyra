@@ -4,9 +4,12 @@ import type { TabManager } from './TabManager'
 /** Menu d'application : les accélérateurs pilotent le TabManager de la fenêtre courante. */
 export interface ActionsMenu {
   nouvelleFenetre(): void
+  nouvelleFenetrePrivee(): void
   basculerFavori(m: TabManager): void
   /** Replie le ciel (rail) ou l'épingle de nouveau : bascule `ciel.masque`. */
   basculerCiel(): void
+  /** Entre dans Ne pas déranger (1 h) ou en sort, dans la fenêtre courante. */
+  basculerDnd(): void
 }
 
 export function installerMenu(courant: () => TabManager | undefined, actions: ActionsMenu): void {
@@ -29,6 +32,7 @@ export function installerMenu(courant: () => TabManager | undefined, actions: Ac
         { id: 'fermer-etoile', label: "Fermer l'étoile", accelerator: 'CmdOrCtrl+W', click: agir((m, id) => id && m.fermer(id)) },
         { id: 'rouvrir-etoile', label: 'Rouvrir la dernière étoile', accelerator: 'CmdOrCtrl+Shift+T', click: agir((m) => m.rouvrirDerniere()) },
         { id: 'nouvelle-fenetre', label: 'Nouvelle fenêtre', accelerator: 'CmdOrCtrl+N', click: actions.nouvelleFenetre },
+        { id: 'fenetre-privee', label: 'Nouvelle fenêtre privée', accelerator: 'CmdOrCtrl+Shift+N', click: actions.nouvelleFenetrePrivee },
         { type: 'separator' },
         { id: 'palette', label: 'Aller à…', accelerator: 'CmdOrCtrl+L', click: agir((m) => m.ouvrirPalette()) },
         ...(process.platform === 'darwin'
@@ -47,6 +51,7 @@ export function installerMenu(courant: () => TabManager | undefined, actions: Ac
         { label: 'Zoom avant', accelerator: 'CmdOrCtrl+=', visible: false, click: agir((m, id) => id && m.zoomer(id, { delta: 1 })) },
         { id: 'zoom-moins', label: 'Zoom arrière', accelerator: 'CmdOrCtrl+-', click: agir((m, id) => id && m.zoomer(id, { delta: -1 })) },
         { id: 'zoom-zero', label: 'Taille réelle', accelerator: 'CmdOrCtrl+0', click: agir((m, id) => id && m.zoomer(id, { reset: true })) },
+        { id: 'ne-pas-deranger', label: 'Ne pas déranger', accelerator: 'CmdOrCtrl+Shift+D', click: actions.basculerDnd },
         { id: 'basculer-ciel', label: 'Replier ou épingler le ciel', accelerator: 'CmdOrCtrl+\\', click: actions.basculerCiel },
         { type: 'separator' },
         { id: 'imprimer', label: 'Imprimer…', accelerator: 'CmdOrCtrl+P', click: agir((m) => m.imprimer()) },

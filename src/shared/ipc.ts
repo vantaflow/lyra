@@ -51,6 +51,8 @@ export interface EtatBoucliers {
   origine: string
   /** 20 dernières adresses bloquées, la plus récente d'abord. */
   dernieres: string[]
+  /** Fenêtre privée : la règle par site ne peut pas être changée (rien n'est écrit dans les réglages). */
+  privee?: boolean
 }
 
 /** Favori tel que l'exposent les pages internes. */
@@ -68,12 +70,30 @@ export interface StatsBoucliers {
   source: string
 }
 
+/** Durée du mode Ne pas déranger : minutes, ou jusqu'à l'arrêt. */
+export type DureeDnd = 30 | 60 | 'arret'
+
+/** État du mode Ne pas déranger d'une fenêtre (diffusé à la vue chrome). */
+export interface EtatDnd {
+  actif: boolean
+  duree: DureeDnd | null
+  /** Fin de la minuterie (ms) ; null jusqu'à l'arrêt ou hors mode. */
+  fin: number | null
+  /** Notifications retenues. */
+  notifications: number
+  /** Popups retenues. */
+  popups: number
+  /** Rappel complet visible (sinon : le croissant seul). */
+  rappel: boolean
+}
+
 export type RouteOverlay = 'palette' | 'shields' | 'downloads' | 'menu' | 'permission'
 
 /** Entrées actives du menu ⋯ de la capsule. */
 export type ActionMenu =
   | 'nouvelle-etoile'
   | 'nouvelle-fenetre'
+  | 'fenetre-privee'
   | 'favori'
   | 'recherche'
   | 'imprimer'
@@ -91,6 +111,8 @@ export interface AncreMenu {
   /** L'hôte est déjà dans la liste des sites contournés. */
   contourne?: boolean
   favori: boolean
+  /** Fenêtre privée : l'ajout aux favoris est indisponible (rien n'est écrit). */
+  privee?: boolean
   zoom: number
 }
 
@@ -116,12 +138,32 @@ export type Requetes = {
       bounds: { chrome: RectIpc; page: RectIpc; overlay: RectIpc }
       /** Ciel masqué glissé par-dessus la page. */
       revele: boolean
+      /** Glisser de l'en-tête du ciel en cours (la page est masquée). */
+      glisse: boolean
       /** Ordre des vues, de la plus basse à la plus haute. */
       ordre: Array<'chrome' | 'page' | 'overlay'>
     }
   ]
+  /** État du mode Ne pas déranger de la fenêtre de l'expéditeur. */
+  'dnd:get': [void, EtatDnd]
+  /** Chrome ou page interne → main : la fenêtre de l'expéditeur est-elle privée ? */
+  'fenetre:privee': [void, boolean]
+  /** Chrome → main : entre dans le mode (durée par défaut : 1 h) ou le quitte. */
+  'dnd:basculer': [{ duree?: DureeDnd } | void, void]
+  /** Chrome → main : sort du mode (Échap, croissant, ×). */
+  'dnd:sortir': [void, void]
+  /** Chrome → main : réaffiche le rappel complet (survol du croissant). */
+  'dnd:rappel': [void, void]
+  /** Largeur mesurée de la pastille du rappel (la vue chrome ne couvre que sa surface). */
+  'dnd:taille': [{ largeur: number }, void]
+  /** Test uniquement (LYRA_TEST=1) : notifications livrées à la sortie (au lieu d'être affichées). */
+  'test:livraisons': [void, Array<{ titre: string; corps?: string; origine: string; etoileId?: string }>]
   /** Chrome → main : révèle (actif) ou retire le ciel masqué ; renvoie l'état obtenu. */
   'ciel:reveler': [{ actif: boolean }, boolean]
+  /** Chrome → main : un glisser de l'en-tête du ciel commence ou finit (la page se retire le temps du glisser). */
+  'ciel:glisse': [{ actif: boolean }, void]
+  /** Chrome → main : largeur du ciel en cours de réglage à la poignée (aperçu en direct, rien n'est écrit) ; null l'efface. */
+  'ciel:apercu': [{ largeur: number | null }, void]
   'tabs:open': [{ url: string; parentId?: string; actif?: boolean }, string]
   'tabs:close': [{ id: string }, void]
   'tabs:activate': [{ id: string }, void]
@@ -212,6 +254,8 @@ export type Evenements = {
   'settings:changed': Settings
   /** Main → chrome : le ciel masqué est révélé (vue chrome élargie au-dessus de la page) ou retiré. */
   'ciel:revele': boolean
+  /** Main → chrome : l'état du mode Ne pas déranger a changé. */
+  'dnd:changed': EtatDnd
   'sky:changed': SkyChange
   /** Main → overlay : la palette s'affiche. */
   'palette:open': { texteInitial?: string }

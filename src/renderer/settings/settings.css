@@ -319,3 +319,66 @@ body,
   background: #5452c8;
   color: #fff;
 }
+
+/* Position du ciel : vignettes et curseur de largeur (Parametres.dc.html) */
+.positions {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.pos {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: #3a3a50;
+  font: 12.5px 'Manrope', sans-serif;
+  padding: 0;
+}
+.pos .w {
+  width: 84px;
+  height: 56px;
+  border-radius: 8px;
+  background: #e6e6ee;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 2px solid transparent;
+}
+.pos .w i {
+  position: absolute;
+  background: #15152e;
+}
+.pos[aria-pressed='true'] .w {
+  border-color: #5452c8;
+  box-shadow: 0 0 0 3px rgba(84, 82, 200, 0.18);
+}
+.pos[aria-pressed='true'] {
+  color: #2f2d8a;
+  font-weight: 600;
+}
+.rng {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 160px;
+  height: 4px;
+  border-radius: 2px;
+  background: #d6d6e2;
+  outline: none;
+  flex: none;
+}
+.rng::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #5452c8;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.rng:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px rgba(84, 82, 200, 0.35);
+}

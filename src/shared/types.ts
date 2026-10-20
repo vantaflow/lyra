@@ -37,6 +37,8 @@ export interface Settings {
     masque: boolean
     /** Ciel masqué : se révèle au survol du rail (sinon seulement par la poignée, le bouton de la capsule ou ⌘ \). */
     revelerAuSurvol: boolean
+    /** Glisser l'en-tête du ciel vers un bord pour le déplacer. */
+    deplacerParGlisser: boolean
     ternirApresMin: number
     endormirApresMin: number
   }
@@ -88,6 +90,8 @@ export interface RegleSite {
   permissions?: Partial<Record<TypePermission, DecisionPermission>>
   /** Facteur de zoom mémorisé (0.25 à 5) ; absent : 100 %. */
   zoom?: number
+  /** true : les notifications et popups de ce site passent même en mode Ne pas déranger. Absent : retenues. */
+  exceptionDnd?: boolean
 }
 
 export interface HistoryEntry {

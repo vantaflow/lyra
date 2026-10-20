@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import type { DownloadInfo, Settings } from '../../shared/types'
 import { couleursVignette, extension, fraction, texteEtat } from '../../shared/telechargements'
-import { placement } from './ShieldsPanel'
+import { placement } from './placements'
 
 const RECENTS = 5
 
@@ -75,7 +75,7 @@ export function DownloadsPanel() {
 
   return (
     <div class="pn-fond" onMouseDown={(e) => e.target === e.currentTarget && fermer()}>
-      <section class="pn-dl" role="dialog" aria-label="Panneau des téléchargements" style={placement(reglages?.ciel)}>
+      <section class="pn-dl" role="dialog" aria-label="Panneau des téléchargements" style={{ ...placement(reglages?.ciel), visibility: reglages ? 'visible' : 'hidden' }}>
         {liste.length === 0 && <p class="dl-vide">Aucun téléchargement.</p>}
         {liste.slice(0, RECENTS).map((d) => (
           <Ligne key={d.id} d={d} />

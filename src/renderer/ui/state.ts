@@ -1,5 +1,5 @@
 import { computed, signal } from '@preact/signals'
-import type { EtatBoucliers, EtatEtoile } from '../../shared/ipc'
+import type { EtatBoucliers, EtatDnd, EtatEtoile } from '../../shared/ipc'
 import type { Settings, SkyState, Star } from '../../shared/types'
 
 const CIEL_VIDE: SkyState = { stars: [], constellations: [], activeId: null, pinned: [] }
@@ -7,6 +7,8 @@ const CIEL_VIDE: SkyState = { stars: [], constellations: [], activeId: null, pin
 /** lyra://newtab, avec ou sans « / » final (Chromium normalise l'URL). */
 export const estNouvelleEtoile = (url: string): boolean => /^lyra:\/\/newtab\/?$/.test(url)
 
+/** Fenêtre privée (la vue chrome est chargée avec #privee) : pas de favoris, thème Aurore. */
+export const fenetrePrivee = location.hash === '#privee'
 export const sky = signal<SkyState>(CIEL_VIDE)
 export const etats = signal<Record<string, EtatEtoile>>({})
 export const actif = computed<Star | undefined>(() => sky.value.stars.find((s) => s.id === sky.value.activeId))
@@ -58,17 +60,33 @@ export function estTerne(star: Star, etat?: EtatEtoile): boolean {
 export const cielMasque = signal(false)
 /** Le ciel masqué se révèle au survol du rail (sinon : poignée, bouton de la capsule ou ⌘ \ seulement). */
 export const revelerAuSurvol = signal(true)
-/** Le ciel masqué est glissé par-dessus la page : la vue chrome a été élargie par le main. */
+/** Le ciel masqué est glissé par-dessus la page : la vue chrome passe au-dessus de la page. */
 export const cielRevele = signal(false)
 /** La révélation vient du clavier (Entrée sur la poignée) : le ciel prend le focus. */
 export const revelationClavier = signal(false)
 /** Largeur du ciel (réglage) : celle du ciel révélé, rail de 14 px en plus. */
 export const cielLargeur = signal(272)
+/** Largeur en cours de réglage à la poignée (aperçu en direct, avant d'être enregistrée) ; null sinon. */
+export const cielLargeurApercu = signal<number | null>(null)
+/** Largeur affichée : l'aperçu pendant le glisser de la poignée, sinon le réglage. */
+export const cielLargeurAffichee = computed(() => cielLargeurApercu.value ?? cielLargeur.value)
+export type PositionCiel = Settings['ciel']['position']
+/** Position du ciel (réglage) : colonne à gauche ou à droite, bande en haut ou en bas. */
+export const cielPosition = signal<PositionCiel>('gauche')
+/** Glisser l'en-tête du ciel vers un bord pour le déplacer (réglage). */
+export const cielDeplacer = signal(true)
+/** Appui sur l'en-tête du ciel en cours (avant même le seuil du glisser) : les zones de déplacement de la fenêtre sont levées. */
+export const cielAppui = signal(false)
+/** Bord visé pendant le glisser de l'en-tête du ciel (null : pas de glisser en cours, ou geste resté sur le ciel). */
+export const cielCible = signal<PositionCiel | null>(null)
 
 /** Demande au main de révéler ou retirer le ciel masqué (la vue chrome change de taille et d'ordre). */
 export function reveler(actif: boolean): void {
   void window.lyra.invoke('ciel:reveler', { actif })
 }
+
+/** Mode Ne pas déranger de cette fenêtre : la vue chrome ne dessine alors que le rappel / croissant. */
+export const dnd = signal<EtatDnd>({ actif: false, duree: null, fin: null, notifications: 0, popups: 0, rappel: false })
 
 /** Étoile en cours de glisser-déposer. */
 export const glisse = signal<string | null>(null)
@@ -87,10 +105,14 @@ export async function initialiserEtat(): Promise<void> {
     ternirApresMin.value = r.ciel.ternirApresMin
     cielMasque.value = r.ciel.masque
     cielLargeur.value = r.ciel.largeur
+    cielPosition.value = r.ciel.position
+    cielDeplacer.value = r.ciel.deplacerParGlisser
     revelerAuSurvol.value = r.ciel.revelerAuSurvol
   }
   window.lyra.on('settings:changed', appliquer)
   window.lyra.on('ciel:revele', (b) => (cielRevele.value = b))
+  window.lyra.on('dnd:changed', (e) => (dnd.value = e))
+  void window.lyra.invoke('dnd:get').then((e) => (dnd.value = e))
   void window.lyra.invoke('settings:get').then(appliquer)
   void window.lyra.invoke('layout:get').then((l) => (cielRevele.value = l.revele))
   const c = await window.lyra.invoke('sky:get')

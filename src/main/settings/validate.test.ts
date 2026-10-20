@@ -12,6 +12,23 @@ describe('validerPatch', () => {
     })
   })
 
+  it('validerSettings : une ancienne largeur hors bornes ou décimale est arrondie et bornée', () => {
+    const d = defauts
+    expect(validerSettings({ ciel: { largeur: 500 } }, d).ciel.largeur).toBe(420)
+    expect(validerSettings({ ciel: { largeur: 100 } }, d).ciel.largeur).toBe(200)
+    expect(validerSettings({ ciel: { largeur: 250.5 } }, d).ciel.largeur).toBe(251)
+    expect(validerSettings({ ciel: { largeur: 'x' } }, d).ciel.largeur).toBe(d.ciel.largeur)
+  })
+
+  it('largeur du ciel : 200 à 420 ; deplacerParGlisser booléen', () => {
+    expect(validerPatch({ ciel: { largeur: 200 } })).toEqual({ ciel: { largeur: 200 } })
+    expect(validerPatch({ ciel: { largeur: 420 } })).toEqual({ ciel: { largeur: 420 } })
+    expect(validerPatch({ ciel: { largeur: 199 } })).toEqual({})
+    expect(validerPatch({ ciel: { largeur: 421 } })).toEqual({})
+    expect(validerPatch({ ciel: { largeur: 250.5 } })).toEqual({})
+    expect(validerPatch({ ciel: { deplacerParGlisser: false } })).toEqual({ ciel: { deplacerParGlisser: false } })
+    expect(validerPatch({ ciel: { deplacerParGlisser: 'oui' } })).toEqual({})
+  })
   it('accepte ciel.masque et ciel.revelerAuSurvol booléens, rejette le reste', () => {
     expect(validerPatch({ ciel: { masque: true, revelerAuSurvol: false } })).toEqual({ ciel: { masque: true, revelerAuSurvol: false } })
     expect(validerPatch({ ciel: { revelerAuSurvol: 'non' } })).toEqual({})
@@ -82,6 +99,18 @@ describe('validerPatch', () => {
         'https://c.fr': { permissions: { notifications: 'refuser' } }
       }
     })
+  })
+
+  it('exception Ne pas déranger par site : booléen seulement, absent par défaut', () => {
+    expect(
+      validerPatch({
+        sites: {
+          'https://a.fr': { exceptionDnd: true },
+          'https://b.fr': { exceptionDnd: 'oui', zoom: 2 },
+          'https://c.fr': { exceptionDnd: false }
+        }
+      })
+    ).toEqual({ sites: { 'https://a.fr': { exceptionDnd: true }, 'https://b.fr': { zoom: 2 }, 'https://c.fr': { exceptionDnd: false } } })
   })
 
   it('entrée non objet : patch vide', () => {

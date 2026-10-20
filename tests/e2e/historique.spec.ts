@@ -34,6 +34,15 @@ test('l’étoile de la capsule se remplit après bookmarks:toggle et lyra://boo
   const { app, fenetre } = await lancerLyra()
   try {
     await fenetre.evaluate((u) => window.lyra.invoke('test:navigate', u), FIXTURE)
+    // Attendre l'état « page chargée » plutôt qu'un délai : sinon « Ajouter aux favoris » est vrai aussi sur le nouvel onglet.
+    await expect
+      .poll(() =>
+        fenetre.evaluate(async () => {
+          const c = await window.lyra.invoke('sky:get')
+          return Object.values(c.etats).some((e) => !e.chargement && e.url.endsWith('liens.html'))
+        })
+      )
+      .toBe(true)
     const etoile = fenetre.locator('.capsule .cb[aria-label$="aux favoris"], .capsule .cb[aria-label$="des favoris"]')
     await expect(etoile).toHaveAttribute('aria-label', 'Ajouter aux favoris')
     expect(await fenetre.evaluate((u) => window.lyra.invoke('bookmarks:toggle', { url: u, title: 'Liens' }), FIXTURE)).toBe(true)

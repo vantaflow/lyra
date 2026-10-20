@@ -24,6 +24,11 @@
   --texte-secondaire: #6b6b80;
 }
 
+/* Thème Aurore des fenêtres privées (docs/design/project/Couleurs.dc.html) : seul le ciel change. */
+:root.privee {
+  --ciel: #2a1540;
+}
+
 html,
 body,
 #app {
@@ -355,7 +360,10 @@ body,
   -webkit-app-region: no-drag;
 }
 /* Windows : les boutons de fenêtre (titleBarOverlay) recouvrent le coin haut droit. */
-.win .capsule {
+/* Le ciel à gauche ou en haut, ou la capsule pleine largeur : les boutons recouvrent le haut de la capsule. */
+.win.pos-gauche .capsule,
+.win.pos-bas .capsule,
+.win.masque .capsule {
   padding-right: 150px;
 }
 .cb {
@@ -986,7 +994,9 @@ html.overlay #app {
   box-shadow: 0 6px 20px rgba(20, 20, 46, 0.12);
   -webkit-app-region: no-drag;
 }
-.win .findbar {
+.win.pos-gauche .findbar,
+.win.pos-bas .findbar,
+.win.masque .findbar {
   right: 150px;
 }
 .findbar input {
@@ -1050,8 +1060,8 @@ html.overlay #app {
   outline-offset: 3px;
 }
 /* Sous les boutons de fenêtre de macOS, la capsule laisse la place aux pastilles. */
-.fenetre.mac.masque .capsule {
-  padding-left: 72px;
+.fenetre.capsule-pastilles .capsule {
+  padding-left: 86px;
 }
 /* Ciel révélé : la vue chrome (toute la fenêtre) passe au-dessus de la page ; hors capsule et ciel, elle est transparente. */
 html.revele,
@@ -1106,4 +1116,426 @@ html.revele #app,
   .ciel.ciel-revele.sortant {
     transition: none;
   }
+}
+
+/* ---- Position du ciel : droite (miroir), haut et bas (bande de 56 px), design CielDroite/CielHaut/CielBas.dc.html ---- */
+.fenetre.pos-droite {
+  flex-direction: row-reverse;
+}
+.fenetre.pos-haut {
+  flex-direction: column;
+}
+.fenetre.pos-bas {
+  flex-direction: column-reverse;
+}
+.fenetre.pos-droite .carte {
+  border-radius: 0 12px 12px 0;
+}
+.fenetre.pos-haut .carte {
+  border-radius: 12px 12px 0 0;
+}
+.fenetre.pos-bas .carte {
+  border-radius: 0 0 12px 12px;
+}
+.fenetre.pos-haut .page-zone,
+.fenetre.pos-bas .page-zone {
+  min-height: 0;
+}
+.ciel {
+  position: relative;
+}
+/* Poignée de largeur : le bord du ciel côté page. */
+.poignee-largeur {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  z-index: 6;
+  cursor: col-resize;
+  -webkit-app-region: no-drag;
+}
+.ciel.pos-gauche .poignee-largeur {
+  right: 0;
+}
+.ciel.pos-droite .poignee-largeur {
+  left: 0;
+}
+.poignee-largeur:hover,
+.poignee-largeur:focus-visible {
+  background: rgba(244, 197, 106, 0.55);
+  outline: none;
+}
+/* Glisser l'en-tête vers un bord : l'en-tête n'est plus une zone de déplacement de la fenêtre. */
+.ciel-entete.deplacable,
+.bande-entete.deplacable {
+  -webkit-app-region: no-drag;
+  cursor: grab;
+}
+
+
+/* La bande */
+.bande {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 56px;
+  flex: none;
+  padding: 0 10px 0 12px;
+  box-sizing: border-box;
+  background: var(--ciel);
+  color: #d9d9f0;
+  overflow: hidden;
+  -webkit-app-region: drag;
+}
+.bande button,
+.bande .bande-entete.deplacable {
+  -webkit-app-region: no-drag;
+}
+.win.pos-haut .bande {
+  padding-right: 150px;
+}
+.bande-entete {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  gap: 8px;
+  padding-right: 6px;
+  flex: none;
+}
+.bande .marque-lyra {
+  font-size: 20px;
+}
+.bande .sb {
+  flex: none;
+}
+.bande .sb.palette-icone {
+  background: #222247;
+  color: #9d9dc8;
+}
+.bande .pin {
+  width: 26px;
+  height: 26px;
+  flex: none;
+}
+.bande-sep {
+  width: 1px;
+  height: 24px;
+  background: #2e2e55;
+  margin: 0 6px;
+  flex: none;
+}
+.bande-etoiles {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 0 1 auto;
+  /* Défilement horizontal (molette, étoile active ramenée dans la vue) ; barre masquée. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.bande-etoiles::-webkit-scrollbar {
+  display: none;
+}
+.hs {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #c9c9ea;
+  font: 13px/1 'Manrope', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  max-width: 150px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex: none;
+}
+.hs:hover {
+  background: #1f1f42;
+  color: #fff;
+}
+.hs.active {
+  background: #262650;
+  color: #fff;
+}
+.hs .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--etoiles);
+  flex: none;
+}
+.hs.active .dot {
+  background: var(--etoile-active);
+  box-shadow:
+    0 0 0 3px rgba(244, 197, 106, 0.22),
+    0 0 14px rgba(244, 197, 106, 0.7);
+}
+.hs.dim {
+  color: #8686b4;
+  max-width: 120px;
+}
+.hs.dim .dot {
+  background: var(--etoiles-endormies);
+}
+.hs.terne:not(.active) {
+  opacity: 0.72;
+}
+.hs .t {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.hc {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  flex: none;
+}
+.hc i {
+  display: block;
+  width: 12px;
+  height: 1px;
+  background: var(--lignes);
+}
+.hc b {
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--etoiles);
+}
+.hc:hover b {
+  background: #fff;
+}
+.hc.active b {
+  background: var(--etoile-active);
+  box-shadow: 0 0 8px rgba(244, 197, 106, 0.7);
+}
+.hc.dim b {
+  background: var(--etoiles-endormies);
+}
+.hg {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #7f7fb0;
+  font-weight: 600;
+  padding: 0 4px 0 8px;
+  white-space: nowrap;
+  flex: none;
+}
+.bande .boucliers {
+  flex: none;
+}
+
+/* Rail horizontal (ciel masqué en haut ou en bas) */
+.rail.rail-haut,
+.rail.rail-bas {
+  width: auto;
+  height: 14px;
+}
+.rail-haut .poignee,
+.rail-bas .poignee {
+  width: 44px;
+  height: 4px;
+}
+
+/* Ciel révélé selon la position */
+.ciel.ciel-revele.pos-droite {
+  left: auto;
+  right: 0;
+  padding: 10px 14px 12px 12px;
+  border-radius: 12px 0 0 12px;
+  box-shadow: -14px 0 44px rgba(10, 10, 40, 0.38);
+  animation-name: ciel-glisse-droite;
+}
+.ciel.ciel-revele.pos-droite.sortant {
+  transform: translateX(100%);
+}
+.bande.bande-revele {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  animation: bande-glisse-haut var(--glisse) ease-out;
+  transition: transform var(--glisse) ease-out;
+}
+.bande.bande-revele.bande-haut {
+  top: 0;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 14px 44px rgba(10, 10, 40, 0.38);
+}
+.bande.bande-revele.bande-bas {
+  bottom: 0;
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -14px 44px rgba(10, 10, 40, 0.38);
+  animation-name: bande-glisse-bas;
+}
+.bande.bande-revele.bande-haut.sortant {
+  transform: translateY(-100%);
+  transition: transform var(--glisse) ease-in;
+}
+.bande.bande-revele.bande-bas.sortant {
+  transform: translateY(100%);
+  transition: transform var(--glisse) ease-in;
+}
+@keyframes ciel-glisse-droite {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes bande-glisse-haut {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes bande-glisse-bas {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bande.bande-revele {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* Bord visé pendant le glisser de l'en-tête */
+.cible-ciel {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  background: rgba(244, 197, 106, 0.28);
+  border: 2px solid #f4c56a;
+  box-sizing: border-box;
+  border-radius: 10px;
+}
+.cible-ciel.cible-gauche {
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+}
+.cible-ciel.cible-droite {
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+}
+.cible-ciel.cible-haut {
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 50%;
+}
+.cible-ciel.cible-bas {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 50%;
+}
+/* Pendant le glisser, la page est retirée : la zone de page est transparente pour montrer le bord visé. */
+.fenetre.glisse,
+.fenetre.glisse .page-zone,
+.fenetre.glisse .carte {
+  background: #e9e9f3;
+}
+/* Pendant le glisser, plus aucune zone de déplacement de la fenêtre : elle avalerait le relâchement et annulerait le glisser. */
+.fenetre.appui * {
+  -webkit-app-region: no-drag !important;
+}
+
+/* Windows, ciel à droite : les boutons de fenêtre (titleBarOverlay, 32 px) recouvrent le haut du ciel ; son en-tête passe dessous. */
+.win .ciel.pos-droite,
+.win .ciel.ciel-revele.pos-droite {
+  padding-top: 42px;
+}
+
+/* ---- Ne pas déranger (docs/design/project/NePasDeranger.dc.html) : la vue chrome ne couvre que le coin haut droit ---- */
+html.dnd,
+html.dnd body,
+html.dnd #app {
+  background: transparent;
+}
+.dnd-rappel,
+.dnd-croissant {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  height: 36px;
+  border-radius: 18px;
+  background: rgba(21, 21, 46, 0.94);
+  color: #e8e8f4;
+  font-family: 'Manrope', system-ui, sans-serif;
+  font-size: 12.5px;
+  box-shadow: 0 10px 30px rgba(10, 10, 40, 0.25);
+  z-index: 2;
+}
+.dnd-rappel {
+  gap: 10px;
+  padding: 0 12px 0 10px;
+  white-space: nowrap;
+}
+.dnd-titre {
+  font-weight: 600;
+}
+.dnd-detail {
+  color: #9e9ec8;
+}
+.dnd-rappel kbd {
+  font: 600 10.5px/1 'Manrope', sans-serif;
+  background: #2e2e5a;
+  color: #b3b3da;
+  padding: 4px 6px;
+  border-radius: 5px;
+  letter-spacing: 0.02em;
+}
+.dnd-quitter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #9e9ec8;
+  cursor: pointer;
+  padding: 0;
+}
+.dnd-quitter:hover {
+  background: #23234a;
+  color: #fff;
+}
+/* Rappel effacé : seul le croissant reste, dans la même pastille. */
+.dnd-croissant {
+  justify-content: center;
+  width: 36px;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.dnd-croissant:hover {
+  background: #23234a;
 }

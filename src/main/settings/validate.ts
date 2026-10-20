@@ -13,6 +13,9 @@ const enumeration = <T extends string>(...valeurs: T[]) => (v: unknown): T | und
 const booleen = (v: unknown): boolean | undefined => (typeof v === 'boolean' ? v : undefined)
 const entier = (min: number, max: number) => (v: unknown): number | undefined =>
   typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max ? v : undefined
+/** Entier strict (pixels) : une largeur de 250,5 est refusée. */
+const pixels = (min: number, max: number) => (v: unknown): number | undefined =>
+  typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max ? v : undefined
 const texte = (max: number, motif?: RegExp) => (v: unknown): string | undefined =>
   typeof v === 'string' && v.length > 0 && v.length <= max && (!motif || motif.test(v)) ? v : undefined
 
@@ -33,7 +36,7 @@ function permissions(v: unknown): Obj | undefined {
   return Object.keys(sortie).length > 0 ? sortie : undefined
 }
 
-/** sites : { origine: { boucliers?, permissions?, zoom? } } ; champs et entrées invalides ignorés. */
+/** sites : { origine: { boucliers?, permissions?, zoom?, exceptionDnd? } } ; champs et entrées invalides ignorés. */
 function sites(v: unknown): Obj | undefined {
   if (!estObjet(v)) return undefined
   const sortie: Obj = {}
@@ -48,6 +51,9 @@ function sites(v: unknown): Obj | undefined {
     if (perms) champs.permissions = perms
     const zoom = entier(0.25, 5)(propre(regle, 'zoom'))
     if (zoom !== undefined) champs.zoom = zoom
+    // Absent par défaut ; false annule une exception déjà accordée.
+    const exceptionDnd = booleen(propre(regle, 'exceptionDnd'))
+    if (exceptionDnd !== undefined) champs.exceptionDnd = exceptionDnd
     if (Object.keys(champs).length === 0) continue
     sortie[origine] = champs
     n++
@@ -99,9 +105,10 @@ const SCHEMA: Schema = {
   moteurChoisi: booleen,
   ciel: {
     position: enumeration('gauche', 'droite', 'haut', 'bas'),
-    largeur: entier(160, 640),
+    largeur: pixels(200, 420),
     masque: booleen,
     revelerAuSurvol: booleen,
+    deplacerParGlisser: booleen,
     ternirApresMin: entier(1, 10080),
     endormirApresMin: entier(1, 10080)
   },
@@ -145,6 +152,14 @@ export function validerPatch(brut: unknown): DeepPartial<Settings> {
 }
 
 /** Réglages complets : défauts + champs valides du JSON brut. */
+/** Fichier relu : une ancienne largeur du ciel hors bornes ou décimale est arrondie et bornée, pas rejetée. */
+function largeurRamenee(brut: unknown): unknown {
+  if (!estObjet(brut) || !estObjet(brut.ciel)) return brut
+  const l = brut.ciel.largeur
+  if (typeof l !== 'number' || !Number.isFinite(l)) return brut
+  return { ...brut, ciel: { ...brut.ciel, largeur: Math.min(420, Math.max(200, Math.round(l))) } }
+}
+
 export function validerSettings(brut: unknown, defauts: Settings): Settings {
-  return fusion(defauts, validerPatch(brut))
+  return fusion(defauts, validerPatch(largeurRamenee(brut)))
 }

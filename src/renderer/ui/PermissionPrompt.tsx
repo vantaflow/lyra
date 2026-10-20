@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import type { DemandePermission } from '../../shared/ipc'
 import type { Settings, TypePermission } from '../../shared/types'
+import { marges } from './placements'
 
 const PHRASES: Record<TypePermission, string> = {
   camera: 'utiliser votre caméra',
@@ -27,14 +28,6 @@ export function nomDuSite(origine: string): string {
   }
 }
 
-/** Marges laissées par le ciel : la carte se centre sous la pilule, dans la zone de la page. */
-function marges(ciel: Settings['ciel'] | undefined): { left: string; right: string; top: string } {
-  const epaisseur = ciel ? (ciel.masque ? 14 : ciel.largeur) : 0
-  const gauche = !ciel || ciel.position === 'gauche'
-  const haut = ciel?.position === 'haut' ? epaisseur : 0
-  return { left: gauche ? `${epaisseur}px` : '0', right: ciel?.position === 'droite' ? `${epaisseur}px` : '0', top: `${haut + 52}px` }
-}
-
 /**
  * Demande de permission : petite carte sous la pilule (Refuser / Autoriser, « Se souvenir pour ce site »).
  * Toujours montée : permission:ask suit immédiatement overlay:route et ne doit pas être manquée.
@@ -44,6 +37,11 @@ export function PermissionPrompt({ visible }: { visible: boolean }) {
   const [souvenir, setSouvenir] = useState(false)
   const [ciel, setCiel] = useState<Settings['ciel'] | undefined>()
 
+  // Fenêtre privée : rien n'est mémorisé, la case n'est pas proposée (par défaut masquée tant que le main n'a pas répondu).
+  const [privee, setPrivee] = useState(true)
+  useEffect(() => {
+    void window.lyra.invoke('fenetre:privee').then(setPrivee, () => setPrivee(true))
+  }, [])
   useEffect(() => {
     void window.lyra.invoke('settings:get').then((r) => setCiel(r.ciel))
     const off = window.lyra.on('settings:changed', (r) => setCiel(r.ciel))
@@ -82,10 +80,12 @@ export function PermissionPrompt({ visible }: { visible: boolean }) {
           <div id="perm-texte" class="perm-texte">
             <strong>{nomDuSite(demande.origine)}</strong> souhaite {phraseDemande(demande.types)}
           </div>
-          <label class="perm-souvenir">
-            <input type="checkbox" checked={souvenir} onChange={(e) => setSouvenir(e.currentTarget.checked)} />
-            Se souvenir pour ce site
-          </label>
+          {!privee && (
+            <label class="perm-souvenir">
+              <input type="checkbox" checked={souvenir} onChange={(e) => setSouvenir(e.currentTarget.checked)} />
+              Se souvenir pour ce site
+            </label>
+          )}
           <div class="perm-actions">
             <button class="btn" type="button" onClick={() => repondre('refuser', souvenir)}>
               Refuser

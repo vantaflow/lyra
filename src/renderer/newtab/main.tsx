@@ -36,7 +36,8 @@ function couleurDuSite(url: string): string {
 
 const nombre = (n: number): string => n.toLocaleString('fr-FR')
 
-function NouvelOnglet() {
+/** `privee` : fenêtre privée — ni constellations, ni sites fréquents, ni compteur des Boucliers (rien n'est lu des données de l'utilisateur). */
+function NouvelOnglet({ privee }: { privee: boolean }) {
   const [heure] = useState(() => new Date().getHours())
   const [reglages, setReglages] = useState<Settings | null>(null)
   const [constellations, setConstellations] = useState<Constellation[]>([])
@@ -48,11 +49,13 @@ function NouvelOnglet() {
 
   useEffect(() => {
     void window.lyra.invoke('settings:get').then(setReglages)
-    void window.lyra.invoke('sky:get').then(({ sky }) => (setConstellations(sky.constellations), setEtoiles(sky.stars)))
-    void window.lyra.invoke('history:frequent', { n: 8 }).then(setSites)
-    void window.lyra.invoke('shields:stats').then(setStats)
+    if (!privee) {
+      void window.lyra.invoke('sky:get').then(({ sky }) => (setConstellations(sky.constellations), setEtoiles(sky.stars)))
+      void window.lyra.invoke('history:frequent', { n: 8 }).then(setSites)
+      void window.lyra.invoke('shields:stats').then(setStats)
+    }
     return window.lyra.on('settings:changed', setReglages)
-  }, [])
+  }, [privee])
   useEffect(() => champ.current?.focus(), [reglages?.moteurChoisi])
 
   const jour = heure < 18
@@ -74,6 +77,16 @@ function NouvelOnglet() {
   return (
     <>
       <Ciel />
+      {privee && (
+        <div class="bandeau-prive" role="status">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z" />
+            <path d="M4 4l16 16" />
+          </svg>
+          <b>Fenêtre privée</b>
+          <span>Historique, cookies et session sont effacés à la fermeture.</span>
+        </div>
+      )}
       <main class="nouvel-onglet">
         <div class="salut">
           <p class="titre">{jour ? 'Bonjour.' : 'Bonsoir.'}</p>
@@ -108,6 +121,7 @@ function NouvelOnglet() {
           </form>
         )}
 
+        {!privee && (
         <section aria-label="Vos constellations" class="bloc">
           <h2>Vos constellations</h2>
           <div class="chips">
@@ -131,7 +145,9 @@ function NouvelOnglet() {
             </button>
           </div>
         </section>
+        )}
 
+        {!privee && (
         <section aria-label="Sites fréquents" class="bloc bloc-sites">
           <h2>Sites fréquents</h2>
           <div class="sites">
@@ -143,9 +159,11 @@ function NouvelOnglet() {
             ))}
           </div>
         </section>
+        )}
       </main>
 
       <div class="pied">
+        {!privee && (
         <span class="bouclier">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 3l7 3v5c0 4.5-3 8.2-7 9.5C8 19.2 5 15.5 5 11V6z" />
@@ -153,6 +171,7 @@ function NouvelOnglet() {
           </svg>
           {nombre(stats?.semaine ?? 0)} éléments bloqués cette semaine
         </span>
+        )}
         <span>Aucune donnée ne quitte cet ordinateur.</span>
         <span class="souple" />
         <a href="lyra://history" onClick={(e) => (e.preventDefault(), ouvrir('lyra://history'))}>Historique</a>
@@ -162,4 +181,16 @@ function NouvelOnglet() {
   )
 }
 
-render(<NouvelOnglet />, document.getElementById('app')!)
+/** La fenêtre est-elle privée ? Réponse du main (la page n'en décide pas) ; rien n'est affiché avant, pour éviter un flash. */
+function Racine() {
+  const [privee, setPrivee] = useState<boolean | null>(null)
+  useEffect(() => {
+    void window.lyra.invoke('fenetre:privee').then(setPrivee, () => setPrivee(true))
+  }, [])
+  useEffect(() => {
+    document.documentElement.classList.toggle('privee', privee === true)
+  }, [privee])
+  return privee === null ? null : <NouvelOnglet privee={privee} />
+}
+
+render(<Racine />, document.getElementById('app')!)

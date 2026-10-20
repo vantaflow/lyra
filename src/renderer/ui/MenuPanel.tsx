@@ -40,9 +40,9 @@ export function MenuPanel({ ancre }: { ancre: AncreMenu | null }) {
       <nav class="menu-capsule" role="menu" aria-label="Menu de la page" style={style}>
         <Ligne label="Nouvelle étoile" aide={raccourci('⌘ T')} action="nouvelle-etoile" />
         <Ligne label="Nouvelle fenêtre" aide={raccourci('⌘ N')} action="nouvelle-fenetre" />
-        <Ligne label="Fenêtre privée" aide={raccourci('⌘ ⇧ N')} />
+        <Ligne label="Fenêtre privée" aide={raccourci('⌘ ⇧ N')} action="fenetre-privee" />
         <div class="sep"></div>
-        <Ligne label="Ajouter aux favoris" aide={raccourci('⌘ D')} action="favori" />
+        <Ligne label="Ajouter aux favoris" aide={raccourci('⌘ D')} action={ancre.privee ? undefined : 'favori'} />
         <Ligne label="Rechercher dans la page" aide={raccourci('⌘ F')} action="recherche" />
         <div class="mi" role="group" aria-label="Zoom">
           Zoom
