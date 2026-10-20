@@ -1,4 +1,5 @@
 import type { Candidat } from './liste'
+import { enTest } from '../modeTest'
 import { meilleures } from './selection'
 
 export const CIBLE_PAR_DEFAUT = 'https://www.gstatic.com/generate_204'
@@ -29,7 +30,7 @@ export const proxyRules = (c: Candidat): string => `${c.type === 'socks5' ? 'soc
 
 /** Cible de test : la variable d'environnement n'est lue que sous LYRA_TEST=1. */
 function cibleEffective(opts: OptionsTest): { cible: string; parDefaut: boolean } {
-  const fournie = opts.cible ?? (process.env.LYRA_TEST === '1' ? process.env.LYRA_PASSERELLES_CIBLE : undefined)
+  const fournie = opts.cible ?? (enTest() ? process.env.LYRA_PASSERELLES_CIBLE : undefined)
   return fournie ? { cible: fournie, parDefaut: false } : { cible: CIBLE_PAR_DEFAUT, parDefaut: true }
 }
 

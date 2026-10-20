@@ -39,3 +39,14 @@ test('@paquet l\'app empaquetée embarque les listes et construit le moteur au p
     await app.close()
   }
 })
+
+// Le lecteur d'import tourne dans un utilityProcess et lit les bases SQLite (sql.js) et les archives (fflate) : tout doit être dans l'asar.
+test('@paquet l\'asar embarque le lecteur d\'import, sql.js (wasm) et fflate', async () => {
+  // Import dynamique : @electron/asar n'est qu'une dépendance transitive d'electron-builder ; chargé en tête du fichier,
+  // un changement de hoisting empêcherait toute la suite e2e de se charger.
+  const { listPackage } = await import('@electron/asar')
+  const fichiers = listPackage(join(ressources(), 'app.asar'), { isPack: false }).map((f) => f.replace(/\\/g, '/').replace(/^\//, ''))
+  expect(fichiers).toContain('out/main/import-worker.js')
+  expect(fichiers).toContain('node_modules/sql.js/dist/sql-wasm.wasm')
+  expect(fichiers.some((f) => f.startsWith('node_modules/fflate/'))).toBe(true)
+})

@@ -1,5 +1,6 @@
 /** Branche l'orchestration des passerelles sur Electron : sessions, réglages, sources et testeur. */
 import { session } from 'electron'
+import { enTest } from '../modeTest'
 import type { Reglages } from '../settings/settings'
 import type { EtatPasserelles } from '../../shared/ipc'
 import { Passerelles, type SessionProxy } from './Passerelles'
@@ -10,7 +11,7 @@ const DELAI_DIRECT_MS = 5000
 
 /** Le réseau répond-il en direct ? Session mémoire isolée sans proxy, requête bornée, 204 attendu. */
 async function testerDirect(): Promise<boolean> {
-  const cible = (process.env.LYRA_TEST === '1' && process.env.LYRA_PASSERELLES_CIBLE) || CIBLE_PAR_DEFAUT
+  const cible = (enTest() && process.env.LYRA_PASSERELLES_CIBLE) || CIBLE_PAR_DEFAUT
   const ses = session.fromPartition('passerelle-direct')
   try {
     await ses.setProxy({ mode: 'direct' })

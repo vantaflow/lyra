@@ -13,6 +13,8 @@ export function reglagesParDefaut(dossierTelechargements: string): Settings {
     boucliers: { niveau: 'standard', genes: false, majHeures: 6 },
     telechargements: { dossier: dossierTelechargements, demander: false },
     sites: {},
+    moteursPerso: [],
+    import: { extensionsEnAttente: [], reglagesEnAttente: {} },
     reseau: { passerelles: true, auto: true, sites: [] },
     extensions: { installees: [], majAuto: true }
   }

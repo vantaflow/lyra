@@ -1,4 +1,5 @@
 /** Types partagés entre processus (purs, sans dépendance à Electron). */
+import type { NavigateurSource } from '../main/import/types'
 
 export interface Star {
   id: string
@@ -53,6 +54,15 @@ export interface Settings {
   }
   /** Règles par site, indexées par origine (« https://exemple.fr », « file:// »). */
   sites: Record<string, RegleSite>
+  /** Moteurs de recherche ajoutés par l'utilisateur ou importés (s'ajoutent aux moteurs intégrés). */
+  moteursPerso: MoteurPerso[]
+  /** Import depuis d'autres navigateurs : file d'attente consommée par d'autres jalons. */
+  import: {
+    /** Extensions à (ré)installer par le jalon B (200 au plus, dédoublonnées sur id + magasin). */
+    extensionsEnAttente: ExtensionEnAttente[]
+    /** Réglages importés dont Lyra n'a pas encore le champ (appliqués plus tard sans réimporter). */
+    reglagesEnAttente: { pageAccueil?: string }
+  }
   reseau: {
     /** Passerelles pour les sites bloqués. */
     passerelles: boolean
@@ -99,10 +109,10 @@ export type ResultatInstallation =
   | { etat: 'erreur'; raison: string; rapport?: RapportConversion; suggestionChrome?: SuggestionChrome }
 
 /**
- * Entrée de la file d'import (structurellement compatible avec `ExtensionEnAttente` du jalon E).
+ * Entrée de la file d'import (structurellement compatible avec `ExtensionEnAttente` du jalon E ; renommée pour ne pas heurter `EntreeImport` de l'importeur).
  * `imposee` : extension imposée par une règle du navigateur d'origine, jamais installée sans choix explicite.
  */
-export interface EntreeImport {
+export interface EntreeFileExtensions {
   id: string
   nom: string
   magasin: MagasinExtension
@@ -113,7 +123,7 @@ export interface EntreeImport {
 export type EtatEntreeFile = 'installee' | 'manuel' | 'erreur' | 'a-confirmer'
 
 export interface ResultatEntreeFile {
-  entree: EntreeImport
+  entree: EntreeFileExtensions
   etat: EtatEntreeFile
   raison?: string
 }
@@ -121,7 +131,7 @@ export interface ResultatEntreeFile {
 export interface ResultatFile {
   resultats: ResultatEntreeFile[]
   /** File à réécrire : entrées à confirmer et erreurs (réessayables). */
-  restantes: EntreeImport[]
+  restantes: EntreeFileExtensions[]
 }
 
 /** Progression de la file d'import (`extensions:progressionFile`). */
@@ -181,6 +191,28 @@ export interface SettingsExtensions {
   majAuto: boolean
   /** Date ISO de la dernière vérification des mises à jour. */
   derniereVerification?: string
+}
+
+export interface MoteurPerso {
+  id: string
+  nom: string
+  /** Mot-clé de la palette (sans espace, 24 caractères au plus). */
+  motCle: string
+  /** Adresse de recherche avec `%s` pour la requête. */
+  url: string
+}
+
+/** Extension importée, en attente d'installation. */
+export interface ExtensionEnAttente {
+  id: string
+  nom: string
+  magasin: 'chrome' | 'edge' | 'firefox' | 'inconnu'
+  actif: boolean
+  source: NavigateurSource
+  /** Horodatage de mise en file (ms). */
+  date: number
+  /** Imposée par une stratégie d'entreprise dans le navigateur source. */
+  imposee?: boolean
 }
 
 export interface SiteContourne {

@@ -1,9 +1,10 @@
 /** Câblage IPC de la palette côté main (dépend d'Electron). */
 import type { WebContents } from 'electron'
 import { handle } from '../ipc'
+import { enTest } from '../modeTest'
 import type { TabManager } from '../tabs/TabManager'
 import type { HistoryEntry, Settings, Suggestion } from '../../shared/types'
-import { moteurParId, urlDeRecherche } from './engines'
+import { moteurParId, moteursDisponibles, urlDeRecherche } from './engines'
 import type { History } from '../history/History'
 import type { Bookmarks } from '../bookmarks/Bookmarks'
 import { interpreterSaisie, suggerer, trouverCommande } from './suggest'
@@ -58,6 +59,7 @@ export function installerPalette(deps: DepsPalette): void {
       constellations: sky.constellations,
       historique: historiquePalette(deps, texte),
       moteurParDefaut: deps.reglages().moteurParDefaut,
+      moteurs: moteursDisponibles(deps.reglages()),
       // Démasqué seulement : masqué, « à gauche » est une vraie commande (elle réaffiche le ciel).
       positionCiel: deps.reglages().ciel.masque ? undefined : deps.reglages().ciel.position,
       dnd: deps.dndActif(tabs)
@@ -77,14 +79,15 @@ export function installerPalette(deps: DepsPalette): void {
       else if (s.url) aller(s.url)
       return
     }
-    const saisie = interpreterSaisie(texte, deps.reglages().moteurParDefaut)
+    const moteurs = moteursDisponibles(deps.reglages())
+    const saisie = interpreterSaisie(texte, deps.reglages().moteurParDefaut, moteurs)
     if (saisie.type === 'url') aller(saisie.url)
     else if (saisie.type === 'recherche') {
-      if (saisie.requete) aller(urlDeRecherche(moteurParId(saisie.moteur), saisie.requete))
+      if (saisie.requete) aller(urlDeRecherche(moteurParId(saisie.moteur, moteurs), saisie.requete))
     } else {
       const c = trouverCommande(saisie.nom)
       if (c) commande(c.id, tabs)
     }
   })
-  if (process.env.LYRA_TEST === '1') handle('test:lastNavigation', () => derniereNavigation)
+  if (enTest()) handle('test:lastNavigation', () => derniereNavigation)
 }

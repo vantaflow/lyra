@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import { cleEntree, consommerFile, traiterFile, type DepsTraiterFile } from './fileImport'
-import type { EntreeImport, ProgressionFile } from '../../shared/types'
+import type { EntreeFileExtensions, ProgressionFile } from '../../shared/types'
 import type { ResultatInstallation } from '../../shared/types'
 
 const id = (c: string): string => c.repeat(32)
 const ok = (c: string): ResultatInstallation => ({ etat: 'installee', id: id(c), nom: c, version: '1.0' })
 
-const cinq = (): EntreeImport[] => [
+const cinq = (): EntreeFileExtensions[] => [
   { id: id('a'), nom: 'A', magasin: 'chrome' },
   { id: id('b'), nom: 'B (erreur)', magasin: 'chrome' },
   { id: 'dark-reader', nom: 'Dark Reader', magasin: 'firefox', actif: false },

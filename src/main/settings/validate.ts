@@ -114,6 +114,54 @@ function personnelle(v: unknown): Obj | undefined {
   return { type, hote: hote.toLowerCase(), port: p }
 }
 
+const MAX_MOTEURS_PERSO = 100
+const MAX_EXTENSIONS_EN_ATTENTE = 200
+const MAGASINS = enumeration('chrome', 'edge', 'firefox', 'inconnu')
+const SOURCES = enumeration('chrome', 'edge', 'brave', 'vivaldi', 'firefox', 'safari', 'orion', 'lyra')
+
+/** moteursPerso : { id, nom, motCle (sans espace, 24 max), url https? avec %s } ; invalides et doublons d'id ignorés ; `[]` explicite accepté. */
+function moteursPerso(v: unknown): unknown[] | undefined {
+  if (!Array.isArray(v)) return undefined
+  const sortie: Obj[] = []
+  const vus = new Set<string>()
+  for (const e of v) {
+    if (sortie.length >= MAX_MOTEURS_PERSO) break
+    if (!estObjet(e)) continue
+    const id = texte(64)(propre(e, 'id'))
+    const nom = texte(100)(propre(e, 'nom'))
+    const motCle = texte(24, /^\S+$/)(propre(e, 'motCle'))
+    const url = texte(2000, /^https?:\/\/\S*%s\S*$/i)(propre(e, 'url'))
+    if (!id || !nom || !motCle || !url || vus.has(id)) continue
+    vus.add(id)
+    sortie.push({ id, nom, motCle, url })
+  }
+  return v.length > 0 && sortie.length === 0 ? undefined : sortie
+}
+
+/** import.extensionsEnAttente : dédoublonnée sur id + magasin (la première gagne), 200 au plus (les dernières gardées). */
+function extensionsEnAttente(v: unknown): unknown[] | undefined {
+  if (!Array.isArray(v)) return undefined
+  const sortie: Obj[] = []
+  const vus = new Set<string>()
+  for (const e of v) {
+    if (!estObjet(e)) continue
+    const id = texte(200)(propre(e, 'id'))
+    const nom = texte(300)(propre(e, 'nom'))
+    const magasin = MAGASINS(propre(e, 'magasin'))
+    const actif = booleen(propre(e, 'actif'))
+    const source = SOURCES(propre(e, 'source'))
+    const date = propre(e, 'date')
+    if (!id || !nom || !magasin || actif === undefined || !source || typeof date !== 'number' || !Number.isFinite(date) || date < 0) continue
+    const cle = `${magasin}\u0000${id}`
+    if (vus.has(cle)) continue
+    vus.add(cle)
+    const imposee = booleen(propre(e, 'imposee'))
+    sortie.push({ id, nom, magasin, actif, source, date, ...(imposee === true ? { imposee } : {}) })
+  }
+  const gardees = sortie.slice(-MAX_EXTENSIONS_EN_ATTENTE)
+  return v.length > 0 && gardees.length === 0 ? undefined : gardees
+}
+
 type Schema = { [k: string]: ((v: unknown) => unknown) | Schema }
 
 const SCHEMA: Schema = {
@@ -140,6 +188,11 @@ const SCHEMA: Schema = {
     demander: booleen
   },
   sites,
+  moteursPerso,
+  import: {
+    extensionsEnAttente,
+    reglagesEnAttente: { pageAccueil: texte(2048) }
+  },
   reseau: {
     passerelles: booleen,
     auto: booleen,

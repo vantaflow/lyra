@@ -1,0 +1,38 @@
+{
+  "roots": {
+    "bookmark_bar": {
+      "type": "folder",
+      "name": "Barre de favoris",
+      "date_added": "13411699200000000",
+      "children": [
+        {
+          "type": "url",
+          "name": "Actualités",
+          "url": "https://news.example.org/",
+          "date_added": "13411699200000000",
+          "id": "1",
+          "guid": "g"
+        }
+      ],
+      "id": "1",
+      "guid": "g"
+    },
+    "other": {
+      "type": "folder",
+      "name": "Autres favoris",
+      "date_added": "13411699200000000",
+      "children": [],
+      "id": "1",
+      "guid": "g"
+    },
+    "synced": {
+      "type": "folder",
+      "name": "Favoris mobiles",
+      "date_added": "13411699200000000",
+      "children": [],
+      "id": "1",
+      "guid": "g"
+    }
+  },
+  "version": 1
+}

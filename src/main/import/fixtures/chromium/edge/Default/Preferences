@@ -1,0 +1,23 @@
+{
+  "default_search_provider_data": {
+    "template_url_data": {
+      "short_name": "Bing",
+      "keyword": "bing.com",
+      "url": "https://www.bing.com/search?q={searchTerms}&{google:RLZ}"
+    }
+  },
+  "extensions": {
+    "settings": {
+      "gggggggggggggggggggggggggggggggg": {
+        "from_webstore": true,
+        "location": 1,
+        "state": 1,
+        "manifest": {
+          "name": "Extension Edge",
+          "version": "1.0",
+          "update_url": "https://edge.microsoft.com/extensionwebstorebase/v1/crx"
+        }
+      }
+    }
+  }
+}

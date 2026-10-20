@@ -21,6 +21,7 @@
     "@playwright/test": "1.64.1",
     "@preact/preset-vite": "^2.10.6",
     "@types/node": "24.19.2",
+    "@types/sql.js": "1.4.11",
     "electron": "44.9.0",
     "electron-builder": "26.15.3",
     "electron-vite": "^6.0.0",
@@ -39,6 +40,7 @@
     "@preact/signals": "^2.11.3",
     "electron-chrome-extensions": "4.9.0",
     "fflate": "0.8.3",
+    "sql.js": "1.15.1",
     "tldts-experimental": "7.4.18"
   }
 }

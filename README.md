@@ -51,7 +51,17 @@ La page `lyra://extensions` (menu ⋯, palette ou « Gérer » dans le panneau d
 - **Limites** : pas de `declarativeNetRequest` (uBlock Origin Lite inopérant), de `commands`, de `sidePanel`/`sidebar_action`, de messagerie native ; les extensions ne s'exécutent pas en fenêtre privée ; la règle par site est enregistrée mais n'est pas appliquée aux scripts déjà déclarés par le manifest ; les permissions optionnelles demandées par une extension sont refusées ; le Manifest V2 est déprécié par Electron (Lyra reste sur Electron 44 tant que les extensions clés en dépendent). La page `lyra://extensions` détaille ces limites.
 - **Licence** : la prise en charge des extensions repose sur `electron-chrome-extensions`, sous licence GPL-3.0, comme Lyra.
 
-Prévus ensuite : réglages complets et règles par site (D), import/export (E).
+## Ce que fait le jalon E
+
+- Importation depuis Chrome, Edge, Brave, Vivaldi, Firefox, Safari et Orion : favoris (dossier « Importés de … », sans doublon), historique fusionné, onglets et groupes en constellations (étoiles endormies), moteurs et mots-clés, réglages transposables, extensions mises en file pour le jalon B. Les cookies ne sont pas importés (chiffrés par le système).
+- La lecture des profils se fait dans un processus à part (`utilityProcess`), sur des copies temporaires : les dossiers des autres navigateurs ne sont jamais modifiés, et le navigateur source peut rester ouvert pour les favoris et l'historique.
+- Contrat IPC `import:detecter`, `import:apercu`, `import:lancer`, `import:annuler` et évènements `import:progression` / `import:termine`, réservé à la page `lyra://settings` d'une fenêtre normale ; un seul import à la fois, abandon possible.
+- Réglages › « Importer et exporter » : les sept navigateurs et « Un fichier » (favoris HTML au format Netscape, historique CSV, ciel JSON, réglages JSON, paquet `.lyra`), avec aperçu et résumé par élément.
+- Exports : favoris (HTML), historique (CSV), ciel (JSON), réglages (JSON) et paquet `.lyra` complet (réglages, règles par site, thème, extensions en attente, favoris, ciels de toutes les fenêtres normales, historique), chiffré par une phrase de passe (8 caractères au moins, à confirmer) ; les cookies n'y entrent que sur demande explicite, jamais les mots de passe.
+- Sauvegarde automatique nocturne du paquet dans un dossier au choix ; la phrase de passe est gardée dans le coffre du système, jamais sur le disque en clair.
+- Limites de la v1 : les mots de passe enregistrés des navigateurs ne sont pas importés, ni leurs cookies (chiffrés par le système) ; les cookies de Lyra ne voyagent que dans un paquet qui les inclut volontairement.
+
+Prévus ensuite : réglages complets et règles par site (D).
 
 ## Développement
 

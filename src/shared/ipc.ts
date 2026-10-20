@@ -1,4 +1,6 @@
-import type { DecisionPermission, DownloadInfo, EntreeImport, HistoryEntry, InfoExtension, JournalExtension, PasserellePerso, ProgressionFile, ResultatFile, ResultatInstallation, Settings, SiteContourne, SkyState, Suggestion, TypePermission } from './types'
+import type { DemandeExportFichier, DemandeExportPaquet, DemandeImportFichier, DemandeSauvegardeAuto, EtatSauvegardeAutoIpc, ReponseImportFichier, ReponseSauvegardeAuto, ResultatExport } from '../main/export/types'
+import type { Compteurs, ElementImport, ExtensionImportee, Indisponible, OptionsApplication, ProfilDetecte, ResultatImport } from '../main/import/types'
+import type { DecisionPermission, DownloadInfo, EntreeFileExtensions, HistoryEntry, InfoExtension, JournalExtension, PasserellePerso, ProgressionFile, ResultatFile, ResultatInstallation, Settings, SiteContourne, SkyState, Suggestion, TypePermission } from './types'
 
 export interface RectIpc {
   x: number
@@ -61,6 +63,35 @@ export interface FavoriIpc {
   title: string
   dossier?: string
   date: number
+}
+
+/** Importation depuis un autre navigateur (jalon E) : `profil` est celui rendu par `import:detecter`. */
+export interface DemandeApercuImport {
+  profil: ProfilDetecte
+  elements: ElementImport[]
+  /** Fenêtre d'historique en jours ; `null` : tout. */
+  depuisJours: number | null
+}
+
+export interface ReponseApercuImport {
+  compteurs: Compteurs
+  indisponibles: Partial<Record<ElementImport, Indisponible>>
+  extensions?: ExtensionImportee[]
+}
+
+export interface DemandeImport extends DemandeApercuImport {
+  options: OptionsApplication
+}
+
+/** `en-cours` : un import tourne déjà ; `prive` : appelé depuis une fenêtre privée (rien n'est écrit) ; `invalide` : profil ou éléments inconnus. */
+export type ReponseImport = { id: string } | { erreur: 'en-cours' | 'prive' | 'invalide' }
+
+export interface ProgressionImport {
+  id: string
+  element: ElementImport
+  fait: number
+  total?: number
+  phase: 'lecture' | 'ecriture'
 }
 
 /** Statistiques des Boucliers : éléments bloqués cette semaine, date et origine des listes. */
@@ -232,6 +263,21 @@ export type Requetes = {
   'bookmarks:toggle': [{ url: string; title: string }, boolean]
   'bookmarks:exists': [{ url: string }, boolean]
   'bookmarks:list': [void, FavoriIpc[]]
+  /** Pages `lyra://settings` seulement, jamais une fenêtre privée (jalon E). */
+  'import:detecter': [void, ProfilDetecte[]]
+  'import:apercu': [DemandeApercuImport, ReponseApercuImport]
+  'import:lancer': [DemandeImport, ReponseImport]
+  'import:annuler': [{ id: string }, void]
+  /** Export (jalon E, Task 4) : mêmes règles que `import:*` (page de réglages, jamais une fenêtre privée : refus par exception). */
+  'export:favoris': [DemandeExportFichier, ResultatExport]
+  'export:historique': [DemandeExportFichier, ResultatExport]
+  'export:ciel': [DemandeExportFichier, ResultatExport]
+  'export:reglages': [DemandeExportFichier, ResultatExport]
+  'export:paquet': [DemandeExportPaquet, ResultatExport]
+  'export:sauvegardeAuto': [DemandeSauvegardeAuto, ReponseSauvegardeAuto]
+  'export:sauvegardeEtat': [void, EtatSauvegardeAutoIpc]
+  /** Import d'un fichier (favoris HTML, historique CSV, ciel JSON, réglages JSON, paquet `.lyra`) ; fenêtre privée : `{ ok: false, erreur: 'prive' }`. */
+  'import:fichier': [DemandeImportFichier, ReponseImportFichier]
   'bookmarks:remove': [{ url: string }, void]
   'downloads:list': [void, DownloadInfo[]]
   'downloads:pause': [{ id: string }, void]
@@ -311,6 +357,9 @@ export type Evenements = {
   'find:result': { id: string; actif: number; total: number }
   /** Main → chrome, overlay et pages internes : l'état des passerelles a changé. */
   'passerelles:changed': EtatPasserelles
+  /** Main → page de réglages qui a lancé l'import. */
+  'import:progression': ProgressionImport
+  'import:termine': { id: string; resultat: ResultatImport }
 }
 
 export type CanalRequete = keyof Requetes

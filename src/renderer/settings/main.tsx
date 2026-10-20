@@ -9,6 +9,7 @@ import { General } from './General'
 import { ActionsReglages } from './ActionsReglages'
 import { Reseau } from './Reseau'
 import { Apropos } from './Apropos'
+import { PageImport } from './PageImport'
 
 interface Section {
   id: string
@@ -52,6 +53,9 @@ function App() {
   useEffect(() => {
     const maj = (): void => setRoute(routeDepuisHash(location.hash))
     window.addEventListener('hashchange', maj)
+    // Un changement de hash survenu entre le premier rendu et cet abonnement (l'effet attend la prochaine image,
+    // qui tarde dans une fenêtre cachée ou en arrière-plan) serait sinon perdu.
+    maj()
     return () => window.removeEventListener('hashchange', maj)
   }, [])
 
@@ -76,6 +80,7 @@ function App() {
         {route === 'telechargements' && <Telechargements />}
         {route === 'reseau' && <Reseau />}
         {route === 'apropos' && <Apropos />}
+        {route === 'importer' && <PageImport />}
       </main>
     </div>
   )

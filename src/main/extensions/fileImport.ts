@@ -1,16 +1,16 @@
 /**
  * File d'import (jalon E) : réinstalle, en série, les extensions repérées dans un autre navigateur.
- * Sans Electron : les installateurs sont injectés. `EntreeImport` est structurellement compatible avec
+ * Sans Electron : les installateurs sont injectés. `EntreeFileExtensions` est structurellement compatible avec
  * `ExtensionEnAttente` du jalon E (`settings.import.extensionsEnAttente`) : la fusion n'ajoute qu'un branchement.
  *
  * Règles : une extension « imposée » (par une règle d'entreprise du navigateur d'origine) n'est jamais installée sans choix
  * explicite de l'utilisateur ; l'import Firefox est strict (slug ou identifiant AMO, jamais de recherche) ; l'appelant réécrit
  * la file entière avec `restantes` (`setSettings` remplace les tableaux).
  */
-import type { EntreeImport, EtatEntreeFile, ResultatEntreeFile, ResultatFile } from '../../shared/types'
+import type { EntreeFileExtensions, EtatEntreeFile, ResultatEntreeFile, ResultatFile } from '../../shared/types'
 import { installerFile, installerParId, type InstallateursParId, type Progression } from './file'
 
-export type { EntreeImport, ResultatEntreeFile, ResultatFile }
+export type { EntreeFileExtensions, ResultatEntreeFile, ResultatFile }
 
 /** Clé d'une entrée de la file (magasin et identifiant) : celle des confirmations, une même id pouvant exister dans deux magasins. */
 export const cleEntree = (e: { id: string; magasin: string }): string => `${e.magasin}:${e.id}`
@@ -34,9 +34,9 @@ const RAISON_IMPOSEE = "Cette extension est imposée par une règle du navigateu
  * Installe la file en série. Rend un résultat par entrée et la file restante : les entrées imposées non confirmées (état
  * « à confirmer ») et les erreurs (réessayables). Les entrées installées ou « à installer à la main » en sortent.
  */
-export async function consommerFile(file: EntreeImport[], deps: DepsFile): Promise<ResultatFile> {
+export async function consommerFile(file: EntreeFileExtensions[], deps: DepsFile): Promise<ResultatFile> {
   const confirmees = deps.confirmees ?? new Set<string>()
-  const aConfirmer = (e: EntreeImport): boolean => e.imposee === true && !confirmees.has(cleEntree(e))
+  const aConfirmer = (e: EntreeFileExtensions): boolean => e.imposee === true && !confirmees.has(cleEntree(e))
   const aInstaller = file.filter((e) => !aConfirmer(e))
   const retours = await installerFile(
     aInstaller.map(({ id, nom, magasin }) => ({ id, nom, magasin })),
@@ -56,7 +56,7 @@ export async function consommerFile(file: EntreeImport[], deps: DepsFile): Promi
     deps.journal
   )
   const resultats: ResultatEntreeFile[] = []
-  const restantes: EntreeImport[] = []
+  const restantes: EntreeFileExtensions[] = []
   let k = 0
   for (const entree of file) {
     if (aConfirmer(entree)) {
@@ -87,14 +87,14 @@ export interface DepsTraiterFile extends Omit<DepsFile, 'confirmees'> {
 const estObjet = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 
 /** Entrée de la file si elle a la forme minimale utile à l'installation ; l'objet d'origine reste intact. */
-function lue(brut: unknown): EntreeImport | undefined {
+function lue(brut: unknown): EntreeFileExtensions | undefined {
   if (!estObjet(brut)) return undefined
   const { id, nom, magasin, actif, imposee } = brut
   if (typeof id !== 'string' || id.length === 0 || id.length > 200 || typeof nom !== 'string' || typeof magasin !== 'string' || !MAGASINS.includes(magasin)) return undefined
   return {
     id,
     nom: nom.slice(0, 120),
-    magasin: magasin as EntreeImport['magasin'],
+    magasin: magasin as EntreeFileExtensions['magasin'],
     ...(typeof actif === 'boolean' ? { actif } : {}),
     ...(imposee === true ? { imposee: true } : {})
   }
@@ -109,7 +109,7 @@ export async function traiterFile(deps: DepsTraiterFile, confirmees: unknown): P
   const brut = deps.lire()
   if (!Array.isArray(brut) || brut.length === 0) return { resultats: [], restantes: [] }
   if (brut.length > MAX_FILE) throw new Error('File invalide.')
-  const entrees: EntreeImport[] = []
+  const entrees: EntreeFileExtensions[] = []
   for (const b of brut) {
     const e = lue(b)
     if (e) entrees.push(e)
