@@ -2,7 +2,7 @@
 
 Navigateur web de bureau pour **Windows et macOS**, dans l'esprit d'Orion (Kagi) : sobre, sans télémétrie, bloqueur de publicités et de traqueurs intégré (YouTube compris), et compatible avec les **extensions Chrome et Firefox**.
 
-Construit avec Electron et TypeScript. Projet en cours de conception — voir `docs/superpowers/ETAT.md` pour l'avancement et `docs/superpowers/specs/` pour la conception.
+Construit avec Electron et TypeScript. Projet en cours de conception — voir `docs/superpowers/ETAT.md` et `docs/superpowers/etat-jalon-d.md` pour l'avancement et `docs/superpowers/specs/` pour la conception.
 
 ## Installation
 
@@ -30,14 +30,14 @@ Au premier lancement, Lyra demande de choisir le moteur de recherche par défaut
 
 - Ciel des onglets : chaque onglet est une étoile, reliées en constellations ; capsule d'adresse et palette de commandes.
 - Boucliers : bloqueur de publicités et de traqueurs intégré (listes embarquées, mises à jour réseau avec repli), blocage des publicités vidéo YouTube, réglage par site.
-- Nouvel onglet, historique, favoris, téléchargements et réglages généraux (thème, moteur).
+- Nouvel onglet, historique, favoris, téléchargements et réglages généraux (thème, moteur) ; les réglages complets viennent avec le jalon D.
 - Sessions restaurées, onglets endormis (dormance), permissions, menu contextuel, recherche dans la page, zoom, plein écran, pages d'erreur.
 - Paquets macOS (Apple Silicon) et Windows (x64), CI sur les deux systèmes.
 
 ## Ce que fait le jalon C
 
 - Ciel repliable (rail de 14 px, révélé au survol) et placé à gauche, à droite, en haut ou en bas, déplaçable par glisser.
-- Ne pas déranger (⌘ ⇧ D) : page plein cadre, notifications et popups retenues puis livrées à la sortie (Échap), exceptions par site (réglage par site au jalon D) ; la minuterie suit l'horloge après une mise en veille. Un Maj+clic sur un lien ouvre une étoile ordinaire.
+- Ne pas déranger (⌘ ⇧ D) : page plein cadre, notifications et popups retenues puis livrées à la sortie (Échap), exceptions par site (Réglages › Règles par site) ; la minuterie suit l'horloge après une mise en veille. Un Maj+clic sur un lien ouvre une étoile ordinaire.
 - Fenêtre privée (⌘ ⇧ N) : session en mémoire, aucune trace (historique, favoris, réglages par site, passerelles).
 
 ## Extensions (jalon B)
@@ -61,7 +61,16 @@ La page `lyra://extensions` (menu ⋯, palette ou « Gérer » dans le panneau d
 - Sauvegarde automatique nocturne du paquet dans un dossier au choix ; la phrase de passe est gardée dans le coffre du système, jamais sur le disque en clair.
 - Limites de la v1 : les mots de passe enregistrés des navigateurs ne sont pas importés, ni leurs cookies (chiffrés par le système) ; les cookies de Lyra ne voyagent que dans un paquet qui les inclut volontairement.
 
-Prévus ensuite : réglages complets et règles par site (D).
+## Réglages (jalon D)
+
+`lyra://settings` (menu ⋯ ou palette) regroupe 19 sections, avec « Rechercher un réglage » (par libellé ou mot-clé), « Exporter les réglages » et « Importer » (JSON). `settings.json` est versionné (version 2) : un fichier de la version 1 est migré sans perte, un réglage inconnu survit à une réécriture, et un fichier illisible redonne les défauts (copie conservée sous `settings.json.corrompu-<date>`, jamais écrasée ; un fichier qu'on ne peut pas lire n'est pas réécrit).
+
+- **Couleurs et thèmes** : sept thèmes prêts (Indigo nuit, Encre, Forêt, Sable, Aurore, Clair total, Nuit complète) et « Mes couleurs » ; 13 couleurs modifiables en clair et en sombre, dont le ciel, les étoiles, la capsule, l'accent et les Boucliers. Les thèmes sont des variables CSS poussées par IPC à toutes les vues, sans rechargement. **Correction automatique du contraste** (activée par défaut) : sous 4,5:1, Lyra ajuste elle-même la couleur du texte diffusée, sans toucher à la couleur choisie. « Passer en sombre » : jamais, avec le système, au coucher du soleil (table par fuseau, sans réseau ni géolocalisation) ou à une heure fixe. Le ciel peut prendre la teinte du site actif (jamais en fenêtre privée). Valeurs dérivées des thèmes : `docs/design/README.md`.
+- **Le ciel et l'apparence** : position et largeur du ciel, police, taille du texte, densité, coins, capsule qui se masque quand la souris ne bouge plus, placement d'une nouvelle étoile, regroupement par site, ternissement, endormissement et archivage des étoiles éteintes.
+- **Règles par site** (`lyra://settings#/sites`, ou ⋯ › « Règles pour <site> ») : une règle s'applique à une origine, un hôte ou un motif `*.hôte` ; la plus précise gagne, champ par champ. Boucliers (Désactivés, Standard, **Strict** : garde supplémentaire contre les scripts tiers hors liste), scriptlets YouTube, cookies (tous, première partie, bloqués, session seulement), scripts (autorisés ou bloqués), extensions autorisées, zoom, Ne pas déranger, lecture automatique, notifications, user-agent (Lyra, Chrome Windows, Firefox, Safari, Chrome Android), style et scripts personnalisés. Jamais écrites depuis une fenêtre privée.
+- **Raccourcis, gestes et souris**, **Ne pas déranger**, **Démarrage** (nouvelle fenêtre, page d'accueil), **Confidentialité** (effacement à la fermeture), **Palette et recherche** (moteurs et mots-clés, y compris personnalisés).
+
+Limites à connaître : les scripts personnalisés s'exécutent même quand les scripts du site sont « Bloqués » ; `document.cookie` est neutralisé par frame, mais pas dans les workers ni dans `window.open('about:blank')` ; les workers voient le vrai user-agent ; la règle d'extension par site n'exclut que les content scripts déclarés dans le manifest. Liste complète : `docs/superpowers/etat-jalon-d.md`.
 
 ## Développement
 
