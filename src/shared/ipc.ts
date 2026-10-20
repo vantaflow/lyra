@@ -349,6 +349,10 @@ export type Requetes = {
   /** Mode test (`enTest()`) : pose la file d'import des réglages (`import.extensionsEnAttente`) et rend celle qui reste. */
   'test:fileImport': [unknown[] | undefined, unknown[]]
   'test:endormir': [string, boolean]
+  /** Mode test (`enTest()`) : avance l'horloge de l'archivage des étoiles éteintes de `avanceMs`, vérifie, renvoie le nombre archivé. */
+  /** Mode test (`enTest()`) : crée une constellation nommée (hors regroupement automatique) ; renvoie son id. */
+  'test:constellation': [{ nom: string }, string]
+  'test:archiver': [{ avanceMs: number }, number]
   /** Test uniquement (LYRA_TEST=1) : dernière URL demandée par la palette. */
   'test:lastNavigation': [void, string | null]
 }

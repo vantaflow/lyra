@@ -122,4 +122,14 @@ describe('TabTree.creerConstellation', () => {
     expect(t.star(s.id)?.constellationId).toBe(c.id)
     expect(TabTree.fromJSON(t.toJSON()).constellation(c.id)).toEqual(c)
   })
+
+  it('⌘ ⇧ T : une étoile dont la constellation a disparu (automatique vidée) revient sans constellation', () => {
+    const t = new TabTree()
+    const c = t.creerConstellation({ name: 'a.test', color: '#fff', auto: true })
+    t.creer({ url: A, position: 'fin' })
+    const e = t.creer({ url: A, constellationId: c.id, position: 'fin' })
+    t.fermer(e.id)
+    t.purgerAutoVides()
+    expect(t.rouvrirDerniere()?.constellationId).toBeUndefined()
+  })
 })

@@ -9,6 +9,7 @@ import { handle, envoyer } from './ipc'
 import { creerReglages } from './settings/settings'
 import { installerProtocoleLyra } from './protocol/lyra'
 import { TabManager } from './tabs/TabManager'
+import { demarrerArchivage, type Archiveur } from './tabs/archivage'
 import { installerMenu } from './tabs/appMenu'
 import { installerPalette } from './palette/actions'
 import { demarrerBoucliers } from './shields/installer'
@@ -78,6 +79,9 @@ let reglagesStore: Reglages | undefined
 const manager = new WindowManager(() => reglagesCourants().ciel)
 const onglets = new Map<number, TabManager>()
 let historique: History | undefined
+/** Archivage des étoiles éteintes (vérifié au démarrage puis chaque heure) ; `decalageHorloge` n'est non nul qu'en mode test. */
+let archiveur: Archiveur | undefined
+let decalageHorloge = 0
 let sessionStore: SessionStore | undefined
 let passerelles: Passerelles | undefined
 /** Extensions (chrome.tabs) : absent tant que le démarrage n'a pas fini de les brancher. */
@@ -221,6 +225,7 @@ function creerFenetre(opts: { privee?: boolean; urlInitiale?: string } = {}, res
         },
     {
       endormirApresMin: () => reglagesCourants().ciel.endormirApresMin,
+      placement: () => ({ nouvelleEtoile: reglagesCourants().apparence.nouvelleEtoile, regrouperParSite: reglagesCourants().apparence.regrouperParSite }),
       surChangement: sauverSession,
       session: sesPrivee,
       // Fenêtre privée : le zoom par site n'est ni lu ni mémorisé.
@@ -809,6 +814,13 @@ void app.whenReady().then(async () => {
       if (m && id) await m.naviguerEtAttendre(id, url)
     })
     handle('test:endormir', (id) => ongletsCourants()?.endormir(id) ?? false)
+    // Constellation créée « par l'utilisateur » (sans l'indicateur `auto`) dans la fenêtre courante.
+    handle('test:constellation', ({ nom }) => ongletsCourants()?.creerConstellation({ name: nom, color: '#5B8DEF' }).id ?? '')
+    // Horloge de l'archivage accélérée : avance de `avanceMs` puis vérifie tout de suite ; renvoie le nombre d'étoiles archivées.
+    handle('test:archiver', ({ avanceMs }) => {
+      decalageHorloge += avanceMs
+      return archiveur?.verifier() ?? 0
+    })
     handle('test:livraisons', () => livraisonsTest)
     // Pose (si fournie) puis rend la vraie file d'import des réglages (validée comme n'importe quel réglage).
     handle('test:fileImport', (liste) => {
@@ -990,6 +1002,14 @@ void app.whenReady().then(async () => {
   const restauree = restaurerSession(reglages.getSettings().demarrage.restaurer, sessionStore.charger())
   if (restauree) for (const f of restauree.fenetres) creerFenetre({}, f)
   else creerFenetre({ urlInitiale: pageDeDemarrage(reglages.getSettings().demarrage.pageAccueil) })
+  // Étoiles éteintes : vérifiées maintenant que le ciel est restauré, puis chaque heure (jamais en fenêtre privée).
+  archiveur = demarrerArchivage({
+    fenetres: () => [...onglets].map(([id, tabs]) => ({ tabs: { ciel: () => tabs.ciel(), retirer: (e) => tabs.retirerArchivee(e) }, privee: privees.has(id) })),
+    jours: () => reglagesCourants().apparence.archiverApresJours,
+    historique: () => historique,
+    maintenant: () => Date.now() + decalageHorloge
+  })
+  app.on('will-quit', () => archiveur?.arreter())
   app.on('activate', () => {
     if (BaseWindow.getAllWindows().length === 0) creerFenetre()
   })

@@ -153,6 +153,17 @@ export class History {
     return true
   }
 
+  /**
+   * Archivage d'une étoile éteinte : la page doit rester retrouvable. Absente de l'historique, elle y entre avec la date
+   * donnée ; déjà connue, rien n'est ajouté (pas de visite en plus), seul un titre manquant est complété.
+   */
+  garantir(v: Visite): void {
+    if (v.prive || !this.retenu(v.url)) return
+    const f = this.index.get(v.url)
+    if (!f) this.ajouter(v)
+    else if (!f.title) this.majTitre(v.url, v.title, v.date)
+  }
+
   /** Le titre d'une page arrive après la navigation : met à jour l'entrée sans compter de visite. */
   majTitre(url: string, title: string, date: number = Date.now()): void {
     if (!title || !this.index.has(url)) return

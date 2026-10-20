@@ -161,3 +161,28 @@ describe('attendre', () => {
     expect(readFileSync(chemin, 'utf8').trim().split('\n')).toHaveLength(20)
   })
 })
+
+describe('History.garantir (archivage d’une étoile)', () => {
+  it('page absente : elle entre avec la date donnée et son titre, écrite sur disque', async () => {
+    const h = new History(chemin)
+    h.garantir({ url: 'https://lyre.fr/a', title: 'A', date: NOW })
+    expect(h.rechercher('lyre.fr')).toEqual([{ url: 'https://lyre.fr/a', title: 'A', visitedAt: NOW, visites: 1 }])
+    await h.attendre()
+    expect(readFileSync(chemin, 'utf8')).toContain('https://lyre.fr/a')
+  })
+
+  it('page connue : aucune visite ajoutée, un titre manquant est complété', () => {
+    const h = new History(chemin)
+    h.ajouter({ url: 'https://lyre.fr/a', title: '', date: NOW })
+    h.garantir({ url: 'https://lyre.fr/a', title: 'Titre', date: NOW + JOUR })
+    expect(h.rechercher('lyre.fr')).toEqual([{ url: 'https://lyre.fr/a', title: 'Titre', visitedAt: NOW, visites: 1 }])
+  })
+
+  it('jamais une visite privée ni une adresse non retenue (lyra://, about:)', () => {
+    const h = new History(chemin)
+    h.garantir({ url: 'https://lyre.fr/p', title: 'P', date: NOW, prive: true })
+    h.garantir({ url: 'lyra://newtab', title: 'N', date: NOW })
+    h.garantir({ url: 'about:blank', title: 'B', date: NOW })
+    expect(h.rechercher('')).toEqual([])
+  })
+})

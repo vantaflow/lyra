@@ -13,6 +13,8 @@ export interface Star {
   constellationId?: string
   pinned: boolean
   dormant: boolean
+  /** Début de l'inactivité d'une étoile dormante (ms) : sert à l'archivage des étoiles éteintes. */
+  inactifDepuis?: number
   index: number
 }
 
@@ -20,6 +22,8 @@ export interface Constellation {
   id: string
   name: string
   color: string
+  /** Créée par « Regrouper automatiquement par site » (nom = domaine) ; absente si l'utilisateur l'a créée. */
+  auto?: boolean
 }
 
 export interface SkyState {
