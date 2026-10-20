@@ -212,7 +212,7 @@ test('Boucliers : la bascule par site en fenêtre privée n’écrit rien dans l
     await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), `${BASE}/boucliers-n`)
     await expect.poll(() => fenetre.evaluate(() => window.lyra.invoke('shields:get')).then((e) => e.origine)).toBe(BASE)
     await fenetre.evaluate((o) => window.lyra.invoke('shields:toggleSite', { origine: o, actif: false }), BASE)
-    expect((await fenetre.evaluate(() => window.lyra.invoke('settings:get'))).sites[BASE]).toMatchObject({ boucliers: false })
+    expect((await fenetre.evaluate(() => window.lyra.invoke('settings:get'))).sites[BASE]).toMatchObject({ boucliers: 'desactives' })
   } finally {
     await app.close()
   }

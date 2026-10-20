@@ -1,6 +1,6 @@
 import type { DemandeExportFichier, DemandeExportPaquet, DemandeImportFichier, DemandeSauvegardeAuto, EtatSauvegardeAutoIpc, ReponseImportFichier, ReponseSauvegardeAuto, ResultatExport } from '../main/export/types'
 import type { Compteurs, ElementImport, ExtensionImportee, Indisponible, OptionsApplication, ProfilDetecte, ResultatImport } from '../main/import/types'
-import type { DecisionPermission, DownloadInfo, HistoryEntry, PasserellePerso, Settings, SiteContourne, SkyState, Suggestion, TypePermission } from './types'
+import type { DecisionPermission, DownloadInfo, HistoryEntry, PasserellePerso, RegleSite, Settings, SiteContourne, SkyState, Suggestion, TypePermission } from './types'
 
 export interface RectIpc {
   x: number
@@ -214,6 +214,10 @@ export type Requetes = {
   'sky:get': [void, SkyChange]
   'shields:get': [void, EtatBoucliers]
   'shields:toggleSite': [{ origine: string; actif: boolean }, void]
+  /** Règles par site (clé : origine, hôte nu ou motif `*.hôte`). Écriture refusée en fenêtre privée. */
+  'sites:lister': [void, Record<string, RegleSite>]
+  'sites:ecrire': [{ cle: string; regle: RegleSite }, void]
+  'sites:supprimer': [string, void]
   'shields:stats': [void, StatsBoucliers]
   /** Relit les listes de blocage maintenant ; renvoie les statistiques à jour. */
   'shields:update': [void, StatsBoucliers | { ignore: true; date: string }]
@@ -297,7 +301,10 @@ export type Requetes = {
 
 /** Évènements main → renderer : canal → données. */
 export type Evenements = {
+  /** Réglages sans les règles par site (`sites` y est vide : voir `sites:changed`). */
   'settings:changed': Settings
+  /** Règles par site : diffusé seulement quand elles changent. */
+  'sites:changed': Record<string, RegleSite>
   /** Main → chrome : le ciel masqué est révélé (vue chrome élargie au-dessus de la page) ou retiré. */
   'ciel:revele': boolean
   /** Main → chrome : l'état du mode Ne pas déranger a changé. */

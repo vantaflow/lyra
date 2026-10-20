@@ -8,6 +8,7 @@ import { fromElectronDetails, type ElectronBlocker } from '@ghostery/adblocker-e
 import { parse } from 'tldts-experimental'
 import type { Settings } from '../../shared/types'
 import { hubDe, type SessionWeb } from '../session/webRequestHub'
+import { resoudre } from '../settings/sites'
 import { Compteurs } from './compteurs'
 
 /** Les Boucliers passent avant les règles par site (priorité par défaut du hub : 100). */
@@ -99,7 +100,7 @@ export function creerShields(opts: OptionsShields): Shields {
   let moteur = opts.moteurInitial
   const compteurs = new Compteurs()
 
-  const estActif = (origine: string): boolean => opts.reglages().sites?.[origine]?.boucliers !== false
+  const estActif = (origine: string): boolean => resoudre(opts.reglages().sites ?? {}, origine).boucliers !== 'desactives'
 
   const requeteGhostery = (d: OnBeforeRequestListenerDetails | OnHeadersReceivedListenerDetails, haut: string) =>
     // Sans référent (page file://, requête initiale), la page de premier niveau sert de source.

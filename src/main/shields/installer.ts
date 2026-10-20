@@ -131,11 +131,11 @@ export async function demarrerBoucliers(deps: DepsBoucliers): Promise<Shields> {
   handle('shields:open', (_d, e) => deps.ongletsDe(e.sender).ouvrirOverlay('shields'))
   handle('overlay:close', (_d, e) => deps.ongletsDe(e.sender).fermerOverlay())
   handle('shields:toggleSite', ({ origine, actif }, e) => {
-    if (typeof origine !== 'string' || typeof actif !== 'boolean' || origine === '') return
+    if (typeof origine !== 'string' || typeof actif !== 'boolean' || origine === '' || origine.length > 300) return
     const tm = deps.ongletsDe(e.sender)
     // Fenêtre privée : aucune règle par site n'est écrite ; le panneau l'indique.
     if (deps.privee?.(tm)) return
-    deps.reglages.setSettings({ sites: { [origine]: { boucliers: actif } } } as Partial<Settings>)
+    deps.reglages.setSettings({ sites: { [origine]: { boucliers: actif ? 'standard' : 'desactives' } } } as Partial<Settings>)
     const wc = tm.wcActif()
     // La page est rechargée pour appliquer le changement (réseau et scriptlets).
     if (wc && origineDe(wc.getURL()) === origine) wc.reload()

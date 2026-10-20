@@ -1,6 +1,6 @@
 /**
  * Permissions des sites (caméra, micro, notifications, position, presse-papiers). La décision se prend
- * par origine : règle mémorisée dans `settings.sites[origine].permissions`, sinon prompt dans l'overlay
+ * par origine : règle mémorisée dans la règle du site (`resoudre`, section permissions), sinon prompt dans l'overlay
  * (un à la fois). Tout ce qui n'est pas listé ici est refusé. Pur côté Electron (types seulement) : testable.
  */
 import type { WebContents } from 'electron'

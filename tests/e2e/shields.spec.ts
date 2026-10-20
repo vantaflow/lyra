@@ -41,7 +41,7 @@ test('les Boucliers bloquent une pub et se désactivent par site', async () => {
     await page.waitForTimeout(500)
     expect((await etat(fenetre)).bloques).toBe(0)
     const reglages = await fenetre.evaluate(() => window.lyra.invoke('settings:get'))
-    expect(reglages.sites['file://']).toEqual({ boucliers: false })
+    expect(reglages.sites['file://']).toEqual({ boucliers: 'desactives' })
   } finally {
     await app.close()
   }

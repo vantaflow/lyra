@@ -5,6 +5,7 @@
  * `Reglages`). Ordre : favoris → moteurs → réglages → extensions → onglets → historique (le plus long en dernier).
  * Aucune exception ne remonte : une cible qui échoue rend son élément `indisponible`, les autres continuent.
  */
+import { resoudre } from '../settings/sites'
 import { PALETTE_CONSTELLATIONS } from '../../shared/couleurs'
 import type { ExtensionEnAttente, MoteurPerso, Settings } from '../../shared/types'
 import { MOTEURS } from '../palette/engines'
@@ -330,7 +331,7 @@ function appliquerReglages(r: ReglagesImportes, plan: ResultatMoteurs | undefine
       }
       const zoom = palierZoom(facteur)
       const origines = hoteVersOrigines(hote)
-      const conserve = origines.filter((o) => actuel.sites[o]?.zoom !== undefined)
+      const conserve = origines.filter((o) => resoudre(actuel.sites, o).zoom !== undefined)
       const aEcrire = zoom === 1 ? [] : origines.filter((o) => !conserve.includes(o))
       for (const o of aEcrire) sites[o] = { zoom }
       if (aEcrire.length) res.ajoutes++

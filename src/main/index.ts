@@ -37,6 +37,8 @@ import type { TypePermission } from '../shared/types'
 import type { Passerelles } from './passerelles/Passerelles'
 import { creerPasserelles } from './passerelles/electron'
 import { installerPasserellesIpc } from './passerelles/ipc'
+import { installerSites } from './sites/installer'
+import { resoudre } from './settings/sites'
 import { Dnd, type NotificationRetenue } from './dnd/Dnd'
 import { origineDe, type Shields } from './shields/Shields'
 import type { DureeDnd } from '../shared/ipc'
@@ -117,7 +119,7 @@ function livrerNotifications(fenetre: number, notifications: NotificationRetenue
 }
 
 const dnd = new Dnd({
-  exception: (origine) => reglagesCourants().sites[origine]?.exceptionDnd === true,
+  exception: (origine) => resoudre(reglagesCourants().sites, origine).exceptionDnd === true,
   livrerNotifications,
   // Popups retenues : ouvertes en étoiles d'arrière-plan, reliées à leur opener s'il existe encore.
   ouvrirPopups: (fenetre, popups) => {
@@ -192,7 +194,7 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
       surChangement: sauverSession,
       session: sesPrivee,
       // Fenêtre privée : le zoom par site n'est ni lu ni mémorisé.
-      zoomDe: opts.privee ? undefined : (origine) => reglagesCourants().sites[origine]?.zoom,
+      zoomDe: opts.privee ? undefined : (origine) => resoudre(reglagesCourants().sites, origine).zoom,
       memoriserZoom: opts.privee ? undefined : (origine, zoom) => void reglagesStore?.setSettings({ sites: { [origine]: { zoom } } }),
       rechercheUrl: (texte) => urlDeRecherche(moteurParId(reglagesCourants().moteurParDefaut, moteursDisponibles(reglagesCourants())), texte),
       // Fenêtre privée : ni détection automatique ni proposition d'ajout (rien n'est écrit dans les réglages).
@@ -323,7 +325,7 @@ void app.whenReady().then(async () => {
   reglagesCourants = () => reglages.getSettings()
   reglagesStore = reglages
   const depsPermissions: DepsPermissions = {
-    lire: (origine, type) => reglages.getSettings().sites[origine]?.permissions?.[type],
+    lire: (origine, type) => resoudre(reglages.getSettings().sites, origine).permissions?.[type],
     memoriser: (origine, type, decision) => void reglages.setSettings({ sites: { [origine]: { permissions: { [type]: decision } } } }),
     demander: demanderPermission,
     // Ne pas déranger : demande de notifications retenue jusqu'à la sortie ; notifications suspendues (service workers compris).
@@ -334,7 +336,7 @@ void app.whenReady().then(async () => {
     suspendues: (wc, origine) => {
       const m = wc ? ongletsPossedant(wc) : undefined
       if (m) return dnd.retient(m.fenetreId, origine)
-      return !wc && dnd.actifQuelquePart() && reglages.getSettings().sites[origine]?.exceptionDnd !== true
+      return !wc && dnd.actifQuelquePart() && resoudre(reglages.getSettings().sites, origine).exceptionDnd !== true
     }
   }
   const permissions = new Permissions(depsPermissions)
@@ -431,7 +433,7 @@ void app.whenReady().then(async () => {
     if (id !== undefined) dnd.montrerRappel(id)
   })
   // Surcharge de window.Notification (preload page) : appels synchrones, l'origine vient du cadre expéditeur.
-  const decisionNotifications = (origine: string): string | undefined => reglages.getSettings().sites[origine]?.permissions?.notifications
+  const decisionNotifications = (origine: string): string | undefined => resoudre(reglages.getSettings().sites, origine).permissions?.notifications
   // Iframe about:blank / srcdoc : elle hérite de l'origine du cadre qui l'a créée (le parent le plus proche qui a une adresse).
   const urlEffective = (cadre?: WebFrameMain | null): string => {
     let c = cadre
@@ -560,6 +562,7 @@ void app.whenReady().then(async () => {
   })
   passerelles = pass
   installerPasserellesIpc(pass, estPrivee)
+  installerSites({ reglages, estPrivee })
   // Le PAC initial est en place avant toute fenêtre (une étoile restaurée ne part pas en direct).
   await pass.demarrer()
   if (enTest()) {
@@ -723,9 +726,14 @@ void app.whenReady().then(async () => {
     enFermeture = true
     void hist.attendre().finally(() => app.quit())
   })
+  // Les règles par site (jusqu'à 10 000) ont leur évènement `sites:changed` : jamais rediffusées ici.
+  let reglagesDiffuses: Settings = reglages.getSettings()
   reglages.onChanged((s) => {
+    const change = (Object.keys(s) as Array<keyof Settings>).some((k) => k !== 'sites' && s[k] !== reglagesDiffuses[k])
+    reglagesDiffuses = s
+    if (!change) return
     manager.relayoutAll()
-    for (const wc of webContents.getAllWebContents()) envoyer(wc, 'settings:changed', s)
+    for (const wc of webContents.getAllWebContents()) envoyer(wc, 'settings:changed', { ...s, sites: {} })
   })
   sessionStore = new SessionStore(join(paths.userData(), 'session.json'))
   const restauree = sessionStore.charger()

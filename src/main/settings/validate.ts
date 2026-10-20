@@ -3,11 +3,10 @@ import { fusion } from './store'
 import { hoteValide, octets } from '../passerelles/liste'
 import { SCHEMA_D, booleen, champsRegleSiteD, entier, enumeration, estObjet, pixels, propre, texte, type Obj, type Schema } from './validate-d'
 import { migrer } from './migrations'
+import { cleDe } from './sites'
 
 export type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K] }
 
-/** Origine acceptée comme clé de règle de site : http(s)://hôte[:port] ou file://. */
-const ORIGINE = /^(https?:\/\/([a-z0-9.-]+|\[[0-9a-f:]+\])(:\d{1,5})?|file:\/\/)$/i
 const MAX_SITES = 10_000
 
 const TYPES = ['camera', 'micro', 'notifications', 'geolocalisation', 'presse-papiers']
@@ -23,14 +22,14 @@ function permissions(v: unknown): Obj | undefined {
   return Object.keys(sortie).length > 0 ? sortie : undefined
 }
 
-/** sites : { origine: { boucliers?, permissions?, zoom?, exceptionDnd?, + champs de D } } ; champs et entrées invalides ignorés. */
+/** sites : { clé (origine, hôte nu ou motif `*.hôte`, voir `cleDe`): { boucliers?, permissions?, zoom?, exceptionDnd?, + champs de D } } ; champs et entrées invalides ignorés. */
 function sites(v: unknown): Obj | undefined {
   if (!estObjet(v)) return undefined
   const sortie: Obj = {}
   let n = 0
   for (const [origine, regle] of Object.entries(v)) {
     if (n >= MAX_SITES) break
-    if (origine.length > 300 || !ORIGINE.test(origine) || !estObjet(regle)) continue
+    if (!cleDe(origine) || !estObjet(regle)) continue
     const champs: Obj = {}
     Object.assign(champs, champsRegleSiteD(regle))
     const perms = permissions(propre(regle, 'permissions'))

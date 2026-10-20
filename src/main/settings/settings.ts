@@ -9,6 +9,8 @@ export interface Reglages {
   setSettings(patch: Partial<Settings>): Settings
   /** Retire `reseau.personnelle` (un patch ne peut pas supprimer de clé). */
   supprimerPersonnelle(): Settings
+  /** Retire la règle d'un site (un patch ne peut pas supprimer de clé). */
+  supprimerSite(cle: string): Settings
   /** Équivalent de l'évènement `settings:changed` ; renvoie la fonction de désabonnement. */
   onChanged(cb: (s: Settings) => void): () => void
 }
@@ -28,6 +30,11 @@ export function creerReglages(chemin: string, dossierTelechargements: string): R
       store.remplacer((s) => {
         const { personnelle: _retiree, ...reseau } = s.reseau
         return { ...s, reseau }
+      }),
+    supprimerSite: (cle) =>
+      store.remplacer((s) => {
+        const { [cle]: _retiree, ...sites } = s.sites
+        return { ...s, sites }
       }),
     onChanged: (cb) => store.onChange(cb)
   }

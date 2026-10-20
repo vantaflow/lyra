@@ -55,4 +55,17 @@ describe('réglages', () => {
     expect(recus).toEqual([undefined])
     expect('personnelle' in creerReglages(chemin, '/tmp/dl').getSettings().reseau).toBe(false)
   })
+
+  it('supprimerSite retire réellement la règle (fusion ne supprime jamais une clé)', () => {
+    const r = creer()
+    r.setSettings({ sites: { 'a.com': { zoom: 2 }, '*.b.com': { zoom: 1.5 } } })
+    const recus: number[] = []
+    r.onChanged((s) => recus.push(Object.keys(s.sites).length))
+    r.supprimerSite('a.com')
+    expect(Object.keys(r.getSettings().sites)).toEqual(['*.b.com'])
+    expect(recus).toEqual([1])
+    // Persistée : une relecture ne la retrouve pas.
+    r.setSettings({ theme: 'clair' })
+    expect(r.getSettings().sites['a.com']).toBeUndefined()
+  })
 })
