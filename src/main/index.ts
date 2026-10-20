@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import * as paths from './paths'
 import { definirFournisseurLangue } from '../shared/i18n'
 import { routeReglesSite } from '../shared/routeSite'
-import { handle, envoyer } from './ipc'
+import { handle, envoyer, estVueLyra } from './ipc'
 import { creerReglages } from './settings/settings'
 import { installerProtocoleLyra } from './protocol/lyra'
 import { TabManager } from './tabs/TabManager'
@@ -1040,7 +1040,7 @@ void app.whenReady().then(async () => {
     reglagesDiffuses = s
     if (!change) return
     manager.relayoutAll()
-    for (const wc of webContents.getAllWebContents()) envoyer(wc, 'settings:changed', { ...s, sites: {} })
+    for (const wc of webContents.getAllWebContents()) if (estVueLyra(wc.getURL())) envoyer(wc, 'settings:changed', { ...s, sites: {} })
   })
   await nettoyageDemarrage
   sessionStore = new SessionStore(join(paths.userData(), 'session.json'))

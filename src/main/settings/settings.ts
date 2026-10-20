@@ -1,6 +1,6 @@
 import type { Settings } from '../../shared/types'
 import { reglagesParDefaut } from './defaults'
-import { JsonStore, conserverCopieCorrompue } from './store'
+import { JsonStore, conserverCopieCorrompue, fusion } from './store'
 import { migrer } from './migrations'
 import { validerPatch } from './validate'
 import { accueilImporteConsomme } from './accueil-importe'
@@ -14,6 +14,8 @@ export interface Reglages {
   supprimerSite(cle: string): Settings
   /** Retire des champs d'une règle de site ; la règle disparaît si elle devient vide. */
   retirerChampsSite(cle: string, champs: readonly string[]): Settings
+  /** Retire des champs d'une règle de site puis y fusionne `ecrire` (validé), en une seule écriture et une seule diffusion. */
+  modifierSite(cle: string, ecrire: Record<string, unknown>, retirer: readonly string[]): Settings
   /** Applique la page d'accueil importée en attente (voir `accueil-importe.ts`) ; ne fait rien s'il n'y en a pas. */
   consommerAccueilImporte(): Settings
   /** Écrit tout de suite une écriture différée en attente (fermeture de l'application). */
@@ -51,6 +53,15 @@ export function creerReglages(chemin: string, dossierTelechargements: string, de
         const reste = Object.fromEntries(Object.entries(regle).filter(([k]) => !champs.includes(k)))
         const { [cle]: _ancienne, ...autres } = s.sites
         return { ...s, sites: Object.keys(reste).length ? { ...autres, [cle]: reste } : autres }
+      }),
+    modifierSite: (cle, ecrire, retirer) =>
+      store.remplacer((s) => {
+        const valide = (validerPatch({ sites: { [cle]: ecrire } } as Partial<Settings>).sites ?? {})[cle] ?? {}
+        const existante = Object.hasOwn(s.sites, cle) ? s.sites[cle] : {}
+        const reste = Object.fromEntries(Object.entries(existante).filter(([k]) => !retirer.includes(k)))
+        const regle = fusion(reste, valide)
+        const { [cle]: _ancienne, ...autres } = s.sites
+        return { ...s, sites: Object.keys(regle).length ? { ...autres, [cle]: regle } : autres }
       }),
     consommerAccueilImporte: () => store.remplacer((s) => accueilImporteConsomme(s) ?? s),
     vider: () => store.vider(),

@@ -16,6 +16,8 @@ export interface DepsService<V extends Vue> {
   estPrivee(v: V): boolean
   vues(): Iterable<V>
   envoyer(v: V, regles: Record<string, RegleSite>): void
+  /** Adresse d'une vue Lyra (défaut : `estVueInterne`) ; l'installateur fournit le contrôle strict de `ipc.ts`. */
+  estVue?(url: string): boolean
 }
 
 /** Les réglages autres que `sites` ont-ils changé ? (`settings:changed` ne repart que dans ce cas.) */
@@ -29,7 +31,7 @@ export function creerServiceSites<V extends Vue>(deps: DepsService<V>) {
   const desabonner = reglages.onChanged((s) => {
     if (s.sites === precedent) return
     precedent = s.sites
-    for (const v of deps.vues()) if (estVueInterne(v.getURL())) deps.envoyer(v, s.sites)
+    for (const v of deps.vues()) if ((deps.estVue ?? estVueInterne)(v.getURL())) deps.envoyer(v, s.sites)
   })
   return {
     desabonner,
@@ -41,8 +43,8 @@ export function creerServiceSites<V extends Vue>(deps: DepsService<V>) {
       if (!cle || typeof d.regle !== 'object' || d.regle === null || Array.isArray(d.regle)) return
       const retirer = Object.keys(d.regle).filter((k) => d.regle[k] === null)
       const ecrire = Object.fromEntries(Object.entries(d.regle).filter(([, v]) => v !== null))
-      if (retirer.length) reglages.retirerChampsSite(cle, retirer)
-      if (Object.keys(ecrire).length) reglages.setSettings({ sites: { [cle]: ecrire as RegleSite } })
+      // Une seule écriture : une seule diffusion `sites:changed` (jamais d'état intermédiaire sans le champ retiré ni le nouveau).
+      if (retirer.length || Object.keys(ecrire).length) reglages.modifierSite(cle, ecrire, retirer)
     },
     supprimer(cle: string, emetteur: V): void {
       if (deps.estPrivee(emetteur)) return
