@@ -48,6 +48,32 @@ export class Bookmarks {
     this.store.set({ items: [...this.lister(), item] })
   }
 
+  /**
+   * Import : une seule écriture du store pour tout le lot (pas une par favori). Date d'origine conservée
+   * (0 ou absente : maintenant) ; une URL déjà présente, même hors dossier, ou répétée dans le lot est comptée « présente ».
+   */
+  ajouterLot(items: Array<{ url: string; title: string; dossier?: string; date?: number }>): { ajoutes: number; presents: number } {
+    const vus = new Set(this.lister().map((f) => f.url))
+    const nouveaux: Favori[] = []
+    let presents = 0
+    const maintenant = Date.now()
+    for (const i of items) {
+      if (vus.has(i.url)) {
+        presents++
+        continue
+      }
+      vus.add(i.url)
+      nouveaux.push({
+        url: i.url,
+        title: i.title,
+        ...(i.dossier ? { dossier: i.dossier } : {}),
+        date: typeof i.date === 'number' && i.date > 0 ? i.date : maintenant
+      })
+    }
+    if (nouveaux.length > 0) this.store.set({ items: [...this.lister(), ...nouveaux] })
+    return { ajoutes: nouveaux.length, presents }
+  }
+
   retirer(url: string): void {
     if (this.existe(url)) this.store.set({ items: this.lister().filter((f) => f.url !== url) })
   }

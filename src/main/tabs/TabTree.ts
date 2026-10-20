@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { SkyState, Star } from '../../shared/types'
+import type { Constellation, SkyState, Star } from '../../shared/types'
 
 const MAX_FERMEES = 25
 
@@ -57,6 +57,16 @@ export class TabTree {
     }
     this.reindexer()
     return star
+  }
+
+  creerConstellation(o: { name: string; color: string }): Constellation {
+    const c: Constellation = { id: randomUUID(), name: o.name, color: o.color }
+    this.constellations.push(c)
+    return c
+  }
+
+  constellation(id: string): Constellation | undefined {
+    return this.constellations.find((c) => c.id === id)
   }
 
   star(id: string): Star | undefined {

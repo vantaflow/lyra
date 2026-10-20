@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { enTest } from '../modeTest'
 import { estIpv4Publique, fusionner, lireListe, type Candidat } from './liste'
 
 /** Une liste publique de proxys au format « IP:port » (un par ligne). */
@@ -55,7 +56,7 @@ export function sourcesParDefaut(): Source[] {
 /** `LYRA_PASSERELLES_SOURCES` (lue seulement sous LYRA_TEST=1 ; URL séparées par des virgules) remplace les sources ; protocole déduit de l'URL (« socks5 » dedans, sinon http). */
 function sourcesEffectives(fournies?: Source[]): Source[] {
   const env = process.env.LYRA_PASSERELLES_SOURCES
-  if (process.env.LYRA_TEST === '1' && env && env.trim()) {
+  if (enTest() && env && env.trim()) {
     return env
       .split(',')
       .map((u) => u.trim())

@@ -126,6 +126,17 @@ describe('History', () => {
 })
 
 
+describe('History : une URL très visitée', () => {
+  it('200 000 visites de la même URL : pages() et rechercher() ne lèvent pas', () => {
+    const lignes: string[] = []
+    for (let i = 0; i < 200_000; i++) lignes.push(JSON.stringify({ url: 'https://gros.fr/', title: 'Gros', date: NOW + i }))
+    writeFileSync(chemin, lignes.join('\n') + '\n')
+    const h = new History(chemin)
+    expect([...h.pages()]).toEqual([{ url: 'https://gros.fr/', titre: 'Gros', date: NOW + 199_999, visites: 200_000 }])
+    expect(h.rechercher('gros')[0]).toMatchObject({ visitedAt: NOW + 199_999, visites: 200_000 })
+  })
+})
+
 describe('urlRetenue', () => {
   it.each(['about:blank', 'data:text/html,<p>x</p>', 'chrome-error://chromewebdata/', 'devtools://devtools/x', 'lyra://history'])(
     'refuse %s', (u) => {

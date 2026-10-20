@@ -1,0 +1,44 @@
+name: release
+
+# Sur un tag v* : construit les paquets non signés (macOS arm64, Windows x64) et les joint à une release GitHub
+# en BROUILLON. La publication reste manuelle (l'utilisateur relit puis publie). Les tests tournent dans build.yml,
+# déclenché par le même tag.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  paquets:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Paquet macOS
+        if: runner.os == 'macOS'
+        run: npx electron-builder --mac --arm64 --publish never
+      - name: Paquet Windows
+        if: runner.os == 'Windows'
+        run: npx electron-builder --win --x64 --publish never
+      - name: Joindre à la release brouillon
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          name: Lyra ${{ github.ref_name }}
+          files: |
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+          fail_on_unmatched_files: false

@@ -1,0 +1,45 @@
+{
+  "homepage": "https://start.example.org/",
+  "homepage_is_newtabpage": false,
+  "session": {
+    "restore_on_startup": 4,
+    "startup_urls": [
+      "https://news.example.org/"
+    ]
+  },
+  "download": {
+    "default_directory": "C:\\Users\\Test\\Téléchargements"
+  },
+  "intl": {
+    "accept_languages": "fr-FR,fr,en-US,en"
+  },
+  "partition": {
+    "per_host_zoom_levels": {
+      "x": {
+        "example.com": {
+          "zoom_level": 1,
+          "last_modified": "13411699200000000"
+        },
+        "docs.example.org": {
+          "zoom_level": 3,
+          "last_modified": "13411699200000000"
+        },
+        "petit.example": {
+          "zoom_level": -1,
+          "last_modified": "13411699200000000"
+        },
+        "neutre.example": {
+          "zoom_level": 0,
+          "last_modified": "13411699200000000"
+        }
+      }
+    }
+  },
+  "default_search_provider_data": {
+    "template_url_data": {
+      "short_name": "DuckDuckGo",
+      "keyword": "duckduckgo.com",
+      "url": "https://duckduckgo.com/?q={searchTerms}"
+    }
+  }
+}

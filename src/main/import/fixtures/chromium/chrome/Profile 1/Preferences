@@ -1,0 +1,9 @@
+{
+  "homepage_is_newtabpage": true,
+  "session": {
+    "restore_on_startup": 5
+  },
+  "intl": {
+    "accept_languages": "en-US,en"
+  }
+}

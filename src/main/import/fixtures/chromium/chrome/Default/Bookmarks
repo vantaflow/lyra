@@ -1,0 +1,90 @@
+{
+  "checksum": "00000000000000000000000000000000",
+  "roots": {
+    "bookmark_bar": {
+      "type": "folder",
+      "name": "Barre de favoris",
+      "date_added": "13411699200000000",
+      "children": [
+        {
+          "type": "url",
+          "name": "Exemple",
+          "url": "https://example.com/",
+          "date_added": "13411699200000000",
+          "id": "1",
+          "guid": "g"
+        },
+        {
+          "type": "folder",
+          "name": "Lecture",
+          "date_added": "13411699200000000",
+          "children": [
+            {
+              "type": "url",
+              "name": "Guide",
+              "url": "https://docs.example.org/guide",
+              "date_added": "13411699200000000",
+              "id": "1",
+              "guid": "g"
+            },
+            {
+              "type": "url",
+              "name": "Marque-page JS",
+              "url": "javascript:alert(1)",
+              "date_added": "13411699200000000",
+              "id": "1",
+              "guid": "g"
+            }
+          ],
+          "id": "1",
+          "guid": "g"
+        }
+      ],
+      "id": "1",
+      "guid": "g"
+    },
+    "other": {
+      "type": "folder",
+      "name": "Autres favoris",
+      "date_added": "13411699200000000",
+      "children": [
+        {
+          "type": "url",
+          "name": "Wikipédia",
+          "url": "https://fr.wikipedia.org/",
+          "date_added": "13411699200000000",
+          "id": "1",
+          "guid": "g"
+        },
+        {
+          "type": "folder",
+          "name": "Vide",
+          "date_added": "13411699200000000",
+          "children": [],
+          "id": "1",
+          "guid": "g"
+        }
+      ],
+      "id": "1",
+      "guid": "g"
+    },
+    "synced": {
+      "type": "folder",
+      "name": "Favoris mobiles",
+      "date_added": "13411699200000000",
+      "children": [
+        {
+          "type": "url",
+          "name": "Mobile",
+          "url": "https://m.example.net/",
+          "date_added": "13411699200000000",
+          "id": "1",
+          "guid": "g"
+        }
+      ],
+      "id": "1",
+      "guid": "g"
+    }
+  },
+  "version": 1
+}

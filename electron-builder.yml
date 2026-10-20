@@ -1,7 +1,16 @@
 appId: com.vantaflow.lyra
 productName: Lyra
 directories: { output: release, buildResources: build }
-files: [out/**, package.json]
+files:
+  - out/**
+  - package.json
+  # sql.js (lecture des bases des autres navigateurs) : seuls le chargeur Node et le .wasm servent ; le reste du
+  # paquet npm (variantes asm, debug, navigateur, zip) pèse ~30 Mo pour rien.
+  - "!node_modules/sql.js/**"
+  - node_modules/sql.js/package.json
+  - node_modules/sql.js/LICENSE
+  - node_modules/sql.js/dist/sql-wasm.js
+  - node_modules/sql.js/dist/sql-wasm.wasm
 asar: true
 asarUnpack: [resources/**]          # listes de filtres et polyfill embarqués
 extraResources: resources/

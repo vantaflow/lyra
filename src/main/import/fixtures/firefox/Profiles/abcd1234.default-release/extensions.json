@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 36,
+  "addons": [
+    {
+      "id": "uBlock0@raymondhill.net",
+      "version": "1.0",
+      "type": "extension",
+      "location": "app-profile",
+      "active": true,
+      "userDisabled": false,
+      "appDisabled": false,
+      "signedState": 2,
+      "defaultLocale": {
+        "name": "uBlock Origin"
+      }
+    },
+    {
+      "id": "{446900e4-71c2-419f-a6a7-df9c091e268b}",
+      "version": "1.0",
+      "type": "extension",
+      "location": "app-profile",
+      "active": false,
+      "userDisabled": true,
+      "appDisabled": false,
+      "signedState": 2,
+      "defaultLocale": {
+        "name": "Bitwarden"
+      }
+    },
+    {
+      "id": "dev@example.test",
+      "version": "1.0",
+      "type": "extension",
+      "location": "app-profile",
+      "active": true,
+      "userDisabled": false,
+      "appDisabled": false,
+      "signedState": 0,
+      "defaultLocale": {
+        "name": "Extension de développement"
+      },
+      "temporarilyInstalled": true
+    },
+    {
+      "id": "theme@example.test",
+      "version": "1.0",
+      "type": "theme",
+      "location": "app-profile",
+      "active": true,
+      "userDisabled": false,
+      "appDisabled": false,
+      "signedState": 2,
+      "defaultLocale": {
+        "name": "Thème sombre"
+      }
+    },
+    {
+      "id": "fr@dictionaries.addons.mozilla.org",
+      "version": "1.0",
+      "type": "dictionary",
+      "location": "app-profile",
+      "active": true,
+      "userDisabled": false,
+      "appDisabled": false,
+      "signedState": 2,
+      "defaultLocale": {
+        "name": "Français"
+      }
+    },
+    {
+      "id": "formautofill@mozilla.org",
+      "version": "1.0",
+      "type": "extension",
+      "location": "app-builtin",
+      "active": true,
+      "userDisabled": false,
+      "appDisabled": false,
+      "signedState": 2,
+      "defaultLocale": {
+        "name": "Form Autofill"
+      }
+    },
+    {
+      "id": "sans-nom@example.test",
+      "version": "1.0",
+      "type": "extension",
+      "location": "app-profile",
+      "active": true,
+      "userDisabled": false,
+      "appDisabled": false,
+      "signedState": 2,
+      "defaultLocale": {}
+    }
+  ]
+}

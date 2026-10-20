@@ -1,6 +1,6 @@
 import { app, BaseWindow, ipcMain, powerMonitor, Notification as NotificationSysteme, webContents, type WebContents, type WebFrameMain, protocol, session, type Session } from 'electron'
 import { WindowManager } from './window/WindowManager'
-import type { Settings } from '../shared/types'
+import type { Settings, SkyState } from '../shared/types'
 import { join } from 'node:path'
 import * as paths from './paths'
 import { definirFournisseurLangue } from '../shared/i18n'
@@ -15,12 +15,22 @@ import { History } from './history/History'
 import { Bookmarks } from './bookmarks/Bookmarks'
 import { Downloads } from './downloads/Downloads'
 import { installerReglagesIpc } from './settings/ipc'
+import { installerImportIpc } from './import/ipc'
+import { installerExportIpc } from './export/ipc'
+import { enTest } from './modeTest'
+import { SauvegardeAuto } from './export/sauvegardeAuto'
+import { coffreDeTest, coffreSysteme } from './export/coffre'
+import { cookiesDeSession, PARTITION_COOKIES } from './export/cookies'
+import type { DepsOperations } from './export/operations'
+import { processusImport } from './import/processus'
+import { balayerOrphelins } from './import/copie'
+import type { CibleCiel, CiblesImport } from './import/appliquer'
 import { SessionStore, type FenetreSession } from './session/SessionStore'
 import { Permissions, type DepsPermissions, type ReponsePermission } from './permissions/Permissions'
 import { Attentes, REFUS } from './permissions/attentes'
 import { nettoyerUserAgent } from './ua'
 import { continuerAutorise, estUrlErreur, exceptionsCertificat, hoteDe, urlOriginale } from './tabs/erreurs'
-import { moteurParId, urlDeRecherche } from './palette/engines'
+import { moteurParId, moteursDisponibles, urlDeRecherche } from './palette/engines'
 import type { ActionMenu, AncreMenu } from '../shared/ipc'
 import type { Reglages } from './settings/settings'
 import type { TypePermission } from '../shared/types'
@@ -88,7 +98,7 @@ function focaliserNotification(fenetre: number, n: NotificationRetenue): void {
  * dure des heures) ; la livraison par le main y résiste, et le clic retrouve l'étoile d'origine.
  */
 function livrerNotifications(fenetre: number, notifications: NotificationRetenue[]): void {
-  if (process.env.LYRA_TEST === '1') {
+  if (enTest()) {
     for (const n of notifications) livraisonsTest.push({ titre: n.titre, corps: n.corps, origine: n.origine, etoileId: n.etoileId })
     return
   }
@@ -184,7 +194,7 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
       // Fenêtre privée : le zoom par site n'est ni lu ni mémorisé.
       zoomDe: opts.privee ? undefined : (origine) => reglagesCourants().sites[origine]?.zoom,
       memoriserZoom: opts.privee ? undefined : (origine, zoom) => void reglagesStore?.setSettings({ sites: { [origine]: { zoom } } }),
-      rechercheUrl: (texte) => urlDeRecherche(moteurParId(reglagesCourants().moteurParDefaut), texte),
+      rechercheUrl: (texte) => urlDeRecherche(moteurParId(reglagesCourants().moteurParDefaut, moteursDisponibles(reglagesCourants())), texte),
       // Fenêtre privée : ni détection automatique ni proposition d'ajout (rien n'est écrit dans les réglages).
       passerelles: passerelles?.crochets({ privee: opts.privee === true }),
       surEchap: () => dnd.sortir(fenetre.id),
@@ -305,6 +315,10 @@ void app.whenReady().then(async () => {
   session.defaultSession.setUserAgent(ua)
   session.fromPartition('persist:lyra').setUserAgent(ua)
   installerProtocoleLyra(session.defaultSession)
+  // Copies temporaires d'import laissées par un arrêt brutal : balayées en tâche de fond, sans jamais retarder le démarrage.
+  void balayerOrphelins({ dossierTemp: app.getPath('temp') })
+    .then((n) => n > 0 && console.log(`[import] ${n} dossier(s) temporaire(s) orphelin(s) supprimé(s)`))
+    .catch((err) => console.error('[import] balayage des copies temporaires impossible', err))
   const reglages = creerReglages(join(paths.userData(), 'settings.json'), app.getPath('downloads'))
   reglagesCourants = () => reglages.getSettings()
   reglagesStore = reglages
@@ -334,7 +348,7 @@ void app.whenReady().then(async () => {
     if (attentes.repondre(d.id, e.sender.id, reponse)) ongletsDe(e.sender).fermerOverlay()
   })
   // file:// n'est enregistré que sous LYRA_TEST=1 : les e2e naviguent sur une fixture locale.
-  historique = new History(join(paths.userData(), 'historique.jsonl'), { enregistrerFichiers: process.env.LYRA_TEST === '1' })
+  historique = new History(join(paths.userData(), 'historique.jsonl'), { enregistrerFichiers: enTest() })
   const hist = historique
   const favoris = new Bookmarks(join(paths.userData(), 'favoris.json'))
   favoris.onChange(() => {
@@ -477,6 +491,59 @@ void app.whenReady().then(async () => {
   handle('settings:get', () => reglages.getSettings())
   handle('settings:set', (patch) => reglages.setSettings(patch))
   installerReglagesIpc(reglages)
+  // Importation depuis un autre navigateur : les onglets importés vont toujours dans une fenêtre NORMALE.
+  const cibleCiel = (m: TabManager): CibleCiel => ({
+    constellations: () => m.constellations(),
+    creerConstellation: (o) => m.creerConstellation(o),
+    ouvrirEndormie: (url, o) => m.ouvrirEndormie(url, o),
+    reveiller: (id) => m.reveiller(id),
+    sauver: () => sauverSession()
+  })
+  const nouvelleFenetreNormale = (): TabManager => {
+    const avant = new Set(onglets.keys())
+    creerFenetre()
+    const [, m] = [...onglets].find(([id]) => !avant.has(id))!
+    return m
+  }
+  // La fenêtre normale de la page de réglages si elle existe, sinon la plus récente (jamais une fenêtre privée).
+  const ongletsNormaux = (wc?: WebContents): TabManager | undefined => {
+    const normale = (m: TabManager | undefined): TabManager | undefined => (m && !privees.has(m.fenetreId) ? m : undefined)
+    return (wc ? normale(ongletsPossedant(wc)) : undefined) ?? normale(ongletsCourants()) ?? [...onglets].reverse().map(([, t]) => normale(t)).find(Boolean)
+  }
+  // Ciels de toutes les fenêtres normales, jamais des privées (paquet et sauvegarde nocturne).
+  const cielsNormaux = (): SkyState[] => [...onglets].filter(([, m]) => !privees.has(m.fenetreId)).map(([, m]) => m.exporter().ciel)
+  const ciblesImport = (wc: WebContents): CiblesImport => {
+    const m = ongletsNormaux(wc) ?? nouvelleFenetreNormale()
+    return {
+      favoris,
+      historique: hist,
+      ciel: cibleCiel(m),
+      nouvelleFenetre: () => cibleCiel(nouvelleFenetreNormale()),
+      etoilesFichiers: enTest(),
+      reglages: { get: () => reglages.getSettings(), set: (patch) => reglages.setSettings(patch) }
+    }
+  }
+  installerImportIpc({ processus: processusImport, estPrivee, cibles: ciblesImport })
+  // Export et import de fichiers, sauvegarde automatique nocturne (paquet `.lyra` chiffré ; cookies jamais inclus).
+  const operationsPour = (wc: WebContents): DepsOperations => ({
+    version: app.getVersion(),
+    favoris,
+    historique: hist,
+    reglages,
+    ciel: () => ongletsNormaux(wc)?.exporter().ciel,
+    ciels: cielsNormaux,
+    cookies: cookiesDeSession(session.fromPartition(PARTITION_COOKIES))
+  })
+  const sauvegardeAuto = new SauvegardeAuto({
+    fichierConfig: join(paths.userData(), 'sauvegarde-auto.json'),
+    coffre: enTest() ? coffreDeTest : coffreSysteme(),
+    horloge: { maintenant: () => Date.now(), planifier: (fn, ms) => { const t = setTimeout(fn, ms); t.unref(); return () => clearTimeout(t) } },
+    sources: () => ({ version: app.getVersion(), reglages: reglages.getSettings(), favoris: favoris.lister(), ciels: cielsNormaux(), visites: () => hist.visites() }),
+    delaiDemarrage: enTest() ? 500 : undefined
+  })
+  installerExportIpc({ estPrivee, operations: operationsPour, cibles: ciblesImport, sauvegarde: sauvegardeAuto })
+  sauvegardeAuto.demarrer()
+  app.on('will-quit', () => sauvegardeAuto.arreter())
   // Passerelles : rien n'est chargé ni appliqué tant qu'aucun site n'est contourné.
   const sessionsProxy = (): Session[] => [session.defaultSession, session.fromPartition('persist:lyra'), ...sessionsPrivees]
   const pass = creerPasserelles({
@@ -495,7 +562,7 @@ void app.whenReady().then(async () => {
   installerPasserellesIpc(pass, estPrivee)
   // Le PAC initial est en place avant toute fenêtre (une étoile restaurée ne part pas en direct).
   await pass.demarrer()
-  if (process.env.LYRA_TEST === '1') {
+  if (enTest()) {
     handle('test:navigate', async (url) => {
       const m = ongletsCourants()
       const id = m?.idActif()

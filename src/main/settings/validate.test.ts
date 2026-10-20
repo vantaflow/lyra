@@ -202,3 +202,84 @@ describe('reseau', () => {
     expect(validerSettings({ reseau: { auto: false } }, defauts).reseau).toEqual({ passerelles: true, auto: false, sites: [] })
   })
 })
+
+describe('moteursPerso', () => {
+  const ok = { id: 'perso-1', nom: 'Mon wiki', motCle: 'mw', url: 'https://wiki.exemple.fr/?q=%s' }
+
+  it('défaut [] ; ancien fichier sans les clés valide avec les défauts', () => {
+    expect(defauts.moteursPerso).toEqual([])
+    const s = validerSettings({ version: 1, theme: 'sombre', inconnue: 42 }, defauts)
+    expect(s.theme).toBe('sombre')
+    expect(s.moteursPerso).toEqual([])
+    expect(s.import).toEqual({ extensionsEnAttente: [], reglagesEnAttente: {} })
+  })
+
+  it('garde les entrées valides, ignore les autres et les doublons d\'id', () => {
+    const p = validerPatch({
+      moteursPerso: [
+        ok,
+        { ...ok, nom: 'doublon' },
+        { ...ok, id: 'x2', url: 'https://sans-requete.fr/' },
+        { ...ok, id: 'x3', url: 'javascript:%s' },
+        { ...ok, id: 'x4', motCle: 'x'.repeat(25) },
+        { ...ok, id: 'x5', motCle: 'a b' },
+        { ...ok, id: 'x6', nom: '' },
+        'oups'
+      ]
+    })
+    expect(p.moteursPerso).toEqual([ok])
+  })
+
+  it('[] explicite accepté ; liste entièrement invalide ignorée', () => {
+    expect(validerPatch({ moteursPerso: [] })).toEqual({ moteursPerso: [] })
+    expect(validerPatch({ moteursPerso: ['x'] })).toEqual({})
+    expect(validerPatch({ moteursPerso: 'x' })).toEqual({})
+  })
+})
+
+describe('import', () => {
+  const ext = { id: 'a'.repeat(32), nom: 'Bloqueur', magasin: 'chrome', actif: true, source: 'chrome', date: 1000 }
+
+  it('extensionsEnAttente : forme exacte, imposee gardée, invalides ignorées', () => {
+    const p = validerPatch({
+      import: {
+        extensionsEnAttente: [
+          ext,
+          { ...ext, id: 'b', magasin: 'firefox', source: 'firefox', imposee: true },
+          { ...ext, id: 'c', magasin: 'opera' },
+          { ...ext, id: 'd', source: 'netscape' },
+          { ...ext, id: 'e', actif: 'oui' },
+          { ...ext, id: 'f', date: 'hier' },
+          { ...ext, id: '', nom: 'x' }
+        ]
+      }
+    })
+    expect(p.import?.extensionsEnAttente).toEqual([ext, { ...ext, id: 'b', magasin: 'firefox', source: 'firefox', imposee: true }])
+  })
+
+  it('dédoublonnée sur id + magasin (même id, autre magasin : gardé)', () => {
+    const p = validerPatch({
+      import: { extensionsEnAttente: [ext, { ...ext, nom: 'copie' }, { ...ext, magasin: 'edge' }] }
+    })
+    expect(p.import?.extensionsEnAttente).toEqual([ext, { ...ext, magasin: 'edge' }])
+  })
+
+  it('200 entrées au plus, les plus récentes (fin de liste) gardées', () => {
+    const liste = Array.from({ length: 250 }, (_, i) => ({ ...ext, id: `e${i}` }))
+    const r = validerPatch({ import: { extensionsEnAttente: liste } }).import?.extensionsEnAttente
+    expect(r).toHaveLength(200)
+    expect(r?.[0]?.id).toBe('e50')
+    expect(r?.at(-1)?.id).toBe('e249')
+  })
+
+  it('reglagesEnAttente.pageAccueil : texte borné, rien d\'autre', () => {
+    expect(validerPatch({ import: { reglagesEnAttente: { pageAccueil: 'https://a.fr/', autre: 1 } } })).toEqual({
+      import: { reglagesEnAttente: { pageAccueil: 'https://a.fr/' } }
+    })
+    expect(validerPatch({ import: { reglagesEnAttente: { pageAccueil: 'x'.repeat(3000) } } })).toEqual({})
+  })
+
+  it('clés inconnues sous import ignorées', () => {
+    expect(validerPatch({ import: { zzz: 1 } })).toEqual({})
+  })
+})

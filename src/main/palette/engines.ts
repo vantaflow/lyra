@@ -1,4 +1,5 @@
 /** Moteurs de recherche et mots-clés (pur, sans Electron). */
+import type { Settings } from '../../shared/types'
 
 export interface Moteur {
   id: string
@@ -22,13 +23,21 @@ export const MOTEURS: Moteur[] = [
   { id: 'youtube', nom: 'YouTube', motCle: 'yt', url: 'https://www.youtube.com/results?search_query=%s', couleur: '#C0392B', lettre: '▶' }
 ]
 
-/** Moteur par identifiant ; DuckDuckGo si inconnu. */
-export function moteurParId(id: string): Moteur {
-  return MOTEURS.find((m) => m.id === id) ?? MOTEURS[0]
+/** Moteurs intégrés puis moteurs personnalisés des réglages (sans couleur propre : initiale sur `--accent`). */
+export function moteursDisponibles(settings: Pick<Settings, 'moteursPerso'>): Moteur[] {
+  return [
+    ...MOTEURS,
+    ...settings.moteursPerso.map((m) => ({ ...m, couleur: 'var(--accent)', lettre: (m.nom.trim()[0] ?? '?').toUpperCase() }))
+  ]
 }
 
-export function moteurParMotCle(motCle: string): Moteur | undefined {
-  return MOTEURS.find((m) => m.motCle === motCle)
+/** Moteur par identifiant ; DuckDuckGo si inconnu. */
+export function moteurParId(id: string, moteurs: readonly Moteur[] = MOTEURS): Moteur {
+  return moteurs.find((m) => m.id === id) ?? MOTEURS[0]
+}
+
+export function moteurParMotCle(motCle: string, moteurs: readonly Moteur[] = MOTEURS): Moteur | undefined {
+  return moteurs.find((m) => m.motCle === motCle)
 }
 
 export function urlDeRecherche(moteur: Moteur, texte: string): string {

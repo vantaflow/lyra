@@ -5,7 +5,7 @@ import preact from '@preact/preset-vite'
 export default defineConfig({
   main: {
     build: {
-      rollupOptions: { input: { index: resolve('src/main/index.ts') } }
+      rollupOptions: { input: { index: resolve('src/main/index.ts'), 'import-worker': resolve('src/main/import/worker.ts') } }
     }
   },
   preload: {

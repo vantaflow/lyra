@@ -3,3 +3,6 @@
 *.woff2 binary
 *.ico binary
 *.icns binary
+
+# Fixtures d'import : octets exacts (bases SQLite, fichiers de session), jamais convertis.
+src/main/import/fixtures/chromium/** -text

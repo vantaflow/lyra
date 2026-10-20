@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import type { Settings } from '../../shared/types'
 import type { EtatBoucliers, StatsBoucliers } from '../../shared/ipc'
 import { handle } from '../ipc'
+import { enTest } from '../modeTest'
 import type { Reglages } from '../settings/settings'
 import type { TabManager } from '../tabs/TabManager'
 import { construireMoteur, mettreAJour, type OptionsMoteur, type ResultatMoteur } from './engine'
@@ -151,7 +152,7 @@ export async function demarrerBoucliers(deps: DepsBoucliers): Promise<Shields> {
   }
   const majGardee = creerMajGardee(async () => (await maj(), stats()), { delaiMs: 60_000 })
   handle('shields:update', () => majGardee())
-  if (process.env.LYRA_TEST !== '1') {
+  if (!enTest()) {
     setTimeout(() => void maj(), DELAI_PREMIERE_MAJ).unref()
     setInterval(() => void maj(), majHeures * 3600_000).unref()
   }
