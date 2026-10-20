@@ -1,4 +1,4 @@
-import { useLayoutEffect } from 'preact/hooks'
+import { useLayoutEffect, useRef } from 'preact/hooks'
 import { texteFenetres, texteNotifications, texteReste } from '../../main/dnd/Dnd'
 import { dnd, maintenant } from './state'
 
@@ -21,6 +21,18 @@ export function RappelDnd() {
     window.addEventListener('keydown', echap)
     return () => window.removeEventListener('keydown', echap)
   }, [])
+  // La vue chrome ne couvre que la pastille et son ombre : sa largeur suit le contenu réel du rappel.
+  const pastille = useRef<HTMLDivElement>(null)
+  const complet = e.actif && e.rappel
+  useLayoutEffect(() => {
+    const el = pastille.current
+    if (!complet || !el) return
+    const envoyer = (): void => void window.lyra.invoke('dnd:taille', { largeur: el.getBoundingClientRect().width })
+    envoyer()
+    const o = new ResizeObserver(envoyer)
+    o.observe(el)
+    return () => o.disconnect()
+  }, [complet])
   if (!e.actif) return null
   if (!e.rappel) {
     return (
@@ -40,7 +52,7 @@ export function RappelDnd() {
   }
   const detail = [texteNotifications(e.notifications), texteFenetres(e.popups), texteReste(e.fin, Math.max(maintenant.value, Date.now()))].filter(Boolean).join(' · ')
   return (
-    <div class="dnd-rappel" role="status">
+    <div class="dnd-rappel" role="status" ref={pastille}>
       <svg viewBox="0 0 24 24" width="16" height="16" fill="#F4C56A" aria-hidden="true">
         <path d={CROISSANT} />
       </svg>

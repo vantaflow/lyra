@@ -17,16 +17,27 @@ export interface CielLayout {
 export interface DndLayout {
   /** Rappel complet affiché (sinon : le croissant seul). */
   rappel: boolean
+  /** Largeur mesurée de la pastille du rappel (px), transmise par le renderer ; absente : repli prudent. */
+  largeur?: number
 }
 
 /**
- * Zone de la vue chrome en mode Ne pas déranger : la surface du rappel complet ou du croissant seul, ombre comprise
- * (pastille de 36 px à 14 px du haut et 16 px de la droite, ombre `0 4px 12px`). Tout ce qui dépasse bloquerait les
- * clics de la page : la vue chrome ne doit rien couvrir d'autre. La largeur du rappel (≈ 470 px au plus court)
- * garde de la place pour son texte le plus long (50 notifications, 10 fenêtres, plus d'une heure).
+ * Zone de la vue chrome en mode Ne pas déranger : la pastille (36 px, à 14 px du haut et 16 px de la droite) et son
+ * ombre du design (`0 10px 30px`) : 30 px de marge à gauche (à droite et au-dessus, l'ombre sort de la fenêtre),
+ * 10 + 30 px sous la pastille. Tout ce qui
+ * dépasse bloquerait les clics de la page.
  */
-export const DND_RAPPEL = { width: 720, height: 68 }
-export const DND_CROISSANT = { width: 68, height: 68 }
+export const DND_PASTILLE = { hauteur: 36, haut: 14, droite: 16, ombre: 30, decalage: 10 }
+/** Pastille du croissant seul. */
+export const DND_CROISSANT = { width: 36 + DND_PASTILLE.droite + DND_PASTILLE.ombre, height: DND_PASTILLE.haut + DND_PASTILLE.hauteur + DND_PASTILLE.decalage + DND_PASTILLE.ombre }
+/** Largeur de repli du rappel tant que le renderer ne l'a pas mesuré (texte le plus long possible). */
+export const DND_RAPPEL_REPLI = 720
+/** Hauteur de la zone (pastille + ombre). */
+export const DND_HAUTEUR = DND_CROISSANT.height
+
+/** Largeur de la vue chrome pour un rappel dont la pastille mesure `largeur` px. */
+export const largeurRappel = (largeur?: number): number =>
+  largeur === undefined ? DND_RAPPEL_REPLI : Math.ceil(largeur) + DND_PASTILLE.droite + DND_PASTILLE.ombre
 
 export interface Layout {
   chrome: Rect
@@ -77,7 +88,7 @@ export function computeLayout(
   if (pleinEcran) return { chrome: { x: 0, y: 0, width: 0, height: 0 }, page: fenetre, overlay: fenetre }
   if (dnd) {
     // Ni ciel ni capsule : la page occupe tout, la vue chrome se réduit au rappel / croissant (haut droite).
-    const z = dnd.rappel ? DND_RAPPEL : DND_CROISSANT
+    const z = dnd.rappel ? { width: largeurRappel(dnd.largeur), height: DND_HAUTEUR } : DND_CROISSANT
     const w = Math.min(width, z.width)
     const h = Math.min(height, z.height)
     return { chrome: { x: width - w, y: 0, width: w, height: h }, page: fenetre, overlay: fenetre }

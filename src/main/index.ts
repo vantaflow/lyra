@@ -400,6 +400,10 @@ void app.whenReady().then(async () => {
     const id = fenetreChrome(e)
     if (id !== undefined) dnd.sortir(id)
   })
+  handle('dnd:taille', (d, e) => {
+    const f = manager.deWebContents(e.sender)
+    if (f && f.chrome.webContents === e.sender && typeof d?.largeur === 'number') f.setDndLargeur(Math.min(4000, d.largeur))
+  })
   handle('dnd:rappel', (_d, e) => {
     const id = fenetreChrome(e)
     if (id !== undefined) dnd.montrerRappel(id)

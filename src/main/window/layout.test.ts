@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { BANDE, CAPSULE, DND_CROISSANT, DND_RAPPEL, FENETRE_MIN, LARGEUR_MAX, RAIL, computeLayout, positionFeux } from './layout'
+import { BANDE, CAPSULE, DND_CROISSANT, DND_HAUTEUR, DND_RAPPEL_REPLI, largeurRappel, FENETRE_MIN, LARGEUR_MAX, RAIL, computeLayout, positionFeux } from './layout'
 
 const taille = { width: 1280, height: 800 }
 const fenetre = { x: 0, y: 0, width: 1280, height: 800 }
@@ -98,10 +98,15 @@ describe('computeLayout : Ne pas déranger', () => {
         const l = computeLayout(taille, ciel(position, masque), false, false, { rappel: true })
         expect(l.page).toEqual(fenetre)
         expect(l.overlay).toEqual(fenetre)
-        expect(l.chrome).toEqual({ x: 1280 - DND_RAPPEL.width, y: 0, width: DND_RAPPEL.width, height: DND_RAPPEL.height })
+        expect(l.chrome).toEqual({ x: 1280 - DND_RAPPEL_REPLI, y: 0, width: DND_RAPPEL_REPLI, height: DND_HAUTEUR })
       })
     }
   }
+  it('rappel mesuré : la zone suit la pastille, ombre du design comprise (16 px à droite, 30 px d\'ombre à gauche)', () => {
+    const l = computeLayout(taille, ciel('gauche'), false, false, { rappel: true, largeur: 470.4 })
+    expect(largeurRappel(470.4)).toBe(471 + 16 + 30)
+    expect(l.chrome).toEqual({ x: 1280 - 517, y: 0, width: 517, height: DND_HAUTEUR })
+  })
   it('rappel effacé : seul le croissant occupe le coin haut droit', () => {
     const l = computeLayout(taille, ciel('gauche'), false, false, { rappel: false })
     expect(l.page).toEqual(fenetre)

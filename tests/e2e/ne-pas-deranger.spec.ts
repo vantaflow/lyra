@@ -55,24 +55,35 @@ test('⌘ ⇧ D (menu) : page plein cadre, ni ciel ni capsule, rappel conforme, 
     await expect(rappel).toContainText('aucune notification retenue · encore 1 h')
     await expect(rappel.locator('kbd')).toHaveText('Échap')
     await expect(fenetre.getByRole('button', { name: 'Quitter le mode Ne pas déranger' })).toBeVisible()
-    // La vue chrome n'est qu'à peine plus grande que ce qu'elle dessine (le reste bloquerait les clics de la page).
-    const marge = async (cible: string): Promise<{ droite: number; bas: number; gauche: number }> => {
+    // La vue chrome suit la pastille (ombre du design : 30 px autour, 10 px de décalage) : le reste appartient à la page.
+    const marge = async (cible: string): Promise<{ gauche: number; droite: number; bas: number; haut: number }> => {
       const b = (await fenetre.locator(cible).boundingBox())!
       const c = (await layout(fenetre)).bounds.chrome
-      return { gauche: b.x, droite: c.width - (b.x + b.width), bas: c.height - (b.y + b.height) }
+      return { gauche: b.x, droite: c.width - (b.x + b.width), bas: c.height - (b.y + b.height), haut: b.y }
     }
+    // Largeur mesurée : attendre que la zone se soit ajustée au rappel (la valeur de repli est de 720 px).
+    await expect.poll(async () => (await marge('.dnd-rappel')).gauche).toBeLessThanOrEqual(32)
     const mr = await marge('.dnd-rappel')
-    expect(mr.bas).toBeGreaterThanOrEqual(0)
-    expect(mr.bas).toBeLessThanOrEqual(24)
-    expect(mr.droite).toBeLessThanOrEqual(24)
+    expect(mr.gauche).toBeGreaterThanOrEqual(29)
+    // 16 px de marge à droite (le reste de l'ombre sort de la fenêtre).
+    expect(mr.droite).toBeGreaterThanOrEqual(15)
+    expect(mr.droite).toBeLessThanOrEqual(17)
+    expect(mr.bas).toBeGreaterThanOrEqual(40)
+    expect(mr.bas).toBeLessThanOrEqual(42)
+    // Un clic juste à gauche de l'ombre du rappel visible tombe hors de la vue chrome : il atteint la page.
+    const chrome = (await layout(fenetre)).bounds.chrome
+    const gaucheRappel = chrome.x + mr.gauche
+    expect(chrome.x).toBeGreaterThanOrEqual(gaucheRappel - 32)
+    expect(gaucheRappel - 40).toBeLessThan(chrome.x)
+    expect(chrome.x).toBeGreaterThan(t.width / 2)
 
     // Le rappel s'efface au bout de quelques secondes : seul le croissant reste, la vue chrome rétrécit.
     await expect(fenetre.locator('.dnd-croissant')).toBeVisible({ timeout: 10_000 })
     await expect(rappel).toHaveCount(0)
     const mc = await marge('.dnd-croissant')
     expect(mc.gauche).toBeLessThanOrEqual(32)
-    expect(mc.droite).toBeLessThanOrEqual(24)
-    expect(mc.bas).toBeLessThanOrEqual(24)
+    expect(mc.droite).toBeLessThanOrEqual(17)
+    expect(mc.bas).toBeLessThanOrEqual(42)
     const petit = (await layout(fenetre)).bounds.chrome
     expect(petit.width).toBeLessThan(l.bounds.chrome.width)
     expect((await layout(fenetre)).bounds.page).toEqual({ x: 0, y: 0, ...t })

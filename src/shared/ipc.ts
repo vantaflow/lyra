@@ -154,6 +154,8 @@ export type Requetes = {
   'dnd:sortir': [void, void]
   /** Chrome → main : réaffiche le rappel complet (survol du croissant). */
   'dnd:rappel': [void, void]
+  /** Largeur mesurée de la pastille du rappel (la vue chrome ne couvre que sa surface). */
+  'dnd:taille': [{ largeur: number }, void]
   /** Test uniquement (LYRA_TEST=1) : notifications livrées à la sortie (au lieu d'être affichées). */
   'test:livraisons': [void, Array<{ titre: string; corps?: string; origine: string; etoileId?: string }>]
   /** Chrome → main : révèle (actif) ou retire le ciel masqué ; renvoie l'état obtenu. */
