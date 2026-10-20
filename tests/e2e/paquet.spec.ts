@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { listPackage } from '@electron/asar'
 
 const racine = resolve(__dirname, '../..')
 const FIXTURE = pathToFileURL(resolve(__dirname, 'fixtures/pub.html')).href
@@ -38,4 +39,12 @@ test('@paquet l\'app empaquetée embarque les listes et construit le moteur au p
   } finally {
     await app.close()
   }
+})
+
+// Le lecteur d'import tourne dans un utilityProcess et lit les bases SQLite (sql.js) et les archives (fflate) : tout doit être dans l'asar.
+test('@paquet l\'asar embarque le lecteur d\'import, sql.js (wasm) et fflate', () => {
+  const fichiers = listPackage(join(ressources(), 'app.asar'), { isPack: false }).map((f) => f.replace(/\\/g, '/').replace(/^\//, ''))
+  expect(fichiers).toContain('out/main/import-worker.js')
+  expect(fichiers).toContain('node_modules/sql.js/dist/sql-wasm.wasm')
+  expect(fichiers.some((f) => f.startsWith('node_modules/fflate/'))).toBe(true)
 })
