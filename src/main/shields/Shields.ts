@@ -7,12 +7,10 @@ import type { OnBeforeRequestListenerDetails, OnHeadersReceivedListenerDetails }
 import { fromElectronDetails, type ElectronBlocker } from '@ghostery/adblocker-electron'
 import { parse } from 'tldts-experimental'
 import type { Settings } from '../../shared/types'
-import { hubDe, type SessionWeb } from '../session/webRequestHub'
+import { hubDe, apresBoucliers, estExempte, PRIORITE_BOUCLIERS, PRIORITE_APRES_BOUCLIERS, type SessionWeb } from '../session/webRequestHub'
 import { resoudre } from '../settings/sites'
 import { Compteurs } from './compteurs'
-
-/** Les Boucliers passent avant les règles par site (priorité par défaut du hub : 100). */
-const PRIORITE_BOUCLIERS = 50
+import { bloqueScriptTiers } from './strict'
 
 type ReponseAvant = { cancel?: boolean; redirectURL?: string }
 type ReponseEntetes = { responseHeaders?: Record<string, string[] | string> }
@@ -93,8 +91,7 @@ function urlPremierNiveau(d: OnBeforeRequestListenerDetails | OnHeadersReceivedL
   return url || d.referrer || d.url
 }
 
-const estExtension = (d: { url: string; initiatorOrigin?: string }): boolean =>
-  d.url.startsWith('chrome-extension://') || (d.initiatorOrigin?.startsWith('chrome-extension://') ?? false)
+const estExtension = estExempte
 
 export function creerShields(opts: OptionsShields): Shields {
   let moteur = opts.moteurInitial
@@ -124,6 +121,17 @@ export function creerShields(opts: OptionsShields): Shields {
     compteurs.ajouter(d.webContentsId, d.url)
     if (d.webContentsId !== undefined) opts.onCompteur?.(d.webContentsId)
     cb(redirect ? { redirectURL: redirect.dataUrl } : { cancel: true })
+  }
+
+  /** Niveau « Strict » : en plus du moteur, un script tiers hors liste est bloqué (écouteur D, après les Boucliers). */
+  const strict = (d: OnBeforeRequestListenerDetails): ReponseAvant | void => {
+    if (d.resourceType !== 'script') return
+    const haut = urlPremierNiveau(d)
+    if (resoudre(opts.reglages().sites ?? {}, origineDe(haut)).boucliers !== 'strict') return
+    if (!bloqueScriptTiers(d.url, d.resourceType, WEB.test(haut) || haut.startsWith('file:') ? haut : '')) return
+    compteurs.ajouter(d.webContentsId, d.url)
+    if (d.webContentsId !== undefined) opts.onCompteur?.(d.webContentsId)
+    return { cancel: true }
   }
 
   const entetes = (d: OnHeadersReceivedListenerDetails, cb: (r: ReponseEntetes) => void): void => {
@@ -164,6 +172,7 @@ export function creerShields(opts: OptionsShields): Shields {
     attacher(ses) {
       const hub = hubDe(ses)
       hub.onBeforeRequest('boucliers', enRetour(avant), PRIORITE_BOUCLIERS)
+      hub.onBeforeRequest('boucliers-strict', apresBoucliers(strict), PRIORITE_APRES_BOUCLIERS - 1)
       hub.onHeadersReceived('boucliers', enRetour(entetes), PRIORITE_BOUCLIERS)
     },
     remplacerMoteur(m) {

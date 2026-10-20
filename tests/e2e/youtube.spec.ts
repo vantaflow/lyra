@@ -30,6 +30,10 @@ test('@reseau YouTube : scriptlets avant la page, aucune pub sur 3 vidéos encha
   test.setTimeout(180_000)
   const { app, fenetre } = await lancerLyra()
   try {
+    // LYRA_E2E_STRICT=1 : même test avec une règle Boucliers « Strict » sur youtube.com et ses sous-domaines.
+    if (process.env.LYRA_E2E_STRICT === '1') {
+      for (const cle of ['youtube.com', '*.youtube.com']) await fenetre.evaluate((c) => window.lyra.invoke('sites:ecrire', { cle: c, regle: { boucliers: 'strict' } }), cle)
+    }
     const id = await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), VIDEO)
     await expect.poll(() => pageYoutube(app), { timeout: 30_000 }).toBeDefined()
     const page = pageYoutube(app)!

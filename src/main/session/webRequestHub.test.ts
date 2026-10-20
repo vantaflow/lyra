@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { hubDe, type SessionWeb } from './webRequestHub'
+import { hubDe, apresBoucliers, PRIORITE_BOUCLIERS, PRIORITE_APRES_BOUCLIERS, type SessionWeb } from './webRequestHub'
 
 type Rappel = (r: Record<string, unknown>) => void
 type Ecouteur = (d: Record<string, unknown>, cb: Rappel) => void
@@ -135,5 +135,58 @@ describe('webRequestHub', () => {
     hubDe(s2).onBeforeRequest('a', () => undefined)
     expect(appeler(s1.avant)).toEqual({ cancel: true })
     expect(appeler(s2.avant)).toEqual({})
+  })
+
+  it('appelle le rappel Electron exactement une fois même si la chaîne lève', () => {
+    const s = fausseSession()
+    const h = hubDe(s)
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    // `r.cancel` lu sur un objet piégé : l'assistant `arret` lève en dehors de l'écouteur.
+    h.onBeforeRequest('piege', () => ({ get cancel(): boolean { throw new Error('boum') } }) as never, 1)
+    const cb = vi.fn()
+    s.avant!({}, cb)
+    expect(cb).toHaveBeenCalledOnce()
+    log.mockRestore()
+  })
+
+  it('trie une seule fois tant que la liste ne change pas', () => {
+    const s = fausseSession()
+    const h = hubDe(s)
+    const tri = vi.spyOn(Array.prototype, 'sort')
+    h.onBeforeRequest('a', () => undefined, 2)
+    h.onBeforeRequest('b', () => undefined, 1)
+    appeler(s.avant)
+    const apresPremier = tri.mock.calls.length
+    appeler(s.avant)
+    appeler(s.avant)
+    expect(tri.mock.calls.length).toBe(apresPremier)
+    h.onBeforeRequest('c', () => undefined, 0)
+    appeler(s.avant)
+    expect(tri.mock.calls.length).toBeGreaterThan(apresPremier)
+    tri.mockRestore()
+  })
+
+  describe('apresBoucliers', () => {
+    it('passe après les Boucliers et ne voit jamais les extensions ni le CRX', () => {
+      expect(PRIORITE_APRES_BOUCLIERS).toBeGreaterThan(PRIORITE_BOUCLIERS)
+      const vu = vi.fn(() => ({ cancel: true }))
+      const f = apresBoucliers(vu)
+      expect(f({ url: 'chrome-extension://abc/x.js' } as never)).toBeUndefined()
+      expect(f({ url: 'https://a.test/x.js', initiatorOrigin: 'chrome-extension://abc' } as never)).toBeUndefined()
+      expect(f({ url: 'https://clients2.google.com/service/update2/crx?x=1' } as never)).toBeUndefined()
+      expect(f({ url: 'https://clients2.googleusercontent.com/crx/blobs/a/b.crx' } as never)).toBeUndefined()
+      expect(vu).not.toHaveBeenCalled()
+      expect(f({ url: 'https://a.test/x.js' } as never)).toEqual({ cancel: true })
+    })
+
+    it('une réponse {} d’un écouteur précédent ne coupe pas la chaîne : les suivants reçoivent la requête', () => {
+      const s = fausseSession()
+      const h = hubDe(s)
+      const suivant = vi.fn()
+      h.onBeforeRequest('boucliers', () => ({}), PRIORITE_BOUCLIERS)
+      h.onBeforeRequest('d', suivant, PRIORITE_APRES_BOUCLIERS)
+      appeler(s.avant, { url: 'chrome-extension://abc/x.js' })
+      expect(suivant).toHaveBeenCalledOnce()
+    })
   })
 })
