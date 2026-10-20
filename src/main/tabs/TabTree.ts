@@ -6,8 +6,10 @@ const MAX_FERMEES = 25
 export interface OptionsCreation {
   url: string
   parentId?: string
+  /** Position `apres` : rangée après cette étoile et ses descendantes, sans lien de parenté. */
+  apresId?: string
   constellationId?: string
-  position: 'sous-parent' | 'fin'
+  position: 'sous-parent' | 'apres' | 'fin' | 'fin-constellation'
 }
 
 /** Arbre d'étoiles (onglets) : liste plate ordonnée en profondeur d'abord. Pur, sans Electron. */
@@ -52,6 +54,14 @@ export class TabTree {
     if (parentOk && o.position === 'sous-parent') {
       const dernier = this.descendants(o.parentId!).at(-1)
       this.stars.splice(this.indexDe((dernier ?? this.stars[this.indexDe(o.parentId!)]).id) + 1, 0, star)
+    } else if (o.position === 'apres' && o.apresId !== undefined && this.indexDe(o.apresId) >= 0) {
+      const fin = this.descendants(o.apresId).at(-1)
+      this.stars.splice(this.indexDe((fin ?? this.stars[this.indexDe(o.apresId)]).id) + 1, 0, star)
+    } else if (o.position === 'fin-constellation' && o.constellationId && this.stars.some((s) => s.constellationId === o.constellationId)) {
+      // Après la dernière étoile de la constellation (et ses descendants, qui la suivent dans la liste).
+      const dernier = this.stars.findLastIndex((s) => s.constellationId === o.constellationId)
+      const fin = this.descendants(this.stars[dernier].id).at(-1)
+      this.stars.splice(this.indexDe((fin ?? this.stars[dernier]).id) + 1, 0, star)
     } else {
       this.stars.push(star)
     }
@@ -59,10 +69,22 @@ export class TabTree {
     return star
   }
 
-  creerConstellation(o: { name: string; color: string }): Constellation {
-    const c: Constellation = { id: randomUUID(), name: o.name, color: o.color }
+  creerConstellation(o: { name: string; color: string; auto?: boolean }): Constellation {
+    const c: Constellation = { id: randomUUID(), name: o.name, color: o.color, ...(o.auto ? { auto: true } : {}) }
     this.constellations.push(c)
     return c
+  }
+
+  /** Range une étoile dans une constellation existante (sans la déplacer dans la liste). */
+  assigner(id: string, constellationId: string): void {
+    const s = this.star(id)
+    if (s && this.constellation(constellationId)) s.constellationId = constellationId
+  }
+
+  /** Retire les constellations créées par le regroupement automatique qui n'ont plus d'étoile ; celles de l'utilisateur ne sont jamais touchées. */
+  purgerAutoVides(): void {
+    const utilisees = new Set(this.stars.map((s) => s.constellationId))
+    this.constellations = this.constellations.filter((c) => !c.auto || utilisees.has(c.id))
   }
 
   constellation(id: string): Constellation | undefined {
@@ -73,7 +95,8 @@ export class TabTree {
     return this.stars.find((s) => s.id === id)
   }
 
-  fermer(id: string): { suivantActif: string | null; fermees: Star[] } {
+  /** `memoriser: false` (archivage) : l'étoile n'entre pas dans les étoiles fermées que ⌘ ⇧ T peut rouvrir. */
+  fermer(id: string, o: { memoriser?: boolean } = {}): { suivantActif: string | null; fermees: Star[] } {
     const i = this.indexDe(id)
     if (i < 0) return { suivantActif: this.activeId, fermees: [] }
     const star = this.stars[i]
@@ -87,8 +110,10 @@ export class TabTree {
     const suivantActif =
       star.parentId ?? this.stars[i]?.id ?? this.stars[i - 1]?.id ?? null
     this.reindexer()
-    this.fermees.push({ ...star })
-    if (this.fermees.length > MAX_FERMEES) this.fermees.shift()
+    if (o.memoriser !== false) {
+      this.fermees.push({ ...star })
+      if (this.fermees.length > MAX_FERMEES) this.fermees.shift()
+    }
     if (this.activeId === id) this.activeId = suivantActif
     return { suivantActif, fermees: [star] }
   }
@@ -122,6 +147,7 @@ export class TabTree {
     if (star.parentId && this.indexDe(star.parentId) < 0) delete star.parentId
     if (this.indexDe(star.id) >= 0) star.id = randomUUID()
     star.dormant = false
+    delete star.inactifDepuis
     this.stars.splice(Math.min(star.index, this.stars.length), 0, star)
     this.reindexer()
     return star

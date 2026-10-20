@@ -5,6 +5,8 @@ import { envoyer } from '../ipc'
 import { CAPSULE } from '../window/layout'
 import { TabTree } from './TabTree'
 import { peutEndormir } from './dormance'
+import { domaineEnregistrable, placerEnfant, placerNouvelle, planRegroupement, type ModePlacement, type Placement } from './placement'
+import { PALETTE_CONSTELLATIONS } from '../../shared/couleurs'
 import type { FenetreSession, HistoriqueEtoile } from '../session/SessionStore'
 import { categorieDe, type Categorie } from './categorie'
 import { origineDe } from '../shields/Shields'
@@ -55,6 +57,10 @@ export interface OptionsTabs {
   /** Minutes d'inactivité avant l'endormissement (0 ou moins : jamais). */
   endormirApresMin?: () => number
   surChangement?: () => void
+  /** Réglages d'apparence lus à chaque étoile ouverte : placement (« Nouvelle étoile ouverte ») et regroupement par site. Absent : fin du ciel, sans regroupement. */
+  placement?: () => { nouvelleEtoile: ModePlacement; regrouperParSite: boolean }
+  /** Horloge (ms) : début d'inactivité des étoiles dormantes ; `Date.now` par défaut. */
+  maintenant?: () => number
   /** Zoom mémorisé pour une origine (facteur) et son enregistrement. */
   zoomDe?: (origine: string) => number | undefined
   memoriserZoom?: (origine: string, facteur: number) => void
@@ -105,7 +111,7 @@ export class TabManager {
   }
 
   ouvrir(url: string, o: { parentId?: string; actif?: boolean } = {}): string {
-    const star = this.tree.creer({ url, parentId: o.parentId, position: o.parentId ? 'sous-parent' : 'fin' })
+    const star = this.tree.creer({ url, ...this.placer(url, o.parentId) })
     const vue = this.creerVue(star.id, url)
     this.vues.set(star.id, vue)
     if (o.actif ?? true) this.activer(star.id)
@@ -113,6 +119,41 @@ export class TabManager {
     void vue.webContents.loadURL(url).catch(() => undefined)
     this.notifier()
     return star.id
+  }
+
+  /**
+   * Où naît une étoile : sous son parent (lien ou popup : toujours reliée, dans la constellation du parent) ; sinon selon
+   * « Nouvelle étoile ouverte ». Puis « Regrouper automatiquement par site » : une étoile encore hors constellation
+   * entre dans celle de son domaine, créée au besoin (jamais une étoile déjà rangée, jamais une constellation modifiée).
+   */
+  private placer(url: string, parentId?: string): Placement {
+    const reglages = this.options.placement?.()
+    const ciel = this.tree.toJSON()
+    const parentOk = parentId !== undefined && ciel.stars.some((s) => s.id === parentId)
+    const p: Placement = parentOk ? placerEnfant(ciel, parentId) : placerNouvelle(ciel, ciel.activeId, reglages?.nouvelleEtoile ?? 'hors-constellation')
+    if (p.constellationId || !reglages?.regrouperParSite) return p
+    const constellationId = this.constellationDuSite(url)
+    if (!constellationId) return p
+    return { ...p, constellationId, position: p.position === 'sous-parent' ? 'sous-parent' : 'fin-constellation' }
+  }
+
+  /** Constellation du domaine de l'adresse (créée si elle n'existe pas) ; rien sans domaine enregistrable. */
+  private constellationDuSite(url: string): string | undefined {
+    const domaine = domaineEnregistrable(url)
+    if (!domaine) return undefined
+    const plan = planRegroupement(this.tree.toJSON(), domaine)
+    if ('constellationId' in plan) return plan.constellationId
+    const couleur = PALETTE_CONSTELLATIONS[this.tree.toJSON().constellations.length % PALETTE_CONSTELLATIONS.length]
+    return this.tree.creerConstellation({ name: plan.creer, color: couleur, auto: true }).id
+  }
+
+  /** Étoile ouverte sur une page Lyra (nouvel onglet) qui part vers un site : elle entre alors dans la constellation du site. */
+  private regrouperSiteVisite(id: string, url: string): void {
+    const star = this.tree.star(id)
+    if (!star || star.constellationId || !this.options.placement?.().regrouperParSite) return
+    if (categorieDe(star.url) !== 'interne' || categorieDe(url) !== 'web') return
+    const c = this.constellationDuSite(url)
+    if (c) this.tree.assigner(id, c)
   }
 
   /**
@@ -125,6 +166,7 @@ export class TabManager {
     star.title = o.titre ?? ''
     star.pinned = o.epingle === true
     star.dormant = true
+    star.inactifDepuis = this.maintenant()
     this.entrees.set(star.id, { entries: [{ url, title: star.title }], index: 0 })
     this.notifier()
     return star.id
@@ -140,11 +182,12 @@ export class TabManager {
     return c
   }
 
-  fermer(id: string): void {
+  fermer(id: string, o: { memoriser?: boolean } = {}): void {
     if (!this.tree.star(id)) return
     const vue = this.vues.get(id)
     const etaitActive = this.tree.toJSON().activeId === id
-    const { suivantActif } = this.tree.fermer(id)
+    const { suivantActif } = this.tree.fermer(id, o)
+    this.tree.purgerAutoVides()
     this.vues.delete(id)
     this.extras.delete(id)
     this.categories.delete(id)
@@ -163,6 +206,23 @@ export class TabManager {
     }
     if (etaitActive && suivantActif) this.activer(suivantActif)
     this.notifier()
+  }
+
+  /** État du ciel (sans l'envoyer) : lu par l'archivage. */
+  ciel(): SkyState {
+    return this.tree.toJSON()
+  }
+
+  /** Archivage d'une étoile éteinte : retirée du ciel sans pouvoir être rouverte par ⌘ ⇧ T. Faux si elle n'est plus dormante, ou est active ou épinglée. */
+  retirerArchivee(id: string): boolean {
+    const star = this.tree.star(id)
+    if (!star || !star.dormant || star.pinned || this.vues.has(id) || this.idActif() === id) return false
+    this.fermer(id, { memoriser: false })
+    return true
+  }
+
+  private maintenant(): number {
+    return (this.options.maintenant ?? Date.now)()
   }
 
   activer(id: string): void {
@@ -196,12 +256,14 @@ export class TabManager {
 
   naviguer(id: string, url: string): void {
     if (this.tree.star(id)?.dormant) this.reveiller(id)
+    this.regrouperSiteVisite(id, url)
     void this.vueAdaptee(id, url)?.webContents.loadURL(url).catch(() => undefined)
   }
 
   /** Navigue et attend la fin du chargement (test:navigate). */
   async naviguerEtAttendre(id: string, url: string): Promise<void> {
     if (this.tree.star(id)?.dormant) this.reveiller(id)
+    this.regrouperSiteVisite(id, url)
     await this.vueAdaptee(id, url)?.webContents.loadURL(url).catch(() => undefined)
   }
 
@@ -338,6 +400,8 @@ export class TabManager {
     star.url = wc.getURL() || star.url
     star.title = wc.getTitle() || star.title
     star.dormant = true
+    // Début de l'inactivité (celui de la minuterie d'endormissement) : l'archivage des étoiles éteintes en part.
+    star.inactifDepuis = this.inactifDepuis.get(id) ?? this.maintenant()
     clearTimeout(this.minuteursSommeil.get(id))
     this.minuteursSommeil.delete(id)
     this.inactifDepuis.delete(id)
@@ -358,6 +422,7 @@ export class TabManager {
     const vue = this.creerVue(id, url)
     this.vues.set(id, vue)
     star.dormant = false
+    delete star.inactifDepuis
     this.entrees.delete(id)
     if (this.tree.toJSON().activeId !== id) this.armer(id)
     if (star.favicon) this.extras.set(id, { favicon: star.favicon })
@@ -387,7 +452,7 @@ export class TabManager {
   restaurer(f: FenetreSession): void {
     const ciel: SkyState = {
       ...f.ciel,
-      stars: f.ciel.stars.map((s) => ({ ...s, dormant: true }))
+      stars: f.ciel.stars.map((s) => ({ ...s, dormant: true, inactifDepuis: s.inactifDepuis ?? this.maintenant() }))
     }
     const actif = ciel.stars.find((s) => s.id === ciel.activeId) ?? ciel.stars[0]
     this.tree = TabTree.fromJSON({ ...ciel, activeId: actif.id })
