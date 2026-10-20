@@ -1109,6 +1109,18 @@
   "h2#titre-quoi.etape": [
    "color=rgb(107, 107, 128) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(107, 107, 128) | borderRightColor=rgb(107, 107, 128) | borderBottomColor=rgb(107, 107, 128) | borderLeftColor=rgb(107, 107, 128) | outlineColor=rgb(107, 107, 128) | boxShadow=none | textDecorationColor=rgb(107, 107, 128) | caretColor=rgb(107, 107, 128) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
+  "div.sel-zone": [
+   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "button.sel": [
+   "color=rgb(28, 28, 46) | backgroundColor=rgb(248, 248, 252) | borderTopColor=rgb(214, 214, 226) | borderRightColor=rgb(214, 214, 226) | borderBottomColor=rgb(214, 214, 226) | borderLeftColor=rgb(214, 214, 226) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "svg": [
+   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=none | stroke=rgb(28, 28, 46) | backgroundImage=none"
+  ],
+  "path": [
+   "color=rgb(28, 28, 46) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(28, 28, 46) | borderRightColor=rgb(28, 28, 46) | borderBottomColor=rgb(28, 28, 46) | borderLeftColor=rgb(28, 28, 46) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=none | stroke=rgb(28, 28, 46) | backgroundImage=none"
+  ],
   "div#elements.card": [
    "color=rgb(28, 28, 46) | backgroundColor=rgb(255, 255, 255) | borderTopColor=rgb(230, 230, 238) | borderRightColor=rgb(230, 230, 238) | borderBottomColor=rgb(230, 230, 238) | borderLeftColor=rgb(230, 230, 238) | outlineColor=rgb(28, 28, 46) | boxShadow=none | textDecorationColor=rgb(28, 28, 46) | caretColor=rgb(28, 28, 46) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
@@ -1141,6 +1153,9 @@
   ],
   "input#i-extensions": [
    "color=rgb(0, 0, 0) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(0, 0, 0) | borderRightColor=rgb(0, 0, 0) | borderBottomColor=rgb(0, 0, 0) | borderLeftColor=rgb(0, 0, 0) | outlineColor=rgb(0, 0, 0) | boxShadow=none | textDecorationColor=rgb(0, 0, 0) | caretColor=rgb(0, 0, 0) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
+  ],
+  "span.tag.warn": [
+   "color=rgb(138, 90, 16) | backgroundColor=rgb(251, 239, 216) | borderTopColor=rgb(138, 90, 16) | borderRightColor=rgb(138, 90, 16) | borderBottomColor=rgb(138, 90, 16) | borderLeftColor=rgb(138, 90, 16) | outlineColor=rgb(138, 90, 16) | boxShadow=none | textDecorationColor=rgb(138, 90, 16) | caretColor=rgb(138, 90, 16) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"
   ],
   "input#i-moteurs": [
    "color=rgb(0, 0, 0) | backgroundColor=rgba(0, 0, 0, 0) | borderTopColor=rgb(0, 0, 0) | borderRightColor=rgb(0, 0, 0) | borderBottomColor=rgb(0, 0, 0) | borderLeftColor=rgb(0, 0, 0) | outlineColor=rgb(0, 0, 0) | boxShadow=none | textDecorationColor=rgb(0, 0, 0) | caretColor=rgb(0, 0, 0) | fill=rgb(0, 0, 0) | stroke=none | backgroundImage=none"

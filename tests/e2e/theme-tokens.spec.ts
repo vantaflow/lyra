@@ -1,6 +1,7 @@
 import { test, expect, type ElectronApplication, type Page } from '@playwright/test'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import { lancerLyra } from './helpers'
 
 /**
@@ -9,6 +10,19 @@ import { lancerLyra } from './helpers'
  * `LYRA_REF_ECRIRE=1` réécrit le fichier ; hors cela, le test compare.
  */
 const FICHIER = resolve(__dirname, 'fixtures/couleurs-reference.json')
+
+// La page « Importer » détecte les navigateurs installés : on la pointe vers les profils fabriqués d'import.spec.ts
+// (jamais les vrais profils de la machine, dont l'état rendrait la référence instable).
+const FIXTURES = resolve(__dirname, '../../src/main/import/fixtures')
+let racine = ''
+test.beforeAll(() => {
+  racine = mkdtempSync(join(tmpdir(), 'lyra-theme-tokens-racine-'))
+  for (const [source, cible] of [['chromium/chrome', 'chrome'], ['chromium/edge', 'edge'], ['chromium/brave', 'brave'], ['firefox', 'firefox'], ['safari', 'safari'], ['orion', 'orion']]) {
+    mkdirSync(join(racine, cible), { recursive: true })
+    cpSync(join(FIXTURES, source), join(racine, cible), { recursive: true })
+  }
+})
+test.afterAll(() => rmSync(racine, { recursive: true, force: true }))
 type Reference = Record<string, Record<string, string[]>>
 
 const trouver = (app: { windows(): Page[] }, debut: string): Page | undefined => app.windows().find((w) => w.url().startsWith(debut))
@@ -81,8 +95,8 @@ async function collecter(app: ElectronApplication, fenetre: Page, avant?: (p: Pa
     const p = await aller(app, fenetre, `lyra://settings#/${route}`, 'lyra://settings')
     await p.evaluate((r) => { location.hash = `#/${r}` }, route)
     await expect(p.locator('h1')).toBeVisible()
-    // La détection des navigateurs ajoute les boutons d'importation : on attend qu'elle ait fini.
-    if (route === 'importer') await expect(p.locator('#importer-maintenant')).toBeAttached()
+    // La détection puis l'aperçu du premier navigateur (étiquettes « Prêt »…) arrivent après le rendu : on attend le bouton actif.
+    if (route === 'importer') await expect(p.locator('#importer-maintenant')).toBeEnabled()
     await prendre(`settings-${route}`, p)
   }
   await prendre('history', await aller(app, fenetre, 'lyra://history', 'lyra://history'))
@@ -104,7 +118,7 @@ async function collecter(app: ElectronApplication, fenetre: Page, avant?: (p: Pa
 
 test('thème clair par défaut : les couleurs calculées de toutes les vues Lyra sont celles de la référence', async () => {
   test.setTimeout(120_000)
-  const { app, fenetre } = await lancerLyra()
+  const { app, fenetre } = await lancerLyra({ LYRA_IMPORT_RACINE: racine })
   try {
     const actuel = await collecter(app, fenetre)
     if (process.env.LYRA_REF_ECRIRE === '1' || !existsSync(FICHIER)) {
@@ -134,7 +148,7 @@ const lumi = (rgb: string): number | null => {
 
 test('mode sombre : la capsule vaut rgb(23,23,42) et la page rgb(18,18,20), plus aucune surface claire', async () => {
   test.setTimeout(120_000)
-  const { app, fenetre } = await lancerLyra()
+  const { app, fenetre } = await lancerLyra({ LYRA_IMPORT_RACINE: racine })
   try {
     await fenetre.evaluate(() => window.lyra.invoke('settings:set', { theme: 'sombre' }))
     await SOMBRE(fenetre)
