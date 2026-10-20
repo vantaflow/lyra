@@ -11,6 +11,7 @@ import type { CiblesImport } from '../import/appliquer'
 import { estPageReglages } from '../import/importeur'
 import { PHRASE_MIN } from '../../shared/exportTextes'
 import { ErreurPaquet, verifierPhrase } from './chiffrement'
+import { ErreurReglagesVolumineux } from '../settings/import'
 import { exporterCiel, exporterFavoris, exporterHistorique, exporterPaquet, exporterReglages, importerFichier, type DepsOperations } from './operations'
 import type { SauvegardeAuto } from './sauvegardeAuto'
 import type { CodeErreurExport, DemandeExportFichier, ReponseSauvegardeAuto, ResultatExport } from './types'
@@ -79,7 +80,7 @@ export function installerExportIpc(deps: DepsExportIpc): void {
   const echecExport = (e: unknown): ResultatExport => ({
     ok: false,
     erreur: e instanceof ErreurPaquet && e.code === 'phrase-courte' ? 'phrase-courte' : ('ecriture' as CodeErreurExport),
-    message: e instanceof ErreurPaquet ? e.message : 'Impossible d’écrire le fichier.'
+    message: e instanceof ErreurPaquet || e instanceof ErreurReglagesVolumineux ? e.message : 'Impossible d’écrire le fichier.'
   })
   const exporter = async (canal: string, e: Parameters<typeof controle>[0], d: DemandeExportFichier | undefined, nom: string, filtres: Filtres, ecrire: (chemin: string, ops: DepsOperations) => Promise<{ compte: number }>): Promise<ResultatExport> => {
     controle(e, canal)

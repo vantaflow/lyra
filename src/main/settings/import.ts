@@ -3,6 +3,11 @@ import { isAbsolute } from 'node:path'
 import type { Settings } from '../../shared/types'
 import { validerPatch } from './validate'
 
+/** Taille maximale d'un fichier de réglages, à l'import comme à l'export (16 Mo). */
+export const TAILLE_MAX_IMPORT = 16 * 1024 * 1024
+
+export class ErreurReglagesVolumineux extends Error {}
+
 const repertoireExistant = (chemin: string): boolean => {
   try {
     return existsSync(chemin) && statSync(chemin).isDirectory()
@@ -46,4 +51,15 @@ export function reglagesExportables(s: Settings): Record<string, unknown> {
     reste.extensions = sans
   }
   return reste
+}
+
+/** JSON d'export ; refuse au-delà de `TAILLE_MAX_IMPORT` (il ne serait plus réimportable). */
+export function serialiserReglages(s: Settings): string {
+  const json = JSON.stringify(reglagesExportables(s), null, 2)
+  const octets = Buffer.byteLength(json, 'utf8')
+  if (octets > TAILLE_MAX_IMPORT) {
+    const mo = (octets / (1024 * 1024)).toFixed(1)
+    throw new ErreurReglagesVolumineux(`Réglages trop volumineux pour être exportés (${mo} Mo, maximum ${TAILLE_MAX_IMPORT / (1024 * 1024)} Mo).`)
+  }
+  return json
 }

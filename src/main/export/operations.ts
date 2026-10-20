@@ -9,7 +9,7 @@ import type { Settings, SkyState } from '../../shared/types'
 import type { Favori } from '../bookmarks/Bookmarks'
 import { appliquer, type CiblesImport } from '../import/appliquer'
 import type { OptionsApplication, Visite } from '../import/types'
-import { patchImporte, reglagesExportables } from '../settings/import'
+import { TAILLE_MAX_IMPORT, patchImporte, serialiserReglages } from '../settings/import'
 import { ErreurPaquet } from './chiffrement'
 import { cielDepuisJson, cielVersFichier, cielVersOnglets } from './ciel'
 import type { AccesCookies } from './cookies'
@@ -40,7 +40,7 @@ const pauseParDefaut = (): Promise<void> => new Promise((r) => setImmediate(r))
 /** Fichier CSV d'historique : au-delà, refusé (la lecture est en flux, mais un fichier démesuré n'est pas un export de Lyra). */
 export const TAILLE_MAX_CSV = 256 * 1024 * 1024
 
-const TAILLE_MAX = { favoris: 64 * 1024 * 1024, ciel: 32 * 1024 * 1024, reglages: 1_000_000, paquet: 1024 * 1024 * 1024 } as const
+const TAILLE_MAX = { favoris: 64 * 1024 * 1024, ciel: 32 * 1024 * 1024, reglages: TAILLE_MAX_IMPORT, paquet: 1024 * 1024 * 1024 } as const
 
 /** Écriture atomique : le fichier d'arrivée n'existe jamais à moitié écrit. */
 async function ecrireAtomique(chemin: string, donnees: string | Uint8Array, mode?: number): Promise<void> {
@@ -99,7 +99,7 @@ export async function exporterCiel(chemin: string, deps: DepsOperations): Promis
 
 /** Le même JSON que « Exporter les réglages » (`settings:export`). */
 export async function exporterReglages(chemin: string, deps: DepsOperations): Promise<{ compte: number }> {
-  await ecrireAtomique(chemin, JSON.stringify(reglagesExportables(deps.reglages.getSettings()), null, 2))
+  await ecrireAtomique(chemin, serialiserReglages(deps.reglages.getSettings()))
   return { compte: 1 }
 }
 

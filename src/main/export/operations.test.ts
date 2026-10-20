@@ -232,6 +232,16 @@ describe('export / import de fichiers (vrais magasins, sans Electron)', () => {
     expect(readFileSync(a.chemin('avec.lyra')).includes('secret-de-session')).toBe(false)
   })
 
+  it('réglages : 16 Mo + 1 refusé à l\'import ; export refusé au-delà de 16 Mo avec un message', async () => {
+    const b = monde('b')
+    writeFileSync(b.chemin('gros.json'), Buffer.alloc(16 * 1024 * 1024 + 1, 0x20))
+    expect(await importerFichier({ type: 'reglages', chemin: b.chemin('gros.json') }, b.cibles, b.deps, OPTIONS)).toMatchObject({ ok: false, erreur: 'volumineux' })
+    const a = monde('a')
+    a.reglages.setSettings({ sites: Object.fromEntries(Array.from({ length: 165 }, (_, i) => [`https://s${i}.fr`, { style: 'a'.repeat(102_400) }])) })
+    await expect(exporterReglages(a.chemin('r.json'), a.deps)).rejects.toThrow(/Réglages trop volumineux pour être exportés \(\d+\.\d Mo, maximum 16 Mo\)\./)
+    expect(existsSync(a.chemin('r.json'))).toBe(false)
+  })
+
   it('fichier trop gros ou absent : refus propre', async () => {
     const b = monde('b')
     expect(await importerFichier({ type: 'ciel', chemin: b.chemin('absent.json') }, b.cibles, b.deps, OPTIONS)).toMatchObject({ ok: false, erreur: 'illisible' })

@@ -1,6 +1,6 @@
 import type { ReglagesD } from '../../shared/types-reglages'
 
-/** Défauts des blocs du jalon D : aucun changement visible par rapport au comportement antérieur. */
+/** Défauts des blocs du jalon D : ceux du design (`*.dc.html`) quand il les donne, sinon le comportement antérieur. */
 export function reglagesParDefautD(): ReglagesD {
   return {
     apparence: {
@@ -21,7 +21,7 @@ export function reglagesParDefautD(): ReglagesD {
       passage: 'systeme',
       personnalisees: null,
       cielTeinteParSite: false,
-      couleurParConstellation: false,
+      couleurParConstellation: true,
       prefersColorScheme: true
     },
     palette: { suggestionsHistorique: true, suggestionsFavoris: true, suggestionsEnPrivee: false },

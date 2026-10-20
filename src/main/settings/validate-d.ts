@@ -1,5 +1,5 @@
 /** Valideurs du jalon D (schéma v2) : blocs de réglages et champs de règle de site. */
-import { CLES_COULEUR, NOMS_THEMES } from '../../shared/types-reglages'
+import { CLES_COULEUR, COULEURS_INDIGO_NUIT, NOMS_THEMES } from '../../shared/types-reglages'
 
 export type Obj = Record<string, unknown>
 export type Validateur = (v: unknown) => unknown
@@ -52,17 +52,24 @@ export function scriptsPerso(v: unknown): unknown[] | undefined {
 
 const nomTheme = enumeration(...NOMS_THEMES)
 
-/** 13 éléments × { clair, sombre } en #RRGGBB ; tout ou rien (null : pas de thème perso). */
+/**
+ * { élément: { clair, sombre } } en #RRGGBB ; null : pas de thème perso.
+ * Une clé (ou un mode) absente est complétée par « Indigo nuit » ; une clé inconnue ou une valeur invalide rejette tout l'objet.
+ */
 function personnalisees(v: unknown): Obj | null | undefined {
   if (v === null) return null
-  if (!estObjet(v) || Object.keys(v).length !== CLES_COULEUR.length) return undefined
+  if (!estObjet(v)) return undefined
+  if (Object.keys(v).some((k) => !(CLES_COULEUR as readonly string[]).includes(k))) return undefined
   const sortie: Obj = {}
   for (const cle of CLES_COULEUR) {
     const c = propre(v, cle)
-    if (!estObjet(c)) return undefined
-    const clair = propre(c, 'clair')
-    const sombre = propre(c, 'sombre')
+    if (c !== undefined && !estObjet(c)) return undefined
+    const [clair, sombre] = (['clair', 'sombre'] as const).map((mode) => {
+      const x = c === undefined ? undefined : propre(c, mode)
+      return x === undefined ? COULEURS_INDIGO_NUIT[cle][mode] : x
+    })
     if (typeof clair !== 'string' || !HEX.test(clair) || typeof sombre !== 'string' || !HEX.test(sombre)) return undefined
+    if (c !== undefined && Object.keys(c).some((k) => k !== 'clair' && k !== 'sombre')) return undefined
     sortie[cle] = { clair, sombre }
   }
   return sortie

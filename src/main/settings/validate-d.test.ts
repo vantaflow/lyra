@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { validerPatch } from './validate'
 import { reglagesParDefaut } from './defaults'
+import { COULEURS_INDIGO_NUIT } from '../../shared/types-reglages'
 
 const hex = (c: string) => ({ clair: c, sombre: c })
 const CLES = ['ciel-fond', 'ciel-texte', 'etoile-active', 'etoile-active-fond', 'etoiles', 'etoiles-endormies', 'lignes', 'capsule-fond', 'capsule-texte', 'accent', 'boucliers', 'pages-fond', 'nouvel-onglet-ciel']
@@ -11,6 +12,7 @@ describe('défauts D', () => {
     const d = reglagesParDefaut('/dl')
     expect(d.version).toBe(2)
     expect(d.apparence.tailleTexte).toBe(13)
+    expect(d.couleurs.couleurParConstellation).toBe(true)
     expect(d.couleurs.personnalisees).toBeNull()
     expect(d.dnd).toEqual({ duree: 60 })
     expect(d.raccourcis).toEqual({})
@@ -54,13 +56,24 @@ describe('couleurs', () => {
     expect(validerPatch({ couleurs: { actif: 'arc-en-ciel' } })).toEqual({})
     expect(validerPatch({ couleurs: { passage: 'midi' } })).toEqual({})
   })
-  it('personnalisées : hex #RRGGBB strict, 13 clés, tout ou rien', () => {
+  it('personnalisées : clés ou modes manquants complétés par Indigo nuit, le reste rejeté', () => {
+    const sans = couleurs13() as Record<string, unknown>
+    delete sans.accent
+    sans.etoiles = { clair: '#010203' }
+    const r = validerPatch({ couleurs: { personnalisees: sans } }) as { couleurs: { personnalisees: Record<string, { clair: string; sombre: string }> } }
+    const p = r.couleurs.personnalisees
+    expect(Object.keys(p)).toHaveLength(13)
+    expect(p.accent).toEqual(COULEURS_INDIGO_NUIT.accent)
+    expect(p.etoiles).toEqual({ clair: '#010203', sombre: COULEURS_INDIGO_NUIT.etoiles.sombre })
+    expect(p['ciel-fond']).toEqual(hex('#112233'))
+    expect(validerPatch({ couleurs: { personnalisees: {} } })).toEqual({ couleurs: { personnalisees: COULEURS_INDIGO_NUIT } })
+    expect(validerPatch({ couleurs: { personnalisees: { accent: { clair: 'rouge' } } } })).toEqual({})
+    expect(validerPatch({ couleurs: { personnalisees: { accent: { clair: '#112233', ton: '#000000' } } } })).toEqual({})
+  })
+  it('personnalisées : hex #RRGGBB strict, clé inconnue rejetée', () => {
     expect(validerPatch({ couleurs: { personnalisees: couleurs13('#abc') } })).toEqual({})
     expect(validerPatch({ couleurs: { personnalisees: couleurs13('red') } })).toEqual({})
     expect(validerPatch({ couleurs: { personnalisees: couleurs13('#11223344') } })).toEqual({})
-    const sans = couleurs13() as Record<string, unknown>
-    delete sans.accent
-    expect(validerPatch({ couleurs: { personnalisees: sans } })).toEqual({})
     expect(validerPatch({ couleurs: { personnalisees: { ...couleurs13(), inconnue: hex('#112233') } } })).toEqual({})
     expect(validerPatch({ couleurs: { personnalisees: 'x' } })).toEqual({})
   })

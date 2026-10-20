@@ -16,6 +16,23 @@ export const CLES_COULEUR: readonly CleCouleur[] = [
 /** Une couleur `#RRGGBB` en clair et en sombre pour chaque élément. */
 export type CouleursTheme = Record<CleCouleur, { clair: string; sombre: string }>
 
+/** Valeurs du thème « Indigo nuit » (design) : base qui complète un « Mes couleurs » incomplet. */
+export const COULEURS_INDIGO_NUIT: CouleursTheme = {
+  'ciel-fond': { clair: '#15152E', sombre: '#0E0E1E' },
+  'ciel-texte': { clair: '#C9C9EA', sombre: '#C9C9EA' },
+  'etoile-active': { clair: '#F4C56A', sombre: '#F4C56A' },
+  'etoile-active-fond': { clair: '#262650', sombre: '#1E1E3C' },
+  etoiles: { clair: '#A8A8D8', sombre: '#A8A8D8' },
+  'etoiles-endormies': { clair: '#4E4E7A', sombre: '#44446A' },
+  lignes: { clair: '#3B3B70', sombre: '#33335E' },
+  'capsule-fond': { clair: '#FFFFFF', sombre: '#17172A' },
+  'capsule-texte': { clair: '#1C1C2E', sombre: '#E8E8F4' },
+  accent: { clair: '#5452C8', sombre: '#8B8AF0' },
+  boucliers: { clair: '#1E7F6C', sombre: '#5FD3B3' },
+  'pages-fond': { clair: '#F7F7FB', sombre: '#121214' },
+  'nouvel-onglet-ciel': { clair: '#0F0F26', sombre: '#090916' }
+}
+
 export interface ScriptPerso {
   nom: string
   code: string

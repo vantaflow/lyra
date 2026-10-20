@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, renameSync, mkdirSync, rmSync } from 'node:fs'
+import { readFileSync, writeFileSync, renameSync, mkdirSync, rmSync, copyFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 
 function estObjet(v: unknown): v is Record<string, unknown> {
@@ -14,6 +14,16 @@ export function fusion<T>(base: T, patch: unknown): T {
     if (v !== undefined && !CLES_INTERDITES.has(k)) sortie[k] = fusion(base[k], v)
   }
   return sortie as T
+}
+
+/** Garde `<fichier>.corrompu` avant que la première écriture ne remplace un fichier illisible. */
+export function conserverCopieCorrompue(chemin: string): void {
+  try {
+    copyFileSync(chemin, `${chemin}.corrompu`)
+    console.warn(`[reglages] copie du fichier illisible : ${chemin}.corrompu`)
+  } catch {
+    // Copie impossible : les défauts restent utilisés, rien de plus à faire.
+  }
 }
 
 /** Stockage JSON : lecture tolérante, écriture atomique (.tmp + rename). */
@@ -54,11 +64,19 @@ export class JsonStore<T extends object> {
   }
 
   private lire(): T {
+    let texte: string
     try {
-      const brut: unknown = JSON.parse(readFileSync(this.chemin, 'utf8'))
+      texte = readFileSync(this.chemin, 'utf8')
+    } catch {
+      return this.defauts
+    }
+    try {
+      const brut: unknown = JSON.parse(texte)
       if (this.migrer) return this.migrer(brut)
       return fusion(this.defauts, brut)
-    } catch {
+    } catch (e) {
+      console.warn(`[reglages] fichier illisible, valeurs par défaut utilisées : ${(e as Error).message}`)
+      conserverCopieCorrompue(this.chemin)
       return this.defauts
     }
   }

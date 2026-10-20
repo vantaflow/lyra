@@ -1,11 +1,11 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { migrer } from './migrations'
 import { reglagesParDefaut } from './defaults'
 import { creerReglages } from './settings'
-import { patchImporte, reglagesExportables } from './import'
+import { TAILLE_MAX_IMPORT, patchImporte, reglagesExportables, serialiserReglages } from './import'
 import v1 from './fixtures/settings-v1.json'
 
 const defauts = reglagesParDefaut('/dl')
@@ -56,6 +56,8 @@ describe('migrer', () => {
     expect(settings.moteursPerso).toEqual(moteurs)
     expect(settings.extensions).toEqual(extensions)
     expect(settings.import).toEqual(imp)
+    // `sites[…].extensions` (jalon B) est retiré par le valideur de sites tant que B n'apporte pas le sien.
+    expect((settings.sites as Record<string, any>)['https://a.fr']).toEqual({ zoom: 1.5 })
   })
 
   it('est idempotente', () => {
@@ -89,10 +91,45 @@ describe('persistance', () => {
     expect(disque.extensions).toEqual({ majAuto: false })
   })
 
-  it('un fichier JSON invalide donne les défauts', () => {
+  it('un fichier JSON invalide donne les défauts, un avertissement et une copie .corrompu', () => {
     const chemin = join(mkdtempSync(join(tmpdir(), 'lyra-mig-')), 'settings.json')
     writeFileSync(chemin, '{pas du json')
-    expect(creerReglages(chemin, '/dl').getSettings().version).toBe(2)
+    const avert = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    try {
+      const r = creerReglages(chemin, '/dl')
+      expect(r.getSettings()).toEqual(reglagesParDefaut('/dl'))
+      expect(avert.mock.calls.map((c) => String(c[0])).join('\n')).toMatch(/\[reglages\] fichier illisible/)
+      r.setSettings({ theme: 'clair' })
+    } finally {
+      avert.mockRestore()
+    }
+    expect(readFileSync(`${chemin}.corrompu`, 'utf8')).toBe('{pas du json')
+    expect(JSON.parse(readFileSync(chemin, 'utf8')).theme).toBe('clair')
+  })
+
+  it('un JSON valide mais pas un objet : défauts, avertissement, copie', () => {
+    const chemin = join(mkdtempSync(join(tmpdir(), 'lyra-mig-')), 'settings.json')
+    writeFileSync(chemin, '[1,2]')
+    const avert = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    try {
+      expect(creerReglages(chemin, '/dl').getSettings()).toEqual(reglagesParDefaut('/dl'))
+      expect(avert.mock.calls.map((c) => String(c[0])).join('\n')).toMatch(/illisible/)
+    } finally {
+      avert.mockRestore()
+    }
+    expect(readFileSync(`${chemin}.corrompu`, 'utf8')).toBe('[1,2]')
+  })
+
+  it('les clés rejetées sont journalisées', () => {
+    const chemin = join(mkdtempSync(join(tmpdir(), 'lyra-mig-')), 'settings.json')
+    writeFileSync(chemin, JSON.stringify({ theme: 'rose' }))
+    const avert = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    try {
+      creerReglages(chemin, '/dl')
+      expect(avert.mock.calls.map((c) => String(c[0]))).toContain('[reglages] Réglage invalide ignoré : theme')
+    } finally {
+      avert.mockRestore()
+    }
   })
 })
 
@@ -124,5 +161,25 @@ describe('export / import', () => {
   it('l\'import ignore extensions.installees et import', () => {
     const patch = patchImporte({ theme: 'clair', import: { extensionsEnAttente: [], reglagesEnAttente: { pageAccueil: 'https://a.fr' } }, extensions: { installees: [{ id: 'x' }] } }, AUCUN_REP) as Record<string, unknown>
     expect(patch).toEqual({ theme: 'clair' })
+  })
+})
+
+describe('taille des réglages', () => {
+  const avecSites = (n: number) =>
+    migrer({ sites: Object.fromEntries(Array.from({ length: n }, (_, i) => [`https://s${i}.fr`, { style: 'a'.repeat(102_400) }])) }, defauts).settings
+
+  it('la limite est de 16 Mo', () => {
+    expect(TAILLE_MAX_IMPORT).toBe(16 * 1024 * 1024)
+  })
+  it('un export juste sous la limite est réimportable à l\'identique', () => {
+    const s = avecSites(160)
+    const json = serialiserReglages(s)
+    expect(json.length).toBeLessThanOrEqual(TAILLE_MAX_IMPORT)
+    expect(json.length).toBeGreaterThan(TAILLE_MAX_IMPORT * 0.9)
+    const retour = migrer(patchImporte(JSON.parse(json), AUCUN_REP), defauts).settings
+    expect(retour.sites).toEqual(s.sites)
+  })
+  it('l\'export au-delà est refusé avec un message clair', () => {
+    expect(() => serialiserReglages(avecSites(165))).toThrow(/^Réglages trop volumineux pour être exportés \(\d+\.\d Mo, maximum 16 Mo\)\.$/)
   })
 })
