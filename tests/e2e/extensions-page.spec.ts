@@ -22,7 +22,10 @@ test('lyra://extensions : en-tête, cartes, installation par fichier, interrupte
   // Repères horodatés (diagnostic d'un blocage sous Windows en CI).
   const t0 = Date.now()
   const repere = (m: string): void => console.log(`[extensions-page] ${Date.now() - t0} ms : ${m}`)
-  const { app, fenetre } = await lancerLyra({ LYRA_CHOIX_EXTENSION: zipFixture() })
+  const { app, fenetre } = await lancerLyra({ LYRA_CHOIX_EXTENSION: zipFixture(), LYRA_DIAG_EXT: '1' })
+  app.process().stderr?.on('data', (d: Buffer) => {
+    for (const l of d.toString().split('\n')) if (l.includes('[diag-ext]')) console.log(l)
+  })
   try {
     await fenetre.evaluate(() => window.lyra.invoke('tabs:open', { url: 'lyra://extensions' }))
     await expect.poll(() => pageExtensions(app)).toBeDefined()

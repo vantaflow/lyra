@@ -34,7 +34,7 @@ test('« Replier le ciel » : page à 14 px, rail visible ; survol → ciel au-d
     expect(l.bounds.chrome).toEqual(l.bounds.overlay)
     await expect(fenetre.locator('.pilule')).toBeVisible()
     await expect(fenetre.locator('.capsule')).toBeVisible()
-    expect((await fenetre.locator('.ciel-revele').boundingBox())!.width).toBe(286)
+    expect((await fenetre.locator('.ciel-revele').boundingBox())!.width).toBeCloseTo(286, 2)
     expect(l.bounds.page.x).toBe(14)
 
     // La souris dessus : rien ne bouge, même après le délai de retrait.

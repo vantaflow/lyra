@@ -31,8 +31,15 @@ export async function svgVersPng(svg: Buffer, taille: number): Promise<Buffer | 
       `new Promise((ok) => { const i = document.images[0]; const fin = () => ok(i.naturalWidth); i.complete ? fin() : (i.onload = fin, i.onerror = () => ok(0)) })`
     )) as number
     if (!largeur) return undefined
-    const image = await win.webContents.capturePage({ x: 0, y: 0, width: t, height: t })
-    return image.isEmpty() ? undefined : image.toPNG()
+    // Une fenêtre hors écran fraîche peut rendre une capture vide tant qu'aucune image n'est peinte : on attend deux
+    // images puis on réessaie quelques fois.
+    for (let essai = 0; essai < 5; essai++) {
+      await win.webContents.executeJavaScript('new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(0))))')
+      const image = await win.webContents.capturePage({ x: 0, y: 0, width: t, height: t })
+      if (!image.isEmpty()) return image.toPNG()
+      await new Promise((r) => setTimeout(r, 100))
+    }
+    return undefined
   } catch {
     return undefined
   } finally {
