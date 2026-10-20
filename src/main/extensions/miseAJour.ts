@@ -1,6 +1,6 @@
 /**
  * Mises à jour des extensions : au démarrage puis toutes les 6 h (réglage `extensions.majAuto`) et à la demande.
- * Extensions du Chrome Web Store (`source === 'cws'`, actives ou non) : version annoncée par l'endpoint de mise à jour de Google
+ * Extensions du Chrome Web Store (`source === 'cws'`, actives ou non) et d'AMO (`source === 'amo'`, version de l'API v5) : version annoncée par l'endpoint de mise à jour de Google
  * comparée à la version installée, puis réinstallation par le chemin normal de Lyra ; uBlock Origin : version de la dernière
  * release GitHub. Sans Electron (tout est injecté).
  */
@@ -23,6 +23,9 @@ export interface OptionsMiseAJour {
   versionDistanteCws: (id: string) => Promise<string | undefined>
   /** Réinstalle depuis le Chrome Web Store. */
   mettreAJourCws: (id: string) => Promise<ResultatInstallation>
+  /** addons.mozilla.org : version la plus récente d'une extension (slug) et réinstallation (téléchargement, sha256, conversion). */
+  versionDistanteAmo?: (slug: string) => Promise<string | undefined>
+  mettreAJourAmo?: (slug: string) => Promise<ResultatInstallation>
   derniereVersionUbo?: () => Promise<string>
   installerUbo?: () => Promise<ResultatInstallation>
   maintenant?: () => Date
@@ -76,6 +79,20 @@ export function creerMiseAJour(o: OptionsMiseAJour): MiseAJour {
         else echec(`${e.nom} : ${r.etat === 'erreur' ? r.raison : 'installation manuelle requise'}`)
       } catch (err) {
         echec(`${e.nom} : ${err instanceof Error ? err.message : String(err)}`)
+      }
+    }
+
+    if (o.versionDistanteAmo && o.mettreAJourAmo) {
+      for (const e of o.registre.lister().filter((x) => x.source === 'amo' && x.slugAmo)) {
+        try {
+          const distante = await o.versionDistanteAmo(e.slugAmo as string)
+          if (!distante || comparerVersions(distante, e.version) <= 0) continue
+          const r = await o.mettreAJourAmo(e.slugAmo as string)
+          if (r.etat === 'installee') misesAJour.push({ id: r.id, nom: r.nom, de: e.version, vers: r.version })
+          else echec(`${e.nom} : ${r.etat === 'erreur' ? r.raison : 'installation manuelle requise'}`)
+        } catch (err) {
+          echec(`${e.nom} : ${err instanceof Error ? err.message : String(err)}`)
+        }
       }
     }
 

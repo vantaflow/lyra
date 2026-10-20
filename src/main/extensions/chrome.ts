@@ -7,11 +7,12 @@ import { generateKeyPairSync, randomUUID } from 'node:crypto'
 import { existsSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ExtensionInstallee, MagasinExtension, ResultatInstallation, SourceExtension } from '../../shared/types'
+import { DELAI_RESEAU_MS, requeteSure } from './reseau'
 import { copierDossier, extraireZip, idDepuisCle, verifierCrx3, MAX_ARCHIVE, ErreurArchive } from './archives'
 import type { Chargeur } from './chargeur'
 import { dossierAbsolu, dossierRelatifValide, ID_EXTENSION, type Registre } from './registre'
 
-export const DELAI_RESEAU_MS = 30_000
+export { DELAI_RESEAU_MS }
 
 // ------------------------------------------------------------------------------------------------- analyse
 
@@ -90,30 +91,9 @@ const message = (e: unknown): string => (e instanceof Error ? e.message : String
 
 // ------------------------------------------------------------------------------------------------- réseau
 
-async function lireCorps(r: Response, max: number): Promise<Uint8Array> {
-  const annonce = Number(r.headers.get('content-length'))
-  if (Number.isFinite(annonce) && annonce > max) throw new Error('téléchargement trop volumineux')
-  if (!r.body) return new Uint8Array(await r.arrayBuffer())
-  const lecteur = r.body.getReader()
-  const morceaux: Uint8Array[] = []
-  let n = 0
-  for (;;) {
-    const { done, value } = await lecteur.read()
-    if (done) break
-    n += value.length
-    if (n > max) {
-      await lecteur.cancel().catch(() => {})
-      throw new Error('téléchargement trop volumineux')
-    }
-    morceaux.push(value)
-  }
-  return Buffer.concat(morceaux)
-}
-
 const hoteCws = (h: string): boolean => h === 'clients2.google.com' || h === 'clients2.googleusercontent.com' || h.endsWith('.gvt1.com')
 const hoteApiGithub = (h: string): boolean => h === 'api.github.com'
 const hoteGithub = (h: string): boolean => h === 'github.com' || h === 'objects.githubusercontent.com' || h === 'release-assets.githubusercontent.com'
-const MAX_SAUTS = 5
 
 function urlCrx(id: string): string {
   const u = new URL('https://clients2.google.com/service/update2/crx')
@@ -168,7 +148,7 @@ export interface InstallateurChrome {
   mettreAJourCws(id: string): Promise<ResultatInstallation>
 }
 
-interface Finalisation {
+export interface Finalisation {
   /** Dossier extrait (ou copié), éventuellement avec un sous-dossier racine. */
   extrait: string
   source: SourceExtension
@@ -176,9 +156,14 @@ interface Finalisation {
   /** Clé publique (DER) fournie par l'en-tête CRX. */
   cle?: Buffer
   idAttendu?: string
+  /** Extension Firefox convertie. */
+  convertie?: boolean
+  /** Identifiant AMO (slug) de l'extension, pour les mises à jour. */
+  slugAmo?: string
 }
 
-export function creerInstallateurChrome(d: DepsInstallateurChrome): InstallateurChrome {
+/** Briques communes aux installateurs (Chrome, Firefox) : réseau borné, extraction, finalisation (registre + chargement). */
+export function creerBaseInstallation(d: DepsInstallateurChrome) {
   const f = d.fetch ?? fetch
   const maintenant = d.maintenant ?? ((): Date => new Date())
   const journal = d.journal ?? ((m: string) => console.warn(`[extensions] ${m}`))
@@ -217,6 +202,8 @@ export function creerInstallateurChrome(d: DepsInstallateurChrome): Installateur
     if (typeof m.name !== 'string' || m.name.trim() === '') return echec("le manifest n'a pas de nom")
     if (typeof m.version !== 'string' || m.version === '') return echec("le manifest n'a pas de version")
     const nom = nomManifeste(racine, m)
+    // Paquet signé : un `key` du manifest qui n'est pas la clé signataire ferait prendre l'extension pour une autre.
+    if (o.cle && typeof m.key === 'string' && m.key && !Buffer.from(m.key, 'base64').equals(o.cle)) return echec("la clé du manifest n'est pas celle qui signe le paquet")
     let cle = typeof m.key === 'string' && m.key ? m.key : o.cle?.toString('base64')
     if (!cle) cle = cleStable(nom, o.source)
     if (m.key !== cle) {
@@ -262,6 +249,8 @@ export function creerInstallateurChrome(d: DepsInstallateurChrome): Installateur
       magasin: o.magasin,
       dossier: `${id}/${version}`,
       active: precedente?.active ?? true,
+      ...(o.convertie ? { convertie: true } : {}),
+      ...(o.slugAmo ? { slugAmo: o.slugAmo } : {}),
       installeeLe: precedente?.installeeLe ?? maintenantIso,
       miseAJourLe: maintenantIso
     }
@@ -280,17 +269,23 @@ export function creerInstallateurChrome(d: DepsInstallateurChrome): Installateur
     return { etat: 'installee', id, nom, version }
   }
 
-  /** Extrait dans un dossier d'attente sous `base` (même volume : le renommage final est atomique), puis finalise. */
-  async function depuisZip(zip: Uint8Array, o: Omit<Finalisation, 'extrait'>): Promise<ResultatInstallation> {
+  /** Dossier d'attente sous `base` (même volume : le renommage final est atomique), supprimé à la fin quoi qu'il arrive. */
+  async function enAttente<T>(travail: (attente: string) => Promise<T>): Promise<T> {
     const attente = join(d.base, `.attente-${randomUUID().slice(0, 8)}`)
     try {
       mkdirSync(d.base, { recursive: true })
-      extraireZip(zip, attente)
-      return await finaliser({ ...o, extrait: attente })
+      return await travail(attente)
     } finally {
       rmSync(attente, { recursive: true, force: true })
     }
   }
+
+  /** Extrait le zip dans un dossier d'attente, puis finalise. */
+  const depuisZip = (zip: Uint8Array, o: Omit<Finalisation, 'extrait'>): Promise<ResultatInstallation> =>
+    enAttente(async (attente) => {
+      extraireZip(zip, attente)
+      return finaliser({ ...o, extrait: attente })
+    })
 
   const lireFichier = (chemin: string): Uint8Array => {
     const st = statSync(chemin)
@@ -299,27 +294,14 @@ export function creerInstallateurChrome(d: DepsInstallateurChrome): Installateur
     return readFileSync(chemin)
   }
 
-  /** GET avec redirections suivies à la main (5 au plus) : https et hôte autorisé à chaque saut, délai global de 30 s. */
-  async function requete(url: string, accepte: (hote: string) => boolean, max: number, entetes?: Record<string, string>): Promise<Uint8Array> {
-    const signal = AbortSignal.timeout(delai)
-    let courante = url
-    for (let saut = 0; saut <= MAX_SAUTS; saut++) {
-      const u = new URL(courante)
-      if (u.protocol !== 'https:') throw new Error(`adresse non sécurisée refusée (${u.protocol})`)
-      if (!accepte(u.hostname)) throw new Error(`hôte refusé : ${u.hostname}`)
-      const r = await f(courante, { signal, redirect: 'manual', headers: entetes })
-      if (r.status >= 300 && r.status < 400) {
-        const lieu = r.headers.get('location')
-        if (!lieu) throw new Error(`redirection sans destination (HTTP ${r.status})`)
-        courante = new URL(lieu, courante).toString()
-        continue
-      }
-      if (r.status === 204) throw new Error('le magasin ne propose plus ce paquet (HTTP 204)')
-      if (!r.ok) throw new Error(`HTTP ${r.status}`)
-      return lireCorps(r, max)
-    }
-    throw new Error(`trop de redirections (plus de ${MAX_SAUTS})`)
-  }
+  const requete = (url: string, accepte: (hote: string) => boolean, max: number, entetes?: Record<string, string>): Promise<Uint8Array> =>
+    requeteSure({ fetch: f, delaiMs: delai }, url, accepte, max, entetes)
+
+  return { f, journal, echec, finaliser, enAttente, depuisZip, lireFichier, requete }
+}
+
+export function creerInstallateurChrome(d: DepsInstallateurChrome): InstallateurChrome {
+  const { echec, enAttente, depuisZip, lireFichier, requete, finaliser } = creerBaseInstallation(d)
 
   async function installerCws(id: string, forcer = false): Promise<ResultatInstallation> {
     const deja = d.registre.trouver(id)
@@ -375,16 +357,11 @@ export function creerInstallateurChrome(d: DepsInstallateurChrome): Installateur
         }
         case 'zip':
           return await depuisZip(lireFichier(source.trim()), { source: 'zip', magasin: 'inconnu' })
-        case 'dossier': {
-          const attente = join(d.base, `.attente-${randomUUID().slice(0, 8)}`)
-          try {
-            mkdirSync(d.base, { recursive: true })
+        case 'dossier':
+          return await enAttente(async (attente) => {
             copierDossier(source.trim(), attente)
-            return await finaliser({ extrait: attente, source: 'dossier', magasin: 'inconnu' })
-          } finally {
-            rmSync(attente, { recursive: true, force: true })
-          }
-        }
+            return finaliser({ extrait: attente, source: 'dossier', magasin: 'inconnu' })
+          })
       }
     } catch (e) {
       return echec(e instanceof ErreurArchive ? e.message : `installation impossible : ${message(e)}`)

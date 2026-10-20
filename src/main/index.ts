@@ -36,6 +36,8 @@ import { creerRegistre } from './extensions/registre'
 import { installerExtensionsIpc } from './extensions/ipc'
 import { creerInstallateurChrome } from './extensions/chrome'
 import { creerMiseAJour } from './extensions/miseAJour'
+import { creerInstallateurFirefox } from './extensions/firefox'
+import { svgVersPng } from './extensions/icones'
 import { installerFixtures } from './extensions/fixturesTest'
 
 definirFournisseurLangue(() => app.getLocale())
@@ -535,9 +537,14 @@ void app.whenReady().then(async () => {
   }
   const chargeurExtensions = creerChargeur({ extensions: sessionLyra.extensions, registre: registreExtensions, base: baseExtensions })
   const installateurChrome = creerInstallateurChrome({ base: baseExtensions, registre: registreExtensions, chargeur: chargeurExtensions })
+  // Polyfill WebExtensions embarqué (webextension-polyfill 0.12.0, copié dans resources/extensions) : même convention que les listes des Boucliers.
+  const polyfillExtensions = join(app.isPackaged ? join(process.resourcesPath, 'resources') : join(app.getAppPath(), 'resources'), 'extensions/browser-polyfill.js')
+  const installateurFirefox = creerInstallateurFirefox({ base: baseExtensions, registre: registreExtensions, chargeur: chargeurExtensions, polyfill: polyfillExtensions, svgVersPng })
   const miseAJourExtensions = creerMiseAJour({
     registre: registreExtensions,
     reglages,
+    versionDistanteAmo: installateurFirefox.versionDistanteAmo,
+    mettreAJourAmo: installateurFirefox.mettreAJourAmo,
     versionDistanteCws: installateurChrome.versionDistanteCws,
     mettreAJourCws: installateurChrome.mettreAJourCws,
     derniereVersionUbo: installateurChrome.derniereVersionUbo,
@@ -547,6 +554,7 @@ void app.whenReady().then(async () => {
   installerExtensionsIpc({
     chargeur: chargeurExtensions,
     installateur: installateurChrome,
+    firefox: installateurFirefox,
     miseAJour: miseAJourExtensions,
     modeTest: process.env.LYRA_TEST === '1',
     estPrivee: (wc) => {
@@ -558,7 +566,7 @@ void app.whenReady().then(async () => {
       const options: Electron.OpenDialogOptions =
         quoi === 'dossier'
           ? { title: "Choisir le dossier de l'extension", properties: ['openDirectory'] }
-          : { title: "Choisir une extension (.crx ou .zip)", properties: ['openFile'], filters: [{ name: 'Extensions', extensions: ['crx', 'zip'] }] }
+          : { title: "Choisir une extension (.crx, .zip ou .xpi)", properties: ['openFile'], filters: [{ name: 'Extensions', extensions: ['crx', 'zip', 'xpi'] }] }
       const r = f ? await dialog.showOpenDialog(f.win, options) : await dialog.showOpenDialog(options)
       return r.canceled ? undefined : r.filePaths[0]
     }

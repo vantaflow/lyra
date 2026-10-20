@@ -3,14 +3,16 @@ import type { ResultatInstallation } from '../../shared/types'
 import { handle } from '../ipc'
 import type { Chargeur } from './chargeur'
 import { analyserSourceChrome, type InstallateurChrome } from './chrome'
+import { analyserSourceFirefox, type InstallateurFirefox } from './firefox'
 import type { MiseAJour } from './miseAJour'
 import { ID_EXTENSION } from './registre'
 
 export interface OptionsIpcExtensions {
   chargeur: Chargeur
   installateur: InstallateurChrome
+  firefox: InstallateurFirefox
   miseAJour: MiseAJour
-  /** Sélecteur natif (fichier .crx/.zip ou dossier) ; undefined si l'utilisateur annule. */
+  /** Sélecteur natif (fichier .crx/.zip/.xpi ou dossier) ; undefined si l'utilisateur annule. */
   choisir: (sender: WebContents, quoi: 'fichier' | 'dossier') => Promise<string | undefined>
   /** L'expéditeur est-il dans une fenêtre privée ? (jamais d'installation depuis une fenêtre privée) */
   estPrivee: (sender: WebContents) => boolean
@@ -37,15 +39,21 @@ export function installerExtensionsIpc(o: OptionsIpcExtensions): void {
       source = await o.choisir(e.sender, d.choisir)
       if (!source) return { etat: 'erreur', raison: 'Aucun fichier choisi.' }
     } else if (typeof d?.source === 'string') {
-      const a = analyserSourceChrome(d.source)
-      // Un chemin local ne vient que du sélecteur natif (côté main) ; seul le mode test l'accepte tel quel.
-      if (a && (a.type === 'crx' || a.type === 'zip' || a.type === 'dossier') && !o.modeTest) {
-        return { etat: 'erreur', raison: 'Choisis le fichier ou le dossier avec le sélecteur.' }
-      }
       source = d.source
     }
     if (!source) return { etat: 'erreur', raison: 'Aucune source indiquée.' }
-    return o.installateur.installerChrome(source)
+    const f = analyserSourceFirefox(source)
+    // Un .xpi est testé avant tout (un chemin absolu serait pris pour un dossier) ; ensuite Chrome (identifiant, Web Store,
+    // .crx/.zip/dossier), puis AMO (nom, slug, identifiant gecko, adresse).
+    const firefox = f?.type === 'xpi' || (f !== undefined && !analyserSourceChrome(source))
+    // Un chemin local ne vient que du sélecteur natif (côté main) ; seul le mode test l'accepte tel quel.
+    if (!d?.choisir && !o.modeTest) {
+      const a = analyserSourceChrome(source)
+      if (f?.type === 'xpi' || (a && (a.type === 'crx' || a.type === 'zip' || a.type === 'dossier'))) {
+        return { etat: 'erreur', raison: 'Choisis le fichier ou le dossier avec le sélecteur.' }
+      }
+    }
+    return firefox ? o.firefox.installerFirefox(source) : o.installateur.installerChrome(source)
   })
   handle('extensions:majTout', async () => o.miseAJour.verifier())
 }

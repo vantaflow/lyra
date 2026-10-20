@@ -1,0 +1,44 @@
+{
+  "manifest_version": 2,
+  "name": "uBlock Origin",
+  "version": "1.60.0",
+  "browser_specific_settings": { "gecko": { "id": "uBlock0@raymondhill.net", "strict_min_version": "78.0" } },
+  "default_locale": "en",
+  "description": "__MSG_extShortDesc__",
+  "icons": { "16": "img/ublock.svg", "48": "img/ublock.svg", "128": "img/ublock.svg" },
+  "incognito": "split",
+  "background": { "page": "background.html" },
+  "browser_action": {
+    "browser_style": false,
+    "default_icon": { "16": "img/icon_16.png", "32": "img/icon_32.png" },
+    "default_title": "uBlock Origin",
+    "default_popup": "popup-fenix.html"
+  },
+  "commands": {
+    "launch-element-zapper": { "description": "__MSG_popupTipZapper__" },
+    "launch-element-picker": { "description": "__MSG_popupTipPicker__" },
+    "launch-logger": { "description": "__MSG_popupTipLog__" },
+    "relax-blocking-mode": { "description": "__MSG_relaxBlockingMode__" }
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["/js/vapi.js", "/js/vapi-client.js", "/js/contentscript.js"],
+      "all_frames": true,
+      "match_about_blank": true,
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://easylist.to/*", "https://*.fanboy.co.nz/*"],
+      "js": ["/js/scriptlets/subscriber.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "content_security_policy": "script-src 'self'; object-src 'self'",
+  "options_ui": { "page": "dashboard.html", "open_in_tab": true },
+  "permissions": ["contextMenus", "privacy", "storage", "tabs", "unlimitedStorage", "webNavigation", "webRequest", "webRequestBlocking", "<all_urls>", "dns"],
+  "sidebar_action": { "default_title": "__MSG_statsPageName__", "default_panel": "logger-ui.html?sidebar=true", "default_icon": "img/ublock.svg" },
+  "storage": { "managed_schema": "managed_storage.json" },
+  "web_accessible_resources": ["/web_accessible_resources/*"]
+}

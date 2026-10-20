@@ -1,0 +1,14 @@
+{
+  "manifest_version": 2,
+  "name": "Tree Style Tab",
+  "version": "3.9.20",
+  "description": "Show tabs like a tree.",
+  "author": "YUKI \"Piro\" Hiroshi",
+  "browser_specific_settings": { "gecko": { "id": "treestyletab@piro.sakura.ne.jp", "strict_min_version": "102.0" } },
+  "icons": { "16": "resources/icons/tree.svg", "32": "resources/icons/tree.svg" },
+  "background": { "scripts": ["common/common.js", "background/background.js"] },
+  "options_ui": { "page": "options/options.html?independent=true", "browser_style": true, "open_in_tab": true },
+  "permissions": ["activeTab", "bookmarks", "contextualIdentities", "cookies", "menus", "menus.overrideContext", "notifications", "search", "sessions", "storage", "tabs", "tabHide", "theme", "<all_urls>"],
+  "sidebar_action": { "default_icon": "resources/icons/tree.svg", "default_title": "Tree Style Tab", "default_panel": "sidebar/sidebar.html", "open_at_install": true, "browser_style": false },
+  "theme_experiment": { "stylesheet": "theme.css" }
+}

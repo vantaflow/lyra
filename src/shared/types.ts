@@ -85,14 +85,34 @@ export interface ExtensionInstallee {
   miseAJourLe: string
   /** Extension Firefox convertie en extension Chrome. */
   convertie?: boolean
+  /** Identifiant AMO (slug), pour les mises à jour des extensions installées depuis addons.mozilla.org. */
+  slugAmo?: string
 }
 
 /** Issue d'une installation d'extension (jamais d'exception : l'erreur est une valeur). */
 export type ResultatInstallation =
-  | { etat: 'installee'; id: string; nom: string; version: string }
+  | { etat: 'installee'; id: string; nom: string; version: string; convertie?: boolean; rapport?: RapportConversion; suggestionChrome?: SuggestionChrome }
   /** À installer à la main (autre magasin, source inconnue) : `raison` l'explique. */
   | { etat: 'manuel'; raison: string }
-  | { etat: 'erreur'; raison: string }
+  | { etat: 'erreur'; raison: string; rapport?: RapportConversion; suggestionChrome?: SuggestionChrome }
+
+/** Rapport d'audit de la conversion d'une extension Firefox en extension Chrome. */
+export interface RapportConversion {
+  /** Clés du manifest retirées (« sidebar_action », « browser_action.browser_style »…). */
+  cles_retirees: string[]
+  permissions_retirees: string[]
+  /** Réécritures faites (« menus → contextMenus », « background.scripts → background.sw.js »…). */
+  transformations: string[]
+  avertissements: string[]
+  /** Motif du refus : l'extension n'est pas installée. */
+  refus?: string
+}
+
+/** « Une version Chrome existe » : id de l'extension sur le Chrome Web Store. */
+export interface SuggestionChrome {
+  id: string
+  nom: string
+}
 
 export interface SettingsExtensions {
   /** Dans l'ordre d'installation (c'est l'ordre de chargement au démarrage). */

@@ -26,6 +26,12 @@ describe('validerInstallees', () => {
     const b = ext({ id: ID_B, dossier: `${ID_B}/2.0` , convertie: true, source: 'xpi', magasin: 'firefox' })
     expect(validerInstallees([a, b])).toEqual([a, b])
   })
+  it('slugAmo : conservé s\'il est sûr, entrée refusée sinon', () => {
+    const a = ext({ source: 'amo', magasin: 'firefox', convertie: true, slugAmo: 'dark-reader' })
+    expect(validerInstallees([a])).toEqual([a])
+    expect(validerInstallees([{ ...a, slugAmo: '../x' }])).toBeUndefined()
+    expect(validerInstallees([{ ...a, slugAmo: 3 }])).toBeUndefined()
+  })
   it('refuse un id qui n\'est pas 32 lettres a-p', () => {
     expect(validerInstallees([ext({ id: 'z'.repeat(32) }), ext({ id: 'a'.repeat(31) }), ext({ id: 'A'.repeat(32) })])).toBeUndefined()
     expect(validerInstallees([ext({ id: 'z'.repeat(32) }), ext({ id: ID_B, dossier: `${ID_B}/1` })])).toEqual([ext({ id: ID_B, dossier: `${ID_B}/1` })])

@@ -120,6 +120,20 @@ describe('installation depuis un .zip, un .crx ou un dossier', () => {
     expect(r).toMatchObject({ etat: 'installee', id })
   })
 
+  it('crx : manifest.key égal à la clé signataire accepté, autre clé refusée, absente acceptée', async () => {
+    const paire = generateKeyPairSync('rsa', { modulusLength: 2048 })
+    const der = paire.publicKey.export({ type: 'spki', format: 'der' }).toString('base64')
+    const autre = cleDer().toString('base64')
+    const { inst, registre } = monter()
+    const refus = crx3Signe(zipSync({ 'manifest.json': manifest({ key: autre }) }), { cle: paire })
+    const r = await inst.installerChrome(ecrire('autre.crx', refus.octets))
+    expect(r).toMatchObject({ etat: 'erreur' })
+    expect(r.etat === 'erreur' && r.raison).toMatch(/clé du manifest/)
+    expect(registre.lister()).toEqual([])
+    const bon = crx3Signe(zipSync({ 'manifest.json': manifest({ key: der }) }), { cle: paire })
+    expect(await inst.installerChrome(ecrire('bon.crx', bon.octets))).toMatchObject({ etat: 'installee', id: bon.id })
+  })
+
   it('crx à la signature invalide : refusé', async () => {
     const { inst, registre } = monter()
     const { octets } = crx3Signe(zipSync({ 'manifest.json': manifest() }))

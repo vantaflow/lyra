@@ -1,6 +1,6 @@
 /**
  * Installation par identifiant (jalon E : import depuis un autre navigateur) et file d'installation en série.
- * Sans Electron : les installateurs réels sont injectés (Chrome Web Store ici, AMO à la tâche 3).
+ * Sans Electron : les installateurs réels sont injectés (Chrome Web Store : `installerChrome`, AMO : `installerFirefox`).
  */
 import type { MagasinExtension, ResultatInstallation } from '../../shared/types'
 import { ID_EXTENSION } from './registre'
@@ -13,7 +13,7 @@ export interface EntreeFile {
 
 export interface InstallateursParId {
   chrome(id: string): Promise<ResultatInstallation>
-  /** Catalogue Firefox (AMO) : tâche 3. Absent, l'extension est signalée « à installer à la main ». */
+  /** Catalogue Firefox (AMO) : `installerFirefox` (slug ou identifiant gecko). Absent, l'extension est signalée « à installer à la main ». */
   firefox?(id: string): Promise<ResultatInstallation>
 }
 

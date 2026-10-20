@@ -57,7 +57,7 @@ test("installer un .zip : l'extension est enregistrée, chargée et marque la pa
     await expect.poll(() => marqueur(pageFixture(app)!)).toBe('ok')
 
     // Source inconnue : refus propre.
-    expect(await fenetre.evaluate(() => window.lyra.invoke('extensions:installer', { source: 'pas une source' }))).toMatchObject({ etat: 'erreur' })
+    expect(await fenetre.evaluate(() => window.lyra.invoke('extensions:installer', { source: '???' }))).toMatchObject({ etat: 'erreur' })
   } finally {
     await app.close()
   }

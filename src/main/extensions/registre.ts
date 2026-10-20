@@ -9,6 +9,8 @@ export const MAX_EXTENSIONS = 200
 
 export const ID_EXTENSION = /^[a-p]{32}$/
 const SEGMENT = /^[A-Za-z0-9][A-Za-z0-9._+-]*$/
+/** Slug AMO, ou identifiant gecko (`nom@domaine`, `{uuid}`) : caractères sûrs pour une URL et un nom de fichier. */
+export const SLUG_AMO = /^[A-Za-z0-9{][A-Za-z0-9._@{}-]{0,99}$/
 const DATE_ISO = /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/
 
 const estObjet = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -35,11 +37,13 @@ function installee(v: unknown): ExtensionInstallee | undefined {
   const installeeLe = chaine(propre(v, 'installeeLe'), 40)
   const miseAJourLe = chaine(propre(v, 'miseAJourLe'), 40)
   const convertie = propre(v, 'convertie')
+  const slugAmo = propre(v, 'slugAmo')
   if (typeof id !== 'string' || !ID_EXTENSION.test(id)) return undefined
   if (!nom || !version || !source || !magasin || !dossierRelatifValide(dossier) || typeof active !== 'boolean') return undefined
   if (!installeeLe || !DATE_ISO.test(installeeLe) || !miseAJourLe || !DATE_ISO.test(miseAJourLe)) return undefined
   if (convertie !== undefined && typeof convertie !== 'boolean') return undefined
-  return { id, nom, version, source, magasin, dossier, active, installeeLe, miseAJourLe, ...(convertie !== undefined ? { convertie } : {}) }
+  if (slugAmo !== undefined && (typeof slugAmo !== 'string' || !SLUG_AMO.test(slugAmo))) return undefined
+  return { id, nom, version, source, magasin, dossier, active, installeeLe, miseAJourLe, ...(convertie !== undefined ? { convertie } : {}), ...(typeof slugAmo === 'string' ? { slugAmo } : {}) }
 }
 
 /**

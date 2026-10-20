@@ -40,3 +40,23 @@ test('@reseau Dark Reader depuis le Chrome Web Store agit sur une page', async (
     await app.close()
   }
 })
+
+test('@reseau Dark Reader depuis addons.mozilla.org (xpi converti) agit sur une page', async () => {
+  test.setTimeout(120_000)
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const r = await fenetre.evaluate(() => window.lyra.invoke('extensions:installer', { source: 'darkreader' }))
+    if (r.etat !== 'installee') throw new Error(JSON.stringify(r))
+    expect(r).toMatchObject({ nom: 'Dark Reader', convertie: true })
+    console.log('rapport de conversion :', JSON.stringify(r.rapport))
+    const liste = await fenetre.evaluate(() => window.lyra.invoke('extensions:lister'))
+    expect(liste[0]).toMatchObject({ id: r.id, source: 'amo', magasin: 'firefox', convertie: true, active: true, chargee: true })
+
+    await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), urlPage)
+    await expect.poll(() => pageTest(app)).toBeDefined()
+    const page = pageTest(app)!
+    await expect.poll(() => page.evaluate(() => document.querySelector('style.darkreader') !== null), { timeout: 30_000 }).toBe(true)
+  } finally {
+    await app.close()
+  }
+})
