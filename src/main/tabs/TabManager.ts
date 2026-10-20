@@ -11,7 +11,7 @@ import { origineDe } from '../shields/Shields'
 import { estZoomNormal, palierSuivant } from './zoom'
 import { optionsFenetreCachee, prefsPageCachee, testCache } from '../modeTest'
 import { estUrlErreur, urlOriginale } from './erreurs'
-import { raccourciPage } from './raccourcis'
+import { pageDeReglagesEnCapture, raccourciPage } from './raccourcis'
 import { estVraiePopup } from './popup'
 import { arreter as arreterRechercheWc, rechercher as rechercherWc } from './find'
 import { attacherComportements } from './comportements'
@@ -70,6 +70,8 @@ export interface OptionsTabs {
   retenirPopup?: (popup: { url: string; origine: string; etoileId: string }) => boolean
   /** Couleur dominante d'un favicon déjà en cache (« Le ciel prend la teinte du site actif ») ; `null` : aucune. */
   couleurFavicon?: (wc: WebContents, url: string) => Promise<string | null>
+  /** `Settings.raccourcis` courant (commande → accélérateur, vide = défaut) : les raccourcis de page suivent les réglages. */
+  raccourcis?: () => Record<string, string>
   /** Extensions : suivi des étoiles web (chrome.tabs) ; absent pour une fenêtre privée (jamais d'extensions). */
   extensions?: {
     ajouter(wc: WebContents, win: BaseWindow): void
@@ -281,6 +283,12 @@ export class TabManager {
 
   outilsDeveloppement(): void {
     this.wcActif()?.openDevTools({ mode: 'detach' })
+  }
+
+  /** Plein écran de la fenêtre (raccourci « Plein écran » du menu). */
+  basculerPleinEcran(): void {
+    const w = this.fenetre.win
+    w.setFullScreen(!w.isFullScreen())
   }
 
   arreter(id: string): void {
@@ -627,7 +635,9 @@ export class TabManager {
         this.options.surEchap?.()
       }
       // La page ne doit pas avaler ces raccourcis : preventDefault coupe aussi le menu, on agit donc ici.
-      const raccourci = raccourciPage(input)
+      // Réglages > Raccourcis clavier capte lui-même les touches : on ne les traite pas avant elle.
+      if (pageDeReglagesEnCapture(wc.getURL())) return
+      const raccourci = raccourciPage(input, this.options.raccourcis?.())
       if (!raccourci) return
       _e.preventDefault()
       if (!raccourci.agir) return

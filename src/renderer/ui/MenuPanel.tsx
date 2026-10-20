@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import type { ActionMenu, AncreMenu } from '../../shared/ipc'
 import { messageErreur } from './messageErreur'
-import { raccourci } from './raccourcis'
+import { raccourciDe } from './raccourcisEffectifs'
 
 /** Menu ⋯ de la capsule (fidèle à docs/design/project/Panneaux.dc.html, section « Menu ⋯ de la capsule »). */
 export function MenuPanel({ ancre }: { ancre: AncreMenu | null }) {
@@ -38,12 +38,12 @@ export function MenuPanel({ ancre }: { ancre: AncreMenu | null }) {
   return (
     <div class="pn-fond" onMouseDown={(e) => e.target === e.currentTarget && fermer()}>
       <nav class="menu-capsule" role="menu" aria-label="Menu de la page" style={style}>
-        <Ligne label="Nouvelle étoile" aide={raccourci('⌘ T')} action="nouvelle-etoile" />
-        <Ligne label="Nouvelle fenêtre" aide={raccourci('⌘ N')} action="nouvelle-fenetre" />
-        <Ligne label="Fenêtre privée" aide={raccourci('⌘ ⇧ N')} action="fenetre-privee" />
+        <Ligne label="Nouvelle étoile" aide={raccourciDe('nouvelleEtoile')} action="nouvelle-etoile" />
+        <Ligne label="Nouvelle fenêtre" aide={raccourciDe('nouvelleFenetre')} action="nouvelle-fenetre" />
+        <Ligne label="Fenêtre privée" aide={raccourciDe('fenetrePrivee')} action="fenetre-privee" />
         <div class="sep"></div>
-        <Ligne label="Ajouter aux favoris" aide={raccourci('⌘ D')} action={ancre.privee ? undefined : 'favori'} />
-        <Ligne label="Rechercher dans la page" aide={raccourci('⌘ F')} action="recherche" />
+        <Ligne label="Ajouter aux favoris" aide={raccourciDe('favori')} action={ancre.privee ? undefined : 'favori'} />
+        <Ligne label="Rechercher dans la page" aide={raccourciDe('trouver')} action="recherche" />
         <div class="mi" role="group" aria-label="Zoom">
           Zoom
           <span class="h zoom-ligne">
@@ -58,7 +58,7 @@ export function MenuPanel({ ancre }: { ancre: AncreMenu | null }) {
             </button>
           </span>
         </div>
-        <Ligne label="Imprimer…" aide={raccourci('⌘ P')} action="imprimer" />
+        <Ligne label="Imprimer…" aide={raccourciDe('imprimer')} action="imprimer" />
         <Ligne label="Mode lecture" aide="v2" />
         <div class="sep"></div>
         <Ligne label={`Règles pour ${ancre.hote || 'ce site'}`} />
@@ -79,11 +79,11 @@ export function MenuPanel({ ancre }: { ancre: AncreMenu | null }) {
           </div>
         )}
         <Ligne label="Style perso pour ce site" />
-        <Ligne label="Outils de développement" aide={raccourci('⌥ ⌘ I')} action="devtools" />
+        <Ligne label="Outils de développement" aide={raccourciDe('outils')} action="devtools" />
         <div class="sep"></div>
-        <Ligne label="Historique" aide={raccourci('⌘ Y')} action="historique" />
+        <Ligne label="Historique" aide={raccourciDe('historique')} action="historique" />
         <Ligne label="Extensions" action="extensions" />
-        <Ligne label="Réglages" aide={raccourci('⌘ ,')} action="reglages" />
+        <Ligne label="Réglages" aide={raccourciDe('reglages')} action="reglages" />
       </nav>
     </div>
   )

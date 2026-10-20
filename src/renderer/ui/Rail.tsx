@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'preact/hooks'
 import { Bande } from './Bande'
+import { entreParentheses } from './raccourcisEffectifs'
 import { Sky } from './Sky'
 import { BANDE, CAPSULE } from '../../main/window/layout'
 import { cielLargeurAffichee, cielPosition, reveler, revelerAuSurvol, revelationClavier } from './state'
 
-const touche = window.lyra.plateforme === 'darwin' ? '⌘' : 'Ctrl'
 
 /** Délai entre la sortie de la souris et le retrait du ciel révélé. */
 export const DELAI_RETRAIT_MS = 300
@@ -17,7 +17,7 @@ const mouvementReduit = (): boolean => window.matchMedia('(prefers-reduced-motio
 export function Rail() {
   return (
     <div class={`rail rail-${cielPosition.value}`} aria-label="Rail du ciel masqué" onMouseEnter={() => revelerAuSurvol.value && reveler(true)}>
-      <button class="poignee" type="button" aria-label={`Afficher le ciel (${touche} \\)`} onClick={(e) => {
+      <button class="poignee" type="button" aria-label={`Afficher le ciel${entreParentheses('basculerCiel')}`} onClick={(e) => {
           // detail 0 : activation au clavier (Entrée, Espace).
           revelationClavier.value = e.detail === 0
           reveler(true)

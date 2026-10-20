@@ -81,7 +81,10 @@ export const INDEX: EntreeIndex[] = [
   ligne('reseau', 'detection', 'Détecter les sites bloqués automatiquement', ['automatique', 'passerelle']),
   ligne('reseau', 'etat', 'État', ['passerelle', 'tester', 'réseau']),
   ligne('telechargements', 'dossier', 'Dossier de téléchargement', ['enregistrer', 'fichiers']),
-  ligne('telechargements', 'demander', 'Demander où enregistrer chaque fichier', ['dossier', 'demander'])
+  ligne('telechargements', 'demander', 'Demander où enregistrer chaque fichier', ['dossier', 'demander']),
+  // Une ligne par commande serait dynamique (`reglage` calculé) : le tableau est indexé d'un bloc. Les libellés des commandes
+  // n'y figurent pas : « zoom » ou « historique » ne doivent pas faire surgir cette section (e2e reglages.spec.ts).
+  ligne('raccourcis', 'commandes', 'Raccourcis des commandes', ['combinaison', 'redéfinir', 'par défaut', 'réinitialiser'])
 ]
 
 /** Lignes parfois absentes de la page (affichées sous condition) : la recherche saute alors à la ligne qui les commande. */
