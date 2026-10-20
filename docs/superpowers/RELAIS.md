@@ -1,16 +1,16 @@
 # Lyra — travail à plusieurs sessions
 
-Mis à jour : 2026-10-19 18:10. Plusieurs sessions Claude Code avancent en même temps, chacune sur **sa** branche. Lire d'abord `docs/superpowers/ETAT.md`, la spec `docs/superpowers/specs/2026-10-19-lyra-design.md` et `docs/design/README.md`.
+Mis à jour : 2026-10-20 (Mac). Deux sessions seulement : la session d'aide c72a5410 (« orion_help ») et la session Mac projects-3c. Plusieurs sessions Claude Code avancent en même temps, chacune sur **sa** branche. Lire d'abord `docs/superpowers/ETAT.md`, la spec `docs/superpowers/specs/2026-10-19-lyra-design.md` et `docs/design/README.md`.
 
 ## Qui fait quoi
 
 | Jalon | Branche | Session | État |
 |---|---|---|---|
-| C — ciel déplaçable, Ne pas déranger, fenêtre privée | `main` | session principale | tâches 1-3 faites et approuvées, 4-5 à faire |
-| E — import/export | `jalon-e` (worktree `lyra.worktrees/jalon-e`) | session principale | tâches 1-2 faites et approuvées, plan détaillé de la 3 prêt, 3-5 à faire |
+| C — ciel déplaçable, Ne pas déranger, fenêtre privée | `main` | session d'aide c72a5410 (Mac) | tâches 1-4 faites et approuvées, 5 en cours |
+| E — import/export | `jalon-e` (worktree `lyra.worktrees/jalon-e`) | session d'aide c72a5410, après C | tâches 1-2 faites et approuvées, plan détaillé de la 3 prêt, 3-5 à faire |
 | E tâche 2 — lecteurs Firefox, Safari, Orion | `jalon-e-t2` → fusionnée dans `jalon-e` | session downloads-60 | faite et approuvée (branche `jalon-e-t2` close) |
-| **B — extensions Chrome + Firefox** | **`jalon-b`** (plan 67dde31) | **libre (session d'appoint, p. ex. sur le Mac)** | plan prêt, à implémenter |
-| D — réglages complets, règles par site, couleurs | `jalon-d` (plan 94be3a2) | libre (après C) | plan prêt |
+| **B — extensions Chrome + Firefox** | **`jalon-b`** (worktree `lyra.worktrees/jalon-b`) | **session Mac projects-3c** | en cours |
+| D — réglages complets, règles par site, couleurs | `jalon-d` (plan 94be3a2) | session Mac projects-3c, après B et la fusion de C | plan prêt |
 
 ## Consignes pour la session d'appoint (jalon B)
 

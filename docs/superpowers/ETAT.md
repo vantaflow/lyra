@@ -49,7 +49,11 @@ Spec docs/superpowers/specs/2026-10-19-lyra-design-cycle2.md, plan docs/superpow
    - page en plein cadre et rappel en haut à droite ;
    - notifications retenues puis livrées, popups retenues ;
    - exception par site, gérée par le modèle, sans interface (celle-ci viendra avec le jalon D).
-4. ⬜ **Fenêtre privée** : partition propre `privee-<id>`, thème Aurore, nouvel onglet privé.
+4. ✅ **Fenêtre privée** (4d6bab8, 698ffa0, 6bf2b4f), approuvée après 1 ronde de corrections, sur le Mac :
+   - partition mémoire `privee-<id>` par fenêtre, équipée avant toute navigation (UA, lyra://, permissions sans mémorisation, téléchargements sans trace, Boucliers, passerelles sans écriture), effacée à la fermeture ;
+   - jamais écrits : historique, session, favoris (bouton désactivé), zoom, permissions et Boucliers par site ;
+   - thème Aurore (ciel `#2A1540`), nouvel onglet privé avec bandeau, ⌘⇧N et menu ⋯ ;
+   - e2e `fenetre-privee.spec.ts`. Mineurs reportés : voir le ledger SDD du jalon C (relecture finale).
 5. ⬜ **Restes et finition** :
    - cycle 2 : veille du proxy système après échec, `ajouter()` qui lève le délai de grâce, IPC passerelles refusés depuis une fenêtre privée, `historique.spec.ts:33` ;
    - Échap pendant le glisser depuis le ciel révélé ;
