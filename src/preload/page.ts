@@ -4,9 +4,20 @@
 // monde principal, chaque scriptlet dans son propre bloc (évite les collisions de const/class entre eux).
 import { contextBridge, ipcRenderer, webFrame } from 'electron'
 import { DOMMonitor } from '@ghostery/adblocker-content'
+import { FONCTION_COOKIES_NEUTRALISES } from './neutraliserCookies'
+import { scriptRegles } from './reglesFrame'
 import { SURCHARGE_NOTIFICATION } from './surchargeNotification'
 
 const WEB = location.protocol === 'http:' || location.protocol === 'https:'
+// Sites web ; file:// seulement en test (les e2e naviguent sur des fixtures locales). Les iframes about:blank, srcdoc et blob: héritent
+// de l'origine de leur créateur : elles reçoivent la surcharge des notifications, l'identité et la neutralisation des cookies aussi
+// (sinon elles contourneraient le mode ou la règle du site).
+const TEST = process.argv.includes('--lyra-test')
+const parent = location.ancestorOrigins?.[0] ?? ''
+const HERITE =
+  (location.protocol === 'about:' || location.protocol === 'blob:') &&
+  window !== window.top &&
+  (/^https?:/i.test(location.origin) || /^https?:/i.test(parent) || (TEST && parent.startsWith('file:')))
 
 if (WEB) {
   const scripts: string[] = ipcRenderer.sendSync('shields:scriptlets', location.href) ?? []
@@ -17,15 +28,20 @@ if (WEB) {
       ipcRenderer.send('shields:scriptlet-error', noms.at(-1) ?? 'inconnu')
     })
   }
-  // User-agent alternatif du site : `navigator` (platform, vendor, userAgentData) suit le profil, avant tout script de la page.
-  const profilNavigateur: string = ipcRenderer.sendSync('sites:ua-script') ?? ''
-  if (profilNavigateur) void webFrame.executeJavaScript(profilNavigateur).catch(() => undefined)
   // Sonde de test seulement (LYRA_TEST=1 → --lyra-test) : jamais visible des sites en usage normal.
   if (window === window.top && process.argv.includes('--lyra-test')) {
     void webFrame
       .executeJavaScript(`window.__lyraShields = Object.freeze({ scriptletsAt: ${JSON.stringify(quand)}, n: ${scripts.length} })`)
       .catch(() => undefined)
   }
+}
+
+// Règles du site de la page principale pour CETTE frame (réponse synchrone, avant tout script de la page) : identité alternative
+// (`navigator`) et cookies JavaScript neutralisés (iframes tierces sous « 1re partie », toutes les frames sous « Bloqués »).
+if (WEB || HERITE) {
+  const regles: { ua?: string; cookies?: boolean } = ipcRenderer.sendSync('page:regles-site') ?? {}
+  const fonctions = [regles.ua, regles.cookies ? FONCTION_COOKIES_NEUTRALISES : ''].filter((f): f is string => !!f)
+  if (fonctions.length) void webFrame.executeJavaScript(scriptRegles(fonctions)).catch(() => undefined)
 }
 
 function insererStyles(msg?: { classes: string[]; ids: string[]; hrefs: string[]; lifecycle: 'start' | 'dom-update' }): void {
@@ -59,11 +75,6 @@ if (WEB) {
 }
 
 // Ne pas déranger : les notifications web passent par le main (file par fenêtre, livrées à la sortie du mode).
-// Sites web ; file:// seulement en test (les e2e naviguent sur des fixtures locales). Les iframes about:blank et srcdoc
-// héritent de l'origine de leur créateur : elles reçoivent la surcharge aussi (sinon elles contourneraient le mode).
-const TEST = process.argv.includes('--lyra-test')
-const parent = location.ancestorOrigins?.[0] ?? ''
-const HERITE = location.protocol === 'about:' && window !== window.top && (/^https?:/i.test(location.origin) || /^https?:/i.test(parent) || (TEST && parent.startsWith('file:')))
 if (WEB || HERITE || (location.protocol === 'file:' && TEST)) {
   const clics: Array<(id: number) => void> = []
   ipcRenderer.on('dnd:clic', (_e, id: number) => {

@@ -4,7 +4,7 @@
  *
  * `navigator.userAgent` n'est PAS posé par `webContents.setUserAgent` : Chromium recharge la page visible quand on l'appelle pendant
  * une navigation alors que cette page a elle-même un UA réécrit (la navigation en cours est alors annulée : observé). Le preload des
- * pages applique donc un script (`scriptNavigateur`) avant tout script de la page. Les workers gardent l'UA réel dans `navigator`.
+ * pages applique donc une fonction (`fonctionNavigateur`) avant tout script de la page. Les workers gardent l'UA réel dans `navigator`.
  */
 import type { Settings } from '../../shared/types'
 import { hautConnu, origineDe } from '../session/pageHaute'
@@ -12,7 +12,7 @@ import type { DetailsEnvoi, ReponseEnvoi } from '../session/webRequestHub'
 import { resoudre } from '../settings/sites'
 import { profilUa, type ProfilUa } from '../ua'
 import { cleEntete, sansEntetes } from './entetes'
-import { scriptNavigateur } from './ua-script'
+import { fonctionNavigateur } from './ua-script'
 
 type Sites = Settings['sites']
 type EntetesEnvoi = Record<string, string | string[]>
@@ -51,9 +51,9 @@ export function ecouteurUaEnvoi(deps: DepsUaEnvoi): (d: DetailsEnvoi) => Reponse
   }
 }
 
-/** Script à exécuter dans une page web avant ses propres scripts (aligne `navigator` sur le profil) ; '' si le site n'a pas de profil alternatif. */
-export function scriptUaPourPage(sites: Sites, urlHaut: string, chrome?: string): string {
+/** Fonction `function (w) {…}` (source) que le preload applique à une page web avant ses propres scripts (aligne `navigator` sur le profil) ; '' si le site n'a pas de profil alternatif. */
+export function fonctionUaPourPage(sites: Sites, urlHaut: string, chrome?: string): string {
   if (!/^https?:/i.test(urlHaut)) return ''
   const profil = profilUa(resoudre(sites, origineDe(urlHaut)).ua, chrome)
-  return profil ? scriptNavigateur(profil) : ''
+  return profil ? fonctionNavigateur(profil) : ''
 }

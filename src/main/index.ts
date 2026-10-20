@@ -597,11 +597,12 @@ void app.whenReady().then(async () => {
   installerPasserellesIpc(pass, estPrivee)
   installerSites({ reglages, estPrivee })
   // Cookies, scripts et user-agent par site : écouteurs du hub (après les Boucliers) sur chaque session de pages web.
-  const reglesSites = installerReglesSites({ reglages })
+  const reglesSites = installerReglesSites({ reglages, estPage: (wc) => ongletsPossedant(wc) !== undefined })
   const sessionsWeb = [session.defaultSession, session.fromPartition('persist:lyra')]
   for (const ses of sessionsWeb) reglesSites.equiper(ses, { privee: false })
-  // Reliquats d'un arrêt brutal : les cookies « Session seulement » d'une exécution précédente ne survivent pas au démarrage.
-  void Promise.all(sessionsWeb.map((ses) => reglesSites.purger(ses)))
+  // Reliquats d'un arrêt brutal (cookies « Session seulement » et « Bloqués », service workers des sites aux scripts bloqués) :
+  // terminé avant la restauration des onglets, donc avant la moindre page.
+  const nettoyageDemarrage = Promise.all(sessionsWeb.map((ses) => reglesSites.demarrer(ses)))
   // Le PAC initial est en place avant toute fenêtre (une étoile restaurée ne part pas en direct).
   await pass.demarrer()
   // Extensions : branchées et chargées avant la création de la moindre vue (donc de la première fenêtre).
@@ -954,6 +955,7 @@ void app.whenReady().then(async () => {
     manager.relayoutAll()
     for (const wc of webContents.getAllWebContents()) envoyer(wc, 'settings:changed', { ...s, sites: {} })
   })
+  await nettoyageDemarrage
   sessionStore = new SessionStore(join(paths.userData(), 'session.json'))
   const restauree = sessionStore.charger()
   if (restauree) for (const f of restauree.fenetres) creerFenetre({}, f)

@@ -5,19 +5,27 @@
  */
 import type { ProfilUa } from '../ua'
 
-export function scriptNavigateur(p: ProfilUa): string {
+/**
+ * Source d'une fonction `function (w) {…}` qui aligne le `navigator` de la fenêtre `w` : elle sert à la frame elle-même (`w = window`)
+ * et à ses iframes about:blank créées par le DOM, où le preload ne s'exécute pas (le preload des pages les atteint par `HTMLIFrameElement`).
+ */
+export function fonctionNavigateur(p: ProfilUa): string {
   const dans = JSON.stringify
-  return `(function () {
+  return `function (w) {
   function def(o, k, v) { try { Object.defineProperty(o, k, { get: function () { return v }, configurable: true }) } catch (e) {} }
-  if (typeof Navigator === 'undefined') return
-  def(Navigator.prototype, 'userAgent', ${dans(p.ua)})
-  def(Navigator.prototype, 'appVersion', ${dans(p.appVersion)})
-  def(Navigator.prototype, 'platform', ${dans(p.plateformeNav)})
-  def(Navigator.prototype, 'vendor', ${dans(p.vendeur)})
+  var N = w.Navigator, U = w.NavigatorUAData
+  if (!N) return
+  def(N.prototype, 'userAgent', ${dans(p.ua)})
+  def(N.prototype, 'appVersion', ${dans(p.appVersion)})
+  def(N.prototype, 'platform', ${dans(p.plateformeNav)})
+  def(N.prototype, 'vendor', ${dans(p.vendeur)})
   ${
     p.chromium
-      ? `if (typeof NavigatorUAData !== 'undefined') { def(NavigatorUAData.prototype, 'platform', ${dans(p.plateforme)}); def(NavigatorUAData.prototype, 'mobile', ${dans(p.mobile === true)}) }`
-      : `def(Navigator.prototype, 'userAgentData', undefined)`
+      ? `if (U) { def(U.prototype, 'platform', ${dans(p.plateforme)}); def(U.prototype, 'mobile', ${dans(p.mobile === true)}) }`
+      : `def(N.prototype, 'userAgentData', undefined)`
   }
-})()`
+}`
 }
+
+/** La même fonction, exécutée seule sur la fenêtre courante. */
+export const scriptNavigateur = (p: ProfilUa): string => `(${fonctionNavigateur(p)})(window)`

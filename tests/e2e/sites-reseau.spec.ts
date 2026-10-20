@@ -31,7 +31,26 @@ test.beforeAll(async () => {
     if (chemin === '/page') {
       r.setHeader('content-type', 'text/html')
       r.setHeader('set-cookie', 'premier=1; Max-Age=3600')
-      return r.end(`<!doctype html><title>reseau</title><img src="${autre}/tiers.gif"><script src="/ext.js"></script><script>window.__inline = true</script>`)
+      return r.end(`<!doctype html><title>reseau</title><img src="${autre}/tiers.gif"><script src="/ext.js"></script><script>window.__inline = true; window.__uaInline = navigator.userAgent</script>`)
+    }
+    // Page à deux iframes : une du site (même domaine enregistrable), une de l'autre hôte (tiers). Son script pose et relit des cookies en JavaScript.
+    if (chemin === '/page-cadre') {
+      r.setHeader('content-type', 'text/html')
+      return r.end(`<!doctype html><title>cadres</title><script>window.__pageEcrit = (document.cookie = 'pagejs=1; Max-Age=3600; SameSite=None; Secure'); window.__pageLu = document.cookie</script><iframe id="meme" src="/cadre"></iframe><iframe id="tiers" src="${autre}/cadre"></iframe>`)
+    }
+    if (chemin === '/cadre') {
+      r.setHeader('content-type', 'text/html')
+      // Le cookie porte le nom de l'hôte de la frame ; une iframe about:blank qu'elle crée tente la même chose (frame héritée).
+      return r.end(`<!doctype html><title>cadre</title><body><script>
+        var h = location.hostname, att = '=1; Max-Age=3600; SameSite=None; Secure'
+        try { document.cookie = 'cadrejs-' + h + att } catch (e) {}
+        window.__lecture = document.cookie
+        window.__store = typeof cookieStore
+        var f = document.createElement('iframe'); document.body.append(f)
+        try { f.contentDocument.cookie = 'heritejs-' + h + att } catch (e) {}
+        window.__herite = f.contentDocument.cookie
+        window.__fini = true
+      </script>`)
     }
     if (chemin === '/tiers.gif') {
       r.setHeader('content-type', 'image/gif')
@@ -58,21 +77,54 @@ const cookies = (app: ElectronApplication): Promise<string[]> =>
 const viderCookies = (app: ElectronApplication): Promise<void> =>
   app.evaluate(({ session }, p) => session.fromPartition(p).clearStorageData({ storages: ['cookies'] }), PARTITION)
 
+/** `domaine:nom` de chaque cookie (le domaine sans point initial) et s'il est de session. */
+const cookiesDetail = (app: ElectronApplication): Promise<Array<{ cle: string; session: boolean }>> =>
+  app.evaluate(
+    async ({ session }, p) =>
+      (await session.fromPartition(p).cookies.get({}))
+        .map((c) => ({ cle: `${c.domain!.replace(/^\./, '')}:${c.name}`, session: c.session === true }))
+        .sort((a, b) => a.cle.localeCompare(b.cle)),
+    PARTITION
+  )
+const cles = async (app: ElectronApplication): Promise<string[]> => (await cookiesDetail(app)).map((c) => c.cle)
+const poserCookie = (app: ElectronApplication, url: string, nom: string): Promise<void> =>
+  app.evaluate(({ session }, [p, u, n]) => session.fromPartition(p).cookies.set({ url: u, name: n, value: '1', expirationDate: Math.floor(Date.now() / 1000) + 3600 }), [PARTITION, url, nom])
+
 const regle = (f: Page, cle: string, r: Record<string, unknown>): Promise<void> => f.evaluate(([c, x]) => window.lyra.invoke('sites:ecrire', { cle: c as string, regle: x as Record<string, unknown> }), [cle, r])
 const supprimer = (f: Page, cle: string): Promise<void> => f.evaluate((c) => window.lyra.invoke('sites:supprimer', c), cle)
 
 const pageDe = (app: ElectronApplication, debut: string): Page | undefined => app.windows().find((w) => w.url().startsWith(debut))
 
-/** Ouvre l'adresse dans l'étoile active et attend que la page, son image tierce et (sauf `scriptServi` faux : script bloqué) son script aient été servis. */
-async function charger(app: ElectronApplication, f: Page, url: string, premiere = false, scriptServi = true): Promise<Page> {
+/** Ouvre l'adresse dans l'étoile active (nouvelle étoile si `premiere`) et rend la page web correspondante. */
+async function naviguer(app: ElectronApplication, f: Page, url: string, premiere: boolean, debut: string): Promise<Page> {
   vues.length = 0
   if (premiere) await f.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), url)
   else {
     const id = (await f.evaluate(() => window.lyra.invoke('sky:get'))).sky.activeId!
     await f.evaluate(([i, u]) => window.lyra.invoke('tabs:navigate', { id: i as string, url: u as string }), [id, url])
   }
-  await expect.poll(() => pageDe(app, url.split('/page')[0])).toBeDefined()
-  const p = pageDe(app, url.split('/page')[0])!
+  await expect.poll(() => pageDe(app, debut)).toBeDefined()
+  return pageDe(app, debut)!
+}
+
+/** Page à deux iframes (`/page-cadre`) : attend que les deux cadres aient exécuté leur script. */
+async function chargerCadres(app: ElectronApplication, f: Page, premiere = false): Promise<Page> {
+  const p = await naviguer(app, f, `${SITE()}/page-cadre`, premiere, SITE())
+  await expect.poll(() => vues.filter((v) => v.chemin === '/cadre').length).toBe(2)
+  await expect.poll(async () => (await Promise.all(p.frames().filter((x) => x !== p.mainFrame()).map((x) => x.evaluate(() => (window as unknown as { __fini?: boolean }).__fini === true).catch(() => false)))).filter(Boolean).length).toBe(2)
+  return p
+}
+const cadre = (p: Page, debut: string) => p.frames().find((x) => x.url().startsWith(debut))!
+const etatCadre = (p: Page, debut: string) =>
+  cadre(p, debut).evaluate(() => {
+    const w = window as unknown as { __lecture: string; __store: string; __herite: string }
+    const liste = (c: string): string[] => c.split('; ').filter(Boolean).sort()
+    return { lecture: liste(w.__lecture), store: w.__store, herite: liste(w.__herite) }
+  })
+
+/** Ouvre l'adresse dans l'étoile active et attend que la page, son image tierce et (sauf `scriptServi` faux : script bloqué) son script aient été servis. */
+async function charger(app: ElectronApplication, f: Page, url: string, premiere = false, scriptServi = true): Promise<Page> {
+  const p = await naviguer(app, f, url, premiere, url.split('/page')[0])
   await expect.poll(() => vues.some((v) => v.chemin === '/tiers.gif') && (!scriptServi || vues.some((v) => v.chemin === '/ext.js'))).toBe(true)
   await expect.poll(() => p.evaluate(() => document.readyState)).toBe('complete')
   return p
@@ -82,17 +134,23 @@ test('cookies « 1re partie » : le cookie tiers est refusé, celui du site gard
   test.setTimeout(120_000)
   const { app, fenetre } = await lancerLyra()
   try {
-    // Témoin : sans règle, les deux cookies sont acceptés (sinon la suite ne prouverait rien).
+    // Témoin : sans règle, les deux cookies sont acceptés (sinon la suite ne prouverait rien), et le cookie tiers est renvoyé au tiers.
     await charger(app, fenetre, `${SITE()}/page`, true)
     await expect.poll(() => cookies(app)).toEqual(['premier', 'tiers'])
+    await charger(app, fenetre, `${SITE()}/page`)
+    expect(vues.find((v) => v.chemin === '/tiers.gif')!.entetes.cookie).toBe('tiers=1')
 
-    await viderCookies(app)
+    // La règle arrive APRÈS le cookie tiers : il est déjà dans le pot, mais il n'est plus envoyé (en-tête `cookie` absent sur /tiers.gif).
     await regle(fenetre, '127.0.0.1', { cookies: 'premiere-partie' })
     await charger(app, fenetre, `${SITE()}/page`)
-    await expect.poll(() => cookies(app)).toEqual(['premier'])
-    // Le serveur n'a reçu aucun cookie tiers en retour : la 2e visite n'envoie `tiers` à personne.
-    await charger(app, fenetre, `${SITE()}/page`)
     expect(vues.find((v) => v.chemin === '/tiers.gif')!.entetes.cookie).toBeUndefined()
+    // Le cookie du site, lui, est toujours envoyé à la page.
+    expect(vues.find((v) => v.chemin === '/page')!.entetes.cookie).toBe('premier=1')
+
+    // Cookie tiers refusé à la réception : pot vidé, un seul cookie revient.
+    await viderCookies(app)
+    await charger(app, fenetre, `${SITE()}/page`)
+    await expect.poll(() => cookies(app)).toEqual(['premier'])
 
     // Suppression de la règle : comportement par défaut, sans redémarrage.
     await supprimer(fenetre, '127.0.0.1')
@@ -104,35 +162,94 @@ test('cookies « 1re partie » : le cookie tiers est refusé, celui du site gard
   }
 })
 
-test('cookies « Bloqués » : aucun cookie, ni envoyé ni reçu', async () => {
+test('cookies « 1re partie » : document.cookie et cookieStore d’une iframe tierce (et de la frame about:blank qu’elle crée) sont neutralisés, ceux du site restent', async () => {
   test.setTimeout(120_000)
   const { app, fenetre } = await lancerLyra()
   try {
+    // Témoin : sans règle, tout le monde écrit et lit, cookieStore existe, la page principale comprise.
+    const t = await chargerCadres(app, fenetre, true)
+    await expect.poll(() => cles(app)).toEqual(['127.0.0.1:cadrejs-127.0.0.1', '127.0.0.1:heritejs-127.0.0.1', '127.0.0.1:pagejs', 'localhost:cadrejs-localhost', 'localhost:heritejs-localhost'])
+    await viderCookies(app)
+    await poserCookie(app, TIERS(), 'tiersdejapose')
+    await regle(fenetre, '127.0.0.1', { cookies: 'premiere-partie' })
+    const p = await chargerCadres(app, fenetre)
+    expect(p).toBe(t)
+
+    // Iframe tierce : lecture vide (malgré le cookie du tiers dans le pot), écriture ignorée, cookieStore absent, frame héritée comprise.
+    expect(await etatCadre(p, TIERS())).toEqual({ lecture: [], store: 'undefined', herite: [] })
+    // Iframe du site et page principale : inchangées.
+    expect(await etatCadre(p, `${SITE()}/cadre`)).toEqual({ lecture: ['cadrejs-127.0.0.1=1', 'pagejs=1'], store: 'object', herite: ['cadrejs-127.0.0.1=1', 'heritejs-127.0.0.1=1', 'pagejs=1'] })
+    expect(await p.evaluate(() => (window as unknown as { __pageLu: string }).__pageLu)).toBe('pagejs=1')
+    await expect.poll(() => cles(app)).toEqual(['127.0.0.1:cadrejs-127.0.0.1', '127.0.0.1:heritejs-127.0.0.1', '127.0.0.1:pagejs', 'localhost:tiersdejapose'])
+
+    // Suppression de la règle : l'iframe tierce retrouve ses cookies sans redémarrage.
+    await supprimer(fenetre, '127.0.0.1')
+    const d = await chargerCadres(app, fenetre)
+    expect((await etatCadre(d, TIERS())).store).toBe('object')
+    await expect.poll(async () => (await cles(app)).includes('localhost:cadrejs-localhost')).toBe(true)
+  } finally {
+    await app.close()
+  }
+})
+
+test('cookies « Bloqués » : ni envoyés ni reçus, ni lus ou écrits en JavaScript (toutes les frames), cookies existants et insérés supprimés', async () => {
+  test.setTimeout(120_000)
+  const { app, fenetre } = await lancerLyra()
+  try {
+    // Cookies existants avant la règle : celui du site et celui d'un autre site (l'autre hôte, sans règle).
+    await poserCookie(app, SITE(), 'ancien')
+    await poserCookie(app, TIERS(), 'ailleurs')
+    expect(await cles(app)).toEqual(['127.0.0.1:ancien', 'localhost:ailleurs'])
+    // Écriture de la règle : le cookie du site est purgé sans redémarrage, celui de l'autre site reste.
     await regle(fenetre, '127.0.0.1', { cookies: 'bloques' })
-    await charger(app, fenetre, `${SITE()}/page`, true)
+    await expect.poll(() => cles(app)).toEqual(['localhost:ailleurs'])
+
+    // Cookie inséré par un autre chemin que la page (API de session) : supprimé aussitôt ; celui de l'autre site reste.
+    await poserCookie(app, SITE(), 'direct')
+    await expect.poll(() => cles(app)).toEqual(['localhost:ailleurs'])
+
+    // Page et iframes (site et tiers) : aucune écriture ni lecture JavaScript, cookieStore absent partout, rien dans le pot pour le site.
+    const p = await chargerCadres(app, fenetre, true)
     await page_attendre()
-    expect(await cookies(app)).toEqual([])
+    expect(await cles(app)).toEqual(['localhost:ailleurs'])
+    expect(await p.evaluate(() => (window as unknown as { __pageLu: string }).__pageLu)).toBe('')
+    expect(await etatCadre(p, `${SITE()}/cadre`)).toEqual({ lecture: [], store: 'undefined', herite: [] })
+    expect(await etatCadre(p, TIERS())).toEqual({ lecture: [], store: 'undefined', herite: [] })
+
+    // Page avec en-têtes : le Set-Cookie du serveur est retiré, le cookie du site n'est pas envoyé.
+    await charger(app, fenetre, `${SITE()}/page`, false)
+    await page_attendre()
+    expect(await cles(app)).toEqual(['localhost:ailleurs'])
+    expect(vues.find((v) => v.chemin === '/page')!.entetes.cookie).toBeUndefined()
   } finally {
     await app.close()
   }
 })
 const page_attendre = (): Promise<void> => new Promise((ok) => setTimeout(ok, 500))
 
-/** Cookies présents au lancement suivant (même dossier de données) d'une règle cookies donnée. */
-async function cookiesApresRedemarrage(mode: 'tous' | 'session'): Promise<string[]> {
+/**
+ * Cookies (`domaine:nom`) du lancement suivant (même dossier de données) quand la règle du site « 127.0.0.1 » est `mode`.
+ * Avant la règle, la visite de l'AUTRE hôte (localhost) pose un cookie à lui et un cookie tiers sur 127.0.0.1 ; sous la règle,
+ * la page du site pose les siens et son image (localhost) un cookie tiers.
+ */
+async function cookiesApresRedemarrage(mode: 'tous' | 'session'): Promise<{ pendant: Array<{ cle: string; session: boolean }>; apres: string[] }> {
   const dossier = mkdtempSync(join(tmpdir(), 'lyra-cookies-'))
   try {
     const un = await lancerLyra({ LYRA_USER_DATA: dossier })
+    let pendant: Array<{ cle: string; session: boolean }>
     try {
+      await charger(un.app, un.fenetre, `${TIERS()}/page`, true)
+      await expect.poll(() => cles(un.app)).toEqual(['127.0.0.1:tiers', 'localhost:premier'])
       await regle(un.fenetre, '127.0.0.1', { cookies: mode })
-      await charger(un.app, un.fenetre, `${SITE()}/page`, true)
-      await expect.poll(() => cookies(un.app)).toEqual(['premier', 'tiers'])
+      await charger(un.app, un.fenetre, `${SITE()}/page`)
+      await expect.poll(() => cles(un.app)).toEqual(['127.0.0.1:premier', '127.0.0.1:tiers', 'localhost:premier', 'localhost:tiers'])
+      pendant = await cookiesDetail(un.app)
     } finally {
       await un.app.close()
     }
     const deux = await lancerLyra({ LYRA_USER_DATA: dossier })
     try {
-      return await cookies(deux.app)
+      return { pendant, apres: await cles(deux.app) }
     } finally {
       await deux.app.close()
     }
@@ -141,10 +258,24 @@ async function cookiesApresRedemarrage(mode: 'tous' | 'session'): Promise<string
   }
 }
 
-test('cookies « Session seulement » : gardés pendant l’exécution, purgés à la fermeture (cookie tiers compris) ; « Tous » les conserve', async () => {
+test('cookies « Session seulement » : cookies de session pendant l’exécution, absents au lancement suivant ; ceux d’un autre domaine posés ailleurs restent ; « Tous » conserve tout', async () => {
   test.setTimeout(180_000)
-  expect(await cookiesApresRedemarrage('tous')).toEqual(['premier', 'tiers'])
-  expect(await cookiesApresRedemarrage('session')).toEqual([])
+  const tous = await cookiesApresRedemarrage('tous')
+  expect(tous.pendant.every((c) => !c.session)).toBe(true)
+  expect(tous.apres).toEqual(['127.0.0.1:premier', '127.0.0.1:tiers', 'localhost:premier', 'localhost:tiers'])
+
+  const session = await cookiesApresRedemarrage('session')
+  // Pendant l'exécution : les cookies posés sous la page du site (le sien ET le cookie tiers de localhost) sont des cookies de session (ni Expires ni Max-Age) ;
+  // le cookie que localhost avait posé lors de sa propre visite reste un cookie persistant ; le cookie tiers antérieur du site aussi (jusqu'à la purge).
+  expect(session.pendant).toEqual([
+    { cle: '127.0.0.1:premier', session: true },
+    { cle: '127.0.0.1:tiers', session: false },
+    { cle: 'localhost:premier', session: false },
+    { cle: 'localhost:tiers', session: true }
+  ])
+  // Au lancement suivant : plus rien du site de la règle (cookie de session non restauré, cookie persistant antérieur purgé) ni le cookie tiers de session ;
+  // le cookie de l'autre domaine posé ailleurs (localhost:premier) n'a PAS été purgé.
+  expect(session.apres).toEqual(['localhost:premier'])
 })
 
 const motifSafari = /Version\/\d+\.\d+ Safari\/605\.1\.15$/
@@ -157,6 +288,8 @@ test('user-agent par site : seul le site de la page principale reçoit l’alter
     // Témoin : identité par défaut de Lyra (Chrome N réel, indices client envoyés).
     const p = await charger(app, fenetre, `${SITE()}/page`, true)
     const defaut = await p.evaluate(() => navigator.userAgent)
+    // Le script inline de la page lit navigator.userAgent AVANT le DOMContentLoaded : l'identité est déjà celle de Lyra.
+    expect(await p.evaluate(() => (window as unknown as { __uaInline: string }).__uaInline)).toBe(defaut)
     expect(defaut).toMatch(/Chrome\/\d+\.\d+\.\d+\.\d+ Safari\/537\.36$/)
     expect(defaut).not.toMatch(/Electron|lyra/i)
     expect(vues.find((v) => v.chemin === '/page')!.entetes['user-agent']).toBe(defaut)
@@ -167,6 +300,27 @@ test('user-agent par site : seul le site de la page principale reçoit l’alter
     const ua = await s.evaluate(() => navigator.userAgent)
     expect(ua).toMatch(motifSafari)
     expect(ua).not.toContain('Chrome')
+    // Timing : le script inline de la page (exécuté pendant l'analyse du document) a déjà vu l'identité alternative.
+    expect(await s.evaluate(() => (window as unknown as { __uaInline: string }).__uaInline)).toBe(ua)
+    // Frames héritées (about:blank, srcdoc, blob:) : même identité que la page principale, dès leur création.
+    expect(
+      await s.evaluate(async () => {
+        const monter = (regler: (f: HTMLIFrameElement) => void): Promise<string> =>
+          new Promise((ok) => {
+            const f = document.createElement('iframe')
+            f.onload = () => ok(f.contentWindow!.navigator.userAgent)
+            regler(f)
+            document.body.append(f)
+          })
+        const vide = document.createElement('iframe')
+        document.body.append(vide)
+        return {
+          blank: vide.contentWindow!.navigator.userAgent,
+          srcdoc: await monter((f) => void (f.srcdoc = '<p>x</p>')),
+          blob: await monter((f) => void (f.src = URL.createObjectURL(new Blob(['<p>x</p>'], { type: 'text/html' }))))
+        }
+      })
+    ).toEqual({ blank: ua, srcdoc: ua, blob: ua })
     for (const v of vues) {
       expect(v.entetes['user-agent'], `${v.hote}${v.chemin}`).toBe(ua)
       expect(indices(v), `${v.hote}${v.chemin}`).toEqual([])

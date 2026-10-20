@@ -8,7 +8,7 @@
 import type { Settings } from '../../shared/types'
 import { hautConnu, origineDe } from '../session/pageHaute'
 import type { DetailsEntetes, ReponseEntetes } from '../session/webRequestHub'
-import { resoudre } from '../settings/sites'
+import { cleDe, resoudre } from '../settings/sites'
 import { cleEntete } from './entetes'
 
 export const CSP_SANS_SCRIPT = "script-src 'none'"
@@ -23,4 +23,25 @@ export function ecouteurScripts(deps: { sites: () => Settings['sites'] }): (d: D
     responseHeaders[cle] = [...(Array.isArray(existant) ? existant : existant === undefined ? [] : [existant]), CSP_SANS_SCRIPT]
     return { responseHeaders }
   }
+}
+
+/**
+ * Origines dont un service worker installé contournerait « Bloqués » (il répond aux navigations sans passer par le réseau, donc sans la CSP) :
+ * origines des règles (`https://` et `http://` pour un hôte nu), plus les origines `connues` (workers en cours : seul moyen de couvrir un motif `*.hôte`),
+ * gardées si leur règle effective est « Bloqués ». Trié, sans doublon.
+ */
+export function originesScriptsBloques(sites: Settings['sites'], connues: Iterable<string> = []): string[] {
+  const candidates = new Set<string>()
+  for (const [k, r] of Object.entries(sites)) {
+    if (r.scripts !== 'bloques') continue
+    const c = cleDe(k)
+    if (!c || c.valeur === 'file://') continue
+    if (c.type === 'origine') candidates.add(c.valeur)
+    else if (c.type === 'hote') {
+      candidates.add(`https://${c.valeur}`)
+      candidates.add(`http://${c.valeur}`)
+    }
+  }
+  for (const o of connues) if (/^https?:\/\/[^/]+$/i.test(o)) candidates.add(o.toLowerCase())
+  return [...candidates].filter((o) => resoudre(sites, o).scripts === 'bloques').sort()
 }
