@@ -75,7 +75,8 @@ test('⌘ ⇧ D (menu) : page plein cadre, ni ciel ni capsule, rappel conforme, 
     const gaucheRappel = chrome.x + mr.gauche
     expect(chrome.x).toBeGreaterThanOrEqual(gaucheRappel - 32)
     expect(gaucheRappel - 40).toBeLessThan(chrome.x)
-    expect(chrome.x).toBeGreaterThan(t.width / 2)
+    // La zone suit la largeur mesurée, plus étroite que la valeur de repli (720 px), quelle que soit la police du système.
+    expect(chrome.width).toBeLessThan(720)
 
     // Le rappel s'efface au bout de quelques secondes : seul le croissant reste, la vue chrome rétrécit.
     await expect(fenetre.locator('.dnd-croissant')).toBeVisible({ timeout: 10_000 })
