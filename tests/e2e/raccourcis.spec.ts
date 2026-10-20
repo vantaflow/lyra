@@ -82,7 +82,8 @@ test('redéfinir ⌘ L : l’ancienne combinaison ne fait plus rien, la nouvelle
     // « Par défaut » sur la ligne.
     await ouvrirReglages(app, fenetre)
     const ligne2 = page(app, 'lyra://settings')!.locator('[data-reglage="raccourcis-palette"]')
-    await ligne2.getByRole('button', { name: /par défaut/i }).click()
+    // La page de réglages est en arrière-plan (une fixture est ouverte au premier plan) : clic simulé, pas de clic « visible ».
+    await ligne2.getByRole('button', { name: /par défaut/i }).dispatchEvent('click')
     await expect.poll(() => raccourcis(fenetre)).toEqual({ palette: '' })
     await expect.poll(() => accelerateurMenu(app, 'palette'), { timeout: 5000 }).toBe('CmdOrCtrl+L')
     await ouvrirFixture(app, fenetre)

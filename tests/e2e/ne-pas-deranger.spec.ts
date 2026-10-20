@@ -185,7 +185,7 @@ test("notification web : retenue pendant le mode (rien d'affiché), livrée à l
   const { app, fenetre } = await lancerLyra()
   try {
     // Les notifications du site sont autorisées : sans le mode, elles s'afficheraient.
-    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { sites: { [ORIGINE]: { permissions: { notifications: 'autoriser' } } } }))
+    await fenetre.evaluate((o) => window.lyra.invoke('settings:set', { sites: { [o]: { permissions: { notifications: 'autoriser' } } } }), ORIGINE)
     const p = await ouvrir(app, fenetre, DND)
     const id = (await ciel(fenetre)).sky.activeId!
     await menu(app, 'ne-pas-deranger')
@@ -285,7 +285,7 @@ test("noopener n'est pas une popup (étoile normale) ; about:blank avec features
 test("exception par site : la popup de ce site s'ouvre normalement même en mode", async () => {
   const { app, fenetre } = await lancerLyra()
   try {
-    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { sites: { [ORIGINE]: { exceptionDnd: true } } }))
+    await fenetre.evaluate((o) => window.lyra.invoke('settings:set', { sites: { [o]: { exceptionDnd: true } } }), ORIGINE)
     const p = await ouvrir(app, fenetre, DND)
     await menu(app, 'ne-pas-deranger')
     await expect.poll(async () => (await etat(fenetre)).actif).toBe(true)
@@ -294,7 +294,7 @@ test("exception par site : la popup de ce site s'ouvre normalement même en mode
     await expect.poll(() => app.windows().length).toBeGreaterThan(avant)
     expect((await etat(fenetre)).popups).toBe(0)
     // La règle se retire : le site redevient soumis au mode.
-    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { sites: { [ORIGINE]: { exceptionDnd: false } } }))
+    await fenetre.evaluate((o) => window.lyra.invoke('settings:set', { sites: { [o]: { exceptionDnd: false } } }), ORIGINE)
     const maintenant = app.windows().length
     await p.evaluate(() => void document.getElementById('popup')!.click())
     await expect.poll(async () => (await etat(fenetre)).popups).toBe(1)
@@ -361,7 +361,7 @@ test('⌘ ⇧ D au clavier (page au premier plan) : entre puis sort, sans passer
 test('notification depuis une iframe srcdoc : surcharge posée et retenue, origine héritée du site', async () => {
   const { app, fenetre } = await lancerLyra()
   try {
-    await fenetre.evaluate(() => window.lyra.invoke('settings:set', { sites: { [ORIGINE]: { permissions: { notifications: 'autoriser' } } } }))
+    await fenetre.evaluate((o) => window.lyra.invoke('settings:set', { sites: { [o]: { permissions: { notifications: 'autoriser' } } } }), ORIGINE)
     const p = await ouvrir(app, fenetre, DND)
     await menu(app, 'ne-pas-deranger')
     await expect.poll(async () => (await etat(fenetre)).actif).toBe(true)

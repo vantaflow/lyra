@@ -103,7 +103,7 @@ test('Règles par site : création → tableau et détail ; Boucliers, Cookies e
     await ligne(r, 'scripts').getByRole('button', { name: 'Bloqués' }).click()
     await expect.poll(async () => (await lister(fenetre))['youtube.com']?.scripts).toBe('bloques')
     await expect(rangee.locator('td').nth(3).locator('.etiq.rouge')).toHaveText('Bloqués')
-    await ligne(r, 'scripts').getByRole('button', { name: 'Autorisés' }).click()
+    await ligne(r, 'scripts').getByRole('button', { name: 'Autorisés' }).dispatchEvent('click')
     // Revenir à la valeur par défaut retire le champ (aucune valeur explicite écrite).
     await expect.poll(async () => 'scripts' in (await lister(fenetre))['youtube.com']).toBe(false)
 
@@ -360,7 +360,7 @@ test.describe('la règle ET la page', () => {
       await expect.poll(() => p.evaluate(() => document.readyState)).toBe('complete')
       expect(await p.evaluate(() => (window as unknown as { __ext?: boolean }).__ext === true)).toBe(false)
       // Contre-épreuve : la règle retirée, le script s'exécute au chargement suivant.
-      await ligne(r, 'scripts').getByRole('button', { name: 'Autorisés' }).click()
+      await ligne(r, 'scripts').getByRole('button', { name: 'Autorisés' }).dispatchEvent('click')
       await expect.poll(async () => 'scripts' in (await lister(fenetre))[site]).toBe(false)
       await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: `${u}/page2` }), site)
       await expect.poll(() => page(app, `${site}/page2`)).toBeDefined()
