@@ -416,15 +416,13 @@ body,
   clip: rect(0 0 0 0);
 }
 
-/* Résultats de recherche : lignes de réglage trouvées, et mise en évidence de la ligne choisie */
-.nav .trouves {
+/* Résultats de recherche : lignes de réglage trouvées, option active au clavier, mise en évidence de la ligne choisie */
+.nav .liste {
   display: flex;
   flex-direction: column;
-  margin-top: 6px;
-  border-top: 1px solid #e6e6ee;
-  padding-top: 6px;
+  gap: 2px;
 }
-.nav .trouves button {
+.nav .resultat {
   display: block;
   width: 100%;
   padding: 7px 12px;
@@ -432,21 +430,23 @@ body,
   border-radius: 8px;
   background: none;
   font: 13px 'Manrope', sans-serif;
-  color: #1c1c2e;
+  color: var(--texte);
   text-align: left;
   cursor: pointer;
 }
-.nav .trouves button:hover {
-  background: #ececf5;
+.nav .resultat:hover,
+.nav [role='option'][aria-selected='true'] {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
-.nav .trouves button small {
+.nav .resultat small {
   display: block;
   font-size: 11px;
-  color: #6b6b80;
+  color: var(--texte-secondaire);
 }
 .trouve {
-  background: rgba(84, 82, 200, 0.12);
-  box-shadow: 0 0 0 2px #5452c8;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: 0 0 0 2px var(--accent);
   border-radius: 8px;
+  outline: none;
   transition: background 0.3s;
 }

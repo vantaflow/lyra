@@ -34,6 +34,14 @@ function App() {
   const visibles = filtre ? SECTIONS.filter((s) => sectionsTrouvees.has(s.id)) : SECTIONS
   const lignesTrouvees = resultats.filter((r) => r.type === 'ligne')
 
+  // Résultats navigables au clavier : sections puis lignes, dans l'ordre d'affichage.
+  const options = filtre ? [...visibles.map((s) => ({ id: s.id, section: s.id })), ...lignesTrouvees] : []
+  const [actif, setActif] = useState(-1)
+  const ouvrir = (o: { id: string; section: string }): void => {
+    location.hash = `#/${o.section}`
+    setCible({ id: o.id, n: Date.now() })
+  }
+
   // Résultat choisi : on défile jusqu'à la ligne (`data-reglage`) et on la met en évidence. Les lignes se rendent après
   // le chargement des réglages : on réessaie brièvement.
   const [cible, setCible] = useState<{ id: string; n: number } | null>(null)
@@ -47,6 +55,7 @@ function App() {
       window.clearInterval(cherche)
       if (!el) return
       el.scrollIntoView?.({ block: 'center' })
+      el.focus({ preventScroll: true })
       el.classList.add('trouve')
       fin = window.setTimeout(() => el.classList.remove('trouve'), 2500)
     }, 50)
@@ -69,39 +78,65 @@ function App() {
           type="search"
           placeholder="Rechercher un réglage…"
           value={recherche}
-          onInput={(e) => setRecherche((e.currentTarget as HTMLInputElement).value)}
+          role="combobox"
+          list="resultats-reglages"
+          aria-expanded={filtre}
+          aria-controls="resultats-reglages"
+          aria-activedescendant={actif >= 0 && options[actif] ? `opt-${options[actif].id}` : undefined}
+          onInput={(e) => {
+            setRecherche((e.currentTarget as HTMLInputElement).value)
+            setActif(-1)
+          }}
           onKeyDown={(e) => {
-            if (e.key === 'Escape') setRecherche('')
+            if (e.key === 'Escape') {
+              setRecherche('')
+              setActif(-1)
+            } else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && options.length > 0) {
+              e.preventDefault()
+              const pas = e.key === 'ArrowDown' ? 1 : -1
+              setActif((actif + pas + options.length) % options.length)
+            } else if (e.key === 'Enter' && options.length > 0) {
+              e.preventDefault()
+              ouvrir(options[actif >= 0 ? actif : 0])
+            }
           }}
         />
-        {visibles.map((s) => (
-          <a key={s.id} href={s.route} class={s.id === route ? 'on' : undefined} onClick={() => filtre && setCible({ id: s.id, n: Date.now() })}>
-            {s.libelle}
-          </a>
-        ))}
-        {lignesTrouvees.length > 0 && (
-          <div class="trouves" aria-label="Réglages trouvés">
-            {lignesTrouvees.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                data-resultat={r.id}
-                onClick={() => {
-                  location.hash = `#/${r.section}`
-                  setCible({ id: r.id, n: Date.now() })
-                }}
-              >
-                {r.libelle}
-                <small>{SECTIONS.find((s) => s.id === r.section)?.libelle}</small>
-              </button>
-            ))}
-          </div>
-        )}
+        <div id="resultats-reglages" class="liste" role={filtre ? 'listbox' : undefined} aria-label={filtre ? 'Résultats' : undefined}>
+          {visibles.map((s) => (
+            <a
+              key={s.id}
+              id={`opt-${s.id}`}
+              href={s.route}
+              role={filtre ? 'option' : undefined}
+              aria-selected={filtre ? options[actif]?.id === s.id : undefined}
+              class={s.id === route ? 'on' : undefined}
+              onClick={() => filtre && setCible({ id: s.id, n: Date.now() })}
+            >
+              {s.libelle}
+            </a>
+          ))}
+          {lignesTrouvees.map((r) => (
+            <button
+              key={r.id}
+              id={`opt-${r.id}`}
+              type="button"
+              role="option"
+              class="resultat"
+              aria-selected={options[actif]?.id === r.id}
+              data-resultat={r.id}
+              tabIndex={-1}
+              onClick={() => ouvrir(r)}
+            >
+              {r.libelle}
+              <small>{SECTIONS.find((s) => s.id === r.section)?.libelle}</small>
+            </button>
+          ))}
+        </div>
         {visibles.length === 0 && <p class="aucun">Aucun réglage trouvé.</p>}
       </nav>
       <main class="contenu">
         <div class="entete">
-          <h1 data-reglage={route}>{titre}</h1>
+          <h1 data-reglage={route} tabIndex={-1}>{titre}</h1>
           {(route === 'general' || route === 'apparence') && <ActionsReglages />}
         </div>
         {route === 'general' && <General />}

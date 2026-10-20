@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { chercher, INDEX } from './recherche'
@@ -49,9 +49,10 @@ describe('INDEX', () => {
   it('contient un enregistrement par section du sommaire', () => {
     for (const s of SECTIONS) expect(INDEX.find((r) => r.id === s.id)?.libelle).toBe(s.libelle)
   })
-  it('garde contre l\'index périmé : chaque ligne indexée existe dans le code de sa section', () => {
-    const sources = ['Apparence', 'BouclierSection', 'General', 'PaletteSection', 'Reseau', 'Telechargements']
-      .map((f) => readFileSync(join(__dirname, `${f}.tsx`), 'utf8'))
+  it("garde à double sens : l'index et les `reglage=\"…\"` du code concordent", () => {
+    const sources = readdirSync(__dirname)
+      .filter((f) => f.endsWith('.tsx'))
+      .map((f) => readFileSync(join(__dirname, f), 'utf8'))
       .join('\n')
     const lignes = INDEX.filter((r) => r.id.includes('.'))
     expect(lignes.length).toBeGreaterThan(10)
@@ -60,6 +61,8 @@ describe('INDEX', () => {
       expect(r.id.startsWith(`${r.section}.`), r.id).toBe(true)
       expect(sources, r.id).toContain(`reglage="${r.id}"`)
     }
+    const dansLeCode = [...sources.matchAll(/reglage="([A-Za-z]+\.[A-Za-z]+)"/g)].map((m) => m[1])
+    for (const id of dansLeCode) expect(INDEX.map((r) => r.id), `non indexé : ${id}`).toContain(id)
   })
   it('a des ids uniques', () => {
     expect(new Set(INDEX.map((r) => r.id)).size).toBe(INDEX.length)
