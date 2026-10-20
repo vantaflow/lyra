@@ -48,6 +48,8 @@ export interface DemandeStyles {
 export interface Shields {
   attacher(ses: SessionShields): void
   remplacerMoteur(m: ElectronBlocker): void
+  /** Moteur des listes « gênes » (bandeaux de cookies, invitations), consulté seulement si `boucliers.genes`. */
+  remplacerMoteurGenes(m: ElectronBlocker | undefined): void
   estActif(origine: string): boolean
   bloques(wcId: number): number
   dernieres(wcId: number): string[]
@@ -95,7 +97,10 @@ const estExtension = (d: { url: string; initiatorOrigin?: string }): boolean =>
 
 export function creerShields(opts: OptionsShields): Shields {
   let moteur = opts.moteurInitial
+  let moteurGenes: ElectronBlocker | undefined
   const compteurs = new Compteurs()
+  /** Moteurs consultés : celui de base, puis celui des gênes si l'option est active. */
+  const moteurs = (): ElectronBlocker[] => (moteurGenes && opts.reglages().boucliers?.genes === true ? [moteur, moteurGenes] : [moteur])
 
   const estActif = (origine: string): boolean => opts.reglages().sites?.[origine]?.boucliers !== false
 
@@ -116,7 +121,13 @@ export function creerShields(opts: OptionsShields): Shields {
     }
     const haut = urlPremierNiveau(d)
     if (!estActif(origineDe(haut))) return cb({})
-    const { match, redirect } = moteur.match(requeteGhostery(d, haut))
+    const req = requeteGhostery(d, haut)
+    let resultat = moteur.match(req)
+    // Une exception (@@) des listes de base l'emporte aussi sur les gênes : un site débloqué exprès ne casse pas.
+    if (!resultat.match && !resultat.redirect && moteurGenes && opts.reglages().boucliers?.genes === true && !moteur.exceptions.match(req)) {
+      resultat = moteurGenes.match(req)
+    }
+    const { match, redirect } = resultat
     if (!match && !redirect) return cb({})
     compteurs.ajouter(d.webContentsId, d.url)
     if (d.webContentsId !== undefined) opts.onCompteur?.(d.webContentsId)
@@ -137,24 +148,32 @@ export function creerShields(opts: OptionsShields): Shields {
     cb({ responseHeaders })
   }
 
-  const cosmetique = (url: string, haut: string, o: Partial<DemandeStyles>, scripts: boolean) => {
+  const cosmetique = (url: string, haut: string, o: Partial<DemandeStyles>, scripts: boolean): { active: boolean; styles: string; scripts: string[] } | undefined => {
     if (!WEB.test(url) || !estActif(origineDe(haut))) return undefined
     const { hostname = '', domain = '' } = parse(url)
     const premier = o.classes === undefined && o.ids === undefined && o.hrefs === undefined
-    return moteur.getCosmeticsFilters({
-      url,
-      hostname: hostname ?? '',
-      domain: domain ?? '',
-      classes: o.classes,
-      ids: o.ids,
-      hrefs: o.hrefs,
-      getBaseRules: !scripts && premier,
-      getInjectionRules: scripts,
-      getExtendedRules: false,
-      getRulesFromHostname: scripts || premier,
-      getRulesFromDOM: !scripts && !premier,
-      callerContext: { lifecycle: o.lifecycle }
-    })
+    const resultats = moteurs().map((m) =>
+      m.getCosmeticsFilters({
+        url,
+        hostname: hostname ?? '',
+        domain: domain ?? '',
+        classes: o.classes,
+        ids: o.ids,
+        hrefs: o.hrefs,
+        getBaseRules: !scripts && premier,
+        getInjectionRules: scripts,
+        getExtendedRules: false,
+        getRulesFromHostname: scripts || premier,
+        getRulesFromDOM: !scripts && !premier,
+        callerContext: { lifecycle: o.lifecycle }
+      })
+    )
+    const actifs = resultats.filter((r) => r.active)
+    return {
+      active: actifs.length > 0,
+      styles: actifs.map((r) => r.styles).filter(Boolean).join('\n'),
+      scripts: actifs.flatMap((r) => r.scripts)
+    }
   }
 
   return {
@@ -164,6 +183,9 @@ export function creerShields(opts: OptionsShields): Shields {
     },
     remplacerMoteur(m) {
       moteur = m
+    },
+    remplacerMoteurGenes(m) {
+      moteurGenes = m
     },
     estActif,
     bloques: (id) => compteurs.bloques(id),

@@ -63,7 +63,8 @@ const estObjet = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
 const texte = (v: unknown, max: number): string => (typeof v === 'string' ? v.slice(0, max) : '')
 
 export function cielDepuisJson(json: string): CielFichier {
-  const brut: unknown = JSON.parse(json)
+  // BOM toléré : fichier réenregistré par le Bloc-notes de Windows.
+  const brut: unknown = JSON.parse(json.replace(/^\uFEFF/, ''))
   if (!estObjet(brut) || brut.format !== 'lyra-ciel') throw new Error('Ce fichier n’est pas un ciel exporté par Lyra.')
   if (brut.version !== 1) throw new Error('Ce ciel vient d’une version plus récente de Lyra (version de fichier non prise en charge).')
   const racine = fenetreDepuis(brut)

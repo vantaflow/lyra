@@ -19,23 +19,20 @@ test('l’étoile active est signalée (aria-current) : un clic dessus n’a rie
   }
 })
 
-test('panneau des Boucliers : « Règles de ce site » et « Statistiques » ouvrent les réglages, « Signaler » est marqué Bientôt', async () => {
+test('panneau des Boucliers : « Règles de ce site », « Statistiques » et « Signaler » sont marqués Bientôt et inertes (jalon D)', async () => {
   const { app, fenetre } = await lancerLyra()
   try {
     await fenetre.evaluate(() => window.lyra.invoke('shields:open'))
     await expect.poll(() => overlay(app)).toBeDefined()
     const o = overlay(app)!
-    await o.getByRole('link', { name: 'Règles de ce site' }).click()
-    await expect.poll(() => page(app, 'lyra://settings')?.url()).toMatch(/^lyra:\/\/settings\/?#\/sites$/)
-
-    await fenetre.evaluate(() => window.lyra.invoke('shields:open'))
-    await o.getByRole('link', { name: 'Statistiques' }).click()
-    await expect.poll(() => app.windows().filter((w) => /^lyra:\/\/settings\/?#\/boucliers$/.test(w.url())).length).toBe(1)
-
-    await fenetre.evaluate(() => window.lyra.invoke('shields:open'))
-    const signaler = o.getByText('Signaler un site cassé')
-    await expect(signaler).toHaveAttribute('aria-disabled', 'true')
-    await expect(signaler).toHaveAttribute('title', /Bientôt/)
+    // Les sections « Règles par site » et « Boucliers » des réglages ne sont pas encore livrées (sections.ts).
+    for (const nom of ['Règles de ce site', 'Statistiques', 'Signaler un site cassé']) {
+      const lien = o.getByText(nom, { exact: true })
+      await expect(lien).toHaveAttribute('aria-disabled', 'true')
+      await expect(lien).toHaveAttribute('title', /Bientôt/)
+      await expect(lien).not.toHaveAttribute('href', /.*/)
+    }
+    await expect(o.locator('.pn-bientot')).toHaveText('bientôt')
   } finally {
     await app.close()
   }

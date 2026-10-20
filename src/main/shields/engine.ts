@@ -15,6 +15,8 @@ export interface OptionsMoteur {
   majHeures: number
   /** Délai d'attente par liste, en ms (15 000 par défaut). */
   timeoutMs?: number
+  /** Préfixe des fichiers du cache (`engine` par défaut ; `engine-genes` pour le moteur des gênes). */
+  nomCache?: string
 }
 
 export interface ResultatMoteur {
@@ -30,19 +32,19 @@ export const CONFIG_MOTEUR = {
   enableInMemoryCache: true
 }
 
-const FICHIER_BIN = 'engine.bin'
-const FICHIER_META = 'engine.meta.json'
+const fichierBin = (opts: Pick<OptionsMoteur, 'nomCache'>): string => `${opts.nomCache ?? 'engine'}.bin`
+const fichierMeta = (opts: Pick<OptionsMoteur, 'nomCache'>): string => `${opts.nomCache ?? 'engine'}.meta.json`
 
 function lireCache(opts: OptionsMoteur, maintenant: Date, tolererPerime = false): Promise<ResultatMoteur | undefined> {
   return (async () => {
     try {
-      const meta = JSON.parse(await readFile(join(opts.cacheDir, FICHIER_META), 'utf8')) as {
+      const meta = JSON.parse(await readFile(join(opts.cacheDir, fichierMeta(opts)), 'utf8')) as {
         date: string
         engineVersion: number
       }
       const age = maintenant.getTime() - new Date(meta.date).getTime()
       if (meta.engineVersion !== ENGINE_VERSION || (!tolererPerime && !(age < opts.majHeures * 3600_000))) return undefined
-      const moteur = ElectronBlocker.deserialize(new Uint8Array(await readFile(join(opts.cacheDir, FICHIER_BIN))))
+      const moteur = ElectronBlocker.deserialize(new Uint8Array(await readFile(join(opts.cacheDir, fichierBin(opts)))))
       return { moteur, source: 'cache' as const, date: meta.date }
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code !== 'ENOENT') console.warn('[boucliers] cache illisible, reconstruction :', e)
@@ -51,13 +53,14 @@ function lireCache(opts: OptionsMoteur, maintenant: Date, tolererPerime = false)
   })()
 }
 
-async function ecrireCache(cacheDir: string, moteur: ElectronBlocker, date: string): Promise<void> {
+async function ecrireCache(opts: Pick<OptionsMoteur, 'cacheDir' | 'nomCache'>, moteur: ElectronBlocker, date: string): Promise<void> {
+  const cacheDir = opts.cacheDir
   try {
     await mkdir(cacheDir, { recursive: true })
-    const bin = join(cacheDir, FICHIER_BIN)
+    const bin = join(cacheDir, fichierBin(opts))
     await writeFile(bin + '.tmp', moteur.serialize())
     await rename(bin + '.tmp', bin)
-    await writeFile(join(cacheDir, FICHIER_META), JSON.stringify({ date, engineVersion: ENGINE_VERSION }))
+    await writeFile(join(cacheDir, fichierMeta(opts)), JSON.stringify({ date, engineVersion: ENGINE_VERSION }))
   } catch (e) {
     console.warn('[boucliers] écriture du cache impossible :', e)
   }
@@ -84,7 +87,7 @@ async function depuisReseau(opts: OptionsMoteur, f: typeof fetch, maintenant: Da
   const textes = reponses.map((r) => (r as PromiseFulfilledResult<string>).value)
   const moteur = construire(textes, opts.listesEmbarquees?.resources)
   const date = maintenant.toISOString()
-  await ecrireCache(opts.cacheDir, moteur, date)
+  await ecrireCache(opts, moteur, date)
   return { moteur, source: 'reseau', date }
 }
 
@@ -119,6 +122,6 @@ export async function construireMoteur(opts: OptionsMoteur): Promise<ResultatMot
   if (perime && (!emb || perime.date >= emb.date)) return perime
   if (!emb) throw new Error('[boucliers] ni cache, ni réseau, ni listes embarquées')
   const moteur = construire(emb.textes, emb.resources)
-  await ecrireCache(opts.cacheDir, moteur, emb.date)
+  await ecrireCache(opts, moteur, emb.date)
   return { moteur, source: 'embarque', date: emb.date }
 }

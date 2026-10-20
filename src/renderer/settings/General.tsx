@@ -18,6 +18,10 @@ const LANGUES = [
   { id: 'en', libelle: 'English' }
 ]
 
+/** Le thème sombre des pages de Lyra arrive avec le jalon D : dans cette version, seuls les sites suivent le choix. */
+export const AIDE_THEME = "Appliqué aux sites web qui proposent un thème sombre ; l'interface de Lyra reste claire jusqu'à la prochaine version"
+export const MESSAGE_MAJ_ECHOUEE = 'Les listes n’ont pas pu être mises à jour. Vérifiez votre connexion, puis réessayez.'
+
 function dateDeMaj(iso: string): string {
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' })
@@ -27,6 +31,7 @@ export function General() {
   const [s, setS] = useState<Settings | null>(null)
   const [stats, setStats] = useState<StatsBoucliers | null>(null)
   const [maj, setMaj] = useState(false)
+  const [erreurMaj, setErreurMaj] = useState('')
   /** Largeur en cours de réglage au curseur : affichée tout de suite, écrite au plus toutes les 60 ms puis au relâchement. */
   const [largeur, setLargeur] = useState<number | null>(null)
   const derniereEcriture = useRef(0)
@@ -57,9 +62,14 @@ export function General() {
   }
   const mettreAJour = async (): Promise<void> => {
     setMaj(true)
+    setErreurMaj('')
     try {
       const r = await window.lyra.invoke('shields:update')
-      if (!('ignore' in r)) setStats(r)
+      if ('echec' in r) setErreurMaj(MESSAGE_MAJ_ECHOUEE)
+      else if (!('ignore' in r)) setStats(r)
+    } catch (e) {
+      console.warn('[réglages] mise à jour des listes :', e)
+      setErreurMaj(MESSAGE_MAJ_ECHOUEE)
     } finally {
       setMaj(false)
     }
@@ -134,7 +144,7 @@ export function General() {
 
       <Titre>Apparence</Titre>
       <div class="card">
-        <Ligne titre="Thème">
+        <Ligne titre="Thème" aide={AIDE_THEME}>
           <Segments
             valeur={s.theme}
             options={[
@@ -152,8 +162,8 @@ export function General() {
         <Ligne titre="Niveau de protection" aide="Bloque les publicités et les traqueurs connus">
           <Segments valeur="standard" options={[{ id: 'standard', libelle: 'Standard' }]} />
         </Ligne>
-        <Ligne titre="Masquer aussi les gênes" aide="Bientôt : bandeaux de cookies et fenêtres d'invitation">
-          <Interrupteur actif={false} libelle="Masquer les gênes" inerte />
+        <Ligne titre="Masquer aussi les gênes" aide="Bandeaux de cookies et fenêtres d'invitation, sur les pages ouvertes ensuite">
+          <Interrupteur actif={s.boucliers.genes} libelle="Masquer les gênes" surChange={(genes) => regler({ boucliers: { genes } })} />
         </Ligne>
         <Ligne titre="Mettre à jour les listes toutes les" aide="Les listes de blocage sont relues à cette fréquence">
           <Selecteur
@@ -163,7 +173,7 @@ export function General() {
             surChange={(h) => regler({ boucliers: { majHeures: Number(h) } })}
           />
         </Ligne>
-        <Ligne titre="Listes de blocage" aide={date ? `Dernière mise à jour : ${date}` : undefined}>
+        <Ligne titre="Listes de blocage" aide={erreurMaj || (date ? `Dernière mise à jour : ${date}` : undefined)}>
           <button class="btn" type="button" id="maj-boucliers" disabled={maj} onClick={() => void mettreAJour()}>
             {maj ? 'Mise à jour…' : 'Mettre à jour maintenant'}
           </button>
@@ -188,8 +198,8 @@ export function General() {
 
       <Titre>Langue</Titre>
       <div class="card">
-        <Ligne titre="Langue de l'interface">
-          <Selecteur libelle="Langue" valeur={s.langue} options={LANGUES} surChange={(langue) => regler({ langue })} />
+        <Ligne titre="Langue de l'interface" aide="Bientôt : Lyra n'existe qu'en français dans cette version">
+          <Selecteur libelle="Langue" valeur="fr" options={LANGUES} surChange={() => undefined} inactif />
         </Ligne>
       </div>
 

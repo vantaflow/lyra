@@ -8,6 +8,7 @@ import type { CiblesImport } from './appliquer'
 import { lireEtAppliquer } from './executer'
 import type { Processus } from './processus'
 import { ELEMENTS_IMPORT, NOMS_NAVIGATEURS, type ElementImport, type NavigateurSource, type OptionsApplication, type ProfilDetecte, type ResultatImport } from './types'
+import { messageLisible } from '../../shared/messageTechnique'
 
 export interface SortieImport {
   progression(p: ProgressionImport): void
@@ -107,7 +108,7 @@ export class Importeur {
           surProgression: (p) => garde(() => sortie.progression({ id, ...p }))
         })
       } catch (e) {
-        const raison = `Importation interrompue : ${e instanceof Error ? e.message : String(e)}`
+        const raison = `Importation interrompue : ${messageLisible(e, 'erreur inattendue (détail dans le journal)')}`
         resultat = { duree: Date.now() - debut, source: profil.navigateur, profil: profil.nom } as ResultatImport
         for (const el of ELEMENTS_IMPORT) resultat[el] = elements.includes(el) ? echec(raison) : { etat: 'ignore', ajoutes: 0, presents: 0, ignores: 0, notes: [] }
       }

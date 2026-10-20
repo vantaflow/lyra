@@ -9,6 +9,7 @@ import type { MoteurParDefautFirefox } from './firefox'
 import type { MessageDuLecteur, MessageVersLecteur } from './protocole'
 import { indisponible } from './types'
 import type { Compteurs, ElementImport, ExtensionImportee, Indisponible, ProfilDetecte, Visite } from './types'
+import { messageLisible } from '../../shared/messageTechnique'
 
 /** Le strict nécessaire d'un processus enfant (`UtilityProcess` ou faux). */
 export interface Enfant {
@@ -169,7 +170,7 @@ function piloter(
 }
 
 const arret = (): Indisponible => indisponible(RAISON_ARRET, 'annule')
-const echec = (e: unknown): Indisponible => indisponible(`Application interrompue : ${e instanceof Error ? e.message : String(e)}`)
+const echec = (e: unknown): Indisponible => indisponible(`Application interrompue : ${messageLisible(e, 'erreur inattendue (détail dans le journal)')}`)
 const bloque = (): Indisponible => indisponible(RAISON_BLOQUE, 'annule')
 const abandonne = (): Indisponible => indisponible('Lecture annulée.', 'annule')
 

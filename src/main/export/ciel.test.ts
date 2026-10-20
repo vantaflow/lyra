@@ -65,4 +65,8 @@ describe('ciel JSON', () => {
       ['https://b.fr/', 'B', 'c', false]
     ])
   })
+
+  it('fichier réenregistré par le Bloc-notes de Windows (BOM UTF-8) : relu', () => {
+    expect(cielDepuisJson('\uFEFF' + cielVersJson(ciel)).format).toBe('lyra-ciel')
+  })
 })

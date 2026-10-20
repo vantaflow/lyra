@@ -13,6 +13,7 @@ import { ErreurArchive, extraireZip, idDepuisCle } from './archives'
 import { creerBaseInstallation, DELAI_RESEAU_MS, type DepsInstallateurChrome } from './chrome'
 import { convertir } from './convertisseur'
 import { requeteSure } from './reseau'
+import { messageLisible } from '../../shared/messageTechnique'
 
 export { DELAI_RESEAU_MS }
 
@@ -161,7 +162,7 @@ export function creerInstallateurFirefox(d: DepsInstallateurFirefox): Installate
       if (a.type === 'xpi') return await convertirEtInstaller(lireFichier(source.trim()), { source: 'xpi' })
       return await depuisAmo(a.amo, false)
     } catch (e) {
-      return echec(e instanceof ErreurArchive ? e.message : `installation impossible : ${message(e)}`)
+      return echec(e instanceof ErreurArchive ? e.message : `installation impossible : ${messageLisible(e, 'réponse inattendue ou paquet illisible (détail dans le journal)')}`)
     }
   }
 
@@ -171,7 +172,7 @@ export function creerInstallateurFirefox(d: DepsInstallateurFirefox): Installate
     try {
       return await depuisAmo(a, false, true)
     } catch (e) {
-      return echec(e instanceof ErreurArchive ? e.message : `installation impossible : ${message(e)}`)
+      return echec(e instanceof ErreurArchive ? e.message : `installation impossible : ${messageLisible(e, 'réponse inattendue ou paquet illisible (détail dans le journal)')}`)
     }
   }
 

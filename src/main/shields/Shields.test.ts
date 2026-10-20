@@ -191,3 +191,39 @@ describe('origineDe', () => {
     expect(origineDe('pas une url')).toBe('')
   })
 })
+
+describe('Shields : masquer les gênes (boucliers.genes)', () => {
+  const genes = (): ElectronBlocker =>
+    ElectronBlocker.parse(['||cookies.exemple.test^', 'site.test##.bandeau-cookies'].join('\n'), CONFIG_MOTEUR)
+
+  it('option coupée : le moteur des gênes est ignoré (réseau et cosmétique)', () => {
+    shields.remplacerMoteurGenes(genes())
+    reglages = { ...reglages, boucliers: { ...reglages.boucliers, genes: false } }
+    expect(envoyer(ses, requete('https://cookies.exemple.test/banniere.js'))).toEqual({})
+    expect(shields.styles({ url: 'https://site.test/page', urlPremierNiveau: 'https://site.test/page' })).not.toContain('bandeau-cookies')
+  })
+
+  it('option active : requêtes et éléments des gênes bloqués, en plus des listes de base', () => {
+    shields.remplacerMoteurGenes(genes())
+    reglages = { ...reglages, boucliers: { ...reglages.boucliers, genes: true } }
+    expect(envoyer(ses, requete('https://cookies.exemple.test/banniere.js'))).toEqual({ cancel: true })
+    expect(envoyer(ses, requete('https://ads.exemple.test/pub.js'))).toEqual({ cancel: true })
+    expect(shields.styles({ url: 'https://site.test/page', urlPremierNiveau: 'https://site.test/page' })).toContain('bandeau-cookies')
+  })
+
+  it('option active mais site exempté : rien des gênes', () => {
+    shields.remplacerMoteurGenes(genes())
+    reglages = { ...reglages, boucliers: { ...reglages.boucliers, genes: true }, sites: { 'https://site.test': { boucliers: false } } }
+    expect(envoyer(ses, requete('https://cookies.exemple.test/banniere.js'))).toEqual({})
+  })
+
+  it('exception (@@) des listes de base : les gênes ne bloquent pas ce que la base autorise exprès', () => {
+    const base = ElectronBlocker.parse(['||ads.exemple.test^', '@@||cookies.exemple.test/permis.js^'].join('\n'), CONFIG_MOTEUR)
+    const s = creerShields({ moteurInitial: base, reglages: () => ({ ...reglages, boucliers: { ...reglages.boucliers, genes: true } }) })
+    const f = fausseSession()
+    s.attacher(f)
+    s.remplacerMoteurGenes(genes())
+    expect(envoyer(f, requete('https://cookies.exemple.test/permis.js'))).toEqual({})
+    expect(envoyer(f, requete('https://cookies.exemple.test/autre.js'))).toEqual({ cancel: true })
+  })
+})

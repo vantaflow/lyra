@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, wr
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { lireProfilChromium } from './chromium'
 import { avecCopieur, raisonErreurFichier } from './copie'
 import { detecterProfils } from './detection'
@@ -168,8 +168,12 @@ describe('raisonErreurFichier', () => {
 
   it('introuvable et autres erreurs', () => {
     expect(raisonErreurFichier(err('ENOENT'), 'History')).toBe('Fichier introuvable : History.')
-    expect(raisonErreurFichier(err('EIO'), 'History')).toBe('Lecture impossible (History) : EIO.')
+    // Jamais de code système ni de message technique à l'écran : une phrase, le détail au journal.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    expect(raisonErreurFichier(err('EIO'), 'History')).toBe('Lecture impossible (History) : erreur du système de fichiers.')
     expect(raisonErreurFichier(new Error('bizarre'), 'History')).toBe('Lecture impossible (History) : bizarre.')
+    expect(raisonErreurFichier(new SyntaxError('Unexpected token < in JSON at position 0'), 'Bookmarks')).toBe('Lecture impossible (Bookmarks) : fichier illisible ou d’un format inattendu.')
+    warn.mockRestore()
   })
 
   it('ErreurImport porte la raison', () => {

@@ -717,6 +717,14 @@ html.overlay #app {
 .pn-liens span {
   color: #d6d6e2;
 }
+.pn-liens a[aria-disabled='true'] {
+  color: #9a9ab0;
+  cursor: default;
+}
+.pn-liens .pn-bientot {
+  color: #9a9ab0;
+  font-style: normal;
+}
 
 /* ---- Point d'activité du bouton Téléchargements ---- */
 .sb.dl {

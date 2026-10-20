@@ -34,6 +34,7 @@ import type {
   ReglagesImportes,
   Visite
 } from './types'
+import { messageLisible } from '../../shared/messageTechnique'
 
 const JOUR_MS = 86_400_000
 const HTTP = /^https?:\/\//i
@@ -460,7 +461,7 @@ async function lireReglages(c: Contexte): Promise<ReglagesImportes> {
 // ---------------------------------------------------------------------------------------------------------------------
 // Point d'entrée
 
-const raison = (e: unknown): string => (e instanceof ErreurImport ? e.raison : `Lecture impossible : ${e instanceof Error ? e.message : String(e)}`)
+const raison = (e: unknown): string => (e instanceof ErreurImport ? e.raison : `Lecture impossible : ${messageLisible(e, 'fichier illisible ou d’un format inattendu')}.`)
 const versIndisponible = (e: unknown): Indisponible => (e instanceof ErreurImport ? indisponible(e.raison, e.code) : indisponible(raison(e)))
 
 async function proteger<T>(fn: () => Promise<T>): Promise<T | Indisponible> {

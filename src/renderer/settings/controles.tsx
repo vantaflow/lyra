@@ -56,6 +56,8 @@ export function Selecteur<T extends string>(p: {
   options: { id: T; libelle: string }[]
   libelle: string
   surChange: (v: T) => void
+  /** Désactivé (réglage pas encore livré). */
+  inactif?: boolean
 }) {
   const [ouvert, setOuvert] = useState(false)
   const zone = useRef<HTMLDivElement>(null)
@@ -70,7 +72,7 @@ export function Selecteur<T extends string>(p: {
   const courant = p.options.find((o) => o.id === p.valeur)
   return (
     <div class="sel-zone" ref={zone}>
-      <button class="sel" type="button" aria-label={p.libelle} aria-haspopup="listbox" aria-expanded={ouvert} onClick={() => setOuvert(!ouvert)}>
+      <button class="sel" type="button" aria-label={p.libelle} aria-haspopup="listbox" aria-expanded={ouvert} disabled={p.inactif} onClick={() => setOuvert(!ouvert)}>
         {courant?.libelle ?? p.valeur}
         <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M6 9l6 6 6-6" />

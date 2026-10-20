@@ -140,6 +140,10 @@ describe('export / import de fichiers (vrais magasins, sans Electron)', () => {
     expect(b.reglages.getSettings().theme).toBe('sombre')
     expect(b.reglages.getSettings().sites['https://x.fr'].zoom).toBe(2)
     expect(b.reglages.getSettings().telechargements.dossier).toBe(join(b.d, 'dl'))
+    // Réenregistré par le Bloc-notes de Windows (BOM UTF-8) : accepté.
+    writeFileSync(b.chemin('bom.json'), '\uFEFF' + JSON.stringify({ theme: 'clair' }))
+    expect(await importerFichier({ type: 'reglages', chemin: b.chemin('bom.json') }, b.cibles, b.deps, OPTIONS)).toMatchObject({ ok: true })
+    expect(b.reglages.getSettings().theme).toBe('clair')
     writeFileSync(b.chemin('mauvais.json'), '[1,2')
     expect(await importerFichier({ type: 'reglages', chemin: b.chemin('mauvais.json') }, b.cibles, b.deps, OPTIONS)).toMatchObject({ ok: false, erreur: 'illisible' })
   })

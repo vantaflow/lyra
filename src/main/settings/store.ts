@@ -1,9 +1,15 @@
-import { readFileSync, writeFileSync, renameSync, mkdirSync, rmSync } from 'node:fs'
+import { readFileSync, writeFileSync, renameSync, mkdirSync, rmSync, copyFileSync, existsSync } from 'node:fs'
 import { dirname } from 'node:path'
 
 function estObjet(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
 }
+
+/** Codes d'un fichier tenu un instant par un autre processus (Windows). */
+const VERROUS = new Set(['EPERM', 'EBUSY', 'EACCES'])
+const ESSAIS_RENOMMAGE = 4
+/** Pause synchrone courte (l'écriture des réglages est synchrone). */
+const attendre = (ms: number): void => void Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
 
 const CLES_INTERDITES = new Set(['__proto__', 'constructor', 'prototype'])
 
@@ -55,23 +61,59 @@ export class JsonStore<T extends object> {
 
   private lire(): T {
     try {
-      const brut: unknown = JSON.parse(readFileSync(this.chemin, 'utf8'))
-      if (this.migrer) return this.migrer(brut)
-      return fusion(this.defauts, brut)
-    } catch {
+      return this.lireFichier(this.chemin)
+    } catch (e) {
+      // Fichier présent mais illisible (écriture directe interrompue) : la copie de sauvegarde prise juste avant.
+      if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+        try {
+          const v = this.lireFichier(`${this.chemin}.bak`)
+          console.warn(`[réglages] ${this.chemin} illisible, copie de sauvegarde relue :`, e)
+          return v
+        } catch {
+          // Pas de copie lisible : valeurs par défaut.
+        }
+      }
       return this.defauts
     }
   }
 
+  private lireFichier(chemin: string): T {
+    // Un fichier réenregistré par le Bloc-notes de Windows commence par un BOM : JSON.parse le refuserait.
+    const brut: unknown = JSON.parse(readFileSync(chemin, 'utf8').replace(/^\uFEFF/, ''))
+    if (this.migrer) return this.migrer(brut)
+    return fusion(this.defauts, brut)
+  }
+
+  /**
+   * Écriture atomique (.tmp puis renommage). Sous Windows, un antivirus ou l'indexeur qui ouvre le fichier un instant
+   * fait échouer le renommage (EPERM, EBUSY, EACCES) : on réessaie, puis on écrit directement (après une copie .bak). Si rien ne passe, la
+   * valeur reste appliquée en mémoire (les écouteurs sont prévenus) et l'erreur part au journal.
+   */
   private ecrire(): void {
     const tmp = `${this.chemin}.tmp`
+    const contenu = JSON.stringify(this.valeur, null, 2)
     try {
       mkdirSync(dirname(this.chemin), { recursive: true })
-      writeFileSync(tmp, JSON.stringify(this.valeur, null, 2))
-      renameSync(tmp, this.chemin)
+      writeFileSync(tmp, contenu)
+      for (let essai = 0; ; essai++) {
+        try {
+          renameSync(tmp, this.chemin)
+          return
+        } catch (e) {
+          if (!VERROUS.has((e as NodeJS.ErrnoException).code ?? '') || essai >= ESSAIS_RENOMMAGE) throw e
+          attendre(15 * (essai + 1))
+        }
+      }
     } catch (e) {
       rmSync(tmp, { force: true })
-      throw e
+      try {
+        // Écriture directe, non atomique : copie de l'ancien fichier d'abord, relue si l'écriture est interrompue.
+        if (existsSync(this.chemin)) copyFileSync(this.chemin, `${this.chemin}.bak`)
+        writeFileSync(this.chemin, contenu)
+        console.warn(`[réglages] renommage impossible, écriture directe de ${this.chemin} :`, e)
+      } catch (e2) {
+        console.warn(`[réglages] ${this.chemin} non écrit (valeur gardée en mémoire) :`, e2)
+      }
     }
   }
 }

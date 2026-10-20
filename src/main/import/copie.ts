@@ -19,6 +19,7 @@ import { tmpdir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
 import { ErreurImport } from './types'
 import type { CodeErreurImport } from './types'
+import { messageLisible } from '../../shared/messageTechnique'
 
 /** Plus gros fichier non SQLite lu (Bookmarks, Preferences, session, manifestes) : 64 Mio. */
 export const TAILLE_MAX_FICHIER = 64 * 1024 * 1024
@@ -60,6 +61,8 @@ export interface FichiersCopies {
 
 const mo = (octets: number): number => Math.max(1, Math.ceil(octets / (1024 * 1024)))
 
+const ILLISIBLE = 'fichier illisible ou d’un format inattendu'
+
 /** Message pour l'utilisateur correspondant à une erreur du système de fichiers. */
 export function raisonErreurFichier(err: unknown, nomFichier: string, navigateur = 'le navigateur', plateforme: NodeJS.Platform = process.platform): string {
   const code = (err as NodeJS.ErrnoException | null)?.code
@@ -72,7 +75,8 @@ export function raisonErreurFichier(err: unknown, nomFichier: string, navigateur
   if (code === 'ENOSPC' || code === 'EDQUOT') return `Espace disque insuffisant pour copier ${nomFichier} : libérez de la place puis réessayez.`
   if (code === 'ERR_FS_FILE_TOO_LARGE') return `${nomFichier} est trop volumineux pour être lu.`
   if (code === 'ENOMEM') return `Mémoire insuffisante pour lire ${nomFichier}.`
-  return `Lecture impossible (${nomFichier}) : ${code ?? (err instanceof Error ? err.message : String(err))}.`
+  if (code) console.warn('[import] lecture impossible :', nomFichier, err)
+  return `Lecture impossible (${nomFichier}) : ${code ? 'erreur du système de fichiers' : messageLisible(err, ILLISIBLE)}.`
 }
 
 /** Nature de l'erreur (verrouillé, absent, disque plein, trop gros), `undefined` pour les autres. */

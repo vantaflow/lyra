@@ -32,6 +32,7 @@ import {
   type ResultatImport,
   type Visite
 } from './types'
+import { messageLisible } from '../../shared/messageTechnique'
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Interfaces des magasins (signatures de `Bookmarks`, `History`, `TabManager`, `Reglages` : 3.5 les leur passe)
@@ -111,7 +112,7 @@ const FAVORI_OUVRABLE = /^(https?|ftp):/i
 /** Étoiles : comme `SCHEMAS_OUVRABLES` / `interditAuxSites` de TabManager (file: seulement en mode test, drapeau fourni par l'appelant). */
 const etoileOuvrable = (url: string, fichiersLocaux: boolean): boolean => /^https?:/i.test(url) || (fichiersLocaux && /^file:/i.test(url))
 
-const raisonDe = (e: unknown): string => (e as { raison?: unknown })?.raison?.toString() ?? (e instanceof Error ? e.message : String(e))
+const raisonDe = (e: unknown): string => (e as { raison?: unknown })?.raison?.toString() ?? messageLisible(e, 'erreur inattendue (détail dans le journal)')
 
 /**
  * Sérialisation WHATWG (celle des favoris natifs de Lyra : `https://a.fr` -> `https://a.fr/`), après retrait d'un

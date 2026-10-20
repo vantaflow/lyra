@@ -244,13 +244,16 @@ export type Requetes = {
   'shields:toggleSite': [{ origine: string; actif: boolean }, void]
   'shields:stats': [void, StatsBoucliers]
   /** Relit les listes de blocage maintenant ; renvoie les statistiques à jour. */
-  'shields:update': [void, StatsBoucliers | { ignore: true; date: string }]
+  /** `ignore` : rafale refusée ; `echec` : listes injoignables (moteur conservé). */
+  'shields:update': [void, StatsBoucliers | { ignore: true; date: string } | { echec: true; date: string }]
   /** Boîte de dialogue : dossier de téléchargement choisi, ou null si annulé. */
   'settings:choisirDossier': [void, string | null]
   /** Boîte de dialogue : enregistre les réglages en JSON ; vrai si le fichier est écrit. */
-  'settings:export': [void, boolean]
+  /** Vrai : écrit ; faux : choix annulé ; `erreur` : écriture impossible (phrase affichable). */
+  'settings:export': [void, boolean | { erreur: string }]
   /** Boîte de dialogue : lit un JSON de réglages, le valide et l'applique ; null si annulé ou illisible. */
-  'settings:import': [void, Settings | null]
+  /** null : choix annulé ; `erreur` : fichier refusé (phrase affichable). */
+  'settings:import': [void, Settings | null | { erreur: string }]
   /** Chrome → main : ouvre le panneau des Boucliers dans l'overlay. */
   'shields:open': [void, void]
   /** Overlay → main : referme l'overlay (Échap, clic à côté). */
