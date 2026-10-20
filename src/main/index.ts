@@ -200,8 +200,9 @@ function ongletsCourants(): TabManager | undefined {
 }
 
 function ongletsDe(wc: WebContents): TabManager {
-  const f = manager.deWebContents(wc) ?? manager.premiere()
-  const m = f && onglets.get(f.id)
+  // Chrome ou overlay d'une fenêtre, sinon page de Lyra (lyra://) d'une de ses étoiles : jamais la première fenêtre au hasard.
+  const f = manager.deWebContents(wc)
+  const m = (f && onglets.get(f.id)) ?? ongletsPossedant(wc) ?? (manager.premiere() && onglets.get(manager.premiere()!.id))
   if (!m) throw new Error('aucune fenêtre')
   return m
 }

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { generateKeyPairSync } from 'node:crypto'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -12,6 +12,10 @@ import { crx3Signe } from './crxTest'
 import { validerPatch } from '../settings/validate'
 import { reglagesParDefaut } from '../settings/defaults'
 import type { Settings } from '../../shared/types'
+
+// Chaque test génère des clés RSA 2048 et décompresse des archives : 0,3 à 1,5 s au repos, jusqu'à 4,8 s sous charge (suite complète),
+// donc au bord des 5 s par défaut. Marge de vitesse seulement : aucun test ne dépend d'un délai.
+vi.setConfig({ testTimeout: 20_000 })
 
 const cleDer = (): Buffer => generateKeyPairSync('rsa', { modulusLength: 2048 }).publicKey.export({ type: 'spki', format: 'der' })
 

@@ -161,3 +161,34 @@ test('fenêtre privée : entrées présentes, elles ouvrent les réglages, l’�
     await app.close()
   }
 })
+
+test('deux fenêtres : une page de Lyra de la fenêtre 2 ouvre les règles du site actif de la fenêtre 2, pas de la fenêtre 1', async () => {
+  const autre = createServer((_q, r) => {
+    r.setHeader('content-type', 'text/html')
+    r.end('<!doctype html><title>autre</title><p>autre site</p>')
+  })
+  await new Promise<void>((ok) => autre.listen(0, '127.0.0.1', ok))
+  const baseB = `http://127.0.0.1:${(autre.address() as AddressInfo).port}`
+  const { app, fenetre: f1 } = await lancerLyra()
+  try {
+    const interfaces = (): Page[] => app.windows().filter((p) => p.url().includes('ui.html') && !p.url().includes('#overlay') && !p.url().includes('#privee'))
+    await ouvrirSite(f1)
+    await f1.evaluate(() => window.lyra.invoke('menu:action', { action: 'nouvelle-fenetre' }))
+    await expect.poll(() => interfaces().length).toBe(2)
+    const f2 = interfaces().find((p) => p !== f1)!
+    // Une page de Lyra (historique) dans la fenêtre 2, puis le site B devient son étoile active.
+    await f2.evaluate(() => window.lyra.invoke('tabs:open', { url: 'lyra://history' }))
+    await expect.poll(() => app.windows().some((w) => w.url().startsWith('lyra://history'))).toBe(true)
+    const historique = app.windows().find((w) => w.url().startsWith('lyra://history'))!
+    await f2.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), `${baseB}/b`)
+    await expect.poll(async () => (await active(f2))?.url).toBe(`${baseB}/b`)
+    await expect.poll(async () => (await active(f2))?.title).toBe('autre')
+
+    await historique.evaluate(() => window.lyra.invoke('menu:action', { action: 'regles-site' }))
+    await expect.poll(() => urls(f2)).toContain(`lyra://settings#/sites/${encodeURIComponent(baseB)}`)
+    expect((await urls(f1)).some((u) => u.includes('#/sites/'))).toBe(false)
+  } finally {
+    await app.close()
+    autre.close()
+  }
+})
