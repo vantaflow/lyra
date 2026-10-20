@@ -84,12 +84,14 @@ let passerelles: Passerelles | undefined
 let extensionsLyra: Extensions | undefined
 const privees = new Set<number>()
 /** Équipe une session privée (UA, permissions, téléchargements, Boucliers, passerelles) ; fourni au démarrage : une fenêtre privée ouverte avant attend, jamais de repli sur la session persistante. */
-let fournirEquipementPrive: (equiper: (ses: Session) => Promise<void>) => void = () => undefined
-const equipementPret = new Promise<(ses: Session) => Promise<void>>((ok) => {
+let fournirEquipementPrive: (equiper: (ses: Session, fenetre: number) => Promise<void>) => void = () => undefined
+const equipementPret = new Promise<(ses: Session, fenetre: number) => Promise<void>>((ok) => {
   fournirEquipementPrive = ok
 })
 /** Sessions des fenêtres privées ouvertes : elles suivent les passerelles comme les sessions normales. */
 const sessionsPrivees: Session[] = []
+/** Branché au démarrage : oublie la liste des téléchargements privés d'une fenêtre fermée. */
+let fermerDownloadsPrives: (fenetre: number) => void = () => undefined
 /** Partition d'une fenêtre privée : en mémoire (sans `persist:`), propre à la fenêtre. */
 const partitionPrivee = (fenetre: number): string => `privee-${fenetre}`
 
@@ -206,7 +208,7 @@ function creerFenetre(opts: { privee?: boolean; urlInitiale?: string } = {}, res
   // Fenêtre privée : session mémoire à elle (cookies, cache, stockage jetés à la fermeture).
   // Toujours créée, jamais de repli sur `persist:lyra` : la première navigation attend l'équipement (démarrage compris).
   const sesPrivee = opts.privee ? session.fromPartition(partitionPrivee(fenetre.id)) : undefined
-  const equipement = sesPrivee ? equipementPret.then((equiper) => equiper(sesPrivee)) : Promise.resolve()
+  const equipement = sesPrivee ? equipementPret.then((equiper) => equiper(sesPrivee, fenetre.id)) : Promise.resolve()
   // Une fenêtre privée n'alimente jamais l'historique.
   const h = historique
   const tabs = new TabManager(
@@ -252,7 +254,10 @@ function creerFenetre(opts: { privee?: boolean; urlInitiale?: string } = {}, res
     privees.delete(fenetre.id)
     dnd.fermer(fenetre.id)
     sauverSession()
-    if (sesPrivee) void jeterSessionPrivee(sesPrivee)
+    if (sesPrivee) {
+      fermerDownloadsPrives(fenetre.id)
+      void jeterSessionPrivee(sesPrivee)
+    }
   })
   // Équipement en échec : on journalise et on ferme la fenêtre privée (fail-closed), jamais de fenêtre vide ni de rejet non géré.
   const echecEquipement = (err: unknown): void => {
@@ -428,13 +433,19 @@ void app.whenReady().then(async () => {
   })
   telechargements.attacher(session.defaultSession)
   telechargements.attacher(session.fromPartition('persist:lyra'))
-  handle('downloads:list', () => telechargements.liste())
-  handle('downloads:pause', ({ id }) => telechargements.pause(id))
-  handle('downloads:resume', ({ id }) => telechargements.reprendre(id))
-  handle('downloads:cancel', ({ id }) => telechargements.annuler(id))
-  handle('downloads:open', ({ id }) => telechargements.ouvrir(id))
-  handle('downloads:reveal', ({ id }) => telechargements.afficherDansDossier(id))
-  handle('downloads:clear', () => telechargements.effacerListe())
+  // Portée : la fenêtre privée de l'appelant (sa liste en mémoire), sinon la liste normale ; jamais l'une pour l'autre.
+  const porteeDl = (wc: WebContents): number | undefined => {
+    const id = manager.deWebContents(wc)?.id ?? ongletsPossedant(wc)?.fenetreId
+    return id !== undefined && privees.has(id) ? id : undefined
+  }
+  handle('downloads:list', (_d, e) => telechargements.liste(porteeDl(e.sender)))
+  handle('downloads:pause', ({ id }, e) => telechargements.pause(id, porteeDl(e.sender)))
+  handle('downloads:resume', ({ id }, e) => telechargements.reprendre(id, porteeDl(e.sender)))
+  handle('downloads:cancel', ({ id }, e) => telechargements.annuler(id, porteeDl(e.sender)))
+  handle('downloads:open', ({ id }, e) => telechargements.ouvrir(id, porteeDl(e.sender)))
+  handle('downloads:reveal', ({ id }, e) => telechargements.afficherDansDossier(id, porteeDl(e.sender)))
+  handle('downloads:clear', (_d, e) => telechargements.effacerListe(porteeDl(e.sender)))
+  fermerDownloadsPrives = (id) => telechargements.oublierFenetre(id)
   handle('downloads:panel', (_d, e) => ongletsDe(e.sender).ouvrirOverlay('downloads'))
   handle('extensions:panel', (_d, e) => ongletsDe(e.sender).ouvrirOverlay('extensions'))
   handle('layout:get', (_d, event) => {
@@ -939,11 +950,11 @@ void app.whenReady().then(async () => {
     // http/ws vers un site contourné : annulé avant tout envoi, quel que soit l'état (asynchrone) du PAC.
     garde: (d) => /^(http|ws):/i.test(d.url) && pass.refusHttp(d.url) !== null
   })
-  fournirEquipementPrive(async (ses) => {
+  fournirEquipementPrive(async (ses, fenetre) => {
     ses.setUserAgent(ua)
     installerProtocoleLyra(ses)
     permissionsPrivees.attacher(ses)
-    telechargements.attacher(ses, { privee: true })
+    telechargements.attacher(ses, { fenetre })
     boucliers.attacher(ses)
     reglesSites.equiper(ses, { privee: true })
     sessionsPrivees.push(ses)

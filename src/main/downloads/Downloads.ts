@@ -37,24 +37,28 @@ interface Actif {
   info: DownloadInfo
   item: DownloadItem
   dernierTick: number
-  /** Venu d'une session privée : jamais écrit ni listé (aucune trace dans Lyra). */
-  privee: boolean
+  /** Venu de la session privée de cette fenêtre : jamais écrit sur disque, listé seulement pour elle. */
+  fenetre?: number
 }
 
 export class Downloads {
   private actifs = new Map<string, Actif>()
   private store: JsonStore<Contenu>
   private minuteur: NodeJS.Timeout | undefined
+  /** Téléchargements privés finis, par fenêtre privée : en mémoire seulement, oubliés à la fermeture de la fenêtre. */
+  private prives = new Map<number, DownloadInfo[]>()
+  private fermees = new Set<number>()
 
   constructor(private opts: OptionsDownloads) {
     this.store = new JsonStore<Contenu>(opts.fichier, VIDE, migrer)
   }
 
-  attacher(ses: Session, o: { privee?: boolean } = {}): void {
-    ses.on('will-download', (_e, item) => this.demarrer(item, o.privee === true))
+  /** `fenetre` : identifiant de la fenêtre privée propriétaire de la session (téléchargements privés). */
+  attacher(ses: Session, o: { fenetre?: number } = {}): void {
+    ses.on('will-download', (_e, item) => this.demarrer(item, o.fenetre))
   }
 
-  private demarrer(item: DownloadItem, privee: boolean): void {
+  private demarrer(item: DownloadItem, fenetre: number | undefined): void {
     const { dossier, demander } = this.opts.reglages()
     let nom = item.getFilename()
     let chemin = ''
@@ -70,7 +74,7 @@ export class Downloads {
       info: { id, nom, chemin, url: item.getURL(), total: item.getTotalBytes(), recu: 0, etat: 'en-cours', date: Date.now() },
       item,
       dernierTick: Date.now(),
-      privee
+      fenetre
     }
     this.actifs.set(id, actif)
 
@@ -92,7 +96,8 @@ export class Downloads {
       this.completerChemin(actif)
       actif.info = reduire(actif.info, { type: 'done', resultat: etat, recu: item.getReceivedBytes(), total: item.getTotalBytes() })
       this.actifs.delete(id)
-      if (!privee) this.persister(actif.info)
+      if (fenetre === undefined) this.persister(actif.info)
+      else if (!this.fermees.has(fenetre)) this.prives.set(fenetre, ajouterFinal(this.prives.get(fenetre) ?? [], actif.info, MAX))
       this.signaler()
     })
     this.signaler()
@@ -108,8 +113,13 @@ export class Downloads {
     this.store.set({ items: ajouterFinal(this.store.get().items, info, MAX) })
   }
 
-  liste(): DownloadInfo[] {
-    const enMemoire = [...this.actifs.values()].filter((a) => !a.privee).map((a) => a.info)
+  /** Liste d'une fenêtre privée (`fenetre`) : ses seuls téléchargements, en mémoire. Sans argument : la liste normale. */
+  liste(fenetre?: number): DownloadInfo[] {
+    if (fenetre !== undefined) {
+      const actifs = [...this.actifs.values()].filter((a) => a.fenetre === fenetre).map((a) => a.info)
+      return [...actifs, ...(this.prives.get(fenetre) ?? [])].sort((a, b) => b.date - a.date).slice(0, MAX)
+    }
+    const enMemoire = [...this.actifs.values()].filter((a) => a.fenetre === undefined).map((a) => a.info)
     const ids = new Set(enMemoire.map((i) => i.id))
     return [...enMemoire, ...this.store.get().items.filter((i) => !ids.has(i.id))].sort((a, b) => b.date - a.date).slice(0, MAX)
   }
@@ -118,38 +128,52 @@ export class Downloads {
     return [...this.actifs.values()].some((a) => a.info.etat === 'en-cours')
   }
 
-  pause(id: string): void {
+  /** L'actif `id`, seulement s'il appartient à la portée demandée (fenêtre privée, ou la liste normale). */
+  private actif(id: string, fenetre?: number): Actif | undefined {
     const a = this.actifs.get(id)
+    return a && a.fenetre === fenetre ? a : undefined
+  }
+
+  pause(id: string, fenetre?: number): void {
+    const a = this.actif(id, fenetre)
     if (a && !a.item.isPaused() && a.item.canResume()) a.item.pause()
   }
 
-  reprendre(id: string): void {
-    const a = this.actifs.get(id)
+  reprendre(id: string, fenetre?: number): void {
+    const a = this.actif(id, fenetre)
     if (a && a.item.canResume()) a.item.resume()
   }
 
-  annuler(id: string): void {
-    this.actifs.get(id)?.item.cancel()
+  annuler(id: string, fenetre?: number): void {
+    this.actif(id, fenetre)?.item.cancel()
   }
 
-  private termine(id: string): DownloadInfo | undefined {
-    return this.liste().find((i) => i.id === id && i.etat === 'termine' && i.chemin)
+  private termine(id: string, fenetre?: number): DownloadInfo | undefined {
+    return this.liste(fenetre).find((i) => i.id === id && i.etat === 'termine' && i.chemin)
   }
 
-  ouvrir(id: string): void {
-    const i = this.termine(id)
+  ouvrir(id: string, fenetre?: number): void {
+    const i = this.termine(id, fenetre)
     if (i) void shell.openPath(i.chemin)
   }
 
-  afficherDansDossier(id: string): void {
-    const i = this.termine(id)
+  afficherDansDossier(id: string, fenetre?: number): void {
+    const i = this.termine(id, fenetre)
     if (i) shell.showItemInFolder(i.chemin)
   }
 
-  /** Vide la liste ; les téléchargements en cours restent. */
-  effacerListe(): void {
-    this.store.set({ items: [] })
+  /** Vide la liste (celle de la fenêtre privée `fenetre`, ou la normale) ; les téléchargements en cours restent. */
+  effacerListe(fenetre?: number): void {
+    if (fenetre === undefined) this.store.set({ items: [] })
+    else this.prives.delete(fenetre)
     this.signaler()
+  }
+
+  /** Fermeture d'une fenêtre privée : sa liste est oubliée, ses téléchargements en cours sont annulés. */
+  oublierFenetre(fenetre: number): void {
+    this.fermees.add(fenetre)
+    this.prives.delete(fenetre)
+    for (const a of this.actifs.values()) if (a.fenetre === fenetre) a.item.cancel()
   }
 
   private signaler(): void {
