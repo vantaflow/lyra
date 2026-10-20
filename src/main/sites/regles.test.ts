@@ -103,7 +103,7 @@ describe('purge « Session seulement » à la fermeture', () => {
     for (const privee of [false, true]) {
       const ses = fausseSession()
       creerReglesSites({ sites: () => ({ 'exemple.test': { cookies: 'session' } }) }).equiper(ses, { privee })
-      const r = appel(ses.entetes, reponse('https://pixel.tiers.test/p.gif', { 'Set-Cookie': ['t=1; Max-Age=3600; Secure'] }))
+      const r = appel(ses.entetes, reponse('https://www.exemple.test/p.gif', { 'Set-Cookie': ['t=1; Max-Age=3600; Secure'] }))
       expect(r).toEqual({ responseHeaders: { 'Set-Cookie': ['t=1; Secure'] } })
     }
   })
