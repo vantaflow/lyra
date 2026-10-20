@@ -19,19 +19,12 @@ function zipFixture(): string {
 const pageExtensions = (app: ElectronApplication): Page | undefined => app.windows().find((w) => w.url().startsWith('lyra://extensions'))
 
 test('lyra://extensions : en-tête, cartes, installation par fichier, interrupteur, journal, désinstallation', async () => {
-  // Repères horodatés (diagnostic d'un blocage sous Windows en CI).
-  const t0 = Date.now()
-  const repere = (m: string): void => console.log(`[extensions-page] ${Date.now() - t0} ms : ${m}`)
-  const { app, fenetre } = await lancerLyra({ LYRA_CHOIX_EXTENSION: zipFixture(), LYRA_DIAG_EXT: '1' })
-  app.process().stderr?.on('data', (d: Buffer) => {
-    for (const l of d.toString().split('\n')) if (l.includes('[diag-ext]')) console.log(l)
-  })
+  const { app, fenetre } = await lancerLyra({ LYRA_CHOIX_EXTENSION: zipFixture() })
   try {
     await fenetre.evaluate(() => window.lyra.invoke('tabs:open', { url: 'lyra://extensions' }))
     await expect.poll(() => pageExtensions(app)).toBeDefined()
     const p = pageExtensions(app)!
 
-    repere("// En-tête et cartes d'installation")
     // En-tête et cartes d'installation (Extensions.dc.html).
     await expect(p.getByRole('heading', { level: 1 })).toHaveText('Extensions')
     await expect(p.getByText('Chrome et Firefox, côte à côte. Ce qui ne marche pas est dit, pas caché.')).toBeVisible()
@@ -47,7 +40,6 @@ test('lyra://extensions : en-tête, cartes, installation par fichier, interrupte
     await expect(p.getByText("Les extensions ne s'exécutent pas en fenêtre privée").first()).toBeVisible()
 
     // Installation par le sélecteur de fichier (chemin injecté sous LYRA_TEST).
-    repere("await test.step('installation'")
     await test.step('installation', async () => {
       await p.getByRole('button', { name: 'Choisir…' }).click()
       await expect(p.getByRole('heading', { name: 'Installées — 1' })).toBeVisible()
@@ -62,7 +54,6 @@ test('lyra://extensions : en-tête, cartes, installation par fichier, interrupte
     await p.screenshot({ path: CAPTURE })
 
     // Options : la page d'options de l'extension s'ouvre dans une nouvelle étoile.
-    repere("await test.step('options'")
     await test.step('options', async () => {
       await ligne.getByRole('button', { name: 'Options' }).click()
       await expect.poll(() => app.windows().some((w) => /^chrome-extension:\/\/[a-p]{32}\/options\.html$/.test(w.url()))).toBe(true)
@@ -74,7 +65,6 @@ test('lyra://extensions : en-tête, cartes, installation par fichier, interrupte
       if (etoile) await window.lyra.invoke('tabs:activate', { id: etoile.id })
     })
 
-    repere("// Interrupteur : l'extension")
     // Interrupteur : l'extension est désactivée dans le registre.
     await interrupteur.click()
     await expect(interrupteur).toHaveAttribute('aria-checked', 'false')
@@ -84,14 +74,12 @@ test('lyra://extensions : en-tête, cartes, installation par fichier, interrupte
     await interrupteur.click()
     await expect(interrupteur).toHaveAttribute('aria-checked', 'true')
 
-    repere('// Journal déplié')
     // Journal déplié (monospace, ✓ – ℹ), puis replié.
     await ligne.getByRole('button', { name: 'Journal' }).click()
     await expect(p.locator('.log')).toBeVisible()
     await expect(p.locator('.log')).toContainText(/[✓–ℹ]/)
     await expect(p.getByRole('button', { name: 'Replier' })).toBeVisible()
 
-    repere('// Règle par site')
     // Règle par site : enregistrée dans les réglages.
     await p.getByRole('button', { name: 'Sites' }).click()
     await p.getByLabel('Site à exclure').fill('youtube.com')
@@ -100,14 +88,12 @@ test('lyra://extensions : en-tête, cartes, installation par fichier, interrupte
     await expect(p.getByText('Tous les sites sauf youtube.com (règle par site)')).toBeVisible()
 
     // Désinstallation.
-    repere("await test.step('désinstallation'")
     await test.step('désinstallation', async () => {
       await p.getByRole('button', { name: 'Supprimer' }).click()
       await expect(p.getByRole('heading', { name: 'Installées — 0' })).toBeVisible()
       expect(await fenetre.evaluate(() => window.lyra.invoke('extensions:lister'))).toEqual([])
     })
   } finally {
-    repere("await test.step('fermeture'")
     await test.step('fermeture', () => app.close())
   }
 })

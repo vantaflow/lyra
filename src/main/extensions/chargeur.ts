@@ -86,24 +86,17 @@ export function creerChargeur(o: OptionsChargeur): Chargeur {
     }
   }
 
-  // DIAGNOSTIC TEMPORAIRE (blocage sous Windows en CI) : à retirer.
-  const diag = (m: string): void => {
-    if (process.env.LYRA_DIAG_EXT) console.error(`[diag-ext] ${Date.now()} ${m}`)
-  }
   const retirer = async (id: string): Promise<void> => {
     const idElectron = chargees.get(id)
-    diag(`retirer ${id} -> ${idElectron}`)
     if (idElectron === undefined) return
     chargees.delete(id)
     try {
       await o.avantRetrait?.(idElectron)
-      diag('pages fermées')
     } catch (err) {
       journal(`${id} : fermeture des pages impossible — ${message(err)}`)
     }
     try {
       await o.extensions.removeExtension(idElectron)
-      diag('removeExtension fini')
     } catch (err) {
       journal(`${id} : retrait impossible — ${message(err)}`)
     }
@@ -172,7 +165,6 @@ export function creerChargeur(o: OptionsChargeur): Chargeur {
         if (!e) return false
         if (!active) {
           await retirer(id)
-          diag('registre')
           return o.registre.activer(id, false)
         }
         const r = await charger(e)
