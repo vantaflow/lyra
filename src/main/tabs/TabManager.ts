@@ -3,6 +3,7 @@ import type { LyraWindow } from '../window/WindowManager'
 import { PRELOAD_INTERNAL, PRELOAD_PAGE } from '../preloads'
 import { envoyer } from '../ipc'
 import { CAPSULE } from '../window/layout'
+import { creerRelaisSouris } from './capsuleSouris'
 import { TabTree } from './TabTree'
 import { peutEndormir } from './dormance'
 import { domaineEnregistrable, placerEnfant, placerNouvelle, planRegroupement, type ModePlacement, type Placement } from './placement'
@@ -81,6 +82,8 @@ export interface OptionsTabs {
   couleurFavicon?: (wc: WebContents, url: string) => Promise<string | null>
   /** `Settings.raccourcis` courant (commande → accélérateur, vide = défaut) : les raccourcis de page suivent les réglages. */
   raccourcis?: () => Record<string, string>
+  /** Réglage « Masquer la capsule quand la souris ne bouge plus » (`apparence.capsuleAuto`). */
+  capsuleAuto?: () => boolean
   /** `Settings.gestes` courant : balayage (`swipe`, macOS) et clic molette suivent les réglages ; absent : aucun geste. */
   gestes?: () => ReglagesGestes
   /** Extensions : suivi des étoiles web (chrome.tabs) ; absent pour une fenêtre privée (jamais d'extensions). */
@@ -715,17 +718,15 @@ export class TabManager {
       this.extras.set(id, { ...this.extras.get(id), couleur: couleur ?? undefined })
       this.notifier()
     })
-    // « Masquer la capsule quand la souris ne bouge plus » : la page est une autre vue, le chrome ne voit pas ses mouvements.
-    // Simple signal (10 par seconde au plus), sans aucune donnée de page ; `y` est compté depuis le haut réel de la capsule.
-    let dernierMouvement = 0
-    wc.on('input-event', (_e, ev) => {
-      if (ev.type !== 'mouseMove' || this.fenetre.win.isDestroyed()) return
-      const maintenant = Date.now()
-      if (maintenant - dernierMouvement < 100) return
-      dernierMouvement = maintenant
-      const page = this.fenetre.bounds().page
-      envoyer(this.fenetre.chrome.webContents, 'capsule:souris', { y: page.y + ((ev as { y?: number }).y ?? 0) - (page.y - CAPSULE) })
+    // « Masquer la capsule quand la souris ne bouge plus » : voir capsuleSouris.ts (sans effet tant que l'option est coupée).
+    const relaisSouris = creerRelaisSouris({
+      actif: () => this.options.capsuleAuto?.() === true,
+      maintenant: Date.now,
+      detruite: () => this.fenetre.win.isDestroyed(),
+      hauteurCapsule: CAPSULE,
+      envoyer: (y) => envoyer(this.fenetre.chrome.webContents, 'capsule:souris', { y })
     })
+    wc.on('input-event', (_e, ev) => relaisSouris(ev as { type: string; y?: number }))
     wc.on('before-input-event', (_e, input) => {
       // Échap sort de Ne pas déranger (sauf en plein écran HTML : Échap y sert d'abord à en sortir). La page le reçoit aussi.
       if (input.type === 'keyDown' && input.key === 'Escape' && !input.isAutoRepeat && !input.control && !input.meta && !input.alt && !input.shift && !this.fenetre.estPleinEcran()) {

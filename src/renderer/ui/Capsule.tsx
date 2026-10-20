@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { ouvrirRecherche } from './FindBar'
+import { CAPSULE } from '../../main/window/layout'
 import { creerCapsuleAuto } from './capsuleAuto'
 import { actif, capsuleAuto, cielMasque, estNouvelleEtoile, etatActif, favori, fenetrePrivee, rafraichirFavori, reveler } from './state'
 
@@ -38,8 +39,6 @@ export function affichagePilule(url: string): Affichage {
   }
 }
 
-/** Hauteur de la capsule (CAPSULE de layout.ts, 46 px). */
-const CAPSULE_PX = 46
 const palette = (): void => void window.lyra.invoke('palette:open')
 
 export function Capsule() {
@@ -60,12 +59,12 @@ export function Capsule() {
     auto.current = c
     // Hauteur du curseur depuis le haut réel de la capsule (en position « haut », elle est sous la bande du ciel).
     const surMouvement = (e: MouseEvent): void => {
-      const haut = zone.current?.getBoundingClientRect() ?? { top: 0, height: CAPSULE_PX }
+      const haut = zone.current?.getBoundingClientRect() ?? { top: 0, height: CAPSULE }
       c.mouvement(e.clientY - haut.top, haut.height)
     }
     window.addEventListener('mousemove', surMouvement)
     // La page web est une autre vue : le processus principal relaie ses mouvements (le `y` est déjà compté depuis la capsule).
-    const arret = window.lyra.on('capsule:souris', (m) => c.mouvement(m.y, CAPSULE_PX))
+    const arret = window.lyra.on('capsule:souris', (m) => c.mouvement(m.y, CAPSULE))
     return () => {
       arret()
       window.removeEventListener('mousemove', surMouvement)

@@ -242,6 +242,7 @@ function creerFenetre(opts: { privee?: boolean; urlInitiale?: string } = {}, res
       // Fenêtre privée : ni détection automatique ni proposition d'ajout (rien n'est écrit dans les réglages).
       passerelles: passerelles?.crochets({ privee: opts.privee === true }),
       raccourcis: () => reglagesCourants().raccourcis,
+      capsuleAuto: () => reglagesCourants().apparence.capsuleAuto,
       gestes: () => reglagesCourants().gestes,
       surEchap: () => dnd.sortir(fenetre.id),
       basculerDnd: () => basculerDnd(fenetre.id),
