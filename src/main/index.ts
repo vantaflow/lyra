@@ -1,4 +1,4 @@
-import { app, BaseWindow, ipcMain, Notification as NotificationSysteme, webContents, type WebContents, type WebFrameMain, protocol, session, type Session } from 'electron'
+import { app, BaseWindow, ipcMain, powerMonitor, Notification as NotificationSysteme, webContents, type WebContents, type WebFrameMain, protocol, session, type Session } from 'electron'
 import { WindowManager } from './window/WindowManager'
 import type { Settings } from '../shared/types'
 import { join } from 'node:path'
@@ -290,6 +290,8 @@ function hoteLisible(url: string): string {
 }
 
 void app.whenReady().then(async () => {
+  // Après une veille du système, les minuteries de Ne pas déranger sont recalculées sur l'horloge murale.
+  powerMonitor.on('resume', () => dnd.surReprise())
   const ua = nettoyerUserAgent(app.userAgentFallback)
   app.userAgentFallback = ua
   session.defaultSession.setUserAgent(ua)
