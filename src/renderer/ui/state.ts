@@ -16,7 +16,7 @@ export const actif = computed<Star | undefined>(() => sky.value.stars.find((s) =
 export const etatActif = computed<EtatEtoile | undefined>(() => (sky.value.activeId ? etats.value[sky.value.activeId] : undefined))
 
 /** Boucliers de l'étoile active (compteur du pied du ciel). */
-export const boucliers = signal<EtatBoucliers>({ actif: false, bloques: 0, origine: '', dernieres: [] })
+export const boucliers = signal<EtatBoucliers>({ actif: false, niveau: 'standard', bloques: 0, origine: '', dernieres: [] })
 
 const rafraichirBoucliers = (): void => {
   void window.lyra.invoke('shields:get').then((b) => (boucliers.value = b))

@@ -73,6 +73,8 @@ export class ResolveurSites {
   private hotes = new Map<string, RegleSite>()
   private motifs: Array<[string, RegleSite]> = []
   private cache = new Map<string, RegleEffective>()
+  /** Niveau des sites sans règle de Boucliers (`boucliers.niveau`) ; le cache en dépend. */
+  private defaut: RegleEffective['boucliers'] = 'standard'
 
   constructor(sites: Record<string, RegleSite> = {}) {
     this.maj(sites)
@@ -93,7 +95,11 @@ export class ResolveurSites {
     this.motifs.sort((a, b) => b[0].length - a[0].length)
   }
 
-  resoudre(url: string): RegleEffective {
+  resoudre(url: string, defaut: RegleEffective['boucliers'] = 'standard'): RegleEffective {
+    if (defaut !== this.defaut) {
+      this.defaut = defaut
+      this.cache.clear()
+    }
     const en = this.cache.get(url)
     if (en) return en
     const r = this.calculer(url)
@@ -129,7 +135,7 @@ export class ResolveurSites {
     }
     if (permissions) sortie.permissions = permissions
     if (extensions) sortie.extensions = extensions
-    return { ...sortie, boucliers: boucliers ?? 'standard' } as RegleEffective
+    return { ...sortie, boucliers: boucliers ?? this.defaut } as RegleEffective
   }
 }
 
@@ -139,19 +145,19 @@ const resolveurs = new WeakMap<object, ResolveurSites>()
  * Résout la règle effective d'une URL. L'index est mémorisé par objet `sites` : il est rebâti dès que
  * les réglages remplacent l'objet (toute écriture), jamais autrement.
  */
-export function resoudre(sites: Record<string, RegleSite>, url: string): RegleEffective {
+export function resoudre(sites: Record<string, RegleSite>, url: string, defaut: RegleEffective['boucliers'] = 'standard'): RegleEffective {
   const cible = sites ?? {}
   let r = resolveurs.get(cible)
   if (!r) {
     r = new ResolveurSites(cible)
     resolveurs.set(cible, r)
   }
-  return r.resoudre(url)
+  return r.resoudre(url, defaut)
 }
 
 /** Boucliers désactivés sur un site : la règle exacte garde l'ancien niveau (`bouclierAvant`) pour la réactivation. */
-export function desactiverBoucliers(sites: Record<string, RegleSite>, origine: string): { ecrire: RegleSite } {
-  const avant = resoudre(sites, origine).boucliers
+export function desactiverBoucliers(sites: Record<string, RegleSite>, origine: string, defaut: RegleEffective['boucliers'] = 'standard'): { ecrire: RegleSite } {
+  const avant = resoudre(sites, origine, defaut).boucliers
   return { ecrire: { boucliers: 'desactives', ...(avant === 'strict' ? { bouclierAvant: avant } : {}) } }
 }
 
@@ -160,12 +166,12 @@ export function desactiverBoucliers(sites: Record<string, RegleSite>, origine: s
  * sinon on y écrit le niveau mémorisé (`standard` par défaut). `bouclierAvant` est toujours retiré.
  * Un niveau mémorisé différent de celui que donnent les autres règles est restauré dans la règle exacte.
  */
-export function reactiverBoucliers(sites: Record<string, RegleSite>, origine: string): { ecrire: RegleSite; retirer: Array<keyof RegleSite> } {
+export function reactiverBoucliers(sites: Record<string, RegleSite>, origine: string, defaut: RegleEffective['boucliers'] = 'standard'): { ecrire: RegleSite; retirer: Array<keyof RegleSite> } {
   const cle = cleCanonique(origine)
   const exacte = (cle && sites[cle]) || {}
   const { boucliers: _b, bouclierAvant: _a, ...reste } = exacte
   const sans = { ...sites, ...(cle ? { [cle]: reste } : {}) }
-  const autres = resoudre(sans, origine).boucliers
+  const autres = resoudre(sans, origine, defaut).boucliers
   const memorise = exacte.bouclierAvant
   const retirer: Array<keyof RegleSite> = ['bouclierAvant']
   if (autres === 'desactives') return { ecrire: { boucliers: memorise ?? 'standard' }, retirer }

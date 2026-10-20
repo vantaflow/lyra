@@ -57,6 +57,23 @@ beforeEach(() => {
   shields.attacher(ses)
 })
 
+describe('Shields : niveau par défaut', () => {
+  it('lit boucliers.niveau pour un site sans règle ; la règle du site l’emporte', () => {
+    reglages = { ...reglages, boucliers: { ...reglages.boucliers, niveau: 'desactives' } }
+    expect(shields.estActif('https://site.test')).toBe(false)
+    expect(shields.niveau('https://site.test')).toBe('desactives')
+    reglages = { ...reglages, boucliers: { ...reglages.boucliers, niveau: 'strict' }, sites: { 'https://autre.test': { boucliers: 'standard' } } }
+    expect(shields.niveau('https://site.test')).toBe('strict')
+    expect(shields.niveau('https://autre.test')).toBe('standard')
+    expect(shields.estActif('https://site.test')).toBe(true)
+  })
+  it('Désactivés par défaut : une requête du moteur n’est pas bloquée', () => {
+    expect(envoyer(ses, requete('https://ads.exemple.test/x.js'))).toEqual({ cancel: true })
+    reglages = { ...reglages, boucliers: { ...reglages.boucliers, niveau: 'desactives' } }
+    expect(envoyer(ses, requete('https://ads.exemple.test/x.js'))).toEqual({})
+  })
+})
+
 describe('Shields garde', () => {
   it('annule avant le moteur, sous-ressources et cadre principal, même Boucliers désactivés', () => {
     const vus: string[] = []

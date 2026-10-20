@@ -51,7 +51,8 @@ export interface Settings extends ReglagesD {
     endormirApresMin: number
   }
   boucliers: {
-    niveau: 'standard'
+    /** Niveau des sites sans règle de Boucliers. */
+    niveau: 'desactives' | 'standard' | 'strict'
     genes: boolean
     majHeures: number
   }

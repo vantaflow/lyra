@@ -52,6 +52,8 @@ export interface EtatPasserelles {
 /** État des Boucliers pour l'étoile active d'une fenêtre. */
 export interface EtatBoucliers {
   actif: boolean
+  /** Niveau effectif sur le site (règle du site, sinon niveau par défaut). */
+  niveau: 'desactives' | 'standard' | 'strict'
   bloques: number
   /** Origine de la page (« https://hôte », « file:// ») ; '' pour une page interne. */
   origine: string

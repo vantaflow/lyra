@@ -176,7 +176,7 @@ const SCHEMA: Schema = {
     endormirApresMin: entier(1, 10080)
   },
   boucliers: {
-    niveau: enumeration('standard'),
+    niveau: enumeration('desactives', 'standard', 'strict'),
     genes: booleen,
     majHeures: entier(1, 168)
   },

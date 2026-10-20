@@ -49,6 +49,7 @@ describe('validerPatch', () => {
     expect(validerPatch({ theme: 'rose' })).toEqual({})
     expect(validerPatch({ ciel: { position: 'diagonale', masque: 'oui' } })).toEqual({})
     expect(validerPatch({ boucliers: { niveau: 'agressif', genes: 1 } })).toEqual({})
+    expect(validerPatch({ boucliers: { niveau: 'strict' } })).toEqual({ boucliers: { niveau: 'strict' } })
     expect(validerPatch({ moteurChoisi: 'true' })).toEqual({})
   })
 

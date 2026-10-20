@@ -166,3 +166,19 @@ describe('boucliers : désactiver puis réactiver', () => {
     expect(s['https://x.a.com']).toEqual({ boucliers: 'standard' })
   })
 })
+
+describe('niveau de Boucliers par défaut', () => {
+  it('sans règle : le niveau par défaut ; une règle du site l’emporte', () => {
+    expect(resoudre({}, 'https://a.com').boucliers).toBe('standard')
+    expect(resoudre({}, 'https://a.com', 'strict').boucliers).toBe('strict')
+    expect(resoudre({}, 'https://a.com', 'desactives').boucliers).toBe('desactives')
+    const sites = { 'a.com': { boucliers: 'standard' as const } }
+    expect(resoudre(sites, 'https://a.com', 'strict').boucliers).toBe('standard')
+    expect(resoudre(sites, 'https://b.com', 'strict').boucliers).toBe('strict')
+  })
+  it('le cache suit le niveau par défaut', () => {
+    const sites = {}
+    expect(resoudre(sites, 'https://a.com', 'strict').boucliers).toBe('strict')
+    expect(resoudre(sites, 'https://a.com', 'standard').boucliers).toBe('standard')
+  })
+})

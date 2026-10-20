@@ -14,6 +14,7 @@ import type { TabManager } from '../tabs/TabManager'
 import { construireMoteur, mettreAJour, type OptionsMoteur, type ResultatMoteur } from './engine'
 import { chargerListesEmbarquees, dossierListesEmbarquees } from './listes'
 import { creerMajGardee } from './majGardee'
+import { creerMajPeriodique } from './majPeriodique'
 import { creerShields, origineDe, type Shields } from './Shields'
 
 export interface DepsBoucliers {
@@ -73,6 +74,7 @@ export async function demarrerBoucliers(deps: DepsBoucliers): Promise<Shields> {
     const origine = origineDe(wc?.getURL() ?? '')
     return {
       actif: origine !== '' && shields.estActif(origine),
+      niveau: origine !== '' ? shields.niveau(origine) : 'standard',
       bloques: wc ? shields.bloques(wc.id) : 0,
       origine,
       dernieres: wc ? shields.dernieres(wc.id) : [],
@@ -138,13 +140,13 @@ export async function demarrerBoucliers(deps: DepsBoucliers): Promise<Shields> {
     if (deps.privee?.(tm)) return
     const cle = cleCanonique(origine)
     if (!cle) return
-    const sites = deps.reglages.getSettings().sites
+    const { sites, boucliers: { niveau } } = deps.reglages.getSettings()
     if (actif) {
-      const { ecrire, retirer } = reactiverBoucliers(sites, origine)
+      const { ecrire, retirer } = reactiverBoucliers(sites, origine, niveau)
       deps.reglages.retirerChampsSite(cle, retirer)
       if (Object.keys(ecrire).length) deps.reglages.setSettings({ sites: { [cle]: ecrire } } as Partial<Settings>)
     } else {
-      deps.reglages.setSettings({ sites: { [cle]: desactiverBoucliers(sites, origine).ecrire } } as Partial<Settings>)
+      deps.reglages.setSettings({ sites: { [cle]: desactiverBoucliers(sites, origine, niveau).ecrire } } as Partial<Settings>)
     }
     const wc = tm.wcActif()
     // La page est rechargée pour appliquer le changement (réseau et scriptlets).
@@ -164,7 +166,18 @@ export async function demarrerBoucliers(deps: DepsBoucliers): Promise<Shields> {
   handle('shields:update', () => majGardee())
   if (!enTest()) {
     setTimeout(() => void maj(), DELAI_PREMIERE_MAJ).unref()
-    setInterval(() => void maj(), majHeures * 3600_000).unref()
+    const periodique = creerMajPeriodique({
+      tache: () => void maj(),
+      setInterval: (f, ms) => {
+        const t = setInterval(f, ms)
+        t.unref()
+        return t
+      },
+      clearInterval: (t) => clearInterval(t as NodeJS.Timeout)
+    })
+    periodique.regler(majHeures)
+    // Changement de fréquence dans les réglages : appliqué tout de suite, sans redémarrage.
+    deps.reglages.onChanged((s) => periodique.regler(s.boucliers.majHeures))
   }
   return shields
 }

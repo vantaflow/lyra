@@ -56,6 +56,8 @@ export interface Shields {
   attacher(ses: SessionShields): void
   remplacerMoteur(m: ElectronBlocker): void
   estActif(origine: string): boolean
+  /** Niveau effectif d'une origine : règle du site, sinon `boucliers.niveau`. */
+  niveau(origine: string): 'desactives' | 'standard' | 'strict'
   bloques(wcId: number): number
   dernieres(wcId: number): string[]
   reinitialiser(wcId: number): void
@@ -80,7 +82,11 @@ export function creerShields(opts: OptionsShields): Shields {
   let moteur = opts.moteurInitial
   const compteurs = new Compteurs()
 
-  const estActif = (origine: string): boolean => resoudre(opts.reglages().sites ?? {}, origine).boucliers !== 'desactives'
+  const niveauDe = (origine: string): 'desactives' | 'standard' | 'strict' => {
+    const r = opts.reglages()
+    return resoudre(r.sites ?? {}, origine, r.boucliers?.niveau ?? 'standard').boucliers
+  }
+  const estActif = (origine: string): boolean => niveauDe(origine) !== 'desactives'
 
   const requeteGhostery = (d: OnBeforeRequestListenerDetails | OnHeadersReceivedListenerDetails, haut: string) =>
     // Sans référent (page file://, requête initiale), la page de premier niveau sert de source.
@@ -115,7 +121,7 @@ export function creerShields(opts: OptionsShields): Shields {
     if (d.resourceType !== 'script') return
     const haut = hautConnu(d)
     if (haut === '') return
-    if (resoudre(opts.reglages().sites ?? {}, origineDe(haut)).boucliers !== 'strict') return
+    if (niveauDe(origineDe(haut)) !== 'strict') return
     if (!bloqueScriptTiers(d.url, d.resourceType, haut)) return
     compteurs.ajouter(d.webContentsId, d.url)
     if (d.webContentsId !== undefined) opts.onCompteur?.(d.webContentsId)
@@ -167,6 +173,7 @@ export function creerShields(opts: OptionsShields): Shields {
       moteur = m
     },
     estActif,
+    niveau: niveauDe,
     bloques: (id) => compteurs.bloques(id),
     dernieres: (id) => compteurs.dernieres(id),
     reinitialiser(id) {
