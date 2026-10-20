@@ -70,11 +70,12 @@ describe('Set-Cookie selon la règle du site de la page principale', () => {
   it('sans Set-Cookie : rien à faire', () => {
     expect(ecouteurs(avec('bloques')).entetes(reponse('https://pixel.tiers.test/p', { 'Content-Type': ['image/gif'] }))).toBeUndefined()
   })
-  it('« Session seulement » : les Set-Cookie (tiers compris) perdent Expires et Max-Age, rien d’autre ne change', () => {
+  it('« Session seulement » : les Set-Cookie de la 1re partie perdent Expires et Max-Age, rien d’autre ne change ; ceux d’un tiers gardent leur durée', () => {
     const e = ecouteurs(avec('session'))
-    expect(e.entetes(reponse('https://pixel.tiers.test/p', { 'Set-Cookie': ['t=1; Max-Age=3600; Path=/; Secure', 'u=2; Expires=Wed, 21 Oct 2037 07:28:00 GMT; HttpOnly'], Vary: ['Accept'] }))).toEqual({
+    expect(e.entetes(reponse('https://static.exemple.test/p', { 'Set-Cookie': ['t=1; Max-Age=3600; Path=/; Secure', 'u=2; Expires=Wed, 21 Oct 2037 07:28:00 GMT; HttpOnly'], Vary: ['Accept'] }))).toEqual({
       responseHeaders: { 'Set-Cookie': ['t=1; Path=/; Secure', 'u=2; HttpOnly'], Vary: ['Accept'] }
     })
+    expect(e.entetes(reponse('https://pixel.tiers.test/p', { 'Set-Cookie': ['t=1; Max-Age=3600'] }))).toBeUndefined()
     expect(e.entetes(reponse('https://exemple.test/p', { 'set-cookie': ['p=1; max-age=60'] }))).toEqual({ responseHeaders: { 'set-cookie': ['p=1'] } })
   })
   it('« Session seulement » : rien à changer sans Set-Cookie ou sans date ; une suppression par le serveur est conservée', () => {

@@ -87,7 +87,8 @@ export function ecouteursCookies(deps: DepsCookies): {
       const haut = hautConnu(d)
       const mode = modeDe(haut)
       if (mode === undefined || mode === 'tous') return
-      if (mode === 'session') return enSession(d.responseHeaders, estSetCookie, deps.maintenant?.() ?? Date.now())
+      // Seulement les cookies de la page : ceux d'un tiers (qui peut avoir ses propres règles ailleurs) gardent leur durée.
+      if (mode === 'session') return haut !== '' && memePartie(d.url, haut) ? enSession(d.responseHeaders, estSetCookie, deps.maintenant?.() ?? Date.now()) : undefined
       if (!retire(mode, d.url, haut)) return
       const responseHeaders = sansEntetes(d.responseHeaders, estSetCookie)
       return responseHeaders ? { responseHeaders } : undefined
