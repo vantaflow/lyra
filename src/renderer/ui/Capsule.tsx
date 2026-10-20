@@ -38,6 +38,8 @@ export function affichagePilule(url: string): Affichage {
   }
 }
 
+/** Hauteur de la capsule (CAPSULE de layout.ts, 46 px). */
+const CAPSULE_PX = 46
 const palette = (): void => void window.lyra.invoke('palette:open')
 
 export function Capsule() {
@@ -52,12 +54,20 @@ export function Capsule() {
   // « Masquer la capsule quand la souris ne bouge plus » : voir capsuleAuto.ts.
   const [masquee, setMasquee] = useState(false)
   const auto = useRef<ReturnType<typeof creerCapsuleAuto> | null>(null)
+  const zone = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const c = creerCapsuleAuto({ surChange: (v) => setMasquee(!v) })
     auto.current = c
-    const surMouvement = (e: MouseEvent): void => c.mouvement(e.clientY)
+    // Hauteur du curseur depuis le haut réel de la capsule (en position « haut », elle est sous la bande du ciel).
+    const surMouvement = (e: MouseEvent): void => {
+      const haut = zone.current?.getBoundingClientRect() ?? { top: 0, height: CAPSULE_PX }
+      c.mouvement(e.clientY - haut.top, haut.height)
+    }
     window.addEventListener('mousemove', surMouvement)
+    // La page web est une autre vue : le processus principal relaie ses mouvements (le `y` est déjà compté depuis la capsule).
+    const arret = window.lyra.on('capsule:souris', (m) => c.mouvement(m.y, CAPSULE_PX))
     return () => {
+      arret()
       window.removeEventListener('mousemove', surMouvement)
       c.activer(false)
     }
@@ -77,7 +87,7 @@ export function Capsule() {
   }
 
   return (
-    <div class={masquee ? 'capsule auto-masquee' : 'capsule'} data-masquee={masquee ? '1' : '0'}>
+    <div ref={zone} class={masquee ? 'capsule auto-masquee' : 'capsule'} data-masquee={masquee ? '1' : '0'}>
       {cielMasque.value && (
         <button class="cb" type="button" aria-label="Afficher le ciel" onClick={() => reveler(true)}>
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

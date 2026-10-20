@@ -11,6 +11,7 @@ import { Overlay } from './Overlay'
 import { FindBar } from './FindBar'
 import { signal } from '@preact/signals'
 import { demarrerTheme, variablesAppliquees, versionTheme } from './themeVivant'
+import { suivreApparence } from './apparenceVivante'
 import { creerLisseur, teinteDuCiel } from './teinteCiel'
 
 /** Teinte affichée, lissée : une page qui change vite de `theme-color` ne fait pas clignoter le ciel. */
@@ -68,6 +69,7 @@ function Racine() {
 // La vue overlay (#overlay) dessine la palette ou un panneau, sur fond transparent ; elle ne dessine pas le ciel.
 if (location.hash === '#overlay') {
   document.documentElement.classList.add('overlay')
+  suivreApparence()
   render(<Overlay />, document.getElementById('app')!)
 } else {
   // Fenêtre privée : la classe `privee` fait prendre à cette vue les variables du thème privé (Aurore par défaut), voir themeVivant.

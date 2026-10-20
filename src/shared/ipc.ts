@@ -331,6 +331,8 @@ export type Evenements = {
   'theme:variables': ThemeDiffuse
   /** Main → chrome : le ciel masqué est révélé (vue chrome élargie au-dessus de la page) ou retiré. */
   'ciel:revele': boolean
+  /** Main → chrome : la souris bouge sur la page web ; `y` = hauteur du curseur depuis le haut de la capsule (la page est sous elle, donc ≥ 46). Aucune donnée de page. */
+  'capsule:souris': { y: number }
   /** Main → chrome : l'état du mode Ne pas déranger a changé. */
   'dnd:changed': EtatDnd
   'sky:changed': SkyChange

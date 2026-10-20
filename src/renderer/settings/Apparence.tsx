@@ -91,6 +91,10 @@ export function Apparence() {
   const [largeur, setLargeur] = useState<number | null>(null)
   const derniereEcriture = useRef(0)
   const attente = useRef<number | undefined>(undefined)
+  /** Taille du texte en cours de réglage au curseur (même principe que la largeur). */
+  const [taille, setTaille] = useState<number | null>(null)
+  const derniereTaille = useRef(0)
+  const attenteTaille = useRef<number | undefined>(undefined)
   const mode = useModeActif()
   // Raccourcis « Couleur de l'étoile active » / « Couleur du ciel » : valeurs en cours de réglage, écrites toutes les 60 ms.
   const [locales, setLocales] = useState<{ personnalisees: CouleursTheme; depart: NomTheme; reference: CouleursTheme | null } | null>(null)
@@ -104,7 +108,8 @@ export function Apparence() {
   // L'affichage local s'efface quand le réglage enregistré l'a rattrapé.
   useEffect(() => {
     if (largeur !== null && s?.ciel.largeur === largeur) setLargeur(null)
-  }, [s, largeur])
+    if (taille !== null && s?.apparence.tailleTexte === taille) setTaille(null)
+  }, [s, largeur, taille])
   if (!s) return null
   const c = s.couleurs
   const etat = locales ? { actif: 'mes-couleurs' as const, personnalisees: locales.personnalisees, depart: locales.depart, reference: locales.reference } : { actif: c.actif, personnalisees: c.personnalisees, depart: c.depart, reference: c.reference }
@@ -130,6 +135,18 @@ export function Apparence() {
     const ecoule = Date.now() - derniereEcriture.current
     if (final || ecoule >= 60) ecrire()
     else attente.current = window.setTimeout(ecrire, 60 - ecoule)
+  }
+
+  const reglerTaille = (v: number, final: boolean): void => {
+    setTaille(v)
+    window.clearTimeout(attenteTaille.current)
+    const ecrire = (): void => {
+      derniereTaille.current = Date.now()
+      regler({ apparence: { tailleTexte: v } })
+    }
+    const ecoule = Date.now() - derniereTaille.current
+    if (final || ecoule >= 60) ecrire()
+    else attenteTaille.current = window.setTimeout(ecrire, 60 - ecoule)
   }
 
   return (
@@ -272,16 +289,17 @@ export function Apparence() {
         <Ligne reglage="apparence.police" titre="Police de l'interface">
           <Selecteur libelle="Police de l'interface" valeur={a.police} options={POLICES.map((p) => ({ id: p.id, libelle: p.libelle }))} surChange={(police) => regler({ apparence: { police } })} />
         </Ligne>
-        <Ligne reglage="apparence.tailleTexte" titre="Taille du texte de l'interface" aide={tailleTexteCss(a.tailleTexte).replace('px', ' px')}>
+        <Ligne reglage="apparence.tailleTexte" titre="Taille du texte de l'interface" aide={tailleTexteCss(taille ?? a.tailleTexte).replace('px', ' px')}>
           <input
             class="rng"
             type="range"
             min={TAILLE_MIN}
             max={TAILLE_MAX}
             step={1}
-            value={a.tailleTexte}
+            value={taille ?? a.tailleTexte}
             aria-label="Taille du texte"
-            onChange={(e) => regler({ apparence: { tailleTexte: Number((e.currentTarget as HTMLInputElement).value) } })}
+            onInput={(e) => reglerTaille(Number((e.currentTarget as HTMLInputElement).value), false)}
+            onChange={(e) => reglerTaille(Number((e.currentTarget as HTMLInputElement).value), true)}
           />
         </Ligne>
         <Ligne reglage="apparence.densite" titre="Densité">

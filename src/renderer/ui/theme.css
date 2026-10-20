@@ -152,7 +152,7 @@ body,
   font-family: inherit;
 }
 .fenetre kbd {
-  font: 600 10.5px/1 'Manrope', sans-serif;
+  font: 600 10.5px/1 var(--police);
   background: #2e2e5a;
   color: #b3b3da;
   padding: 4px 6px;
@@ -208,7 +208,7 @@ body,
   border-radius: 10px;
   background: #222247;
   color: #9d9dc8;
-  font: 13px 'Manrope', sans-serif;
+  font: var(--taille-texte) var(--police);
   cursor: pointer;
   width: 100%;
   box-sizing: border-box;
@@ -236,7 +236,7 @@ body,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font: 700 11px 'Manrope', sans-serif;
+  font: 700 11px var(--police);
   color: #fff;
   cursor: pointer;
   overflow: hidden;
@@ -337,6 +337,7 @@ body,
   display: flex;
   flex-direction: column;
 }
+.hs .dot-icone,
 .star .dot-icone {
   flex: none;
   border-radius: 3px;
@@ -344,6 +345,9 @@ body,
 }
 .sans-lignes .branch {
   border-left-color: transparent;
+}
+.sans-lignes .hc i {
+  background: transparent;
 }
 .sans-lignes .branch .star::before {
   display: none;
@@ -355,6 +359,11 @@ body,
 .capsule.auto-masquee {
   opacity: 0;
   pointer-events: none;
+}
+/* Au clavier : le focus dans la capsule la révèle. */
+.capsule.auto-masquee:focus-within {
+  opacity: 1;
+  pointer-events: auto;
 }
 .branch .star::before {
   content: '';
@@ -369,7 +378,7 @@ body,
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 10.5px;
+  font-size: calc(var(--taille-texte) - 2.5px);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--libelles-groupe);
@@ -391,7 +400,7 @@ body,
   border-radius: 8px;
   background: transparent;
   color: #8a8ab8;
-  font: 13px 'Manrope', sans-serif;
+  font: var(--taille-texte) var(--police);
   cursor: pointer;
   text-align: left;
   flex: none;
@@ -414,7 +423,7 @@ body,
   border-radius: 9px;
   background: transparent;
   color: var(--bouclier-ciel);
-  font: 600 12.5px 'Manrope', sans-serif;
+  font: 600 calc(var(--taille-texte) - 0.5px) var(--police);
   cursor: pointer;
 }
 .sb {
@@ -521,7 +530,7 @@ body,
   border-radius: 16px;
   background: var(--pilule);
   color: var(--texte);
-  font: 500 13.5px 'Manrope', sans-serif;
+  font: 500 calc(var(--taille-texte) + 0.5px) var(--police);
   cursor: pointer;
   max-width: 100%;
   white-space: nowrap;
@@ -550,7 +559,7 @@ html.overlay #app {
   justify-content: center;
   align-items: flex-start;
   padding-top: 12vh;
-  font-family: 'Manrope', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--police);
 }
 .pal-panneau {
   width: min(640px, calc(100vw - 32px));
@@ -581,7 +590,7 @@ html.overlay #app {
   border: 0;
   outline: none;
   color: #f6f6ff;
-  font: 17px 'Manrope', sans-serif;
+  font: 17px var(--police);
 }
 .pal-champ input::placeholder {
   color: var(--libelles-groupe);
@@ -601,7 +610,7 @@ html.overlay #app {
   clip: rect(0 0 0 0);
 }
 .pal-fond kbd {
-  font: 600 10.5px/1 'Manrope', sans-serif;
+  font: 600 10.5px/1 var(--police);
   background: #2e2e5a;
   color: #b3b3da;
   padding: 4px 6px;
@@ -675,7 +684,7 @@ html.overlay #app {
 .pn-fond {
   position: fixed;
   inset: 0;
-  font-family: 'Manrope', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--police);
 }
 .pn-bouclier {
   position: absolute;
@@ -790,7 +799,7 @@ html.overlay #app {
   border: 0;
   background: var(--champ-fond);
   color: var(--texte-doux);
-  font: 13px 'Manrope', sans-serif;
+  font: 13px var(--police);
   cursor: pointer;
 }
 .pn-seg button.on {
@@ -918,7 +927,7 @@ html.overlay #app {
   border-radius: 9px;
   background: var(--capsule-fond);
   color: var(--texte);
-  font: 500 13px 'Manrope', sans-serif;
+  font: 500 13px var(--police);
   cursor: pointer;
 }
 .dl-pied {
@@ -969,7 +978,7 @@ html.overlay #app {
   border-radius: 8px;
   background: transparent;
   color: var(--texte);
-  font: 13.5px 'Manrope', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  font: 13.5px var(--police);
   text-align: left;
   text-decoration: none;
   cursor: pointer;
@@ -1019,7 +1028,7 @@ html.overlay #app {
   border-radius: 6px;
   background: transparent;
   color: var(--texte-doux);
-  font: 600 13px 'Manrope', sans-serif;
+  font: 600 13px var(--police);
   cursor: pointer;
 }
 .zb:hover {
@@ -1040,7 +1049,7 @@ html.overlay #app {
   border-radius: 9px;
   background: var(--capsule-fond);
   color: var(--texte);
-  font: 500 13px 'Manrope', sans-serif;
+  font: 500 13px var(--police);
   cursor: pointer;
 }
 .btn.pri {
@@ -1070,7 +1079,7 @@ html.overlay #app {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  font-family: 'Manrope', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--police);
 }
 .perm-texte {
   font-size: 13.5px;
@@ -1123,7 +1132,7 @@ html.overlay #app {
   outline: none;
   background: transparent;
   color: var(--texte);
-  font: 13.5px 'Manrope', sans-serif;
+  font: 13.5px var(--police);
 }
 .findbar input::placeholder {
   color: var(--texte-discret);
@@ -1359,13 +1368,13 @@ html.revele #app,
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  height: 34px;
+  height: calc(var(--densite) + 2px);
   padding: 0 10px;
   border: 0;
   border-radius: 8px;
   background: transparent;
   color: var(--ciel-texte);
-  font: 13px/1 'Manrope', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  font: var(--taille-texte)/1 var(--police);
   max-width: 150px;
   cursor: pointer;
   white-space: nowrap;
@@ -1410,7 +1419,7 @@ html.revele #app,
 .hc {
   display: inline-flex;
   align-items: center;
-  height: 34px;
+  height: calc(var(--densite) + 2px);
   border: 0;
   background: transparent;
   padding: 0;
@@ -1441,7 +1450,7 @@ html.revele #app,
   background: var(--etoiles-endormies);
 }
 .hg {
-  font-size: 10px;
+  font-size: calc(var(--taille-texte) - 3px);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--libelles-groupe);
@@ -1604,7 +1613,7 @@ html.dnd #app {
   border-radius: 18px;
   background: rgba(21, 21, 46, 0.94);
   color: #e8e8f4;
-  font-family: 'Manrope', system-ui, sans-serif;
+  font-family: var(--police);
   font-size: 12.5px;
   box-shadow: 0 10px 30px rgba(10, 10, 40, 0.25);
   z-index: 2;
@@ -1621,7 +1630,7 @@ html.dnd #app {
   color: #9e9ec8;
 }
 .dnd-rappel kbd {
-  font: 600 10.5px/1 'Manrope', sans-serif;
+  font: 600 10.5px/1 var(--police);
   background: #2e2e5a;
   color: #b3b3da;
   padding: 4px 6px;

@@ -164,11 +164,11 @@ test('mode sombre : la capsule vaut rgb(23,23,42) et la page rgb(18,18,20), plus
       await expect.poll(() => p.evaluate(() => getComputedStyle(document.getElementById('app')!).backgroundColor)).toBe('rgb(18, 18, 20)')
       expect(await p.evaluate(() => getComputedStyle(document.getElementById('app')!).color)).toBe('rgb(232, 232, 244)')
       const surfaces = await p.evaluate(() =>
-        Array.from(document.body.querySelectorAll('*')).map((e) => ({ cle: e.tagName.toLowerCase() + '.' + (e.getAttribute('class') ?? ''), fond: getComputedStyle(e).backgroundColor }))
+        Array.from(document.body.querySelectorAll('*')).map((e) => ({ cle: e.tagName.toLowerCase() + '.' + (e.getAttribute('class') ?? ''), fond: getComputedStyle(e).backgroundColor, sw: e.classList.contains('sw') }))
       )
       // L'étoile active des aperçus de position est ambre par design (Étoile active), pas une surface.
-      // Les pastilles de couleur (`button.sw`) sont des échantillons de couleur par design, pas des surfaces.
-      for (const s of surfaces) if (s.fond !== 'rgb(244, 197, 106)' && !s.cle.startsWith('button.sw') && (lumi(s.fond) ?? 0) > 0.5) clairs.push(`${route || url} ${s.cle} ${s.fond}`)
+      // Les pastilles de couleur (classe `sw`) sont des échantillons de couleur par design, pas des surfaces.
+      for (const s of surfaces) if (s.fond !== 'rgb(244, 197, 106)' && !s.sw && (lumi(s.fond) ?? 0) > 0.5) clairs.push(`${route || url} ${s.cle} ${s.fond}`)
     }
     expect(clairs).toEqual([])
 

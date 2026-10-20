@@ -7,7 +7,7 @@ import { Epingle } from './Epingle'
 import { PiedActions } from './Sky'
 import { styleConstellation } from './teinteCiel'
 import { variablesAppliquees, versionTheme } from './themeVivant'
-import { cielDeplacer, couleurParConstellation, estTerne, etats, sky, titreEtoile } from './state'
+import { cielDeplacer, couleurParConstellation, estTerne, etats, iconesSites, relierEnfants, sky, titreEtoile } from './state'
 
 const mac = window.lyra.plateforme === 'darwin'
 const touche = mac ? '⌘' : 'Ctrl'
@@ -47,7 +47,11 @@ function Etoiles({ groupe }: { groupe: StarT[] }) {
               onClick={() => activer(s.id)}
               onAuxClick={(e) => fermer(e, s.id)}
             >
-              <span class="dot" aria-hidden="true"></span>
+              {iconesSites.value && (etats.value[s.id]?.favicon ?? s.favicon) ? (
+                <img class="dot-icone" src={etats.value[s.id]?.favicon ?? s.favicon} alt="" width="14" height="14" aria-hidden="true" />
+              ) : (
+                <span class="dot" aria-hidden="true"></span>
+              )}
               <span class="t">{titre}</span>
             </button>
             {descendants(s, groupe).map((e) => {
@@ -103,7 +107,7 @@ export function Bande({ revele = false, position, refCiel, surEntree, surSortie,
   }
   return (
     <aside
-      class={`bande bande-${position}${revele ? ' bande-revele' : ''}`}
+      class={`bande bande-${position}${revele ? ' bande-revele' : ''}${relierEnfants.value ? '' : ' sans-lignes'}`}
       aria-label={revele ? 'Ciel des onglets (survol)' : 'Ciel des onglets'}
       ref={refCiel}
       onMouseEnter={surEntree}

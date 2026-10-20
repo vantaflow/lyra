@@ -1,7 +1,7 @@
 import { computed, signal } from '@preact/signals'
 import type { EtatBoucliers, EtatDnd, EtatEtoile } from '../../shared/ipc'
 import type { Settings, SkyState, Star } from '../../shared/types'
-import { variablesApparence } from '../../shared/apparence'
+import { appliquerApparence } from './apparenceVivante'
 
 const CIEL_VIDE: SkyState = { stars: [], constellations: [], activeId: null, pinned: [] }
 
@@ -123,7 +123,7 @@ export async function initialiserEtat(): Promise<void> {
     relierEnfants.value = r.apparence.relierEnfants
     iconesSites.value = r.apparence.iconesSites
     capsuleAuto.value = r.apparence.capsuleAuto
-    for (const [nom, valeur] of Object.entries(variablesApparence(r.apparence))) document.documentElement.style.setProperty(nom, valeur)
+    appliquerApparence(r.apparence)
   }
   window.lyra.on('settings:changed', appliquer)
   window.lyra.on('ciel:revele', (b) => (cielRevele.value = b))

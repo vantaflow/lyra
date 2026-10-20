@@ -2,6 +2,7 @@ import { WebContentsView, session, type Session, type WebContents } from 'electr
 import type { LyraWindow } from '../window/WindowManager'
 import { PRELOAD_INTERNAL, PRELOAD_PAGE } from '../preloads'
 import { envoyer } from '../ipc'
+import { CAPSULE } from '../window/layout'
 import { TabTree } from './TabTree'
 import { peutEndormir } from './dormance'
 import type { FenetreSession, HistoriqueEtoile } from '../session/SessionStore'
@@ -585,6 +586,17 @@ export class TabManager {
     wc.on('did-change-theme-color', (_e, couleur) => {
       this.extras.set(id, { ...this.extras.get(id), couleur: couleur ?? undefined })
       this.notifier()
+    })
+    // « Masquer la capsule quand la souris ne bouge plus » : la page est une autre vue, le chrome ne voit pas ses mouvements.
+    // Simple signal (10 par seconde au plus), sans aucune donnée de page ; `y` est compté depuis le haut réel de la capsule.
+    let dernierMouvement = 0
+    wc.on('input-event', (_e, ev) => {
+      if (ev.type !== 'mouseMove' || this.fenetre.win.isDestroyed()) return
+      const maintenant = Date.now()
+      if (maintenant - dernierMouvement < 100) return
+      dernierMouvement = maintenant
+      const page = this.fenetre.bounds().page
+      envoyer(this.fenetre.chrome.webContents, 'capsule:souris', { y: page.y + ((ev as { y?: number }).y ?? 0) - (page.y - CAPSULE) })
     })
     wc.on('before-input-event', (_e, input) => {
       // Échap sort de Ne pas déranger (sauf en plein écran HTML : Échap y sert d'abord à en sortir). La page le reçoit aussi.

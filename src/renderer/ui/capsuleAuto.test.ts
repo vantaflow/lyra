@@ -73,6 +73,16 @@ describe('capsuleAuto', () => {
     expect(c.visible()).toBe(false)
   })
 
+  it('la zone réelle de la capsule (46 px) compte : ses 6 derniers px ne relancent pas le délai', () => {
+    const { h, c } = cas()
+    c.mouvement(44, 46)
+    h.avancer(10_000)
+    expect(c.visible()).toBe(true)
+    c.mouvement(46, 46)
+    h.avancer(2000)
+    expect(c.visible()).toBe(false)
+  })
+
   it('quitter le haut relance le délai', () => {
     const { h, c } = cas()
     c.mouvement(10)

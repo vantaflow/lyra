@@ -177,3 +177,76 @@ test('apparence : la capsule se masque à l\'immobilité puis se révèle au mou
     await app.close()
   }
 })
+
+test('apparence : la police choisie atteint la pilule, « Nouvelle étoile » et les étoiles de la bande', async () => {
+  test.setTimeout(90_000)
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const famille = (sel: string) => fenetre.locator(sel).first().evaluate((e) => getComputedStyle(e).fontFamily)
+    await ecrire(fenetre, { apparence: { police: 'Georgia' } })
+    await expect.poll(() => famille('.pilule')).toContain('Georgia')
+    expect(await famille('.nouvelle')).toContain('Georgia')
+    expect(await famille('.star')).toContain('Georgia')
+    expect(await famille('.palette')).toContain('Georgia')
+    await ecrire(fenetre, { ciel: { position: 'haut' } })
+    await expect(fenetre.locator('.hs').first()).toBeVisible()
+    expect(await famille('.hs')).toContain('Georgia')
+  } finally {
+    await app.close()
+  }
+})
+
+test('apparence : la taille du texte suit les étoiles (colonne et bande), la pilule et les libellés du ciel, pas les réglages', async () => {
+  test.setTimeout(90_000)
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const r = await ouvrir(app, fenetre)
+    const taille = (p: Page, sel: string) => p.locator(sel).first().evaluate((e) => getComputedStyle(e).fontSize)
+    const avantReglages = await taille(r, '.row .lbl')
+    await ecrire(fenetre, { apparence: { tailleTexte: 16 } })
+    await expect.poll(() => taille(fenetre, '.star')).toBe('16px')
+    expect(await taille(fenetre, '.pilule')).toBe('16.5px')
+    expect(await taille(fenetre, '.nouvelle')).toBe('16px')
+    expect(await taille(fenetre, '.palette')).toBe('16px')
+    expect(await taille(r, '.row .lbl')).toBe(avantReglages)
+    await ecrire(fenetre, { ciel: { position: 'haut' } })
+    await expect(fenetre.locator('.hs').first()).toBeVisible()
+    expect(await taille(fenetre, '.hs')).toBe('16px')
+    // Le curseur de la page réglages affiche « N px » pendant le glissement.
+    await r.locator('input[aria-label="Taille du texte"]').evaluate((e: HTMLInputElement) => {
+      e.value = '15'
+      e.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await expect(r.locator('[data-reglage="apparence.tailleTexte"] .hint')).toHaveText('15 px')
+  } finally {
+    await app.close()
+  }
+})
+
+test('apparence : la capsule revient au mouvement sur la page, reste visible dessous le curseur et au clavier', async () => {
+  test.setTimeout(90_000)
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const etat = () => fenetre.locator('.capsule').getAttribute('data-masquee')
+    await ecrire(fenetre, { apparence: { capsuleAuto: true } })
+    await expect.poll(etat, { timeout: 6000 }).toBe('1')
+    // Mouvement sur la vue de la page (une autre vue que l'interface) : le processus principal le relaie.
+    await app.evaluate(({ webContents }) => {
+      const page = webContents.getAllWebContents().find((w) => w.getURL().startsWith('lyra://newtab'))!
+      page.sendInputEvent({ type: 'mouseMove', x: 300, y: 200 })
+    })
+    await expect.poll(etat, { timeout: 3000 }).toBe('0')
+    await expect.poll(etat, { timeout: 6000 }).toBe('1')
+    // Clavier : le focus dans la capsule la révèle.
+    await fenetre.locator('.pilule').focus()
+    await expect.poll(() => fenetre.locator('.capsule').evaluate((e) => getComputedStyle(e).opacity)).toBe('1')
+    await fenetre.locator('.pilule').blur()
+    await expect.poll(etat, { timeout: 6000 }).toBe('1')
+    // Les 6 derniers px de la capsule (40-46) comptent comme « dessus ».
+    await fenetre.mouse.move(400, 44)
+    await fenetre.waitForTimeout(2600)
+    expect(await etat()).toBe('0')
+  } finally {
+    await app.close()
+  }
+})

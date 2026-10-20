@@ -12,8 +12,11 @@ export interface Horloge {
 export interface CapsuleAuto {
   /** Active ou désactive le masquage ; désactiver réaffiche la capsule. */
   activer(actif: boolean): void
-  /** Mouvement de la souris à la hauteur `y` (px depuis le haut de la fenêtre). */
-  mouvement(y: number): void
+  /**
+   * Mouvement de la souris à la hauteur `y` (px depuis le haut de la capsule). Sous `max(40, zonePx)` : près du haut, la capsule
+   * reste visible tant que le curseur y est. `zonePx` : la hauteur réelle de la capsule (46 px), pour que ses derniers pixels comptent.
+   */
+  mouvement(y: number, zonePx?: number): void
   visible(): boolean
 }
 
@@ -59,9 +62,9 @@ export function creerCapsuleAuto(o: {
         poser(true)
       }
     },
-    mouvement(y) {
+    mouvement(y, zonePx = 0) {
       poser(true)
-      if (y < seuil) annuler()
+      if (y < Math.max(seuil, zonePx)) annuler()
       else armer()
     },
     visible: () => visible
