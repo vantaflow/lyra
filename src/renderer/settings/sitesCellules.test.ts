@@ -14,7 +14,17 @@ import {
   idZoom,
   optionsZoom,
   pastille,
-  zoomDepuisId
+  zoomDepuisId,
+  heritage,
+  boucliersHerites,
+  effective,
+  heritee,
+  nomScriptLibre,
+  regleInitiale,
+  siteDeSaisie,
+  urlDeCle,
+  valeurAEcrire,
+  vientDHeritage
 } from './sitesCellules'
 
 describe('cellules du tableau', () => {
@@ -130,5 +140,68 @@ describe('Zoom du détail (14b) : cellule ↔ valeur', () => {
   })
   it('identifiant inconnu : rien à écrire', () => {
     expect(zoomDepuisId('abc')).toBeUndefined()
+  })
+})
+
+describe('héritage et création (correction 14a/14b)', () => {
+  const sites = { '*.x.test': { boucliers: 'strict', cookies: 'bloques' } } as const
+  it('création : un site couvert par un motif Strict reste Strict', () => {
+    expect(regleInitiale(sites, 'a.x.test')).toEqual({ boucliers: 'strict' })
+    expect(regleInitiale(sites, 'https://a.x.test')).toEqual({ boucliers: 'strict' })
+    expect(regleInitiale(sites, 'autre.test')).toEqual({ boucliers: 'standard' })
+    expect(regleInitiale({}, '*.neuf.test')).toEqual({ boucliers: 'standard' })
+    expect(regleInitiale({ '*.test': { boucliers: 'desactives' } }, '*.neuf.test')).toEqual({ boucliers: 'desactives' })
+  })
+  it('urlDeCle : origine, hôte, motif, file', () => {
+    expect(urlDeCle('https://x.fr:8443')).toBe('https://x.fr:8443')
+    expect(urlDeCle('x.fr')).toBe('https://x.fr')
+    expect(urlDeCle('*.x.fr')).toBe('https://sous.x.fr')
+    expect(urlDeCle('file://')).toBe('file:///')
+    expect(urlDeCle('n’importe quoi')).toBe('')
+  })
+  it('héritage : valeur du motif, sans la règle propre', () => {
+    const avec = { ...sites, 'a.x.test': { cookies: 'tous' as const } }
+    expect(heritage(avec, 'a.x.test').cookies).toBe('bloques')
+    expect(effective(avec, 'a.x.test').cookies).toBe('tous')
+    expect(heritage(avec, 'a.x.test').boucliers).toBe('strict')
+    expect(heritage({}, 'a.x.test').cookies).toBeUndefined()
+  })
+  it('vientDHeritage : champ absent de la règle mais fourni ailleurs', () => {
+    const eff = effective(sites, 'a.x.test')
+    expect(vientDHeritage(undefined, eff, 'cookies')).toBe(true)
+    expect(vientDHeritage({ cookies: 'tous' }, eff, 'cookies')).toBe(false)
+    expect(vientDHeritage(undefined, eff, 'scripts')).toBe(false)
+  })
+  it('valeurAEcrire : la valeur héritée ou par défaut retire le champ', () => {
+    expect(valeurAEcrire('autorises', 'autorises')).toBeNull()
+    expect(valeurAEcrire('bloques', 'autorises')).toBe('bloques')
+    expect(valeurAEcrire('autorises', 'bloques')).toBe('autorises')
+  })
+  it('cellule héritée', () => {
+    expect(heritee({ texte: 'Tous' }, true)).toEqual({ texte: 'Tous', herite: true })
+    expect(heritee({ texte: 'Tous' }, false)).toEqual({ texte: 'Tous' })
+  })
+  it('une URL complète est ramenée à son origine', () => {
+    expect(siteDeSaisie(' https://exemple.fr/page?q=1#h ')).toBe('https://exemple.fr')
+    expect(siteDeSaisie('http://exemple.fr:8080/a')).toBe('http://exemple.fr:8080')
+    expect(siteDeSaisie('exemple.fr')).toBe('exemple.fr')
+    expect(siteDeSaisie('*.exemple.fr')).toBe('*.exemple.fr')
+  })
+  it('premier nom de script libre', () => {
+    expect(nomScriptLibre([])).toBe('Script 1')
+    expect(nomScriptLibre(['Script 1', 'Script 2'])).toBe('Script 3')
+    expect(nomScriptLibre(['Script 2'])).toBe('Script 1')
+    expect(nomScriptLibre(['Script 1', 'Script 3'])).toBe('Script 2')
+  })
+})
+
+describe('Boucliers hérités', () => {
+  it('motif ou hôte plus large qui fixe les Boucliers', () => {
+    const sites = { '*.x.test': { boucliers: 'strict' }, 'b.x.test': { boucliers: 'standard' }, 'c.x.test': { cookies: 'tous' } } as const
+    expect(boucliersHerites(sites, 'a.x.test')).toBe(true)
+    expect(boucliersHerites(sites, 'https://b.x.test')).toBe(true)
+    expect(boucliersHerites(sites, 'x.test')).toBe(false)
+    expect(boucliersHerites(sites, '*.y.test')).toBe(false)
+    expect(boucliersHerites({}, 'a.x.test')).toBe(false)
   })
 })

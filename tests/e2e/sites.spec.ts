@@ -1,4 +1,6 @@
 import { test, expect, type ElectronApplication, type Page } from '@playwright/test'
+import { createServer, type Server } from 'node:http'
+import type { AddressInfo } from 'node:net'
 import { lancerLyra } from './helpers'
 
 test('sites:* : écrire, lister, supprimer sans redémarrage ; clé invalide refusée', async () => {
@@ -102,7 +104,8 @@ test('Règles par site : création → tableau et détail ; Boucliers, Cookies e
     await expect.poll(async () => (await lister(fenetre))['youtube.com']?.scripts).toBe('bloques')
     await expect(rangee.locator('td').nth(3).locator('.etiq.rouge')).toHaveText('Bloqués')
     await ligne(r, 'scripts').getByRole('button', { name: 'Autorisés' }).click()
-    await expect.poll(async () => (await lister(fenetre))['youtube.com']?.scripts).toBe('autorises')
+    // Revenir à la valeur par défaut retire le champ (aucune valeur explicite écrite).
+    await expect.poll(async () => 'scripts' in (await lister(fenetre))['youtube.com']).toBe(false)
 
     // Zoom : paliers, puis « Par défaut » retire `zoom` de la règle.
     await expect(ligne(r, 'zoom').getByRole('button', { name: 'Zoom' })).toHaveText('Par défaut')
@@ -232,4 +235,139 @@ test('Règles par site : le suffixe /style ouvre le détail avec le focus sur «
   } finally {
     await app.close()
   }
+})
+
+// ---------- Corrections 14a/14b ----------
+
+const switchScriptlets = (r: Page) => r.getByRole('switch', { name: 'Scriptlets YouTube' })
+/** Scriptlets que `shields:scriptlets` renverrait à la page ouverte (onglet de Lyra) pour cette URL : appel direct du canal, côté principal. */
+const scriptletsPour = (app: ElectronApplication, url: string): Promise<string[]> =>
+  app.evaluate(({ ipcMain, webContents }, u) => {
+    const wc = webContents.getAllWebContents().find((w) => /^lyra:\/\/(newtab|settings)/.test(w.getURL()))!
+    const e = { sender: wc, senderFrame: null, returnValue: undefined as unknown }
+    ipcMain.emit('shields:scriptlets', e, u)
+    return e.returnValue as string[]
+  }, url)
+
+test('Scriptlets YouTube : l’interrupteur écrit scriptletsYoutube et shields:scriptlets n’en renvoie plus pour le site ; inerte si Boucliers désactivés', async () => {
+  test.setTimeout(90_000)
+  const { app, fenetre } = await lancerLyra()
+  try {
+    const URL_YT = 'https://youtube.com/watch?v=x'
+    expect((await scriptletsPour(app, URL_YT)).length).toBeGreaterThan(0)
+    await fenetre.evaluate(() => window.lyra.invoke('sites:ecrire', { cle: 'youtube.com', regle: { boucliers: 'standard' } }))
+    const r = await ouvrirReglages(app, fenetre, 'sites/youtube.com')
+    await expect(switchScriptlets(r)).toHaveAttribute('aria-checked', 'true')
+    await switchScriptlets(r).click()
+    await expect.poll(async () => (await lister(fenetre))['youtube.com']?.scriptletsYoutube).toBe(false)
+    await expect.poll(() => scriptletsPour(app, URL_YT)).toEqual([])
+    await switchScriptlets(r).click()
+    await expect.poll(async () => 'scriptletsYoutube' in (await lister(fenetre))['youtube.com']).toBe(false)
+    await expect.poll(async () => (await scriptletsPour(app, URL_YT)).length).toBeGreaterThan(0)
+    // Boucliers désactivés : interrupteur éteint et inerte.
+    await ligne(r, 'boucliers').getByRole('button', { name: 'Désactivés' }).click()
+    await expect(switchScriptlets(r)).toBeDisabled()
+    await expect(switchScriptlets(r)).toHaveAttribute('aria-checked', 'false')
+  } finally {
+    await app.close()
+  }
+})
+
+test('Nouvelle règle : un site couvert par un motif Strict reste Strict ; une URL collée est ramenée à son origine ; la valeur héritée est affichée', async () => {
+  test.setTimeout(90_000)
+  const { app, fenetre } = await lancerLyra()
+  try {
+    await fenetre.evaluate(() => window.lyra.invoke('sites:ecrire', { cle: '*.x.test', regle: { boucliers: 'strict', cookies: 'bloques' } }))
+    const r = await ouvrirReglages(app, fenetre, 'sites')
+    await r.getByRole('button', { name: 'Nouvelle règle' }).click()
+    await r.locator('#nouvelle-regle-site').fill('https://a.x.test/une/page?q=1')
+    await r.locator('#creer-regle').click()
+    await expect(r.locator('tr[data-site="https://a.x.test"]')).toBeVisible()
+    await expect(r.locator('tr[data-site="https://a.x.test"]')).toHaveAttribute('aria-current', 'true')
+    expect((await lister(fenetre))['https://a.x.test']).toEqual({ boucliers: 'strict' })
+    // Cookies : valeur héritée du motif, affichée avec la mention ; la choisir ne l'écrit pas.
+    await expect(ligne(r, 'cookies').getByRole('button', { name: 'Bloqués' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(ligne(r, 'cookies').locator('.herite')).toHaveText('hérité')
+    await expect(r.locator('tr[data-site="https://a.x.test"] td').nth(2)).toContainText('Bloqués')
+    await expect(r.locator('tr[data-site="https://a.x.test"] td').nth(2).locator('.herite')).toHaveText('hérité')
+    await ligne(r, 'cookies').getByRole('button', { name: 'Tous' }).click()
+    await expect.poll(async () => (await lister(fenetre))['https://a.x.test']?.cookies).toBe('tous')
+    await ligne(r, 'cookies').getByRole('button', { name: 'Bloqués' }).click()
+    await expect.poll(async () => 'cookies' in (await lister(fenetre))['https://a.x.test']).toBe(false)
+    // Erreur reliée au champ.
+    await r.getByRole('button', { name: 'Nouvelle règle' }).click()
+    await r.locator('#nouvelle-regle-site').fill('pas un site')
+    await r.locator('#creer-regle').click()
+    await expect(r.locator('#nouvelle-regle-site')).toHaveAttribute('aria-describedby', 'erreur-nouvelle-regle')
+    await r.locator('#nouvelle-regle-site').press('Escape')
+    await expect(r.locator('#nouvelle-regle')).toBeFocused()
+  } finally {
+    await app.close()
+  }
+})
+
+test('Règles par site : le détail d’une règle est désactivé en fenêtre privée', async () => {
+  test.setTimeout(90_000)
+  const { app, fenetre } = await lancerLyra()
+  try {
+    await fenetre.evaluate(() => window.lyra.invoke('sites:ecrire', { cle: 'prive.test', regle: { boucliers: 'standard' } }))
+    await app.evaluate(({ Menu }) => Menu.getApplicationMenu()!.getMenuItemById('fenetre-privee')!.click())
+    const estPrivee = (p: Page): boolean => p.url().includes('ui.html') && p.url().includes('#privee')
+    await expect.poll(() => app.windows().find(estPrivee)).toBeDefined()
+    const privee = app.windows().find(estPrivee)!
+    await privee.evaluate(() => window.lyra.invoke('tabs:open', { url: 'lyra://settings#/sites/prive.test' }))
+    await expect.poll(() => page(app, 'lyra://settings')).toBeDefined()
+    const r = page(app, 'lyra://settings')!
+    await expect(r.locator('#regles-privee')).toHaveText('Les règles par site ne peuvent pas être modifiées depuis une fenêtre privée.')
+    await expect(ligne(r, 'cookies').getByRole('button', { name: '1re partie' })).toBeDisabled()
+    await expect(r.locator('#supprimer-regle')).toBeDisabled()
+  } finally {
+    await app.close()
+  }
+})
+
+test.describe('la règle ET la page', () => {
+  let serveur: Server
+  let PORT = 0
+  test.beforeAll(async () => {
+    serveur = createServer((q, r) => {
+      if (new URL(q.url ?? '/', 'http://x').pathname === '/ext.js') {
+        r.setHeader('content-type', 'text/javascript')
+        return r.end('window.__ext = true')
+      }
+      r.setHeader('content-type', 'text/html')
+      r.end('<!doctype html><title>regle</title><script src="/ext.js"></script>')
+    })
+    await new Promise<void>((ok) => serveur.listen(0, '127.0.0.1', ok))
+    PORT = (serveur.address() as AddressInfo).port
+  })
+  test.afterAll(() => serveur.close())
+
+  test('Zoom 110 % et Scripts « Bloqués » choisis dans la page : une étoile du site est zoomée et n’exécute aucun script', async () => {
+    test.setTimeout(120_000)
+    const { app, fenetre } = await lancerLyra()
+    try {
+      const site = `http://127.0.0.1:${PORT}`
+      const r = await ouvrirReglages(app, fenetre, `sites/${encodeURIComponent(site)}`)
+      await ligne(r, 'zoom').getByRole('button', { name: 'Zoom' }).click()
+      await r.getByRole('option', { name: '110 %' }).click()
+      await ligne(r, 'scripts').getByRole('button', { name: 'Bloqués' }).click()
+      await expect.poll(async () => (await lister(fenetre))[site]).toEqual({ zoom: 1.1, scripts: 'bloques' })
+      await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: `${u}/page` }), site)
+      await expect.poll(() => page(app, `${site}/page`)).toBeDefined()
+      const p = page(app, `${site}/page`)!
+      await expect.poll(() => app.evaluate(({ webContents }, u) => webContents.getAllWebContents().find((w) => w.getURL().startsWith(u))?.getZoomFactor(), site)).toBeCloseTo(1.1, 2)
+      await expect.poll(() => p.evaluate(() => document.readyState)).toBe('complete')
+      expect(await p.evaluate(() => (window as unknown as { __ext?: boolean }).__ext === true)).toBe(false)
+      // Contre-épreuve : la règle retirée, le script s'exécute au chargement suivant.
+      await ligne(r, 'scripts').getByRole('button', { name: 'Autorisés' }).click()
+      await expect.poll(async () => 'scripts' in (await lister(fenetre))[site]).toBe(false)
+      await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: `${u}/page2` }), site)
+      await expect.poll(() => page(app, `${site}/page2`)).toBeDefined()
+      const p2 = page(app, `${site}/page2`)!
+      await expect.poll(() => p2.evaluate(() => (window as unknown as { __ext?: boolean }).__ext === true)).toBe(true)
+    } finally {
+      await app.close()
+    }
+  })
 })

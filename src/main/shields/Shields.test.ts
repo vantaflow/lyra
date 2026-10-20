@@ -1,8 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, beforeAll } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ElectronBlocker } from '@ghostery/adblocker-electron'
-import { CONFIG_MOTEUR } from './engine'
+import { CONFIG_MOTEUR, construireMoteur } from './engine'
+import { chargerListesEmbarquees } from './listes'
+import { mkdtemp } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { creerShields, origineDe, type SessionShields, type Shields } from './Shields'
 import type { Settings } from '../../shared/types'
 import { reglagesParDefaut } from '../settings/defaults'
@@ -237,5 +240,30 @@ describe('Boucliers par site : trois niveaux', () => {
   it('scriptlets : actifs en Standard et Strict, inactifs en Désactivés', () => {
     const t = (b: 'desactives' | 'standard' | 'strict') => monter(b).s.estActif('https://site.test')
     expect([t('standard'), t('strict'), t('desactives')]).toEqual([true, true, false])
+  })
+})
+
+describe('Scriptlets YouTube par site', () => {
+  let moteurReel: ElectronBlocker
+  beforeAll(async () => {
+    const emb = await chargerListesEmbarquees('resources/shields')
+    const cacheDir = await mkdtemp(join(tmpdir(), 'lyra-cache-'))
+    moteurReel = (await construireMoteur({ cacheDir, listesEmbarquees: emb, listesDistantes: [], majHeures: 6, maintenant: new Date(emb.date) })).moteur
+  }, 60_000)
+  const monter = (sites: Settings['sites']) => creerShields({ moteurInitial: moteurReel, reglages: () => ({ ...reglages, sites }) })
+  const URL_YT = 'https://www.youtube.com/watch?v=x'
+
+  it('renvoie les scriptlets sans règle ou avec scriptletsYoutube absent/true', () => {
+    expect(monter({}).scriptlets(URL_YT, URL_YT).length).toBeGreaterThan(0)
+    expect(monter({ 'youtube.com': { scriptletsYoutube: true } }).scriptlets(URL_YT, URL_YT).length).toBeGreaterThan(0)
+  })
+  it('ne renvoie rien quand la règle résolue du site a scriptletsYoutube à false (hôte, motif, iframe)', () => {
+    expect(monter({ 'www.youtube.com': { scriptletsYoutube: false } }).scriptlets(URL_YT, URL_YT)).toEqual([])
+    expect(monter({ '*.youtube.com': { scriptletsYoutube: false } }).scriptlets(URL_YT, URL_YT)).toEqual([])
+    expect(monter({ 'www.youtube.com': { scriptletsYoutube: false } }).scriptlets(URL_YT, 'https://www.youtube.com/')).toEqual([])
+  })
+  it('une règle exacte plus précise rétablit les scriptlets', () => {
+    const s = monter({ '*.youtube.com': { scriptletsYoutube: false }, 'www.youtube.com': { scriptletsYoutube: true } })
+    expect(s.scriptlets(URL_YT, URL_YT).length).toBeGreaterThan(0)
   })
 })

@@ -175,6 +175,8 @@ export function creerShields(opts: OptionsShields): Shields {
     },
     semaine: () => compteurs.semaine(),
     scriptlets(url, haut) {
+      // Réglage par site : « Scriptlets anti-publicité YouTube » éteint → aucun scriptlet pour ce site.
+      if (resoudre(opts.reglages().sites ?? {}, origineDe(haut)).scriptletsYoutube === false) return []
       const r = cosmetique(url, haut, {}, true)
       return r?.active ? r.scripts : []
     },

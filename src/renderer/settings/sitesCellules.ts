@@ -1,12 +1,14 @@
 /** « Règles par site » : valeurs → cellules du tableau, pastille et route profonde (ParametresSites.dc.html). Module pur. */
 import type { RegleSite } from '../../shared/types'
-import { cleCanonique, cleDe } from '../../main/settings/sites'
+import { cleCanonique, cleDe, resoudre, type RegleEffective } from '../../main/settings/sites'
 
 export type Teinte = 'vert' | 'rouge' | 'violet'
 /** Contenu d'une cellule : texte brut, ou étiquette colorée quand `teinte` est présente. */
 export interface Cellule {
   texte: string
   teinte?: Teinte
+  /** Valeur reçue d'un motif `*.hôte` ou d'une règle plus large, non écrite dans la règle de la ligne. */
+  herite?: boolean
 }
 
 const sans = (texte: string): Cellule => ({ texte })
@@ -120,4 +122,84 @@ export function decoderRoute(hash: string): { cle: string; style: boolean } | nu
   }
   const cle = cleCanonique(decode)
   return cle ? { cle, style: suffixe === 'style' } : null
+}
+
+/** Marque une cellule comme héritée (valeur absente de la règle de la ligne mais fournie par une autre règle). */
+export const heritee = (c: Cellule, oui: boolean): Cellule => (oui ? { ...c, herite: true } : c)
+
+/** Champs d'une règle que le tableau et le détail affichent avec héritage. */
+export type ChampHerite = 'boucliers' | 'cookies' | 'scripts' | 'zoom' | 'exceptionDnd' | 'lectureAuto' | 'ua' | 'style' | 'scriptsPerso' | 'scriptletsYoutube'
+
+/** URL qui représente le site d'une clé de règle, pour interroger `resoudre` (hôte nu → https ; motif → un sous-domaine). */
+export function urlDeCle(cle: string): string {
+  const c = cleDe(cle)
+  if (!c) return ''
+  if (c.type === 'origine') return c.valeur === 'file://' ? 'file:///' : c.valeur
+  return c.type === 'motif' ? `https://sous.${c.valeur}` : `https://${c.valeur}`
+}
+
+/** Règle effective du site d'une clé, avec (`avec`) ou sans (`sans`) la règle enregistrée de cette clé. */
+export function effective(sites: Record<string, RegleSite>, cle: string): RegleEffective {
+  return resoudre(sites, urlDeCle(cle))
+}
+export function heritage(sites: Record<string, RegleSite>, cle: string): RegleEffective {
+  const { [cle]: _propre, ...autres } = sites
+  return resoudre(autres, urlDeCle(cle))
+}
+
+/** Vrai si le champ vient d'ailleurs que de la règle de la ligne. */
+export const vientDHeritage = (propre: RegleSite | undefined, eff: RegleSite, champ: ChampHerite): boolean =>
+  (propre?.[champ] === undefined || propre?.[champ] === null) && eff[champ] !== undefined
+
+/**
+ * Politique d'écriture : choisir la valeur que la règle aurait sans son propre champ (héritée, sinon par défaut) retire le champ (`null`),
+ * toute autre valeur est écrite telle quelle.
+ */
+export const valeurAEcrire = <T>(choisie: T, parDefaut: T): T | null => (choisie === parDefaut ? null : choisie)
+
+/** Règle écrite à la création : le niveau de Boucliers déjà en vigueur sur le site (un motif `*.` Strict reste Strict). */
+export function regleInitiale(sites: Record<string, RegleSite>, cle: string): RegleSite {
+  return { boucliers: effective(sites, cle).boucliers }
+}
+
+/** Saisie du champ « Nouvelle règle » : une URL complète est ramenée à son origine ; le reste est inchangé. */
+export function siteDeSaisie(saisie: string): string {
+  const t = saisie.trim()
+  if (!/^https?:\/\//i.test(t)) return t
+  try {
+    const u = new URL(t)
+    return u.origin === 'null' ? t : u.origin
+  } catch {
+    return t
+  }
+}
+
+/** Premier « Script n » dont le nom n'est pas déjà pris. */
+export function nomScriptLibre(noms: string[]): string {
+  const pris = new Set(noms)
+  let n = 1
+  while (pris.has(`Script ${n}`)) n++
+  return `Script ${n}`
+}
+
+/** Vrai si une autre règle (motif `*.hôte`, hôte, origine) qui couvre ce site fixe les Boucliers (`resoudre` ne distingue pas ce cas du défaut). */
+export function boucliersHerites(sites: Record<string, RegleSite>, cle: string): boolean {
+  const cible = cleDe(cle)
+  if (!cible || cle === 'file://') return false
+  let url: URL
+  try {
+    url = new URL(urlDeCle(cle))
+  } catch {
+    return false
+  }
+  const hote = url.hostname
+  for (const [k, r] of Object.entries(sites)) {
+    if (k === cle || r.boucliers === undefined) continue
+    const c = cleDe(k)
+    if (!c) continue
+    if (c.type === 'motif' && hote.endsWith(`.${c.valeur}`)) return true
+    if (cible.type === 'motif') continue
+    if (c.type === 'hote' && cible.type === 'origine' && c.valeur === hote) return true
+  }
+  return false
 }

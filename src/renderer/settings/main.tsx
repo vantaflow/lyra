@@ -49,7 +49,9 @@ function App() {
   const options = filtre ? [...visibles.map((s) => ({ id: s.id, section: s.id })), ...lignesTrouvees] : []
   const [actif, setActif] = useState(-1)
   const ouvrir = (o: { id: string; section: string }): void => {
-    location.hash = `#/${o.section}`
+    // Un résultat de la vue courante (ex. une ligne du détail d'une règle ouvert) ne referme pas cette vue.
+    const dejaLa = location.hash.startsWith(`#/${o.section}/`) && document.querySelector(`[data-reglage="${o.id}"]`) !== null
+    if (!dejaLa) location.hash = `#/${o.section}`
     setCible({ id: o.id, n: Date.now() })
   }
 

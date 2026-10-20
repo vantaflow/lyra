@@ -7,6 +7,8 @@ import { Interrupteur } from './controles'
 export const OCTETS_MAX = 100 * 1024
 /** Délai de la sauvegarde différée d'une saisie (ms). */
 export const DELAI_SAUVEGARDE = 600
+/** Durée pendant laquelle une valeur différente de la dernière envoyée est tenue pour un retour en retard (ms). */
+const DELAI_RETARD = 2000
 
 export const octets = (t: string): number => new TextEncoder().encode(t).length
 
@@ -17,6 +19,8 @@ export const octets = (t: string): number => new TextEncoder().encode(t).length
 function useTexteDiffere(valeur: string, sauver: (t: string) => void, accepte: (t: string) => boolean = () => true, delai = DELAI_SAUVEGARDE) {
   const [texte, setTexte] = useState(valeur)
   const attente = useRef<{ minuteur: number; texte: string } | null>(null)
+  // Dernière valeur envoyée : tant qu'elle n'est pas revenue des réglages (ou 2 s), une valeur plus ancienne arrivée en retard n'écrase pas la zone.
+  const envoyee = useRef<{ texte: string; a: number } | null>(null)
   const dernier = useRef({ sauver, accepte })
   dernier.current = { sauver, accepte }
   const flush = (): void => {
@@ -24,12 +28,31 @@ function useTexteDiffere(valeur: string, sauver: (t: string) => void, accepte: (
     if (!a) return
     window.clearTimeout(a.minuteur)
     attente.current = null
+    envoyee.current = { texte: a.texte, a: Date.now() }
     dernier.current.sauver(a.texte)
   }
   useEffect(() => {
-    if (!attente.current) setTexte(valeur)
+    if (attente.current) return
+    const e = envoyee.current
+    if (e && Date.now() - e.a < DELAI_RETARD) {
+      if (valeur !== e.texte) return
+      envoyee.current = null
+    }
+    setTexte(valeur)
   }, [valeur])
-  useEffect(() => flush, [])
+  useEffect(() => {
+    // Fermeture ou masquage de la page : la saisie en attente est enregistrée sans attendre le minuteur.
+    const masque = (): void => {
+      if (document.visibilityState === 'hidden') flush()
+    }
+    window.addEventListener('pagehide', flush)
+    document.addEventListener('visibilitychange', masque)
+    return () => {
+      window.removeEventListener('pagehide', flush)
+      document.removeEventListener('visibilitychange', masque)
+      flush()
+    }
+  }, [])
   const saisir = (t: string): void => {
     setTexte(t)
     if (attente.current) window.clearTimeout(attente.current.minuteur)

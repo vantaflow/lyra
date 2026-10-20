@@ -4,12 +4,13 @@ import type { ComponentChildren } from 'preact'
 /** Contrôles de Parametres.dc.html : .row/.lbl/.hint, .tg, .sel, .seg. */
 
 /** `reglage` : identifiant de l'index de recherche (`<section>.<réglage>`), porté en `data-reglage` pour la mise en évidence. */
-export function Ligne({ titre, aide, reglage, children }: { titre: string; aide?: string; reglage?: string; children?: ComponentChildren }) {
+export function Ligne({ titre, aide, reglage, herite, children }: { titre: string; aide?: string; reglage?: string; herite?: boolean; children?: ComponentChildren }) {
   return (
     <div class="row" data-reglage={reglage} tabIndex={reglage ? -1 : undefined}>
       <div class="lbl">
         <span>{titre}</span>
         {aide && <span class="hint">{aide}</span>}
+        {herite && <span class="hint herite">hérité</span>}
       </div>
       {children}
     </div>
