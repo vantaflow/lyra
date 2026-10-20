@@ -119,6 +119,10 @@ export class TabManager {
     return star.id
   }
 
+  constellations(): Constellation[] {
+    return this.tree.toJSON().constellations
+  }
+
   creerConstellation(o: { name: string; color: string }): Constellation {
     const c = this.tree.creerConstellation(o)
     this.notifier()

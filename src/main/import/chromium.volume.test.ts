@@ -208,8 +208,8 @@ describe('prêt pour un utilityProcess', () => {
     expect(viaMessage).toEqual(direct)
   })
 
-  // Seul `processus.ts` (côté main : lance le utilityProcess) a le droit de toucher Electron.
-  const AUTORISES_ELECTRON = ['processus.ts']
+  // Seuls `processus.ts` (lance le utilityProcess) et `ipc.ts` (handlers) ont le droit de toucher Electron.
+  const AUTORISES_ELECTRON = ['processus.ts', 'ipc.ts']
   it('aucun module du dossier d’import (hors tests) ne dépend d’Electron', () => {
     const sources = readdirSync(IMPORT).filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts') && !AUTORISES_ELECTRON.includes(f))
     expect(sources.length).toBeGreaterThan(5)

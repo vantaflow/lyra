@@ -40,7 +40,13 @@ Au premier lancement, Lyra demande de choisir le moteur de recherche par défaut
 - Ne pas déranger (⌘ ⇧ D) : page plein cadre, notifications et popups retenues puis livrées à la sortie (Échap), exceptions par site (réglage par site au jalon D) ; la minuterie suit l'horloge après une mise en veille. Un Maj+clic sur un lien ouvre une étoile ordinaire.
 - Fenêtre privée (⌘ ⇧ N) : session en mémoire, aucune trace (historique, favoris, réglages par site, passerelles).
 
-Prévus ensuite : extensions Chrome et Firefox (jalon B), réglages complets et règles par site (D), import/export (E).
+## Ce que fait le jalon E (en cours)
+
+- Importation depuis Chrome, Edge, Brave, Vivaldi, Firefox, Safari et Orion : favoris (dossier « Importés de … », sans doublon), historique fusionné, onglets et groupes en constellations (étoiles endormies), moteurs et mots-clés, réglages transposables, extensions mises en file pour le jalon B. Les cookies ne sont pas importés (chiffrés par le système).
+- La lecture des profils se fait dans un processus à part (`utilityProcess`), sur des copies temporaires : les dossiers des autres navigateurs ne sont jamais modifiés, et le navigateur source peut rester ouvert pour les favoris et l'historique.
+- Contrat IPC `import:detecter`, `import:apercu`, `import:lancer`, `import:annuler` et évènements `import:progression` / `import:termine`, réservé à la page `lyra://settings` d'une fenêtre normale ; un seul import à la fois, abandon possible. L'interface d'importation et l'import de fichiers (favoris HTML, CSV…) viennent ensuite.
+
+Prévus ensuite : extensions Chrome et Firefox (jalon B), réglages complets et règles par site (D), interface d'importation et export (E).
 
 ## Développement
 

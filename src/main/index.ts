@@ -15,6 +15,10 @@ import { History } from './history/History'
 import { Bookmarks } from './bookmarks/Bookmarks'
 import { Downloads } from './downloads/Downloads'
 import { installerReglagesIpc } from './settings/ipc'
+import { installerImportIpc } from './import/ipc'
+import { processusImport } from './import/processus'
+import { balayerOrphelins } from './import/copie'
+import type { CibleCiel } from './import/appliquer'
 import { SessionStore, type FenetreSession } from './session/SessionStore'
 import { Permissions, type DepsPermissions, type ReponsePermission } from './permissions/Permissions'
 import { Attentes, REFUS } from './permissions/attentes'
@@ -305,6 +309,10 @@ void app.whenReady().then(async () => {
   session.defaultSession.setUserAgent(ua)
   session.fromPartition('persist:lyra').setUserAgent(ua)
   installerProtocoleLyra(session.defaultSession)
+  // Copies temporaires d'import laissées par un arrêt brutal : balayées en tâche de fond, sans jamais retarder le démarrage.
+  void balayerOrphelins({ dossierTemp: app.getPath('temp') })
+    .then((n) => n > 0 && console.log(`[import] ${n} dossier(s) temporaire(s) orphelin(s) supprimé(s)`))
+    .catch((err) => console.error('[import] balayage des copies temporaires impossible', err))
   const reglages = creerReglages(join(paths.userData(), 'settings.json'), app.getPath('downloads'))
   reglagesCourants = () => reglages.getSettings()
   reglagesStore = reglages
@@ -477,6 +485,36 @@ void app.whenReady().then(async () => {
   handle('settings:get', () => reglages.getSettings())
   handle('settings:set', (patch) => reglages.setSettings(patch))
   installerReglagesIpc(reglages)
+  // Importation depuis un autre navigateur : les onglets importés vont toujours dans une fenêtre NORMALE.
+  const cibleCiel = (m: TabManager): CibleCiel => ({
+    constellations: () => m.constellations(),
+    creerConstellation: (o) => m.creerConstellation(o),
+    ouvrirEndormie: (url, o) => m.ouvrirEndormie(url, o),
+    reveiller: (id) => m.reveiller(id),
+    sauver: () => sauverSession()
+  })
+  const nouvelleFenetreNormale = (): TabManager => {
+    const avant = new Set(onglets.keys())
+    creerFenetre()
+    const [, m] = [...onglets].find(([id]) => !avant.has(id))!
+    return m
+  }
+  installerImportIpc({
+    processus: processusImport,
+    estPrivee,
+    cibles: (wc) => {
+      const normale = (m: TabManager | undefined): TabManager | undefined => (m && !privees.has(m.fenetreId) ? m : undefined)
+      // La fenêtre de la page de réglages si elle est normale, sinon la plus récente, sinon une nouvelle.
+      const m = normale(ongletsPossedant(wc)) ?? normale(ongletsCourants()) ?? [...onglets].reverse().map(([, t]) => normale(t)).find(Boolean) ?? nouvelleFenetreNormale()
+      return {
+        favoris,
+        historique: hist,
+        ciel: cibleCiel(m),
+        nouvelleFenetre: () => cibleCiel(nouvelleFenetreNormale()),
+        reglages: { get: () => reglages.getSettings(), set: (patch) => reglages.setSettings(patch) }
+      }
+    }
+  })
   // Passerelles : rien n'est chargé ni appliqué tant qu'aucun site n'est contourné.
   const sessionsProxy = (): Session[] => [session.defaultSession, session.fromPartition('persist:lyra'), ...sessionsPrivees]
   const pass = creerPasserelles({
