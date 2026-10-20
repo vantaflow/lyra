@@ -42,7 +42,7 @@ describe('PAIRES et verifier', () => {
   it('les six paires de la décision C, toutes à 4,5:1', () => {
     expect(PAIRES.map((p) => `${p.texte}/${p.fond}`)).toEqual([
       'ciel-texte/ciel-fond', 'etoiles/ciel-fond', 'etoile-active/etoile-active-fond',
-      'capsule-texte/capsule-fond', 'accent/pages-fond', 'boucliers/ciel-fond'
+      'capsule-texte/capsule-fond', 'accent/pages-fond', 'boucliers/pages-fond'
     ])
     expect(SEUIL).toBe(4.5)
   })
@@ -56,7 +56,7 @@ describe('PAIRES et verifier', () => {
 describe('corrigerPalette', () => {
   const mauvaise: CouleursTheme = JSON.parse(JSON.stringify(COULEURS_INDIGO_NUIT))
   mauvaise['ciel-texte'].clair = '#3B3B70'
-  mauvaise.boucliers.clair = '#1E4F46'
+  mauvaise.boucliers.clair = '#7FD3B3'
 
   it('ajuste chaque texte sous 4,5:1 et liste les ajustements', () => {
     const { couleurs, ajustements } = corrigerPalette(mauvaise, 'clair')

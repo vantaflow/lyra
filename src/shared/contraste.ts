@@ -18,7 +18,7 @@ export const PAIRES: readonly Paire[] = [
   { texte: 'etoile-active', fond: 'etoile-active-fond' },
   { texte: 'capsule-texte', fond: 'capsule-fond' },
   { texte: 'accent', fond: 'pages-fond' },
-  { texte: 'boucliers', fond: 'ciel-fond' }
+  { texte: 'boucliers', fond: 'pages-fond' }
 ]
 
 type Rgb = [number, number, number]

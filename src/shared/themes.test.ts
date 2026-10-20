@@ -61,9 +61,9 @@ describe('thèmes prêts', () => {
       })
     }
   }
-  it('Indigo nuit : valeurs du design intactes, seul Boucliers / Ciel en clair est sous 4,5:1', () => {
+  it('Indigo nuit : valeurs du design intactes, aucune paire sous 4,5:1', () => {
     const faibles = [...verifier(THEMES['indigo-nuit'].couleurs, 'clair'), ...verifier(THEMES['indigo-nuit'].couleurs, 'sombre')].filter((v) => !v.ok)
-    expect(faibles.map((v) => v.paire.texte)).toEqual(['boucliers'])
+    expect(faibles).toEqual([])
   })
   it('Sable et Clair total : ciel clair, texte du ciel foncé', () => {
     for (const n of ['sable', 'clair-total'] as const) {
