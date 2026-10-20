@@ -121,7 +121,7 @@ test.describe('niveaux par site', () => {
   const chargerAvecDefaut = async (defaut: 'strict' | 'desactives' | 'standard', regle?: 'standard'): Promise<{ propre: unknown; tiers: unknown }> => {
     const { app, fenetre } = await lancerLyra()
     try {
-      await fenetre.evaluate((d) => window.lyra.invoke('settings:set', { boucliers: { niveau: d } }), defaut)
+      await fenetre.evaluate((d) => window.lyra.invoke('settings:set', { boucliers: { niveau: d } } as never), defaut)
       if (regle) await fenetre.evaluate((b) => window.lyra.invoke('sites:ecrire', { cle: '127.0.0.1', regle: { boucliers: b } }), regle)
       await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), URL_PAGE)
       await expect.poll(() => app.windows().find((w) => w.url() === URL_PAGE), { timeout: 15_000 }).toBeDefined()

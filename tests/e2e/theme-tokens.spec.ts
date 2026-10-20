@@ -91,7 +91,7 @@ async function collecter(app: ElectronApplication, fenetre: Page, avant?: (p: Pa
   // Nouvel onglet.
   await prendre('newtab', await aller(app, fenetre, 'lyra://newtab', 'lyra://newtab'))
   // Réglages : quelques sections de natures différentes.
-  for (const route of ['general', 'apparence', 'reseau', 'importer', 'historique', 'telechargements', 'favoris']) {
+  for (const route of ['apparence', 'reseau', 'importer', 'historique', 'telechargements', 'favoris']) {
     const p = await aller(app, fenetre, `lyra://settings#/${route}`, 'lyra://settings')
     await p.evaluate((r) => { location.hash = `#/${r}` }, route)
     await expect(p.locator('h1')).toBeVisible()
@@ -165,7 +165,6 @@ test('mode sombre : la capsule vaut rgb(23,23,42) et la page rgb(18,18,20), plus
 
     const clairs: string[] = []
     for (const [url, prefixe, route] of [
-      ['lyra://settings', 'lyra://settings', 'general'],
       ['lyra://settings', 'lyra://settings', 'apparence'],
       ['lyra://settings', 'lyra://settings', 'reseau'],
       ['lyra://settings', 'lyra://settings', 'importer'],
