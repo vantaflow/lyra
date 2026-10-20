@@ -41,6 +41,8 @@ export function porteeDuManifest(manifest: Obj): PorteeExtension {
   }
   const liste = [...motifs]
   if (liste.some((m) => TOUS.test(m))) return { tous: true, hotes: [] }
-  const hotes = [...new Set(liste.map(hoteDuMotif).filter((h): h is string => h !== undefined))].sort()
+  const tous = [...new Set(liste.map(hoteDuMotif).filter((h): h is string => h !== undefined))]
+  // Un hôte et ses sous-domaines (« *.youtube.com », « www.youtube.com ») comptent pour un seul : « youtube.com ».
+  const hotes = tous.filter((h) => !tous.some((g) => g !== h && h.endsWith(`.${g}`))).sort()
   return { tous: false, hotes }
 }

@@ -1,5 +1,6 @@
 /** Chargement des extensions du registre dans la session : au démarrage, à chaud (activer) et à la désinstallation. */
-import { rm } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
+import { readdir, rename, rm } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import type { ExtensionInstallee } from '../../shared/types'
 import { dossierAbsolu, ID_EXTENSION, type Registre } from './registre'
@@ -40,6 +41,9 @@ export interface Chargeur {
   charger(id: string): Promise<ResultatChargement>
   lister(): Array<ExtensionInstallee & { chargee: boolean }>
 }
+
+/** Dossiers en cours de suppression (renommés avant `rm`) ; ceux qu'une interruption a laissés sont balayés au démarrage. */
+const PREFIXE_SUPPRESSION = '.suppr-'
 
 const message = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
@@ -87,6 +91,13 @@ export function creerChargeur(o: OptionsChargeur): Chargeur {
   return {
     async chargerAuDemarrage() {
       const resultats: ResultatChargement[] = []
+      try {
+        for (const nom of await readdir(resolve(o.base))) {
+          if (nom.startsWith(PREFIXE_SUPPRESSION)) await rm(join(resolve(o.base), nom), { recursive: true, force: true }).catch(() => undefined)
+        }
+      } catch {
+        /* dossier de base absent : rien à balayer */
+      }
       // En série : l'ordre d'installation est l'ordre de chargement.
       for (const e of o.registre.lister()) if (e.active) resultats.push(await charger(e))
       return resultats
@@ -109,12 +120,21 @@ export function creerChargeur(o: OptionsChargeur): Chargeur {
       if (!e || !ID_EXTENSION.test(id)) return false
       await retirer(id)
       // Toutes les versions de l'extension : <base>/<id>. L'id est validé (32 lettres a-p) : aucune traversée possible.
+      // Renommage d'abord (atomique : l'extension disparaît d'un coup, même si la suppression s'interrompt), suppression ensuite.
       const racine = resolve(o.base)
       const dossier = join(racine, id)
+      const aSupprimer = join(racine, `${PREFIXE_SUPPRESSION}${id}-${randomUUID().slice(0, 8)}`)
       try {
-        await rm(dossier, { recursive: true, force: true })
+        await rename(dossier, aSupprimer)
+        await rm(aSupprimer, { recursive: true, force: true })
       } catch (err) {
-        journal(`${id} : suppression du dossier impossible — ${message(err)}`)
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+          /* rien à supprimer */
+        } else {
+          journal(`${id} : suppression du dossier impossible — ${message(err)}`)
+          // Dernier recours : suppression directe du dossier d'origine s'il existe encore.
+          await rm(dossier, { recursive: true, force: true }).catch(() => undefined)
+        }
       }
       return o.registre.retirer(id)
     },

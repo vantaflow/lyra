@@ -1,10 +1,13 @@
 import type { WebContents } from 'electron'
 import type { ExtensionInstallee, InfoExtension, ResultatInstallation } from '../../shared/types'
 import { handle } from '../ipc'
+import type { Evenements } from '../../shared/ipc'
 import { collecterStubs, type Journal, type PageExtension } from './journal'
 import type { Chargeur } from './chargeur'
 import { analyserSourceChrome, type InstallateurChrome } from './chrome'
-import { analyserSourceFirefox, type InstallateurFirefox } from './firefox'
+import { analyserSourceFirefox, installateurFirefoxParId, type InstallateurFirefox } from './firefox'
+import { consommerFile } from './fileImport'
+import type { InstallateursParId } from './file'
 import type { MiseAJour } from './miseAJour'
 import { ID_EXTENSION } from './registre'
 import { porteeDuManifest, urlOptions } from './details'
@@ -27,6 +30,10 @@ export interface OptionsIpcExtensions {
   ouvrirEtoile: (sender: WebContents, url: string) => void
   /** Écrit `settings.sites[origine].extensions[id]`. */
   ecrireRegleSite: (origine: string, id: string, active: boolean) => void
+  /** Envoie un évènement de la file d'import aux pages internes (lyra://) et à l'interface. */
+  diffuser: <K extends 'extensions:progressionFile' | 'extensions:finFile'>(canal: K, data: Evenements[K]) => void
+  /** Installateurs simulés de la file d'import (e2e sous `LYRA_TEST` : aucun accès réseau). */
+  installateursFileTest?: InstallateursParId
   /** `LYRA_TEST=1` : un chemin de fichier ou de dossier peut être passé directement en `source`. */
   modeTest: boolean
 }
@@ -36,7 +43,8 @@ export function installerExtensionsIpc(o: OptionsIpcExtensions): void {
   const { chargeur } = o
   const info = (e: ExtensionInstallee & { chargee: boolean }): InfoExtension => {
     const manifest = o.lireManifest(e)
-    return { ...e, aOptions: !!manifest && urlOptions(e.id, manifest) !== undefined, portee: manifest ? porteeDuManifest(manifest) : { tous: false, hotes: [] } }
+    const { dossier: _dossier, ...publique } = e
+    return { ...publique, aOptions: !!manifest && urlOptions(e.id, manifest) !== undefined, portee: manifest ? porteeDuManifest(manifest) : { tous: false, hotes: [] } }
   }
   handle('extensions:lister', () => chargeur.lister().map(info))
   handle('extensions:options', (d, e) => {
@@ -92,6 +100,43 @@ export function installerExtensionsIpc(o: OptionsIpcExtensions): void {
       }
     }
     return firefox ? o.firefox.installerFirefox(source) : o.installateur.installerChrome(source)
+  })
+  // File d'import (jalon E) : l'appelant fournit la file et réécrit `restantes` ; jamais depuis une fenêtre privée.
+  let fileEnCours = false
+  handle('extensions:consommerFile', async (d, e) => {
+    if (o.estPrivee(e.sender)) throw new Error("Les extensions ne s'installent pas depuis une fenêtre privée.")
+    if (!d || !Array.isArray(d.entrees) || d.entrees.length > 200) throw new Error('File invalide.')
+    if (fileEnCours) throw new Error("Une file d'import est déjà en cours.")
+    const magasins = ['chrome', 'edge', 'firefox', 'inconnu']
+    const entrees = d.entrees.filter(
+      (x) => x && typeof x.id === 'string' && x.id.length <= 200 && typeof x.nom === 'string' && magasins.includes(x.magasin)
+    ).map((x) => ({
+      id: x.id,
+      nom: x.nom.slice(0, 120),
+      magasin: x.magasin,
+      ...(typeof x.actif === 'boolean' ? { actif: x.actif } : {}),
+      ...(x.imposee === true ? { imposee: true } : {})
+    }))
+    const confirmees = new Set(Array.isArray(d.confirmees) ? d.confirmees.filter((i): i is string => typeof i === 'string') : [])
+    fileEnCours = true
+    try {
+      const r = await consommerFile(entrees, {
+        installateurs: o.installateursFileTest ?? { chrome: (id) => o.installateur.installerChrome(id), firefox: installateurFirefoxParId(o.firefox) },
+        confirmees,
+        desactiver: (id) => chargeur.activer(id, false),
+        surProgression: (p) =>
+          o.diffuser('extensions:progressionFile', {
+            index: p.index,
+            total: p.total,
+            nom: p.entree.nom,
+            ...(p.resultat ? { etat: p.resultat.etat === 'choix' ? 'manuel' : p.resultat.etat, ...(p.resultat.etat === 'installee' ? {} : { raison: p.resultat.raison }) } : {})
+          })
+      })
+      o.diffuser('extensions:finFile', r)
+      return r
+    } finally {
+      fileEnCours = false
+    }
   })
   handle('extensions:majTout', async () => o.miseAJour.verifier())
 }

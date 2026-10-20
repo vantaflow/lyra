@@ -1,4 +1,4 @@
-import type { DecisionPermission, DownloadInfo, HistoryEntry, InfoExtension, JournalExtension, PasserellePerso, ResultatInstallation, Settings, SiteContourne, SkyState, Suggestion, TypePermission } from './types'
+import type { DecisionPermission, DownloadInfo, EntreeImport, HistoryEntry, InfoExtension, JournalExtension, PasserellePerso, ProgressionFile, ResultatFile, ResultatInstallation, Settings, SiteContourne, SkyState, Suggestion, TypePermission } from './types'
 
 export interface RectIpc {
   x: number
@@ -151,6 +151,11 @@ export type Requetes = {
   /** Panneau des extensions (icônes d'action) depuis le pied du ciel. */
   'extensions:panel': [void, void]
   'extensions:journal': [{ id: string }, JournalExtension | undefined]
+  /**
+   * File d'import (jalon E) : installe les entrées en série ; les entrées imposées exigent leur identifiant dans `confirmees`.
+   * Rend un résultat par entrée et la file restante à réécrire.
+   */
+  'extensions:consommerFile': [{ entrees: EntreeImport[]; confirmees?: string[] }, ResultatFile]
   'extensions:majTout': [void, { misesAJour: Array<{ id: string; nom: string; de: string; vers: string }>; erreurs: string[]; derniereVerification?: string }]
   'settings:set': [Partial<Settings>, Settings]
   'layout:get': [
@@ -274,6 +279,10 @@ export type Requetes = {
 /** Évènements main → renderer : canal → données. */
 export type Evenements = {
   'settings:changed': Settings
+  /** Main → page des extensions : progression de la file d'import (début et fin de chaque extension). */
+  'extensions:progressionFile': ProgressionFile
+  /** Main → page des extensions : la file d'import est terminée (résultat de chaque entrée, file restante). */
+  'extensions:finFile': ResultatFile
   /** Main → chrome : le ciel masqué est révélé (vue chrome élargie au-dessus de la page) ou retiré. */
   'ciel:revele': boolean
   /** Main → chrome : l'état du mode Ne pas déranger a changé. */

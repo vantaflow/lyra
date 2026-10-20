@@ -98,6 +98,41 @@ export type ResultatInstallation =
   | { etat: 'choix'; raison: string; candidats: CandidatAmo[] }
   | { etat: 'erreur'; raison: string; rapport?: RapportConversion; suggestionChrome?: SuggestionChrome }
 
+/**
+ * Entrée de la file d'import (structurellement compatible avec `ExtensionEnAttente` du jalon E).
+ * `imposee` : extension imposée par une règle du navigateur d'origine, jamais installée sans choix explicite.
+ */
+export interface EntreeImport {
+  id: string
+  nom: string
+  magasin: MagasinExtension
+  actif?: boolean
+  imposee?: boolean
+}
+
+export type EtatEntreeFile = 'installee' | 'manuel' | 'erreur' | 'a-confirmer'
+
+export interface ResultatEntreeFile {
+  entree: EntreeImport
+  etat: EtatEntreeFile
+  raison?: string
+}
+
+export interface ResultatFile {
+  resultats: ResultatEntreeFile[]
+  /** File à réécrire : entrées à confirmer et erreurs (réessayables). */
+  restantes: EntreeImport[]
+}
+
+/** Progression de la file d'import (`extensions:progressionFile`). */
+export interface ProgressionFile {
+  index: number
+  total: number
+  nom: string
+  etat?: EtatEntreeFile
+  raison?: string
+}
+
 export interface CandidatAmo {
   nom: string
   slug: string
@@ -188,7 +223,8 @@ export interface PorteeExtension {
 }
 
 /** Entrée du registre avec ce que la page des extensions affiche. */
-export interface InfoExtension extends ExtensionInstallee {
+/** Le dossier d'installation reste dans le processus principal : il n'est pas communiqué aux pages. */
+export interface InfoExtension extends Omit<ExtensionInstallee, 'dossier'> {
   /** Chargée dans la session (une extension active qui ne se charge pas est « Incompatible »). */
   chargee: boolean
   /** L'extension a une page d'options. */

@@ -1,8 +1,8 @@
 import { render } from 'preact'
 import { useCallback, useEffect, useState } from 'preact/hooks'
-import type { CandidatAmo, InfoExtension, JournalExtension, ResultatInstallation, Settings } from '../../shared/types'
+import type { CandidatAmo, InfoExtension, JournalExtension, ProgressionFile, ResultatFile, ResultatInstallation, Settings } from '../../shared/types'
 import './extensions.css'
-import { depuis, etatTexte, hoteDe, LIMITES, lignesJournal, origineTexte, porteeTexte, sitesExclus } from './texte'
+import { depuis, ETAT_FILE, etatTexte, hoteDe, LIMITES, lignesJournal, origineTexte, porteeTexte, resumeFile, sitesExclus } from './texte'
 
 /** Couleurs des pastilles du design (Extensions.dc.html), attribuées d'après l'identifiant. */
 const COULEURS = ['#B5452F', '#3A3A46', '#2D5BD1', '#1F6FB2', '#1E7F6C', '#8A8AA6']
@@ -27,6 +27,7 @@ function LigneExtension(p: {
   const { e, journal, mode } = p
   const [saisie, setSaisie] = useState('')
   const [refus, setRefus] = useState('')
+  const [refusOptions, setRefusOptions] = useState('')
   const incompatible = e.active && !e.chargee
   const exclus = sitesExclus(p.sites, e.id)
   const ouverte = mode !== undefined
@@ -45,6 +46,11 @@ function LigneExtension(p: {
     const ok = await window.lyra.invoke('extensions:regleSite', { id: e.id, origine, active })
     if (!ok) setRefus('Règle refusée.')
   }
+  const options = async (): Promise<void> => {
+    setRefusOptions('')
+    const ok = await window.lyra.invoke('extensions:options', { id: e.id })
+    if (!ok) setRefusOptions("La page d'options n'a pas pu s'ouvrir (extension désactivée, ou fenêtre privée).")
+  }
   const exclure = async (): Promise<void> => {
     const origine = origineSaisie(saisie)
     if (!origine) return setRefus('Indique un site, par exemple youtube.com.')
@@ -56,20 +62,23 @@ function LigneExtension(p: {
   const portee = incompatible ? undefined : porteeTexte(e, exclus)
   const resume = [portee, etat].filter(Boolean).join(' · ')
 
+  // Boutons de ligne comme le design (Extensions.dc.html) : Options · Sites · Journal, et « Replier » à la place de Journal
+  // quand la ligne est dépliée ; une extension incompatible n'a que Journal et Supprimer. « Supprimer » n'est pas dans le
+  // design d'une ligne ordinaire : il reste accessible, mais seulement dans la ligne dépliée.
   const boutons = (
     <>
       {e.aOptions && !incompatible && (
-        <button class="btn" type="button" onClick={() => void window.lyra.invoke('extensions:options', { id: e.id })}>
+        <button class="btn" type="button" onClick={() => void options()}>
           Options
         </button>
       )}
       {!incompatible && (
-        <button class="btn" type="button" onClick={() => p.surMode(mode === 'sites' ? undefined : 'sites')}>
-          {mode === 'sites' ? 'Replier' : 'Sites'}
+        <button class="btn" type="button" aria-pressed={mode === 'sites'} onClick={() => p.surMode(mode === 'sites' ? undefined : 'sites')}>
+          Sites
         </button>
       )}
-      <button class="btn" type="button" onClick={() => p.surMode(mode === 'journal' ? undefined : 'journal')}>
-        {mode === 'journal' ? 'Replier' : 'Journal'}
+      <button class="btn" type="button" onClick={() => p.surMode(ouverte ? undefined : 'journal')}>
+        {ouverte ? 'Replier' : 'Journal'}
       </button>
       {(incompatible || ouverte) && (
         <button class="btn danger" type="button" onClick={() => void supprimer()}>
@@ -97,6 +106,11 @@ function LigneExtension(p: {
           {incompatible && <span class="tag incompat">Incompatible</span>}
         </span>
         {resume && <span class="hint">{resume}</span>}
+        {refusOptions && (
+          <span class="hint" role="alert">
+            {refusOptions}
+          </span>
+        )}
         {mode === 'journal' && <pre class="log">{lignesJournal(journal).join('\n')}</pre>}
         {mode === 'sites' && (
           <div class="sites-regles">
@@ -163,6 +177,8 @@ function Page({ privee }: { privee: boolean }) {
   const [occupe, setOccupe] = useState(false)
   const [retour, setRetour] = useState<Retour | null>(null)
   const [verifiees, setVerifiees] = useState<string | undefined>(undefined)
+  const [progressionFile, setProgressionFile] = useState<ProgressionFile | null>(null)
+  const [resultatFile, setResultatFile] = useState<ResultatFile | null>(null)
 
   const rafraichir = useCallback(async (): Promise<void> => {
     const l = await window.lyra.invoke('extensions:lister')
@@ -181,6 +197,23 @@ function Page({ privee }: { privee: boolean }) {
       setReglages(s)
       setVerifiees((v) => s.extensions.derniereVerification ?? v)
     })
+  }, [rafraichir])
+
+  // File d'import (réinstallation des extensions d'un autre navigateur) : progression puis résultat par extension.
+  useEffect(() => {
+    const a = window.lyra.on('extensions:progressionFile', (p) => {
+      setResultatFile(null)
+      setProgressionFile(p)
+    })
+    const b = window.lyra.on('extensions:finFile', (r) => {
+      setProgressionFile(null)
+      setResultatFile(r)
+      void rafraichir()
+    })
+    return () => {
+      a()
+      b()
+    }
   }, [rafraichir])
 
   const installer = async (arg: { source?: string; choisir?: 'fichier' | 'dossier' }): Promise<void> => {
@@ -267,6 +300,33 @@ function Page({ privee }: { privee: boolean }) {
           </button>
         </div>
       </div>
+
+      {progressionFile && (
+        <div class="card" role="status">
+          <div class="row">
+            <span>
+              Réinstallation depuis l'import : {progressionFile.index + 1} sur {progressionFile.total} — {progressionFile.nom}
+            </span>
+          </div>
+        </div>
+      )}
+      {resultatFile && resultatFile.resultats.length > 0 && (
+        <div class="card" role="status" aria-label="Réinstallation depuis l'import">
+          <div class="row">
+            <strong>{resumeFile(resultatFile)}</strong>
+          </div>
+          {resultatFile.resultats.map((r) => (
+            <div class="row" key={`${r.entree.magasin}:${r.entree.id}`}>
+              <div class="corps retour">
+                <span>
+                  <strong>{r.entree.nom}</strong> <span class="hint">{ETAT_FILE[r.etat]}</span>
+                </span>
+                {r.raison && <span class="hint">{r.raison}</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {retour && (
         <div class="card" role="status">

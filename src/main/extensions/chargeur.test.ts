@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { creerChargeur, type SessionExtensions } from './chargeur'
@@ -166,6 +166,18 @@ describe('desinstaller', () => {
     expect(await c.desinstaller(id('p'))).toBe(false)
     expect(await c.desinstaller(id('a'))).toBe(true)
     expect(existsSync(d)).toBe(false)
+  })
+
+  it('renommage puis suppression : aucun résidu ; un dossier « .suppr- » laissé par une interruption est balayé au démarrage', async () => {
+    const e = ext('a')
+    installerDossier(e)
+    const c = creerChargeur({ extensions: sessionSimulee().api, registre: creerRegistre(reglagesSimules([e])), base })
+    await c.desinstaller(id('a'))
+    expect(readdirSync(base).filter((n) => n.startsWith('.suppr-'))).toEqual([])
+    mkdirSync(join(base, '.suppr-reste-1234'))
+    writeFileSync(join(base, '.suppr-reste-1234', 'x'), 'x')
+    await c.chargerAuDemarrage()
+    expect(existsSync(join(base, '.suppr-reste-1234'))).toBe(false)
   })
 
   it('la suppression vise <base>/<id> et rien d\'autre', async () => {

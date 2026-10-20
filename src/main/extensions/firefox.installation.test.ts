@@ -310,6 +310,21 @@ describe('sécurité des identités et des mises à jour', () => {
   })
 })
 
+describe("import strict (installateurFirefoxParId)", () => {
+  it('un slug inconnu d\'AMO ne déclenche jamais de recherche : erreur nette, aucune installation', async () => {
+    const etat: Etat = { version: '4.9.80', xpi: xpiDarkReader(), appels: [] }
+    const inconnu = (async (url: string | URL | Request) => {
+      etat.appels.push(String(url))
+      return new Response('', { status: 404 })
+    }) as typeof fetch
+    const { inst, registre } = monter(inconnu)
+    const r = await installateurFirefoxParId(inst)('slug-inconnu')
+    expect(r).toMatchObject({ etat: 'erreur' })
+    expect(etat.appels.some((u) => u.includes('/search/'))).toBe(false)
+    expect(registre.lister()).toHaveLength(0)
+  })
+})
+
 describe('mises à jour AMO (miseAJour.ts)', () => {
   it('une extension AMO plus ancienne que la version distante est mise à jour ; une erreur est rapportée', async () => {
     const etat: Etat = { version: '4.9.80', xpi: xpiDarkReader(), appels: [] }

@@ -180,6 +180,25 @@ describe('appliquerStubs', () => {
     expect(appliquerStubs(d, { ...mv2 }, shims).raison).toBe('deja-applique')
   })
 
+  it("arrêt en route : le marqueur « en cours » est écrit d'abord, la reprise termine sans rien doubler", () => {
+    const m = { ...mv2, options_page: 'o/options.html' }
+    const d = extension(m, { ...fichiers, 'o/options.html': '<html><head></head></html>' })
+    // Une page illisible (un dossier à la place du fichier) interrompt l'application.
+    rmSync(join(d, 'o/options.html'))
+    mkdirSync(join(d, 'o/options.html'))
+    expect(() => appliquerStubs(d, { ...m }, shims)).toThrow()
+    expect(JSON.parse(lire(join(d, MARQUEUR_STUBS)))).toMatchObject({ enCours: true })
+    rmSync(join(d, 'o/options.html'), { recursive: true })
+    writeFileSync(join(d, 'o/options.html'), '<html><head></head></html>')
+    const manifeste = JSON.parse(lire(join(d, 'manifest.json')))
+    expect(appliquerStubs(d, manifeste, shims)).toMatchObject({ applique: true })
+    expect(JSON.parse(lire(join(d, MARQUEUR_STUBS))).enCours).toBeUndefined()
+    expect(JSON.parse(lire(join(d, 'manifest.json'))).background.scripts).toEqual([FICHIER_HEAD, 'browser-polyfill.js', FICHIER_POST, 'bg.js'])
+    expect(lire(join(d, 'popup.html')).split(FICHIER_HEAD)).toHaveLength(2)
+    expect(lire(join(d, 'o/options.html'))).toContain(FICHIER_HEAD)
+    expect(appliquerStubs(d, manifeste, shims).raison).toBe('deja-applique')
+  })
+
   it('MV3 : aucun stub, aucun fichier', () => {
     const m = { manifest_version: 3, name: 'x', version: '1', background: { service_worker: 'sw.js' } }
     const d = extension(m, { 'sw.js': '//' })

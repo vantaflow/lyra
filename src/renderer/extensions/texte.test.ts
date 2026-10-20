@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JournalExtension } from '../../shared/types'
-import { depuis, etatTexte, lignesJournal, origineTexte, porteeTexte, sitesExclus } from './texte'
+import { depuis, etatTexte, lignesJournal, origineTexte, porteeTexte, resumeFile, sitesExclus } from './texte'
 
 const journal = (p: Partial<JournalExtension> = {}): JournalExtension => ({ avertissementsChargement: [], apiStubees: {}, apiManquantes: [], conflitsRaccourcis: [], redondanceBoucliers: false, ...p })
 
@@ -61,5 +61,14 @@ describe('lignesJournal', () => {
   it('origine', () => {
     expect(origineTexte({ magasin: 'firefox', convertie: true })).toBe('Firefox · convertie')
     expect(origineTexte({ magasin: 'chrome' })).toBe('Chrome')
+  })
+})
+
+describe('resumeFile', () => {
+  it('« 5 sur 6 réinstallées, 1 à installer à la main »', () => {
+    const e = { id: 'x', nom: 'X', magasin: 'chrome' as const }
+    const r = (etat: 'installee' | 'manuel' | 'erreur' | 'a-confirmer') => ({ entree: e, etat })
+    expect(resumeFile({ resultats: [r('installee'), r('installee'), r('installee'), r('installee'), r('installee'), r('manuel')] })).toBe('5 sur 6 réinstallées, 1 à installer à la main')
+    expect(resumeFile({ resultats: [r('installee'), r('erreur'), r('a-confirmer')] })).toBe('1 sur 3 réinstallées, 1 en erreur, 1 à confirmer')
   })
 })

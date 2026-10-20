@@ -289,6 +289,14 @@ describe('mises à jour du Chrome Web Store', () => {
     expect(versionDepuisReponseMaj(xml(id, 'abc'), id)).toBeUndefined()
   })
 
+  it("une balise <app …/> auto-fermante n'attrape pas l'updatecheck de l'application suivante", () => {
+    const a = 'a'.repeat(32)
+    const b = 'b'.repeat(32)
+    const xmlDeux = `<gupdate><app appid="${a}" status="error-unknownApplication"/><app appid="${b}" status="ok"><updatecheck status="ok" version="9.9"/></app></gupdate>`
+    expect(versionDepuisReponseMaj(xmlDeux, a)).toBeUndefined()
+    expect(versionDepuisReponseMaj(xmlDeux, b)).toBe('9.9')
+  })
+
   it('interroge l\'endpoint updatecheck par identifiant puis réinstalle la nouvelle version par le chemin normal', async () => {
     const paire = generateKeyPairSync('rsa', { modulusLength: 2048 })
     const v1 = crx3Signe(zipSync({ 'manifest.json': manifest({ version: '1.0.0' }) }), { cle: paire })

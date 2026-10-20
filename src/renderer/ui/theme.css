@@ -1558,8 +1558,9 @@ html.dnd #app {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 4px;
+  padding: 2px 4px 8px;
   min-height: 34px;
+  border-bottom: 1px solid #eeeef4;
 }
 .pn-ext-rangee browser-action-list {
   display: flex;

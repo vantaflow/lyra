@@ -86,6 +86,11 @@ export interface DepsInstallateurFirefox extends DepsInstallateurChrome {
 export interface InstallateurFirefox {
   /** AMO (nom, slug, identifiant gecko, adresse) ou chemin d'un .xpi. Ne lève jamais. */
   installerFirefox(source: string): Promise<ResultatInstallation>
+  /**
+   * Import depuis un autre navigateur : slug ou identifiant gecko AMO seulement, résolution stricte (pas de repli sur la
+   * recherche ni de choix proposé). Ne lève jamais.
+   */
+  installerAmoStrict(source: string): Promise<ResultatInstallation>
   /** Version la plus récente sur AMO (undefined : inconnue). */
   versionDistanteAmo(slug: string): Promise<string | undefined>
   /** Retélécharge, reconvertit et réinstalle (mêmes bornes, sha256, signature d'identité). */
@@ -137,8 +142,8 @@ export function creerInstallateurFirefox(d: DepsInstallateurFirefox): Installate
     })
   }
 
-  async function depuisAmo(source: SourceAmo, forcer: boolean): Promise<ResultatInstallation> {
-    const r = forcer && source.type === 'slug' ? await amo.resoudreStrict(source.slug) : await amo.resoudre(source)
+  async function depuisAmo(source: SourceAmo, forcer: boolean, strict = false): Promise<ResultatInstallation> {
+    const r = (forcer || strict) && source.type === 'slug' ? await amo.resoudreStrict(source.slug) : await amo.resoudre(source)
     if ('choix' in r) {
       return { etat: 'choix', raison: `Plusieurs extensions ressemblent à « ${source.type === 'recherche' ? source.texte : source.type === 'slug' ? source.slug : ''} » : choisis-en une.`, candidats: r.choix }
     }
@@ -160,8 +165,19 @@ export function creerInstallateurFirefox(d: DepsInstallateurFirefox): Installate
     }
   }
 
+  async function installerAmoStrict(source: string): Promise<ResultatInstallation> {
+    const a = analyserSourceAmo(source)
+    if (!a || (a.type !== 'guid' && a.type !== 'slug')) return echec(`identifiant Firefox invalide : ${source.slice(0, 60)}`)
+    try {
+      return await depuisAmo(a, false, true)
+    } catch (e) {
+      return echec(e instanceof ErreurArchive ? e.message : `installation impossible : ${message(e)}`)
+    }
+  }
+
   return {
     installerFirefox,
+    installerAmoStrict,
     versionDistanteAmo: async (slug) => (await amo.resoudreStrict(slug)).version,
     mettreAJourAmo: (slug) => depuisAmo({ type: 'slug', slug }, true).catch((e) => echec(`mise à jour impossible : ${message(e)}`))
   }
@@ -171,10 +187,6 @@ export function creerInstallateurFirefox(d: DepsInstallateurFirefox): Installate
  * Adaptateur pour `installerParId` (import depuis un autre navigateur) : n'accepte qu'un slug ou un identifiant gecko AMO,
  * jamais un chemin, un .xpi ni une adresse hors AMO (l'identifiant vient d'un profil tiers, donc non fiable).
  */
-export function installateurFirefoxParId(inst: Pick<InstallateurFirefox, 'installerFirefox'>): (id: string) => Promise<ResultatInstallation> {
-  return async (id) => {
-    const a = analyserSourceAmo(id)
-    if (!a || (a.type !== 'guid' && a.type !== 'slug')) return { etat: 'erreur', raison: `identifiant Firefox invalide : ${id.slice(0, 60)}` }
-    return inst.installerFirefox(a.type === 'guid' ? a.guid : a.slug)
-  }
+export function installateurFirefoxParId(inst: Pick<InstallateurFirefox, 'installerAmoStrict'>): (id: string) => Promise<ResultatInstallation> {
+  return (id) => inst.installerAmoStrict(id)
 }

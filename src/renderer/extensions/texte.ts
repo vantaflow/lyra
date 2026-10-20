@@ -1,5 +1,5 @@
 /** Textes de la page lyra://extensions (purs, testables sans DOM). */
-import type { InfoExtension, JournalExtension } from '../../shared/types'
+import type { EtatEntreeFile, InfoExtension, JournalExtension, ResultatFile } from '../../shared/types'
 
 /** « il y a 2 h » (Extensions.dc.html : « Vérifiées il y a 2 h »). */
 export function depuis(iso: string | undefined, maintenant = Date.now()): string {
@@ -84,3 +84,20 @@ export const LIMITES: string[] = [
   "Les extensions ne s'exécutent pas en fenêtre privée (limite d'electron-chrome-extensions).",
   "Manifest V2 déprécié par Electron : risque de retrait dans une version future. Lyra reste sur Electron 44 tant que le MV2 des extensions clés en dépend, et pousse les auteurs vers MV3."
 ]
+
+/** « 5 sur 6 réinstallées, 1 à installer à la main » (+ « 1 en erreur », « 1 à confirmer »). */
+export function resumeFile(r: Pick<ResultatFile, 'resultats'>): string {
+  const n = (etat: EtatEntreeFile): number => r.resultats.filter((x) => x.etat === etat).length
+  const morceaux = [`${n('installee')} sur ${r.resultats.length} réinstallées`]
+  if (n('manuel') > 0) morceaux.push(`${n('manuel')} à installer à la main`)
+  if (n('erreur') > 0) morceaux.push(`${n('erreur')} en erreur`)
+  if (n('a-confirmer') > 0) morceaux.push(`${n('a-confirmer')} à confirmer`)
+  return morceaux.join(', ')
+}
+
+export const ETAT_FILE: Record<EtatEntreeFile, string> = {
+  installee: 'Réinstallée',
+  manuel: 'À installer à la main',
+  erreur: 'Erreur',
+  'a-confirmer': 'À confirmer'
+}

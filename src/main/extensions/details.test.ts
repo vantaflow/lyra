@@ -25,8 +25,12 @@ describe('porteeDuManifest', () => {
   it('hôtes précis', () => {
     expect(porteeDuManifest({ host_permissions: ['*://*.youtube.com/*', 'https://www.youtube.com/*'], content_scripts: [{ matches: ['https://youtu.be/*'] }] })).toEqual({
       tous: false,
-      hotes: ['www.youtube.com', 'youtu.be', 'youtube.com']
+      hotes: ['youtu.be', 'youtube.com']
     })
+  })
+  it('SponsorBlock : un hôte et ses sous-domaines → « youtube.com seulement »', () => {
+    expect(porteeDuManifest({ host_permissions: ['*://*.youtube.com/*', 'https://www.youtube.com/*', 'https://m.youtube.com/*'] })).toEqual({ tous: false, hotes: ['youtube.com'] })
+    expect(porteeDuManifest({ host_permissions: ['https://www.youtube.com/*', 'https://notyoutube.com/*'] }).hotes).toEqual(['notyoutube.com', 'www.youtube.com'])
   })
   it('aucun site', () => {
     expect(porteeDuManifest({ permissions: ['storage'] })).toEqual({ tous: false, hotes: [] })

@@ -116,8 +116,18 @@ function urlVersionCws(id: string): string {
 
 /** Version annoncée par la réponse XML de l'endpoint de mise à jour (`<updatecheck status="ok" version="…"/>`). */
 export function versionDepuisReponseMaj(xml: string, id: string): string | undefined {
-  const app = new RegExp(`<app\\b[^>]*\\bappid="${id}"[^>]*>([\\s\\S]*?)(?:</app>|$)`).exec(xml)
-  const balise = app && /<updatecheck\b([^>]*)>/.exec(app[1])
+  // Balises `<app …>` une à une : une balise auto-fermante (`<app appid="…" status="error-…"/>`) n'a pas de corps et ne doit
+  // pas happer l'`updatecheck` de l'application suivante.
+  let corps: string | undefined
+  for (const m of xml.matchAll(/<app\b([^>]*?)(\/?)>/g)) {
+    if (!new RegExp(`\\bappid="${id}"`).test(m[1])) continue
+    if (m[2] === '/') return undefined
+    const debut = (m.index ?? 0) + m[0].length
+    const fin = xml.indexOf('</app>', debut)
+    corps = xml.slice(debut, fin < 0 ? undefined : fin)
+    break
+  }
+  const balise = corps !== undefined ? /<updatecheck\b([^>]*)>/.exec(corps) : null
   if (!balise) return undefined
   if (!/\bstatus="ok"/.test(balise[1])) return undefined
   const v = /\bversion="([0-9][0-9.]{0,40})"/.exec(balise[1])
@@ -234,15 +244,23 @@ export function creerBaseInstallation(d: DepsInstallateurChrome) {
     mkdirSync(join(d.base, id), { recursive: true })
     const ancien = existsSync(cible) ? `${cible}.ancien-${randomUUID().slice(0, 8)}` : undefined
     if (ancien) renameSync(cible, ancien)
+    // Retour à l'état d'avant : chaque étape est protégée (une restauration qui échoue ne masque ni l'erreur d'origine ni les étapes suivantes).
     const restaurer = async (): Promise<void> => {
-      rmSync(cible, { recursive: true, force: true })
-      if (ancien) renameSync(ancien, cible)
+      const etape = async (etapeNom: string, f: () => unknown): Promise<void> => {
+        try {
+          await f()
+        } catch (err) {
+          journal(`${nom} ${version} : restauration incomplète (${etapeNom} : ${err instanceof Error ? err.message : String(err)})`)
+        }
+      }
+      await etape('suppression', () => rmSync(cible, { recursive: true, force: true }))
+      if (ancien) await etape('ancien dossier', () => renameSync(ancien, cible))
       if (precedente) {
-        d.registre.ajouter(precedente)
-        if (precedente.active) await d.chargeur.charger(id)
+        await etape('registre', () => d.registre.ajouter(precedente))
+        if (precedente.active) await etape('rechargement', () => d.chargeur.charger(id))
       } else {
-        d.registre.retirer(id)
-        rmSync(join(d.base, id), { recursive: true, force: true })
+        await etape('registre', () => d.registre.retirer(id))
+        await etape('dossier', () => rmSync(join(d.base, id), { recursive: true, force: true }))
       }
     }
     try {

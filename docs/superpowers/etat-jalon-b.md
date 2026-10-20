@@ -47,8 +47,17 @@ Plan : `docs/superpowers/plans/2026-10-19-lyra-jalon-b.md` (6 tâches). Branche 
   - Tests : `texte.test.ts`, `details.test.ts`, validate, palette, protocole ; e2e `extensions-page.spec.ts` ; capture `.superpowers/sdd/.../capture-extensions.png`. La fixture MV3 a désormais `action` et `options_page`.
   - Non fait : icônes réelles des extensions dans la liste (pastilles lettre du design), `requestPermissions` toujours refusé.
 
-## Suite
-- Tâches 5 et 6 : page `lyra://extensions` (affichage du journal), file d'import (brancher `installerFirefox` sur `installerParId`) et finition.
+- **Tâche 6 — file d'import, réglage, finition** :
+  - `src/main/extensions/fileImport.ts` : `consommerFile(file, deps)` installe en série via `installerParId` ; Firefox par `installateurFirefoxParId` → `installerAmoStrict` (slug ou identifiant gecko AMO, `resoudreStrict`, jamais de repli recherche) ; une entrée `imposee` reste en file « à confirmer » tant que son identifiant n'est pas dans `confirmees` ; rend `{ resultats, restantes }` (restantes = à confirmer + erreurs ; l'appelant réécrit la file entière, `setSettings` remplaçant les tableaux). `EntreeImport` est structurellement compatible avec `ExtensionEnAttente` du jalon E (non fusionné) : **à la fusion, il ne reste qu'à appeler `extensions:consommerFile { entrees, confirmees }` avec `settings.import.extensionsEnAttente` puis à réécrire `restantes`**.
+  - IPC `extensions:consommerFile` (refusé en fenêtre privée, une file à la fois), évènements `extensions:progressionFile` et `extensions:finFile` diffusés aux pages `lyra://` et à l'interface ; `lyra://extensions` affiche « 5 sur 6 réinstallées, 1 à installer à la main » et la liste. E2e avec installateurs simulés (`LYRA_FILE_SIMULEE=1` sous `LYRA_TEST`).
+  - Réglage « Mettre à jour les extensions automatiquement (toutes les 6 h) » dans Réglages → Réseau et identité.
+  - Fidélité au design : séparateur `#eeeef4` + 8 px sous la rangée d'icônes du panneau ; boutons de ligne Options · Sites · Journal (« Replier » à la place de Journal quand la ligne est dépliée) ; « Supprimer » (`.btn.danger`) pour une extension incompatible et dans la ligne dépliée (le design ne montre pas de suppression pour une ligne ordinaire) ; portée dédoublonnée (`*.youtube.com` + `www.youtube.com` → `youtube.com`) ; message si « Options » échoue.
+  - Reportés de la tâche 1 à 5 : désinstallation par renommage (`.suppr-…`) puis suppression (balayage au démarrage) ; `createWindow` des extensions n'ajoute plus d'étoile newtab ; `extensions:lister` sans `dossier` ; test e2e « jamais en fenêtre privée » ; regex XML `<app …/>` auto-fermant ; `restaurer()` protégée étape par étape ; marqueur des stubs écrit d'abord (« enCours ») et repris après un arrêt.
+  - Documentation : README (section Extensions, licence GPL-3.0), « À propos » des réglages.
+
+## Reste
+- Fusion de `jalon-b` dans `main` (puis, avec le jalon E, branchement de la file d'import sur `settings.import.extensionsEnAttente`).
+- `ETAT.md` : mis à jour par la session principale.
 
 ## Points à connaître
 - Tâche 2 : le CRX du Web Store est téléchargé par Lyra (`clients2.google.com`, redirections Google acceptées, 30 s, 128 Mio) au lieu d'`installExtension` de la bibliothèque, pour que tout passe par l'extraction sûre et le registre. Redirections suivies à la main (https, hôtes listés, 5 max) ; signature CRX3 vérifiée ; mises à jour par l'endpoint updatecheck de Google puis `installerCws`.

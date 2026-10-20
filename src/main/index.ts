@@ -177,7 +177,7 @@ function ongletsDe(wc: WebContents): TabManager {
   return m
 }
 
-function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSession): BaseWindow {
+function creerFenetre(opts: { privee?: boolean; urlInitiale?: string } = {}, restauration?: FenetreSession): BaseWindow {
   const fenetre = manager.creerFenetre(opts)
   // Fenêtre privée : session mémoire à elle (cookies, cache, stockage jetés à la fermeture).
   // Toujours créée, jamais de repli sur `persist:lyra` : la première navigation attend l'équipement (démarrage compris).
@@ -238,7 +238,7 @@ function creerFenetre(opts: { privee?: boolean } = {}, restauration?: FenetreSes
     void equipement.catch(echecEquipement)
   }
   // Une session privée est équipée (PAC compris) avant la première navigation : aucune requête ne part sans passerelle.
-  else void equipement.then(() => !fenetre.win.isDestroyed() && tabs.ouvrir('lyra://newtab')).catch(echecEquipement)
+  else void equipement.then(() => !fenetre.win.isDestroyed() && tabs.ouvrir(opts.urlInitiale ?? 'lyra://newtab')).catch(echecEquipement)
   return fenetre.win
 }
 
@@ -551,9 +551,8 @@ void app.whenReady().then(async () => {
     },
     fenetres: {
       creer: (url) => {
-        const win = creerFenetre()
-        if (url && /^https?:/i.test(url)) onglets.get(win.id)?.ouvrir(url)
-        return win
+        // L'adresse demandée remplace l'étoile « nouvel onglet » de départ (pas d'étoile en trop).
+        return creerFenetre({ urlInitiale: url && /^https?:/i.test(url) ? url : undefined })
       },
       fermer: (win) => {
         if (!win.isDestroyed()) win.close()
@@ -631,6 +630,20 @@ void app.whenReady().then(async () => {
     journal: journalExtensions,
     pagesExtension,
     modeTest: process.env.LYRA_TEST === '1',
+    diffuser: (canal, data) => {
+      for (const wc of webContents.getAllWebContents()) {
+        const url = wc.isDestroyed() ? '' : wc.getURL()
+        if (url.startsWith('lyra://') || url.includes('ui.html')) envoyer(wc, canal, data)
+      }
+    },
+    // E2e : installateurs simulés (aucun accès réseau) — « b… » échoue, le reste s'installe.
+    installateursFileTest:
+      process.env.LYRA_TEST === '1' && process.env.LYRA_FILE_SIMULEE === '1'
+        ? {
+            chrome: async (id) => (id.startsWith('b') ? { etat: 'erreur', raison: 'Hors ligne (simulé).' } : { etat: 'installee', id, nom: `Simulée ${id.slice(0, 4)}`, version: '1.0' }),
+            firefox: async (id) => ({ etat: 'installee', id, nom: `Simulée ${id}`, version: '1.0' })
+          }
+        : undefined,
     estPrivee: (wc) => {
       const f = manager.deWebContents(wc)
       return f !== undefined && privees.has(f.id)

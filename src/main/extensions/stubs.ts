@@ -72,18 +72,26 @@ export function appliquerStubs(dossier: string, manifest: Record<string, unknown
   const marqueur = join(dossier, MARQUEUR_STUBS)
   if (existsSync(marqueur)) {
     let version: unknown
+    let enCours = false
     try {
-      version = (JSON.parse(readFileSync(marqueur, 'utf8')) as { version?: unknown }).version
+      const m = JSON.parse(readFileSync(marqueur, 'utf8')) as { version?: unknown; enCours?: unknown }
+      version = m.version
+      enCours = m.enCours === true
     } catch {
       version = undefined
     }
-    if (version === VERSION_STUBS) return { applique: false, raison: 'deja-applique' }
-    // Autre version des shims : fichiers recopiés, insertions déjà faites.
-    copyFileSync(shims.head, join(dossier, FICHIER_HEAD))
-    copyFileSync(shims.post, join(dossier, FICHIER_POST))
-    writeFileSync(marqueur, JSON.stringify({ version: VERSION_STUBS }))
-    return { applique: true, raison: 'mis-a-jour' }
+    if (version === VERSION_STUBS && !enCours) return { applique: false, raison: 'deja-applique' }
+    // Un marqueur « en cours » : une application précédente s'est arrêtée en route ; les insertions sont idempotentes, on les reprend.
+    if (version !== VERSION_STUBS) {
+      // Autre version des shims : fichiers recopiés, insertions déjà faites.
+      copyFileSync(shims.head, join(dossier, FICHIER_HEAD))
+      copyFileSync(shims.post, join(dossier, FICHIER_POST))
+      writeFileSync(marqueur, JSON.stringify({ version: VERSION_STUBS }))
+      return { applique: true, raison: 'mis-a-jour' }
+    }
   }
+  // Marqueur d'abord (« en cours »), insertions ensuite, marqueur définitif à la fin : un arrêt en route laisse une trace.
+  writeFileSync(marqueur, JSON.stringify({ version: VERSION_STUBS, enCours: true }))
   copyFileSync(shims.head, join(dossier, FICHIER_HEAD))
   copyFileSync(shims.post, join(dossier, FICHIER_POST))
 
