@@ -36,12 +36,40 @@ if (WEB) {
   }
 }
 
+// Monde isolé des scripts personnalisés (jamais le monde principal ; au-dessus des mondes d'Electron). Même valeur que
+// `MONDE_SCRIPTS_PERSO` de `src/main/sites/personnalise.ts` : le preload sandboxé ne peut importer que des modules sans Electron.
+const MONDE_SCRIPTS_PERSO = 1013
+
 // Règles du site de la page principale pour CETTE frame (réponse synchrone, avant tout script de la page) : identité alternative
-// (`navigator`) et cookies JavaScript neutralisés (iframes tierces sous « 1re partie », toutes les frames sous « Bloqués »).
+// (`navigator`), cookies JavaScript neutralisés (iframes tierces sous « 1re partie », toutes les frames sous « Bloqués »), lecture
+// automatique des médias, style personnalisé (inséré ici même, donc avant le premier rendu) et, dans la frame principale seulement,
+// scripts personnalisés (exécutés au chargement, dans un monde isolé).
 if (WEB || HERITE) {
-  const regles: { ua?: string; cookies?: boolean } = ipcRenderer.sendSync('page:regles-site') ?? {}
-  const fonctions = [regles.ua, regles.cookies ? FONCTION_COOKIES_NEUTRALISES : ''].filter((f): f is string => !!f)
+  const regles: { ua?: string; cookies?: boolean; lecture?: string; style?: string; scripts?: Array<{ nom: string; code: string }> } =
+    ipcRenderer.sendSync('page:regles-site') ?? {}
+  const fonctions = [regles.ua, regles.cookies ? FONCTION_COOKIES_NEUTRALISES : '', regles.lecture].filter((f): f is string => !!f)
   if (fonctions.length) void webFrame.executeJavaScript(scriptRegles(fonctions)).catch(() => undefined)
+  if (typeof regles.style === 'string' && regles.style.length > 0) {
+    try {
+      webFrame.insertCSS(regles.style, { cssOrigin: 'user' })
+    } catch {
+      // une feuille que Chromium refuse ne doit pas empêcher la page de se charger
+    }
+  }
+  if (WEB && window === window.top && Array.isArray(regles.scripts) && regles.scripts.length > 0) {
+    const scripts = regles.scripts
+    const lancer = (): void => {
+      webFrame.setIsolatedWorldInfo(MONDE_SCRIPTS_PERSO, { name: 'Scripts personnalisés Lyra' })
+      // Chaque script a sa propre exécution : l'échec de l'un n'empêche pas les suivants ; son bloc évite les collisions de const/let.
+      for (const s of scripts) {
+        webFrame
+          .executeJavaScriptInIsolatedWorld(MONDE_SCRIPTS_PERSO, [{ code: '{\n' + s.code + '\n}' }])
+          .catch((err: unknown) => console.warn('[lyra] script personnalisé en échec :', s.nom, err))
+      }
+    }
+    if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', lancer, { once: true })
+    else lancer()
+  }
 }
 
 function insererStyles(msg?: { classes: string[]; ids: string[]; hrefs: string[]; lifecycle: 'start' | 'dom-update' }): void {

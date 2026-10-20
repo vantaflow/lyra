@@ -39,11 +39,12 @@ import type { TypePermission } from '../shared/types'
 import type { Passerelles } from './passerelles/Passerelles'
 import { creerPasserelles } from './passerelles/electron'
 import { installerPasserellesIpc } from './passerelles/ipc'
-import { installerReglesSites, installerSites } from './sites/installer'
+import { installerReglesSites, installerSites, installerZoomSites } from './sites/installer'
 import { installerTheme } from './theme/installer'
 import { couleurFaviconEnCache } from './theme/couleurFavicon'
 import { reglagesHorsSitesChanges } from './sites/service'
 import { resoudre } from './settings/sites'
+import { zoomVoulu } from './tabs/zoom'
 import { Dnd, type NotificationRetenue } from './dnd/Dnd'
 import { origineDe, type Shields } from './shields/Shields'
 import type { DureeDnd } from '../shared/ipc'
@@ -213,8 +214,8 @@ function creerFenetre(opts: { privee?: boolean; urlInitiale?: string } = {}, res
       endormirApresMin: () => reglagesCourants().ciel.endormirApresMin,
       surChangement: sauverSession,
       session: sesPrivee,
-      // Fenêtre privée : le zoom par site n'est ni lu ni mémorisé.
-      zoomDe: opts.privee ? undefined : (origine) => resoudre(reglagesCourants().sites, origine).zoom,
+      // Fenêtre privée : le zoom des règles est lu (jamais écrit : le zoom manuel n'y est pas mémorisé).
+      zoomDe: (origine) => zoomVoulu(reglagesCourants().sites, origine),
       memoriserZoom: opts.privee ? undefined : (origine, zoom) => void reglagesStore?.setSettings({ sites: { [origine]: { zoom } } }),
       rechercheUrl: (texte) => urlDeRecherche(moteurParId(reglagesCourants().moteurParDefaut, moteursDisponibles(reglagesCourants())), texte),
       // Fenêtre privée : ni détection automatique ni proposition d'ajout (rien n'est écrit dans les réglages).
@@ -596,6 +597,8 @@ void app.whenReady().then(async () => {
   passerelles = pass
   installerPasserellesIpc(pass, estPrivee)
   installerSites({ reglages, estPrivee })
+  // Règle de zoom modifiée (ou retirée : « Par défaut ») : appliquée sans recharger aux étoiles ouvertes du site, fenêtres privées comprises.
+  installerZoomSites({ reglages, onglets: () => onglets.values() })
   // Cookies, scripts et user-agent par site : écouteurs du hub (après les Boucliers) sur chaque session de pages web.
   const reglesSites = installerReglesSites({ reglages, estPage: (wc) => ongletsPossedant(wc) !== undefined })
   const sessionsWeb = [session.defaultSession, session.fromPartition('persist:lyra')]

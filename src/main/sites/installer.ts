@@ -42,7 +42,10 @@ export function installerReglesSites(deps: { reglages: Reglages; estPage(wc: Web
         e.returnValue = AUCUNE_REGLE_PAGE
         return
       }
-      e.returnValue = reglesDePage(sites(), f.parent ? e.sender.getURL() : f.url, urlDeFrame(f.url, f.origin))
+      e.returnValue = reglesDePage(sites(), f.parent ? e.sender.getURL() : f.url, urlDeFrame(f.url, f.origin), undefined, {
+        globaux: deps.reglages.getSettings().styles,
+        principale: !f.parent
+      })
     } catch (err) {
       console.warn('[sites] règles de la frame :', err)
       e.returnValue = AUCUNE_REGLE_PAGE
@@ -57,4 +60,15 @@ export function installerReglesSites(deps: { reglages: Reglages; estPage(wc: Web
     void regles.surSitesChanges(avant, s.sites).catch((err) => console.error('[sites] nettoyage à l’écriture de la règle', err))
   })
   return regles
+}
+
+/** Règles de zoom : à chaque écriture de `sites`, les étoiles ouvertes des sites concernés prennent leur nouveau zoom (sans recharger). */
+export function installerZoomSites(deps: { reglages: Reglages; onglets(): Iterable<{ zoomsChanges(avant: Record<string, RegleSite>, apres: Record<string, RegleSite>): void }> }): void {
+  let precedent = deps.reglages.getSettings().sites
+  deps.reglages.onChanged((s) => {
+    if (s.sites === precedent) return
+    const avant = precedent
+    precedent = s.sites
+    for (const tm of deps.onglets()) tm.zoomsChanges(avant, s.sites)
+  })
 }

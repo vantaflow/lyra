@@ -34,7 +34,38 @@ describe('reglesDePage : ce que le preload d’une frame reçoit', () => {
     expect(heritee.ua).toContain('Firefox')
   })
   it('« Bloqués » : même la page principale ; sans règle : rien', () => {
-    expect(reglesDePage({ 'exemple.test': { cookies: 'bloques' } }, HAUT, HAUT)).toEqual({ ua: '', cookies: true })
+    expect(reglesDePage({ 'exemple.test': { cookies: 'bloques' } }, HAUT, HAUT)).toEqual({ ...AUCUNE_REGLE_PAGE, cookies: true })
     expect(reglesDePage({}, HAUT, 'https://pixel.tiers.test/')).toEqual(AUCUNE_REGLE_PAGE)
+  })
+})
+
+describe('reglesDePage : lecture automatique, style et scripts personnalisés', () => {
+  const globaux = { css: 'a{margin:0}', scripts: [{ nom: 'g', code: 'window.g = 1', actif: true }] }
+  const perso = (principale: boolean) => ({ globaux, principale })
+
+  it('lecture automatique : la règle de la page principale vaut pour toutes ses frames', () => {
+    const sites: Sites = { 'exemple.test': { lectureAuto: 'bloquer' } }
+    expect(reglesDePage(sites, HAUT, HAUT).lecture).toContain('NotAllowedError')
+    expect(reglesDePage(sites, HAUT, 'https://video.tiers.test/cadre').lecture).toContain('NotAllowedError')
+    expect(reglesDePage({ 'exemple.test': { lectureAuto: 'autoriser' } }, HAUT, HAUT).lecture).toBe('')
+    expect(reglesDePage({}, HAUT, HAUT).lecture).toBe('')
+  })
+  it('style : global + site de la frame elle-même ; une iframe tierce ne reçoit que le global', () => {
+    const sites: Sites = { 'exemple.test': { style: 'body{color:red}' } }
+    expect(reglesDePage(sites, HAUT, HAUT, undefined, perso(true)).style).toBe('a{margin:0}\nbody{color:red}')
+    expect(reglesDePage(sites, HAUT, 'https://pixel.tiers.test/', undefined, perso(false)).style).toBe('a{margin:0}')
+  })
+  it('style : une frame sans origine web (opaque) ne reçoit rien', () => {
+    expect(reglesDePage({}, HAUT, '', undefined, perso(false)).style).toBe('')
+  })
+  it('scripts : seulement pour la frame principale, globaux puis du site, actifs seulement', () => {
+    const sites: Sites = { 'exemple.test': { scriptsPerso: [{ nom: 's', code: 'window.s = 1', actif: true }, { nom: 'off', code: 'x', actif: false }] } }
+    expect(reglesDePage(sites, HAUT, HAUT, undefined, perso(true)).scripts.map((x) => x.nom)).toEqual(['g', 's'])
+    expect(reglesDePage(sites, HAUT, 'https://exemple.test/cadre', undefined, perso(false)).scripts).toEqual([])
+  })
+  it('sans réglages globaux fournis : rien de personnalisé', () => {
+    const r = reglesDePage({ 'exemple.test': { style: 'x', scriptsPerso: [{ nom: 's', code: 'c', actif: true }] } }, HAUT, HAUT)
+    expect(r.style).toBe('')
+    expect(r.scripts).toEqual([])
   })
 })

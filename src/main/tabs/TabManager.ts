@@ -8,7 +8,8 @@ import { peutEndormir } from './dormance'
 import type { FenetreSession, HistoriqueEtoile } from '../session/SessionStore'
 import { categorieDe, type Categorie } from './categorie'
 import { origineDe } from '../shields/Shields'
-import { estZoomNormal, palierSuivant } from './zoom'
+import type { RegleSite } from '../../shared/types'
+import { estZoomNormal, palierSuivant, zoomChange } from './zoom'
 import { optionsFenetreCachee, prefsPageCachee, testCache } from '../modeTest'
 import { estUrlErreur, urlOriginale } from './erreurs'
 import { raccourciPage } from './raccourcis'
@@ -254,6 +255,24 @@ export class TabManager {
     if (origine) this.options.memoriserZoom?.(origine, facteur)
     this.notifier()
     return facteur
+  }
+
+  /**
+   * Règles par site modifiées : chaque étoile ouverte dont le zoom voulu change prend le nouveau (« Par défaut » : 100 %), sans
+   * rechargement. Le zoom manuel d'un site dont la règle n'a pas changé n'est pas touché (fenêtre privée comprise).
+   */
+  zoomsChanges(avant: Record<string, RegleSite>, apres: Record<string, RegleSite>): void {
+    let change = false
+    for (const v of this.vues.values()) {
+      const wc = v.webContents
+      if (wc.isDestroyed()) continue
+      const origine = origineDe(wc.getURL())
+      const voulu = origine ? zoomChange(avant, apres, origine) : undefined
+      if (voulu === undefined || Math.abs(wc.getZoomFactor() - voulu) < 0.001) continue
+      wc.setZoomFactor(voulu)
+      change = true
+    }
+    if (change) this.notifier()
   }
 
   rechercher(id: string, texte: string, o: { suivant?: boolean; precedent?: boolean } = {}): void {
