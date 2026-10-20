@@ -4,9 +4,6 @@ name: audit
 # un effet observable. Lancement manuel ; le rapport test-results/audit-boutons.json est publié même en cas d'échec.
 on:
   workflow_dispatch:
-  # TEMPORAIRE (le workflow n'existe pas encore sur main, donc pas de dispatch possible) : retiré avant la fusion.
-  push:
-    branches: [audit-boutons]
 
 jobs:
   audit:

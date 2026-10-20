@@ -88,7 +88,11 @@ const BRUIT: Array<{ motif: RegExp; raison: string }> = [
   // Conséquence voulue de l'interception réseau de l'audit (réponses 503) : l'application la journalise et continue.
   { motif: /HTTP 503|Intercepté \(test\)/, raison: "réseau coupé par l'audit" },
   // Compositeur GPU de Chromium quand une vue cachée est retaillée ou détruite (fenêtres cachées des tests).
-  { motif: /non-existent mailbox|Invalid mailbox/, raison: 'Chromium, vues cachées' }
+  { motif: /non-existent mailbox|Invalid mailbox/, raison: 'Chromium, vues cachées' },
+  // Chromium sous Windows seulement (run audit 39504049367) : messages 4 et 5 de blink.mojom.WidgetHost (état de
+  // saisie et bornes de sélection) d'une vue cachée rejetés par le navigateur, sans effet observable (page intacte,
+  // contrôles actionnés avec effet) ; aucun appel de Lyra ne passe par cette interface.
+  { motif: /Message \d+ rejected by interface blink\.mojom\.WidgetHost/, raison: 'Chromium Windows, vues cachées' }
 ]
 
 /**
@@ -565,7 +569,14 @@ export class Audit {
           await l.press('Enter').catch(() => undefined)
         }
       } else {
-        await l.click({ timeout: 3000 })
+        await l.click({ timeout: 3000 }).catch(async (e: unknown) => {
+          // Sous Windows, après l'entrée/sortie de Ne pas déranger, la vue chrome de la fenêtre CACHÉE des tests ne
+          // produit plus qu'environ une image par seconde (requestAnimationFrame : 3 rappels en 2,5 s au lieu de 160,
+          // run 39507010978) : l'attente de stabilité de Playwright, qui compare deux images, dépasse alors 3 s sans que
+          // rien ne bouge. Une seconde tentative, plus longue, distingue ce ralentissement d'un vrai mouvement.
+          if (!/not stable/.test(String(e))) throw e
+          await l.click({ timeout: 15_000 })
+        })
       }
       return undefined
     } catch (e) {
