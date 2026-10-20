@@ -71,7 +71,8 @@ const tri = (b: RegleSite['boucliers']): RegleEffective['boucliers'] | undefined
 export class ResolveurSites {
   private exact = new Map<string, RegleSite>()
   private hotes = new Map<string, RegleSite>()
-  private motifs: Array<[string, RegleSite]> = []
+  /** Motifs `*.hôte` indexés par suffixe (`hôte`) : on remonte les labels de l'hôte visité, sans parcourir tous les motifs. */
+  private motifs = new Map<string, RegleSite>()
   private cache = new Map<string, RegleEffective>()
 
   constructor(sites: Record<string, RegleSite> = {}) {
@@ -81,16 +82,15 @@ export class ResolveurSites {
   maj(sites: Record<string, RegleSite>): void {
     this.exact.clear()
     this.hotes.clear()
-    this.motifs = []
+    this.motifs.clear()
     this.cache.clear()
     for (const [cle, regle] of Object.entries(sites ?? {})) {
       const c = cleDe(cle)
       if (!c) continue
       if (c.type === 'origine') this.exact.set(c.valeur, regle)
       else if (c.type === 'hote') this.hotes.set(c.valeur, regle)
-      else this.motifs.push([c.valeur, regle])
+      else if (!this.motifs.has(c.valeur)) this.motifs.set(c.valeur, regle)
     }
-    this.motifs.sort((a, b) => b[0].length - a[0].length)
   }
 
   resoudre(url: string): RegleEffective {
@@ -111,7 +111,13 @@ export class ResolveurSites {
       if (e) regles.push(e)
       const h = o.hote && this.hotes.get(o.hote)
       if (h) regles.push(h)
-      if (o.hote) for (const [m, r] of this.motifs) if (o.hote.endsWith(`.${m}`)) regles.push(r)
+      // Suffixes propres de l'hôte, du plus long (le plus précis) au plus court.
+      if (o.hote && this.motifs.size > 0) {
+        for (let i = o.hote.indexOf('.'); i !== -1; i = o.hote.indexOf('.', i + 1)) {
+          const r = this.motifs.get(o.hote.slice(i + 1))
+          if (r) regles.push(r)
+        }
+      }
     }
     const sortie: Record<string, unknown> = {}
     let permissions: Partial<Record<TypePermission, 'autoriser' | 'refuser'>> | undefined
