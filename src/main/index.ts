@@ -633,9 +633,10 @@ void app.whenReady().then(async () => {
     pagesExtension,
     modeTest: process.env.LYRA_TEST === '1',
     diffuser: (canal, data) => {
+      // Jamais vers une fenêtre privée (la progression d'un import ne la concerne pas).
       for (const wc of webContents.getAllWebContents()) {
         const url = wc.isDestroyed() ? '' : wc.getURL()
-        if (url.startsWith('lyra://') || url.includes('ui.html')) envoyer(wc, canal, data)
+        if ((url.startsWith('lyra://') || url.includes('ui.html')) && !estPrivee(wc)) envoyer(wc, canal, data)
       }
     },
     // E2e : installateurs simulés (aucun accès réseau) — « b… » échoue, le reste s'installe.
@@ -646,10 +647,8 @@ void app.whenReady().then(async () => {
             firefox: async (id) => ({ etat: 'installee', id, nom: `Simulée ${id}`, version: '1.0' })
           }
         : undefined,
-    estPrivee: (wc) => {
-      const f = manager.deWebContents(wc)
-      return f !== undefined && privees.has(f.id)
-    },
+    // Chrome, overlay ou étoile (lyra://extensions comprise) : la fenêtre privée est reconnue dans les trois cas.
+    estPrivee,
     // File d'import du jalon E (`settings.import.extensionsEnAttente`) : absente tant que E n'est pas fusionné (file vide).
     // E2e (`LYRA_FILE_SIMULEE`) : file tenue en mémoire (le validateur de ce jalon ignore `import`).
     lireFile: () => (fileSimulee ? fileSimulee.liste : (reglages.getSettings() as unknown as { import?: { extensionsEnAttente?: unknown } }).import?.extensionsEnAttente),
@@ -658,7 +657,7 @@ void app.whenReady().then(async () => {
       else void reglages.setSettings({ import: { extensionsEnAttente: restantes } } as unknown as Partial<Settings>)
     },
     lireManifest: (e) => lireJson(join(baseExtensions, e.dossier, 'manifest.json')),
-    ouvrirEtoile: (wc, url) => ongletsDe(wc).ouvrir(url),
+    ouvrirEtoile: (wc, url) => (ongletsPossedant(wc) ?? ongletsDe(wc)).ouvrir(url),
     ecrireRegleSite: (origine, id, active) => void reglages.setSettings({ sites: { [origine]: { extensions: { [id]: active } } } }),
     choisir: async (wc, quoi) => {
       // Sous LYRA_TEST, pas de dialogue natif : le test fournit le chemin.

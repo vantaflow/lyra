@@ -86,3 +86,37 @@ describe('extensions:consommerFile', () => {
     expect(await m.appeler()).toEqual({ resultats: [], restantes: [] })
   })
 })
+
+describe("fenêtre privée : aucune écriture ni installation depuis une page d'une étoile privée", () => {
+  it('activer, désinstaller, règle par site, installer, options et mise à jour sont refusés', async () => {
+    const activer = vi.fn(async () => true)
+    const desinstaller = vi.fn(async () => true)
+    const ecrireRegleSite = vi.fn()
+    const verifier = vi.fn(async () => ({ misesAJour: [], erreurs: [] }))
+    const m = monter([], {
+      estPrivee: () => true,
+      chargeur: { lister: () => [{ id: id('a'), chargee: true }], activer, desinstaller } as never,
+      ecrireRegleSite,
+      miseAJour: { verifier } as never
+    })
+    const appeler = (canal: string, d?: unknown): unknown => m.handlers.get(canal)!(d, evenement)
+    expect(await appeler('extensions:activer', { id: id('a'), active: false })).toBe(false)
+    expect(await appeler('extensions:desinstaller', { id: id('a') })).toBe(false)
+    expect(await appeler('extensions:regleSite', { id: id('a'), origine: 'https://youtube.com', active: false })).toBe(false)
+    expect(await appeler('extensions:options', { id: id('a') })).toBe(false)
+    expect(await appeler('extensions:installer', { source: id('a') })).toMatchObject({ etat: 'erreur' })
+    expect(await appeler('extensions:majTout')).toMatchObject({ misesAJour: [] })
+    expect(activer).not.toHaveBeenCalled()
+    expect(desinstaller).not.toHaveBeenCalled()
+    expect(ecrireRegleSite).not.toHaveBeenCalled()
+    expect(verifier).not.toHaveBeenCalled()
+    expect(m.installerChrome).not.toHaveBeenCalled()
+  })
+
+  it('en fenêtre normale, les mêmes appels passent', async () => {
+    const activer = vi.fn(async () => true)
+    const m = monter([], { chargeur: { lister: () => [{ id: id('a'), chargee: true }], activer, desinstaller: vi.fn(async () => true) } as never })
+    expect(await (m.handlers.get('extensions:activer')!({ id: id('a'), active: false }, evenement) as Promise<boolean>)).toBe(true)
+    expect(activer).toHaveBeenCalledWith(id('a'), false)
+  })
+})

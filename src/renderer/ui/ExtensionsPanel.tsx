@@ -14,9 +14,12 @@ const ListeActions = 'browser-action-list' as unknown as FunctionComponent<{ par
 export function ExtensionsPanel() {
   const [reglages, setReglages] = useState<Settings | null>(null)
   const [aucune, setAucune] = useState(false)
+  // Fenêtre privée : jamais d'extensions (le panneau le dit au lieu de lister des icônes). Inconnu = traité comme privé.
+  const [privee, setPrivee] = useState<boolean | undefined>(undefined)
 
   useEffect(() => {
     void window.lyra.invoke('settings:get').then(setReglages)
+    void window.lyra.invoke('fenetre:privee').then(setPrivee, () => setPrivee(true))
     void window.lyra.invoke('extensions:lister').then((l) => setAucune(!l.some((e) => e.active && e.chargee)))
     const touche = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
@@ -39,8 +42,9 @@ export function ExtensionsPanel() {
     <div class="pn-fond" onMouseDown={(e) => e.target === e.currentTarget && fermer()}>
       <section class="pn-ext" role="dialog" aria-label="Panneau des extensions" style={{ ...placement(reglages?.ciel), visibility: reglages ? 'visible' : 'hidden' }}>
         <div class="pn-ext-rangee">
-          <ListeActions partition="persist:lyra" alignment="bottom left" />
-          {aucune && <span class="pn-ext-vide">Aucune extension active</span>}
+          {privee === false && <ListeActions partition="persist:lyra" alignment="bottom left" />}
+          {privee === true && <span class="pn-ext-vide">Les extensions ne s'exécutent pas en fenêtre privée.</span>}
+          {privee === false && aucune && <span class="pn-ext-vide">Aucune extension active</span>}
           <span style={{ flex: 1 }}></span>
           <a href="lyra://extensions" onClick={gerer}>
             Gérer

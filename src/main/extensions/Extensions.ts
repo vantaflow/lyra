@@ -25,7 +25,7 @@ export interface PontFenetres {
 
 export interface OptionsExtensions {
   session: Session
-  /** Session de la vue d'interface (icônes d'action `crx://`). */
+  /** Session de la vue d'interface : la seule qui sert les icônes d'action `crx://`. */
   sessionUI?: Session
   tabs: PontEtoiles
   fenetres: PontFenetres
@@ -72,8 +72,8 @@ export function creerExtensions(o: OptionsExtensions): Extensions {
   // Popups d'action : fenêtre native ancrée au bouton (spec §9, réponse 4). Sous `LYRA_TEST`, jamais affichée : la fenêtre
   // existe et charge son HTML (le popup est testable) mais `show()` n'est pas appelé.
   if (testCache()) lib.on('browser-action-popup-created', (popup) => void ((popup as unknown as { show: () => void }).show = () => undefined))
-  // Icônes d'action (<browser-action-list>) : protocole crx:// sur la session des pages.
-  ElectronChromeExtensions.handleCRXProtocol(o.session)
+  // Icônes d'action (<browser-action-list>) : protocole crx:// servi à la session de l'interface seulement. Les sites de
+  // `persist:lyra` ne l'ont pas : une page web ne peut pas lire les icônes (ni énumérer les extensions) par <img src="crx://…">.
   if (o.sessionUI && o.sessionUI !== o.session) ElectronChromeExtensions.handleCRXProtocol(o.sessionUI)
 
   singleton = {

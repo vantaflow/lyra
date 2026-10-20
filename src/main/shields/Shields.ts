@@ -86,9 +86,12 @@ function urlPremierNiveau(d: OnBeforeRequestListenerDetails | OnHeadersReceivedL
   return url || d.referrer || d.url
 }
 
-/** Pages et ressources des extensions (`chrome-extension://`) et protocole des icônes d'action (`crx://`) : jamais filtrées. */
+/**
+ * Pages et ressources des extensions (`chrome-extension://`, initiateur compris) et URL du protocole des icônes d'action
+ * (`crx://`) : jamais filtrées. Un initiateur `crx://` n'exempte rien (seule l'URL crx:// est celle de l'interface).
+ */
 const estExtension = (d: { url: string; initiatorOrigin?: string }): boolean =>
-  /^(chrome-extension|crx):\/\//.test(d.url) || /^(chrome-extension|crx):\/\//.test(d.initiatorOrigin ?? '')
+  /^(chrome-extension|crx):\/\//.test(d.url) || /^chrome-extension:\/\//.test(d.initiatorOrigin ?? '')
 
 export function creerShields(opts: OptionsShields): Shields {
   let moteur = opts.moteurInitial

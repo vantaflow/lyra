@@ -35,11 +35,25 @@ describe('creerExtensions', () => {
     return { ext, tabs, fenetres, wc, win, session }
   }
 
-  it('déclare la licence GPL-3.0, la session persist:lyra et le protocole crx', async () => {
+  it('déclare la licence GPL-3.0 et la session persist:lyra', async () => {
     const { session } = await charger()
     expect(lib.opts!.license).toBe('GPL-3.0')
     expect(lib.opts!.session).toBe(session)
-    expect(lib.crx).toHaveBeenCalledWith(session)
+  })
+
+  it("le protocole crx:// n'est servi qu'à la session de l'interface, jamais aux sites de persist:lyra", async () => {
+    const { creerExtensions } = await import('./Extensions')
+    const session = { id: 'pages' } as never
+    const sessionUI = { id: 'ui' } as never
+    creerExtensions({ session, sessionUI, tabs: {} as never, fenetres: {} as never })
+    expect(lib.crx).toHaveBeenCalledTimes(1)
+    expect(lib.crx).toHaveBeenCalledWith(sessionUI)
+    expect(lib.crx).not.toHaveBeenCalledWith(session)
+  })
+
+  it('sans session d’interface distincte, aucun protocole crx:// n’est servi', async () => {
+    await charger()
+    expect(lib.crx).not.toHaveBeenCalled()
   })
 
   it('createTab ouvre une étoile et rend [webContents, fenêtre]', async () => {

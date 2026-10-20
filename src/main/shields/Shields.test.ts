@@ -89,6 +89,11 @@ describe('Shields.attacher', () => {
     expect(shields.bloques(7)).toBe(0)
   })
 
+  it("l'exemption crx:// ne vaut que pour l'URL (icônes d'action) : un initiateur crx:// n'exempte pas une requête de pub", () => {
+    expect(envoyer(ses, requete('crx://extension-icon/abc/32/1'))).toEqual({})
+    expect(envoyer(ses, requete('https://ads.exemple.test/pub.js', { initiatorOrigin: 'crx://extension-icon' }))).toEqual({ cancel: true })
+  })
+
   it('ne bloque jamais la navigation principale', () => {
     expect(envoyer(ses, requete('https://ads.exemple.test/', { resourceType: 'mainFrame' }))).toEqual({})
   })

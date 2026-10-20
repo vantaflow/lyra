@@ -42,7 +42,10 @@ export interface OptionsIpcExtensions {
   modeTest: boolean
 }
 
-/** IPC `extensions:*` : l'expéditeur est vérifié par `handle` ; l'identifiant est validé avant tout usage. */
+/**
+ * IPC `extensions:*` : l'expéditeur est vérifié par `handle` ; l'identifiant est validé avant tout usage. Depuis une page d'une
+ * fenêtre privée (chrome, overlay ou étoile), rien ne s'installe, ne s'active, ne se supprime ni ne s'écrit dans les réglages.
+ */
 export function installerExtensionsIpc(o: OptionsIpcExtensions): void {
   const { chargeur } = o
   const info = (e: ExtensionInstallee & { chargee: boolean }): InfoExtension => {
@@ -60,18 +63,21 @@ export function installerExtensionsIpc(o: OptionsIpcExtensions): void {
     o.ouvrirEtoile(e.sender, url)
     return true
   })
-  handle('extensions:regleSite', (d) => {
+  handle('extensions:regleSite', (d, e) => {
+    if (o.estPrivee(e.sender)) return false
     if (!d || typeof d.id !== 'string' || !ID_EXTENSION.test(d.id) || typeof d.active !== 'boolean' || typeof d.origine !== 'string') return false
     if (!/^https?:\/\/[a-z0-9.-]+(:\d{1,5})?$/i.test(d.origine) || d.origine.length > 300) return false
     if (!chargeur.lister().some((x) => x.id === d.id)) return false
     o.ecrireRegleSite(d.origine, d.id, d.active)
     return true
   })
-  handle('extensions:activer', async (d) => {
+  handle('extensions:activer', async (d, e) => {
+    if (o.estPrivee(e.sender)) return false
     if (!d || typeof d.id !== 'string' || !ID_EXTENSION.test(d.id) || typeof d.active !== 'boolean') return false
     return chargeur.activer(d.id, d.active)
   })
-  handle('extensions:desinstaller', async (d) => {
+  handle('extensions:desinstaller', async (d, e) => {
+    if (o.estPrivee(e.sender)) return false
     if (!d || typeof d.id !== 'string' || !ID_EXTENSION.test(d.id)) return false
     const ok = await chargeur.desinstaller(d.id)
     if (ok) o.journal.supprimer(d.id)
@@ -134,5 +140,8 @@ export function installerExtensionsIpc(o: OptionsIpcExtensions): void {
       fileEnCours = false
     }
   })
-  handle('extensions:majTout', async () => o.miseAJour.verifier())
+  handle('extensions:majTout', async (_d, e) => {
+    if (o.estPrivee(e.sender)) return { misesAJour: [], erreurs: ["Les extensions ne se mettent pas à jour depuis une fenêtre privée."] }
+    return o.miseAJour.verifier()
+  })
 }

@@ -23,8 +23,10 @@ function LigneExtension(p: {
   mode: Mode | undefined
   surMode: (m: Mode | undefined) => void
   surChangement: () => void
+  /** Fenêtre privée (ou inconnue) : actions désactivées. */
+  bloque: boolean
 }) {
-  const { e, journal, mode } = p
+  const { e, journal, mode, bloque } = p
   const [saisie, setSaisie] = useState('')
   const [refus, setRefus] = useState('')
   const [refusOptions, setRefusOptions] = useState('')
@@ -68,12 +70,12 @@ function LigneExtension(p: {
   const boutons = (
     <>
       {e.aOptions && !incompatible && (
-        <button class="btn" type="button" onClick={() => void options()}>
+        <button class="btn" type="button" disabled={bloque} onClick={() => void options()}>
           Options
         </button>
       )}
       {!incompatible && (
-        <button class="btn" type="button" aria-pressed={mode === 'sites'} onClick={() => p.surMode(mode === 'sites' ? undefined : 'sites')}>
+        <button class="btn" type="button" disabled={bloque} aria-pressed={mode === 'sites'} onClick={() => p.surMode(mode === 'sites' ? undefined : 'sites')}>
           Sites
         </button>
       )}
@@ -81,12 +83,12 @@ function LigneExtension(p: {
         {ouverte ? 'Replier' : 'Journal'}
       </button>
       {(incompatible || ouverte) && (
-        <button class="btn danger" type="button" onClick={() => void supprimer()}>
+        <button class="btn danger" type="button" disabled={bloque} onClick={() => void supprimer()}>
           Supprimer
         </button>
       )}
       {!incompatible && (
-        <button class={`tg ${e.active ? 'on' : 'off'}`} type="button" role="switch" aria-checked={e.active} aria-label={`Activer ${e.nom}`} onClick={() => void interrupteur()}>
+        <button class={`tg ${e.active ? 'on' : 'off'}`} type="button" role="switch" aria-checked={e.active} aria-label={`Activer ${e.nom}`} disabled={bloque} onClick={() => void interrupteur()}>
           <i></i>
         </button>
       )}
@@ -121,7 +123,7 @@ function LigneExtension(p: {
             {exclus.map((o) => (
               <div class="ligne" key={o}>
                 <span>{hoteDe(o)}</span>
-                <button class="btn" type="button" onClick={() => void regle(o, true)}>
+                <button class="btn" type="button" disabled={bloque} onClick={() => void regle(o, true)}>
                   Réactiver
                 </button>
               </div>
@@ -130,8 +132,8 @@ function LigneExtension(p: {
               <label class="libelle" for={`site-${e.id}`}>
                 Site à exclure
               </label>
-              <input id={`site-${e.id}`} class="inp" type="text" placeholder="youtube.com" value={saisie} onInput={(ev) => setSaisie((ev.target as HTMLInputElement).value)} onKeyDown={(ev) => ev.key === 'Enter' && void exclure()} />
-              <button class="btn" type="button" onClick={() => void exclure()}>
+              <input id={`site-${e.id}`} class="inp" type="text" placeholder="youtube.com" disabled={bloque} value={saisie} onInput={(ev) => setSaisie((ev.target as HTMLInputElement).value)} onKeyDown={(ev) => ev.key === 'Enter' && void exclure()} />
+              <button class="btn" type="button" disabled={bloque} onClick={() => void exclure()}>
                 Exclure
               </button>
             </div>
@@ -167,7 +169,9 @@ function retourDe(r: ResultatInstallation): Retour {
   }
 }
 
-function Page({ privee }: { privee: boolean }) {
+function Page({ privee }: { privee: boolean | undefined }) {
+  // Fenêtre privée, ou pas encore connue : aucune action (installer, activer, supprimer, règles, mise à jour).
+  const bloque = privee !== false
   const [liste, setListe] = useState<InfoExtension[]>([])
   const [journaux, setJournaux] = useState<Record<string, JournalExtension | undefined>>({})
   const [reglages, setReglages] = useState<Settings | null>(null)
@@ -263,13 +267,13 @@ function Page({ privee }: { privee: boolean }) {
 
   return (
     <main class="page">
-      {privee && <div class="bandeau">Les extensions ne s'exécutent pas en fenêtre privée.</div>}
+      {privee === true && <div class="bandeau">Les extensions ne s'exécutent pas en fenêtre privée.</div>}
       <div class="entete">
         <div>
           <h1>Extensions</h1>
           <p>Chrome et Firefox, côte à côte. Ce qui ne marche pas est dit, pas caché.</p>
         </div>
-        <button class="btn" type="button" disabled={occupe} onClick={() => void toutMettreAJour()}>
+        <button class="btn" type="button" disabled={occupe || bloque} onClick={() => void toutMettreAJour()}>
           Tout mettre à jour
         </button>
         <span class="hint">{depuis(verifiees)}</span>
@@ -282,8 +286,8 @@ function Page({ privee }: { privee: boolean }) {
           <label for="cws" class="libelle">
             Identifiant ou adresse du Chrome Web Store
           </label>
-          <input id="cws" class="inp" type="text" placeholder="Identifiant ou adresse chromewebstore.google.com/detail/…" value={cws} onInput={(e) => setCws((e.target as HTMLInputElement).value)} onKeyDown={touche(() => cws.trim() && void installer({ source: cws.trim() }))} />
-          <button class="btn pri" type="button" disabled={occupe || !cws.trim()} onClick={() => void installer({ source: cws.trim() })}>
+          <input id="cws" class="inp" type="text" disabled={bloque} placeholder="Identifiant ou adresse chromewebstore.google.com/detail/…" value={cws} onInput={(e) => setCws((e.target as HTMLInputElement).value)} onKeyDown={touche(() => cws.trim() && void installer({ source: cws.trim() }))} />
+          <button class="btn pri" type="button" disabled={occupe || bloque || !cws.trim()} onClick={() => void installer({ source: cws.trim() })}>
             Installer
           </button>
         </div>
@@ -292,8 +296,8 @@ function Page({ privee }: { privee: boolean }) {
           <label for="amo" class="libelle">
             Nom ou adresse addons.mozilla.org
           </label>
-          <input id="amo" class="inp" type="text" placeholder="Nom ou adresse addons.mozilla.org/fr/firefox/addon/…" value={amo} onInput={(e) => setAmo((e.target as HTMLInputElement).value)} onKeyDown={touche(() => amo.trim() && void installer({ source: amo.trim() }))} />
-          <button class="btn pri" type="button" disabled={occupe || !amo.trim()} onClick={() => void installer({ source: amo.trim() })}>
+          <input id="amo" class="inp" type="text" disabled={bloque} placeholder="Nom ou adresse addons.mozilla.org/fr/firefox/addon/…" value={amo} onInput={(e) => setAmo((e.target as HTMLInputElement).value)} onKeyDown={touche(() => amo.trim() && void installer({ source: amo.trim() }))} />
+          <button class="btn pri" type="button" disabled={occupe || bloque || !amo.trim()} onClick={() => void installer({ source: amo.trim() })}>
             Installer
           </button>
         </div>
@@ -303,11 +307,11 @@ function Page({ privee }: { privee: boolean }) {
             Un fichier <strong>.crx</strong>, <strong>.zip</strong> ou <strong>.xpi</strong>, ou un dossier d'extension en développement
           </span>
           {window.lyra.plateforme !== 'darwin' && (
-            <button class="btn" type="button" disabled={occupe} onClick={() => void installer({ choisir: 'dossier' })}>
+            <button class="btn" type="button" disabled={occupe || bloque} onClick={() => void installer({ choisir: 'dossier' })}>
               Dossier…
             </button>
           )}
-          <button class="btn" type="button" disabled={occupe} onClick={() => void installer({ choisir: 'fichier' })}>
+          <button class="btn" type="button" disabled={occupe || bloque} onClick={() => void installer({ choisir: 'fichier' })}>
             Choisir…
           </button>
         </div>
@@ -336,7 +340,7 @@ function Page({ privee }: { privee: boolean }) {
                 {r.raison && <span class="hint">{r.raison}</span>}
               </div>
               {r.etat === 'a-confirmer' && (
-                <button class="btn" type="button" disabled={occupe} aria-label={`Installer quand même ${r.entree.nom}`} onClick={() => void confirmerImposee(r.entree)}>
+                <button class="btn" type="button" disabled={occupe || bloque} aria-label={`Installer quand même ${r.entree.nom}`} onClick={() => void confirmerImposee(r.entree)}>
                   Installer quand même
                 </button>
               )}
@@ -355,7 +359,7 @@ function Page({ privee }: { privee: boolean }) {
                   <span>
                     <strong>{c.nom}</strong> <span class="hint">{c.auteur} · {c.slug}</span>
                   </span>
-                  <button class="btn" type="button" disabled={occupe} onClick={() => void installer({ source: c.slug })}>
+                  <button class="btn" type="button" disabled={occupe || bloque} onClick={() => void installer({ source: c.slug })}>
                     Installer celle-ci
                   </button>
                 </div>
@@ -363,7 +367,7 @@ function Page({ privee }: { privee: boolean }) {
               {retour.chromeId && (
                 <div class="candidat">
                   <span>Une version Chrome de {retour.chromeId.nom} existe sur le Chrome Web Store.</span>
-                  <button class="btn" type="button" disabled={occupe} onClick={() => void installer({ source: retour.chromeId!.id })}>
+                  <button class="btn" type="button" disabled={occupe || bloque} onClick={() => void installer({ source: retour.chromeId!.id })}>
                     Installer la version Chrome
                   </button>
                 </div>
@@ -392,6 +396,7 @@ function Page({ privee }: { privee: boolean }) {
               if (m === 'journal') void window.lyra.invoke('extensions:journal', { id: e.id }).then((j) => setJournaux((x) => ({ ...x, [e.id]: j })))
             }}
             surChangement={() => void rafraichir()}
+            bloque={bloque}
           />
         ))}
       </div>
@@ -409,7 +414,7 @@ function Page({ privee }: { privee: boolean }) {
 }
 
 function App() {
-  const [privee, setPrivee] = useState(false)
+  const [privee, setPrivee] = useState<boolean | undefined>(undefined)
   useEffect(() => {
     void window.lyra.invoke('fenetre:privee').then(setPrivee, () => setPrivee(true))
   }, [])

@@ -3,7 +3,7 @@ import { createServer, type Server } from 'node:http'
 import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { zipSync } from 'fflate'
+import { strToU8, zipSync } from 'fflate'
 import { lancerLyra } from './helpers'
 
 const FIXTURE = resolve(__dirname, '../../src/main/extensions/fixtures/minimale-mv3')
@@ -14,6 +14,19 @@ function zipFixture(): string {
   const fichiers: Record<string, Uint8Array> = {}
   for (const nom of readdirSync(FIXTURE)) fichiers[nom] = readFileSync(join(FIXTURE, nom))
   const chemin = join(mkdtempSync(join(tmpdir(), 'lyra-fin-ext-')), 'fixture.zip')
+  writeFileSync(chemin, zipSync(fichiers))
+  return chemin
+}
+
+/** Comme `zipFixture`, avec une icône d'action (PNG 1×1) : le protocole crx:// a quelque chose à servir. */
+function zipFixtureAvecIcone(): string {
+  const fichiers: Record<string, Uint8Array> = {}
+  for (const nom of readdirSync(FIXTURE)) fichiers[nom] = readFileSync(join(FIXTURE, nom))
+  const manifest = JSON.parse(readFileSync(join(FIXTURE, 'manifest.json'), 'utf8')) as Record<string, unknown>
+  manifest.action = { default_title: 'Lyra fixture minimale', default_icon: { '32': 'icone.png' } }
+  fichiers['manifest.json'] = strToU8(JSON.stringify(manifest))
+  fichiers['icone.png'] = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64')
+  const chemin = join(mkdtempSync(join(tmpdir(), 'lyra-fin-ext-')), 'fixture-icone.zip')
   writeFileSync(chemin, zipSync(fichiers))
   return chemin
 }
@@ -41,6 +54,7 @@ test("jamais en fenêtre privée : pas d'extension dans la session privée, inst
     const r = await fenetre.evaluate(() => window.lyra.invoke('extensions:installer', { choisir: 'fichier' }))
     expect(r.etat).toBe('installee')
     const ext = r.etat === 'installee' ? r.id : ''
+    const nomExt = r.etat === 'installee' ? r.nom : ''
     // Fenêtre normale : le content script agit.
     await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), urlPage)
     await expect.poll(() => page(app, urlPage)).toBeDefined()
@@ -61,10 +75,37 @@ test("jamais en fenêtre privée : pas d'extension dans la session privée, inst
     expect(await privee.evaluate((i) => window.lyra.invoke('extensions:options', { id: i }), ext)).toBe(false)
     await expect(privee.evaluate(() => window.lyra.invoke('extensions:consommerFile', { confirmees: [] }))).rejects.toThrow()
 
-    // lyra://extensions dans une fenêtre privée : bandeau.
+    // lyra://extensions dans une fenêtre privée : bandeau, actions désactivées.
     await privee.evaluate(() => window.lyra.invoke('tabs:open', { url: 'lyra://extensions' }))
     await expect.poll(() => page(app, 'lyra://extensions')).toBeDefined()
-    await expect(page(app, 'lyra://extensions')!.getByText("Les extensions ne s'exécutent pas en fenêtre privée.").first()).toBeVisible()
+    const pp = page(app, 'lyra://extensions')!
+    await expect(pp.getByText("Les extensions ne s'exécutent pas en fenêtre privée.").first()).toBeVisible()
+    await expect(pp.getByRole('button', { name: 'Choisir…' })).toBeDisabled()
+    await expect(pp.getByRole('switch', { name: `Activer ${nomExt}` })).toBeDisabled()
+
+    // Depuis cette page (une étoile de la fenêtre privée) : tout est refusé, rien n'est écrit dans le profil persistant.
+    expect(await pp.evaluate(() => window.lyra.invoke('fenetre:privee'))).toBe(true)
+    expect(await pp.evaluate(() => window.lyra.invoke('extensions:installer', { choisir: 'fichier' }))).toMatchObject({ etat: 'erreur' })
+    expect(await pp.evaluate((i) => window.lyra.invoke('extensions:options', { id: i }), ext)).toBe(false)
+    expect(await pp.evaluate((i) => window.lyra.invoke('extensions:activer', { id: i, active: false }), ext)).toBe(false)
+    expect(await pp.evaluate((i) => window.lyra.invoke('extensions:regleSite', { id: i, origine: 'https://youtube.com', active: false }), ext)).toBe(false)
+    await expect(pp.evaluate(() => window.lyra.invoke('extensions:consommerFile'))).rejects.toThrow()
+    expect(await pp.evaluate((i) => window.lyra.invoke('extensions:desinstaller', { id: i }), ext)).toBe(false)
+    const apres = await fenetre.evaluate(() => window.lyra.invoke('extensions:lister'))
+    expect(apres).toMatchObject([{ id: ext, active: true, chargee: true }])
+    expect((await fenetre.evaluate(() => window.lyra.invoke('settings:get'))).sites['https://youtube.com']?.extensions).toBeUndefined()
+
+    // Panneau du pied du ciel de la fenêtre privée : le message, pas de liste d'icônes.
+    await privee.evaluate(() => window.lyra.invoke('extensions:panel'))
+    const panneaux = async (): Promise<Page[]> => {
+      const trouves: Page[] = []
+      for (const w of app.windows().filter((x) => x.url().includes('#overlay'))) if ((await w.getByRole('dialog', { name: 'Panneau des extensions' }).count()) > 0) trouves.push(w)
+      return trouves
+    }
+    await expect.poll(async () => (await panneaux()).length).toBe(1)
+    const overlay = (await panneaux())[0]
+    await expect(overlay.getByRole('dialog', { name: 'Panneau des extensions' }).getByText("Les extensions ne s'exécutent pas en fenêtre privée.")).toBeVisible()
+    await expect(overlay.locator('browser-action-list')).toHaveCount(0)
   } finally {
     await app.close()
   }
@@ -177,6 +218,35 @@ test('fidélité au design : boutons de ligne, Options en échec, panneau du pie
     })
     expect(css).toEqual({ bas: '8px', bordure: '1px', style: 'solid', couleur: 'rgb(238, 238, 244)' })
     await overlay.screenshot({ path: join(CAPTURES, 'capture-panneau-6.png') })
+  } finally {
+    await app.close()
+  }
+})
+
+test("crx:// n'est pas servi aux sites : une page web ne peut pas charger les icônes d'action", async () => {
+  const { app, fenetre } = await lancerLyra({ LYRA_CHOIX_EXTENSION: zipFixtureAvecIcone() })
+  try {
+    const r = await fenetre.evaluate(() => window.lyra.invoke('extensions:installer', { choisir: 'fichier' }))
+    if (r.etat !== 'installee') throw new Error(JSON.stringify(r))
+    await fenetre.evaluate((u) => window.lyra.invoke('tabs:open', { url: u }), urlPage)
+    await expect.poll(() => page(app, urlPage)).toBeDefined()
+    const web = page(app, urlPage)!
+    await web.waitForLoadState('domcontentloaded')
+    const charger = (p: Page, i: string): Promise<string> =>
+      p.evaluate(
+        (ext) =>
+          new Promise<string>((ok) => {
+            const img = new Image()
+            img.onload = () => ok('chargee')
+            img.onerror = () => ok('erreur')
+            img.src = `crx://extension-icon/${ext}/32/2?tabId=-1&partition=persist%3Alyra`
+            setTimeout(() => ok('delai'), 5000)
+          }),
+        i
+      )
+    // Témoin : l'interface (session par défaut) charge bien l'icône ; la page web, non.
+    expect(await charger(fenetre, r.id)).toBe('chargee')
+    expect(await charger(web, r.id)).toBe('erreur')
   } finally {
     await app.close()
   }
