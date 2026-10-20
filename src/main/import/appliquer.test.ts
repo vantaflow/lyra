@@ -630,3 +630,47 @@ describe('résultat par élément', () => {
     expect(ordre).toEqual(['favoris', 'moteurs', 'reglages', 'extensions', 'onglets', 'historique'])
   })
 })
+
+describe('robustesse', () => {
+  const tout: EntreeImport['donnees'] = {
+    favoris: { barre: [lien('a', 'https://a.example/p')], autres: [] },
+    onglets: { fenetres: [{ onglets: [{ url: 'https://t.example/', titre: 'T' }], groupes: [] }] },
+    historique: [visite('https://h.example/', 1), { ...visite('https://h2.example/', 2), visites: 5 }]
+  }
+
+  it('une progression qui lève ne fait jamais échouer l’import', async () => {
+    const f = faux()
+    const r = await appliquer(entree(tout), f.cibles, OPTIONS, () => {
+      throw new Error('page fermée')
+    })
+    expect(r.favoris).toMatchObject({ etat: 'ok', ajoutes: 1 })
+    expect(r.onglets).toMatchObject({ etat: 'ok', ajoutes: 1 })
+    expect(r.historique).toMatchObject({ etat: 'ok', ajoutes: 2 })
+  })
+
+  it('historique : compteur de visites et note « N visites, M pages ajoutées »', async () => {
+    const f = faux()
+    const r = await appliquer(entree(tout), f.cibles, OPTIONS)
+    expect(r.historique.visites).toBe(6)
+    expect(r.historique.notes.join(' ')).toMatch(/6 visite\(s\), 2 page\(s\) ajoutée\(s\)/)
+  })
+
+  it('attendre() qui lève : lignes écrites gardées, partiel avec la raison', async () => {
+    const f = faux()
+    f.cibles.historique.attendre = async () => {
+      throw new Error('disque plein')
+    }
+    const r = await appliquer(entree(tout), f.cibles, OPTIONS)
+    expect(r.historique).toMatchObject({ etat: 'partiel', ajoutes: 2, raison: 'disque plein' })
+  })
+
+  it('sauver() qui lève : étoiles gardées, partiel avec la raison', async () => {
+    const f = faux()
+    f.cibles.ciel.sauver = () => {
+      throw new Error('session verrouillée')
+    }
+    const r = await appliquer(entree(tout), f.cibles, OPTIONS)
+    expect(r.onglets).toMatchObject({ etat: 'partiel', ajoutes: 1, raison: 'session verrouillée' })
+    expect(r.historique.etat).toBe('ok')
+  })
+})

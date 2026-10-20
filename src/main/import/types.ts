@@ -301,6 +301,8 @@ export interface ElementResultat {
   presents: number
   /** Refusés ou non transposables (schéma interdit, doublon dans la source, moteur absent de Lyra…). */
   ignores: number
+  /** Historique seulement : visites de la fenêtre importée (compteur des pages lues, pas rejouable). */
+  visites?: number
   /** Arbitrages et précisions lisibles (mots-clés renommés, zoom conservé, langue ignorée, page d'accueil en attente…). */
   notes: string[]
   code?: CodeErreurImport

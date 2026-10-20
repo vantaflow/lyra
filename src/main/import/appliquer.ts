@@ -174,7 +174,14 @@ export async function appliquer(
   const resultat = {} as Record<ElementImport, ElementResultat>
   for (const el of ELEMENTS_IMPORT) resultat[el] = vide('ignore')
 
-  const avance = (element: ElementImport, fait: number, total?: number): void => surProgression?.({ element, fait, ...(total === undefined ? {} : { total }), phase: 'ecriture' })
+  // Un rapport de progression qui échoue (page fermée en cours d'import) ne doit jamais faire échouer l'import.
+  const avance = (element: ElementImport, fait: number, total?: number): void => {
+    try {
+      surProgression?.({ element, fait, ...(total === undefined ? {} : { total }), phase: 'ecriture' })
+    } catch {
+      /* ignoré */
+    }
+  }
   const annule = (): boolean => signal?.aborted === true
 
   // Arbitrage des moteurs : calculé une fois (le moteur par défaut sert aussi à l'étape réglages).
@@ -390,7 +397,7 @@ async function appliquerOnglets(o: OngletsImportes, cibles: CiblesImport, option
   let cree = 0
   const total = o.fenetres.reduce((s, f) => s + f.onglets.length, 0)
 
-  try {
+  const boucle = async (): Promise<ElementResultat | undefined> => {
     for (const fenetre of o.fenetres) {
       const aCreer = []
       const urls = new Set<string>()
@@ -436,11 +443,27 @@ async function appliquerOnglets(o: OngletsImportes, cibles: CiblesImport, option
         if ((i + 1) % TRANCHE_ETOILES === 0) avance('onglets', res.ajoutes, total)
       }
     }
-  } finally {
-    for (const c of utilises) await c.sauver()
+    return undefined
   }
-  res.notes = notesOnglets(res.notes, creees, reutilisees)
-  return termine(res)
+
+  // Ce qui est écrit reste compté même si la boucle ou la sauvegarde de la session échoue.
+  let erreur: unknown
+  let interrompu: ElementResultat | undefined
+  try {
+    interrompu = await boucle()
+  } catch (e) {
+    erreur = e
+  }
+  for (const c of utilises) {
+    try {
+      await c.sauver()
+    } catch (e) {
+      erreur ??= e
+    }
+  }
+  const sortie = interrompu ?? { ...res, notes: notesOnglets(res.notes, creees, reutilisees) }
+  if (erreur !== undefined) return { ...sortie, etat: sortie.ajoutes > 0 ? 'partiel' : 'indisponible', raison: raisonDe(erreur) }
+  return interrompu ?? termine(sortie)
 }
 
 function notesOnglets(notes: string[], creees: number, reutilisees: number): string[] {
@@ -455,12 +478,14 @@ function notesOnglets(notes: string[], creees: number, reutilisees: number): str
 async function appliquerHistorique(source: Visite[] | AsyncIterable<Visite[]>, cible: CibleHistorique, avance: (e: ElementImport, fait: number, total?: number) => void, signal?: AbortSignal): Promise<ElementResultat> {
   const res = vide('ok')
   let vues = 0
+  let visites = 0
   const total = Array.isArray(source) ? source.length : undefined
 
   const ecrire = async (lot: Visite[]): Promise<void> => {
     const r = cible.importer(lot.map((v) => ({ url: v.url, title: v.titre, date: v.date })))
     res.ajoutes += r.ajoutees
     res.presents += r.presentes
+    visites += lot.reduce((n, v) => n + (Number.isFinite(v.visites) ? v.visites : 1), 0)
     res.ignores += lot.length - r.ajoutees - r.presentes // écartées par Lyra (schéma non retenu, date invalide)
     vues += lot.length
     avance('historique', vues, total)
@@ -488,9 +513,16 @@ async function appliquerHistorique(source: Visite[] | AsyncIterable<Visite[]>, c
       const code = (e as { code?: CodeErreurImport }).code
       if (code) res.code = code
     }
-  } finally {
+  }
+  try {
     await cible.attendre()
     if (res.ajoutes > 0) cible.compacterSiNecessaire()
+  } catch (e) {
+    // Les lignes déjà écrites restent comptées.
+    if (res.etat === 'ok') res.etat = 'partiel'
+    res.raison ??= raisonDe(e)
   }
+  res.visites = visites
+  res.notes.push(`${visites} visite(s), ${res.ajoutes} page(s) ajoutée(s) ; seule la dernière visite de chaque page est écrite.`)
   return res.etat === 'ok' ? termine(res) : res
 }
