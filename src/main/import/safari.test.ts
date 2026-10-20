@@ -196,7 +196,7 @@ describe('fichiers absents ou corrompus', () => {
   it('plist corrompu → Indisponible, sans crash', async () => {
     const p = profilJetable()
     const valide = readFileSync(join(FIXTURES, 'Bookmarks.plist'))
-    const corrompus = [Buffer.from("ceci n'est pas un plist"), Buffer.alloc(200), Buffer.from('bplist00 '), Buffer.alloc(0), valide.subarray(0, valide.length - 40)]
+    const corrompus = [Buffer.from("ceci n'est pas un plist"), Buffer.alloc(200), Buffer.from('bplist00\0\x01\x02'), Buffer.alloc(0), valide.subarray(0, valide.length - 40)]
     for (const contenu of corrompus) {
       writeFileSync(join(p.chemin, 'Bookmarks.plist'), contenu)
       const { donnees } = await lire(p, ['favoris'])

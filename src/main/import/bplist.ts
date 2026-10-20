@@ -23,7 +23,7 @@ export class UidPlist {
 
 /** Profondeur maximale d'imbrication acceptée. */
 export const PROFONDEUR_MAX_PLIST = 200
-/** Nombre maximal de nœuds visités (protège d'un fichier dont les références se partagent pour exploser en taille). */
+/** Nombre maximal d'objets décodés par plist (chacun une seule fois, grâce à la mémoïsation) : protège des fichiers hostiles aux références (ou aux objets) en nombre démesuré. */
 const NOEUDS_MAX = 5_000_000
 /** Budget par défaut des octets produits par la lecture d'un plist binaire (voir `lireBplist`). */
 export const BUDGET_OCTETS_PLIST = 64 * 1024 * 1024

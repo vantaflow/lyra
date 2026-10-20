@@ -164,6 +164,59 @@ describe('bplist corrompu : ErreurImport, jamais de RangeError', () => {
     expect(lireBplist(octets)).toHaveLength(N) // budget par défaut
   })
 
+  /** Plist binaire à références sur 2 octets et offsets sur 4 : `objets` = octets de chaque objet (références déjà encodées). */
+  const assembler = (objets: number[][]): Uint8Array => {
+    const be4 = (n: number): number[] => [n >>> 24, (n >>> 16) & 255, (n >>> 8) & 255, n & 255]
+    const offsets: number[] = []
+    let pos = ENTETE.length
+    for (const o of objets) {
+      offsets.push(pos)
+      pos += o.length
+    }
+    return Uint8Array.from([...ENTETE, ...objets.flat(), ...offsets.flatMap(be4), ...queue(objets.length, 0, pos, 4, 2)])
+  }
+
+  it('références partagées imbriquées : tableau → dictionnaire → tableau de chaînes, chaque objet décodé une seule fois', () => {
+    const K = 1000
+    const M = 500
+    const r = (n: number): number[] => [n >> 8, n & 255]
+    const octets = assembler([
+      [0xaf, 0x11, ...r(K), ...Array.from({ length: K }, () => r(1)).flat()], // 0 : K fois le dictionnaire 1
+      [0xd3, ...r(2), ...r(3), ...r(4), ...r(5), ...r(5), ...r(5)], //          1 : trois clés → le même tableau 5
+      [0x51, 0x61], [0x51, 0x62], [0x51, 0x63], //                              2-4 : « a », « b », « c »
+      [0xaf, 0x11, ...r(M), ...Array.from({ length: M }, () => r(6)).flat()], // 5 : M fois la chaîne 6
+      [0x51, 0x73] //                                                           6 : « s »
+    ])
+    const v = lireBplist(octets) as Array<Record<string, string[]>>
+    expect(v).toHaveLength(K)
+    const d = v[0]
+    expect(Object.keys(d)).toEqual(['a', 'b', 'c'])
+    expect(d.a).toHaveLength(M)
+    expect(d.a.every((x) => x === 's')).toBe(true)
+    expect(v.every((x) => x === d)).toBe(true) // même dictionnaire, décodé une fois
+    expect(d.a).toBe(d.b)
+    expect(d.b).toBe(d.c) // même tableau, décodé une fois
+  })
+
+  it("trop d'objets (au-delà de NOEUDS_MAX) : ErreurImport", () => {
+    const N = 5_000_000 // + la racine : un objet de plus que le plafond
+    const octets = new Uint8Array(ENTETE.length + 6 + 4 * N + N + 4 * (N + 1) + 32)
+    const dv = new DataView(octets.buffer)
+    octets.set(ENTETE, 0)
+    octets.set([0xaf, 0x12], ENTETE.length)
+    dv.setUint32(ENTETE.length + 2, N) // tableau de N éléments (taille sur 4 octets)
+    const debutRefs = ENTETE.length + 6
+    for (let i = 0; i < N; i++) dv.setUint32(debutRefs + 4 * i, i + 1)
+    const debutBools = debutRefs + 4 * N
+    octets.fill(0x08, debutBools, debutBools + N) // N booléens distincts
+    const debutTable = debutBools + N
+    dv.setUint32(debutTable, ENTETE.length)
+    for (let i = 0; i < N; i++) dv.setUint32(debutTable + 4 * (i + 1), debutBools + i)
+    octets.set(queue(N + 1, 0, debutTable, 4, 4), debutTable + 4 * (N + 1))
+    expect(() => lireBplist(octets)).toThrow(ErreurImport)
+    expect(() => lireBplist(octets)).toThrow(/trop d'objets/)
+  })
+
   it("budget d'octets : message lisible quand le contenu décodé dépasse la limite", () => {
     const octets = ecrireBplist(['a'.repeat(800), 'b'.repeat(800)])
     expect(() => lireBplist(octets, 1000)).toThrow(ErreurImport)
