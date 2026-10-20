@@ -108,3 +108,15 @@ export function attacherComportements(wc: WebContents, d: DepsComportements): vo
     rechercheUrl: (t) => d.rechercheUrl?.(t) ?? `https://duckduckgo.com/?q=${encodeURIComponent(t)}`
   })
 }
+
+/**
+ * Suit le dernier clic du bouton du milieu reçu par la vue (`input-event`, avant que la page ne réagisse) : l'ouverture d'un lien
+ * en arrière-plan qui le suit est un clic molette (voir `ouvertureParClicMolette`). Renvoie la date (ms) du dernier clic, -Infinity si aucun.
+ */
+export function suivreClicMolette(wc: WebContents, maintenant: () => number = Date.now): () => number {
+  let dernier = -Infinity
+  wc.on('input-event', (_e, ev) => {
+    if ((ev.type === 'mouseDown' || ev.type === 'mouseUp') && (ev as { button?: string }).button === 'middle') dernier = maintenant()
+  })
+  return () => dernier
+}

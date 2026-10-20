@@ -92,6 +92,10 @@ export const INDEX: EntreeIndex[] = [
   ligne('confidentialite', 'purge', 'Historique, cookies et cache', ['tout effacer', 'purger', 'maintenant', 'vider', 'données de navigation']),
   ligne('telechargements', 'dossier', 'Dossier de téléchargement', ['enregistrer', 'fichiers']),
   ligne('telechargements', 'demander', 'Demander où enregistrer chaque fichier', ['dossier', 'demander']),
+  ligne('gestes', 'defilementHorizontal', 'Page précédente ou suivante en défilant horizontalement', ['balayage', 'pavé tactile', 'précédent', 'suivant', 'retour', 'historique', 'trois doigts']),
+  ligne('gestes', 'clicMolette', "Ouvrir un lien dans une nouvelle étoile d'un clic molette", ['souris', 'bouton du milieu', 'nouvel onglet', 'arrière-plan', 'lien']),
+  // Pas de « zoom » dans le libellé ni les mots-clés : la recherche « zoom » mène à Règles par site seulement (e2e reglages.spec.ts).
+  ligne('gestes', 'molettePlusCmdZoom', 'Agrandir ou réduire la page avec ⌘ ou Ctrl + molette', ['agrandir', 'réduire', 'souris', 'commande', 'contrôle', 'taille de la page']),
   ligne('nepasderanger', 'duree', 'Durée par défaut', ['30 minutes', '1 heure', "jusqu'à l'arrêt", 'silence', 'dnd']),
   ligne('nepasderanger', 'exceptions', 'Sites qui peuvent vous déranger', ['exception', 'notifications', 'fenêtres surgissantes', 'retirer']),
   ligne('demarrage', 'restaurer', 'Rouvrir les étoiles de la dernière session', ['restaurer', 'session', 'onglets', 'démarrage']),

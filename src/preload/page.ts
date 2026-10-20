@@ -87,3 +87,39 @@ if (WEB || HERITE || (location.protocol === 'file:' && TEST)) {
     // sans surcharge, les notifications suivent leur cours normal (mais la vérification de permission les refuse en mode)
   }
 }
+
+// Gestes de molette (Réglages > Gestes) : relais minimal vers le main, cadre principal seulement (jamais les iframes).
+// Défilement horizontal (précédent / suivant) et molette avec ⌘ / Ctrl (zoom) : rien d'autre n'est relayé. Écouteur passif, donc ni
+// défilement ni zoom natifs touchés ; deltas cumulés et envoyés au plus toutes les 40 ms ; seuls deltas et modificateurs partent.
+if (WEB && window === window.top) {
+  type Charge = { dx: number; dy: number; ctrl: boolean; meta: boolean; shift: boolean; alt: boolean }
+  let attente: Charge | null = null
+  let dernierEnvoi = 0
+  let minuteur: ReturnType<typeof setTimeout> | undefined
+  const envoyer = (): void => {
+    minuteur = undefined
+    if (!attente) return
+    dernierEnvoi = Date.now()
+    ipcRenderer.send('gestes:molette', attente)
+    attente = null
+  }
+  window.addEventListener(
+    'wheel',
+    (e) => {
+      const zoom = e.ctrlKey || e.metaKey
+      if (!zoom && Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return
+      const k = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 800 : 1
+      if (attente && (attente.ctrl !== e.ctrlKey || attente.meta !== e.metaKey || attente.shift !== e.shiftKey || attente.alt !== e.altKey)) {
+        clearTimeout(minuteur)
+        envoyer()
+      }
+      attente ??= { dx: 0, dy: 0, ctrl: e.ctrlKey, meta: e.metaKey, shift: e.shiftKey, alt: e.altKey }
+      attente.dx += e.deltaX * k
+      attente.dy += e.deltaY * k
+      const reste = 40 - (Date.now() - dernierEnvoi)
+      if (reste <= 0) envoyer()
+      else minuteur ??= setTimeout(envoyer, reste)
+    },
+    { passive: true }
+  )
+}

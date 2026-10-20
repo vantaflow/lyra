@@ -15,9 +15,10 @@ import { estZoomNormal, palierSuivant } from './zoom'
 import { optionsFenetreCachee, prefsPageCachee, testCache } from '../modeTest'
 import { estUrlErreur, urlOriginale } from './erreurs'
 import { pageDeReglagesEnCapture, raccourciPage } from './raccourcis'
-import { estVraiePopup } from './popup'
+import { clicMoletteRefuse, estVraiePopup } from './popup'
 import { arreter as arreterRechercheWc, rechercher as rechercherWc } from './find'
-import { attacherComportements } from './comportements'
+import { attacherComportements, suivreClicMolette } from './comportements'
+import { decisionSwipe, etatSwipe, type ReglagesGestes } from './gestes'
 import { enTest } from '../modeTest'
 import type { CrochetsPasserelles } from '../passerelles/Passerelles'
 import type { Constellation, SkyState } from '../../shared/types'
@@ -79,6 +80,8 @@ export interface OptionsTabs {
   couleurFavicon?: (wc: WebContents, url: string) => Promise<string | null>
   /** `Settings.raccourcis` courant (commande → accélérateur, vide = défaut) : les raccourcis de page suivent les réglages. */
   raccourcis?: () => Record<string, string>
+  /** `Settings.gestes` courant : balayage (`swipe`, macOS) et clic molette suivent les réglages ; absent : aucun geste. */
+  gestes?: () => ReglagesGestes
   /** Extensions : suivi des étoiles web (chrome.tabs) ; absent pour une fenêtre privée (jamais d'extensions). */
   extensions?: {
     ajouter(wc: WebContents, win: BaseWindow): void
@@ -110,6 +113,15 @@ export class TabManager {
       for (const t of this.minuteursSommeil.values()) clearTimeout(t)
       for (const v of this.vues.values()) this.fermerVue(v)
       this.vues.clear()
+    })
+    // Balayage à trois doigts (macOS) : précédent / suivant de l'étoile affichée ; les autres plateformes passent par le relais `wheel` (gestes.ts).
+    const swipe = etatSwipe()
+    fenetre.win.on('swipe', (_e, direction) => {
+      const geste = decisionSwipe(direction, this.options.gestes?.(), swipe, Date.now())
+      const id = this.idActif()
+      if (!geste || !id) return
+      if (geste === 'precedent') this.precedent(id)
+      else this.suivant(id)
     })
   }
 
@@ -730,8 +742,13 @@ export class TabManager {
       this.popups.add(pwc)
       pwc.once('destroyed', () => this.popups.delete(pwc))
     })
+    // Le clic molette sur un lien arrive ici avec la disposition `background-tab` : Electron ouvre déjà l'étoile (ci-dessous), pas d'`auxclick`.
+    const dernierClicMolette = suivreClicMolette(wc)
     wc.setWindowOpenHandler((details) => {
       if (categorie === 'web' && interditAuxSites(details.url)) return { action: 'deny' }
+      // Réglages > Gestes : clic molette coupé, le lien ne s'ouvre pas (⌘ / Ctrl + clic, lui, n'en dépend pas).
+      const gestes = this.options.gestes?.()
+      if (gestes && clicMoletteRefuse({ disposition: details.disposition, dernierClicMolette: dernierClicMolette(), maintenant: Date.now(), clicMolette: gestes.clicMolette })) return { action: 'deny' }
       // Vraie popup : disposition « nouvelle fenêtre » ou features de fenêtre. `noopener` / `noreferrer` seuls
       // (lien ordinaire cliqué par l'utilisateur) ouvrent une étoile comme `target=_blank`.
       if (estVraiePopup(details)) {

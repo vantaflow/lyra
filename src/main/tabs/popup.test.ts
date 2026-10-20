@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { estVraiePopup } from './popup'
+import { DELAI_CLIC_MOLETTE_MS, clicMoletteRefuse, estVraiePopup, ouvertureParClicMolette } from './popup'
 
 const p = (disposition: string, features: string) => estVraiePopup({ disposition, features })
 
@@ -27,5 +27,28 @@ describe('estVraiePopup', () => {
   it('target=_blank sans features : lien ordinaire', () => {
     expect(p('foreground-tab', '')).toBe(false)
     expect(p('background-tab', '')).toBe(false)
+  })
+})
+
+describe('clic molette sur un lien', () => {
+  const o = (disposition: string, dernierClicMolette: number, maintenant: number, clicMolette: boolean) => ({ disposition, dernierClicMolette, maintenant, clicMolette })
+  it('reconnaît background-tab juste après un clic du milieu', () => {
+    expect(ouvertureParClicMolette(o('background-tab', 1000, 1100, true))).toBe(true)
+    expect(ouvertureParClicMolette(o('background-tab', 1000, 1000 + DELAI_CLIC_MOLETTE_MS, true))).toBe(true)
+  })
+  it('pas de clic du milieu récent (⌘ / Ctrl + clic, ou jamais) : pas un clic molette', () => {
+    expect(ouvertureParClicMolette(o('background-tab', -Infinity, 5000, true))).toBe(false)
+    expect(ouvertureParClicMolette(o('background-tab', 1000, 1000 + DELAI_CLIC_MOLETTE_MS + 1, true))).toBe(false)
+    expect(ouvertureParClicMolette(o('background-tab', 2000, 1000, true))).toBe(false)
+  })
+  it('une autre disposition n’est pas un clic molette', () => {
+    expect(ouvertureParClicMolette(o('foreground-tab', 1000, 1100, true))).toBe(false)
+    expect(ouvertureParClicMolette(o('new-window', 1000, 1100, true))).toBe(false)
+  })
+  it('refusé seulement si l’interrupteur est coupé', () => {
+    expect(clicMoletteRefuse(o('background-tab', 1000, 1100, false))).toBe(true)
+    expect(clicMoletteRefuse(o('background-tab', 1000, 1100, true))).toBe(false)
+    expect(clicMoletteRefuse(o('background-tab', -Infinity, 1100, false))).toBe(false)
+    expect(clicMoletteRefuse(o('foreground-tab', 1000, 1100, false))).toBe(false)
   })
 })
