@@ -4,65 +4,94 @@
  * l'archive d'origine). Les `exclude_matches` d'origine sont gardés à part (`lyra-exclusions.json`) : réapplication idempotente
  * et réversible. Un changement de règle recharge l'extension concernée (voir `creerSynchroSites`).
  * Limites : un site autorisé explicitement sous un blocage plus large (`*.d` bloqué, `www.d` autorisé) reste bloqué pour ces scripts
- * (un motif de correspondance ne peut pas exprimer d'exception) ; `*.d` couvre aussi `d` (comportement des motifs Chrome).
+ * (un motif ne peut pas exprimer d'exception). `*.d` passe par `exclude_globs` (`https://*.d/*`) pour ne pas exclure `d` ; un glob ne distingue
+ * pas l'hôte du chemin : une page dont le chemin contient `.d/` est aussi exclue (cas marginal, au pire l'extension n'agit pas).
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { RegleSite } from '../../shared/types'
 import { cleDe } from '../settings/sites'
+import { lireJsonTolerant } from './jsonc'
 
 export const SIDECAR_EXCLUSIONS = 'lyra-exclusions.json'
 
-/** Motifs de correspondance (`exclude_matches`) des sites où l'extension est bloquée, triés et sans doublon. */
-export function motifsExclusion(sites: Record<string, RegleSite>, id: string): string[] {
-  const motifs = new Set<string>()
+export interface Exclusions {
+  /** `exclude_matches` : origines et hôtes exacts. */
+  matches: string[]
+  /** `exclude_globs` : motifs `*.hôte` (sous-domaines seulement ; un motif de correspondance `*://*.d/*` couvrirait aussi `d`). */
+  globs: string[]
+}
+
+/** Exclusions des sites où l'extension est bloquée, triées et sans doublon. */
+export function exclusionsSites(sites: Record<string, RegleSite>, id: string): Exclusions {
+  const matches = new Set<string>()
+  const globs = new Set<string>()
   for (const [cle, regle] of Object.entries(sites ?? {})) {
     if (regle?.extensions?.[id] !== false) continue
     const c = cleDe(cle)
     if (!c) continue
-    if (c.type === 'origine') motifs.add(c.valeur === 'file://' ? 'file:///*' : `${c.valeur}/*`)
-    else if (c.type === 'hote') motifs.add(`*://${c.valeur}/*`)
-    else motifs.add(`*://*.${c.valeur}/*`)
+    if (c.type === 'origine') matches.add(c.valeur === 'file://' ? 'file:///*' : `${c.valeur}/*`)
+    else if (c.type === 'hote') matches.add(`*://${c.valeur}/*`)
+    else {
+      globs.add(`http://*.${c.valeur}/*`)
+      globs.add(`https://*.${c.valeur}/*`)
+    }
   }
-  return [...motifs].sort()
+  return { matches: [...matches].sort(), globs: [...globs].sort() }
 }
+
+/** Motifs de correspondance (`exclude_matches`) des sites bloqués ; les motifs `*.hôte` passent par `exclude_globs` (voir `exclusionsSites`). */
+export const motifsExclusion = (sites: Record<string, RegleSite>, id: string): string[] => exclusionsSites(sites, id).matches
 
 type Json = Record<string, unknown>
 const tableau = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
+const liste = (v: unknown): string[] | null => (Array.isArray(v) ? tableau(v) : null)
+
+/** Exclusions d'origine d'un script (`null` : champ absent). */
+interface Origine {
+  m: string[] | null
+  g: string[] | null
+}
 
 /**
- * Réécrit `exclude_matches` des content scripts de `<dossier>/manifest.json` : exclusions d'origine + `motifs`.
+ * Réécrit `exclude_matches` et `exclude_globs` des content scripts de `<dossier>/manifest.json` : exclusions d'origine + `motifs` / `globs`.
  * `concerne` : le manifest déclare des content scripts. `modifie` : le fichier a été réécrit. N'échoue jamais.
  */
-export function appliquerExclusions(dossier: string, motifs: string[]): { concerne: boolean; modifie: boolean } {
+export function appliquerExclusions(dossier: string, motifs: string[], globs: string[] = []): { concerne: boolean; modifie: boolean } {
   try {
     const chemin = join(dossier, 'manifest.json')
-    const manifest = JSON.parse(readFileSync(chemin, 'utf8')) as Json
+    const manifest = lireJsonTolerant(readFileSync(chemin, 'utf8')) as Json
     const scripts = manifest.content_scripts
     if (!Array.isArray(scripts) || scripts.length === 0) return { concerne: false, modifie: false }
     const cheminOrigine = join(dossier, SIDECAR_EXCLUSIONS)
-    let origine: Array<string[] | null> | undefined
+    let origine: Origine[] | undefined
     try {
       const lu = JSON.parse(readFileSync(cheminOrigine, 'utf8')) as unknown
-      if (Array.isArray(lu) && lu.length === scripts.length) origine = lu.map((x) => (x === null ? null : tableau(x)))
+      // Ancien format : tableau de listes (exclude_matches seulement) ou null.
+      if (Array.isArray(lu) && lu.length === scripts.length) {
+        origine = lu.map((x) => (x !== null && typeof x === 'object' && !Array.isArray(x) ? { m: liste((x as Json).m), g: liste((x as Json).g) } : { m: liste(x), g: null }))
+      }
     } catch {
       /* pas de sauvegarde : le manifest courant est celui d'origine */
     }
     if (!origine) {
-      if (motifs.length === 0) return { concerne: true, modifie: false }
-      origine = scripts.map((s) => (Array.isArray((s as Json)?.exclude_matches) ? tableau((s as Json).exclude_matches) : null))
+      if (motifs.length === 0 && globs.length === 0) return { concerne: true, modifie: false }
+      origine = scripts.map((s) => ({ m: liste((s as Json)?.exclude_matches), g: liste((s as Json)?.exclude_globs) }))
       writeFileSync(cheminOrigine, JSON.stringify(origine))
     }
     let modifie = false
+    const poser = (cs: Json, cle: string, base: string[] | null, ajout: string[]): void => {
+      const voulu = base === null && ajout.length === 0 ? undefined : [...new Set([...(base ?? []), ...ajout])]
+      const actuel = Array.isArray(cs[cle]) ? tableau(cs[cle]) : undefined
+      if (JSON.stringify(voulu) === JSON.stringify(actuel)) return
+      if (voulu === undefined) delete cs[cle]
+      else cs[cle] = voulu
+      modifie = true
+    }
     scripts.forEach((s, i) => {
       const cs = s as Json
-      const base = origine![i]
-      const voulu = base === null && motifs.length === 0 ? undefined : [...new Set([...(base ?? []), ...motifs])]
-      const actuel = Array.isArray(cs.exclude_matches) ? tableau(cs.exclude_matches) : undefined
-      if (JSON.stringify(voulu) === JSON.stringify(actuel)) return
-      if (voulu === undefined) delete cs.exclude_matches
-      else cs.exclude_matches = voulu
-      modifie = true
+      poser(cs, 'exclude_matches', origine![i].m, motifs)
+      poser(cs, 'exclude_globs', origine![i].g, globs)
     })
     if (modifie) writeFileSync(chemin, JSON.stringify(manifest, null, 2))
     return { concerne: true, modifie }
@@ -92,7 +121,7 @@ export function creerSynchroSites(d: DepsSynchroSites) {
   const verifier = async (id: string): Promise<void> => {
     const signature = appliques.get(id)
     if (signature === undefined || signature === null) return
-    if (JSON.stringify(motifsExclusion(d.sites(), id)) === signature) return
+    if (JSON.stringify(exclusionsSites(d.sites(), id)) === signature) return
     if (enCours.has(id)) {
       refaire.add(id)
       return
@@ -116,9 +145,14 @@ export function creerSynchroSites(d: DepsSynchroSites) {
     desabonner,
     /** À appeler avant `loadExtension` : écrit les exclusions dans la copie chargée. */
     preparer(id: string, dossier: string): void {
-      const motifs = motifsExclusion(d.sites(), id)
-      const r = appliquerExclusions(dossier, motifs)
-      appliques.set(id, r.concerne ? JSON.stringify(motifs) : null)
+      const ex = exclusionsSites(d.sites(), id)
+      const r = appliquerExclusions(dossier, ex.matches, ex.globs)
+      appliques.set(id, r.concerne ? JSON.stringify(ex) : null)
+    },
+    /** Retour sans exclusions (nouvel essai après un échec de chargement) ; le prochain `preparer` les réapplique. */
+    sansExclusions(id: string, dossier: string): void {
+      appliquerExclusions(dossier, [], [])
+      appliques.delete(id)
     }
   }
 }

@@ -13,6 +13,7 @@ import { ErreurArchive, extraireZip, idDepuisCle } from './archives'
 import { creerBaseInstallation, DELAI_RESEAU_MS, type DepsInstallateurChrome } from './chrome'
 import { convertir } from './convertisseur'
 import { requeteSure } from './reseau'
+import { lireJsonTolerant } from './jsonc'
 
 export { DELAI_RESEAU_MS }
 
@@ -114,7 +115,7 @@ export function creerInstallateurFirefox(d: DepsInstallateurFirefox): Installate
       let guid: string | undefined
       let nomBrut = ''
       try {
-        const m = JSON.parse(readFileSync(join(attente, 'manifest.json'), 'utf8').replace(/^﻿/, '').replace(/^\s*\/\/.*$/gm, '')) as Record<string, unknown>
+        const m = lireJsonTolerant(readFileSync(join(attente, 'manifest.json'), 'utf8')) as Record<string, unknown>
         const gecko = (m.browser_specific_settings ?? m.applications) as { gecko?: { id?: unknown } } | undefined
         if (typeof gecko?.gecko?.id === 'string' && gecko.gecko.id) guid = gecko.gecko.id
         nomBrut = typeof m.name === 'string' ? m.name : ''

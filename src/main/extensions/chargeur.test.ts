@@ -317,6 +317,41 @@ describe('crochets de chargement', () => {
   })
 })
 
+describe('échec du chargement après préparation', () => {
+  it('un nouvel essai sans les exclusions est tenté, et journalisé', async () => {
+    const e = ext('a')
+    installerDossier(e)
+    let essais = 0
+    const journal: string[] = []
+    const retraits: string[] = []
+    const s = sessionSimulee().api
+    const chargeur = creerChargeur({
+      extensions: { ...s, loadExtension: async (c, o) => (++essais === 1 ? Promise.reject(new Error('exclusions invalides')) : s.loadExtension(c, o)) },
+      registre: creerRegistre(reglagesSimules([e])),
+      base,
+      journal: (m) => journal.push(m),
+      sansExclusions: (x) => retraits.push(x.nom)
+    })
+    const r = await chargeur.chargerAuDemarrage()
+    expect(r[0].ok).toBe(true)
+    expect(essais).toBe(2)
+    expect(retraits).toEqual(['Ext a'])
+    expect(journal.some((m) => m.includes('nouvel essai sans'))).toBe(true)
+  })
+  it('deux échecs : l’extension n’est pas chargée', async () => {
+    const e = ext('a')
+    installerDossier(e)
+    const chargeur = creerChargeur({
+      extensions: { ...sessionSimulee().api, loadExtension: async () => Promise.reject(new Error('non')) },
+      registre: creerRegistre(reglagesSimules([e])),
+      base,
+      journal: () => undefined,
+      sansExclusions: () => undefined
+    })
+    expect((await chargeur.chargerAuDemarrage())[0].ok).toBe(false)
+  })
+})
+
 describe('recharger', () => {
   it('retire puis recharge une extension chargée ; rien si elle ne l’est pas ou est inactive', async () => {
     const s = sessionSimulee()

@@ -12,6 +12,7 @@ import { copierDossier, extraireZip, idDepuisCle, verifierCrx3, MAX_ARCHIVE, Err
 import type { Chargeur } from './chargeur'
 import { appliquerStubs, type ShimsStubs } from './stubs'
 import { dossierAbsolu, dossierRelatifValide, ID_EXTENSION, type Registre } from './registre'
+import { lireJsonTolerant } from './jsonc'
 
 export { DELAI_RESEAU_MS }
 
@@ -199,7 +200,7 @@ export function creerBaseInstallation(d: DepsInstallateurChrome) {
     const precedente = d.registre.lister().find((e) => e.nom === nom && e.source === source)
     if (precedente) {
       try {
-        const m = JSON.parse(readFileSync(join(dossierAbsolu(d.base, precedente.dossier), 'manifest.json'), 'utf8')) as Manifeste
+        const m = lireJsonTolerant(readFileSync(join(dossierAbsolu(d.base, precedente.dossier), 'manifest.json'), 'utf8')) as Manifeste
         if (typeof m.key === 'string' && m.key) return m.key
       } catch {
         /* version précédente illisible : nouvelle clé */
@@ -213,7 +214,7 @@ export function creerBaseInstallation(d: DepsInstallateurChrome) {
     const racine = racineManifest(o.extrait)
     let m: Manifeste
     try {
-      m = JSON.parse(readFileSync(join(racine, 'manifest.json'), 'utf8')) as Manifeste
+      m = lireJsonTolerant(readFileSync(join(racine, 'manifest.json'), 'utf8')) as Manifeste
     } catch {
       return echec('manifest.json illisible')
     }

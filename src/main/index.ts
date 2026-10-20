@@ -31,6 +31,7 @@ import type { DepsOperations } from './export/operations'
 import { processusImport } from './import/processus'
 import { balayerOrphelins } from './import/copie'
 import type { CibleCiel, CiblesImport } from './import/appliquer'
+import { lireJsonTolerant } from './extensions/jsonc'
 import { borner } from './session/borner'
 import { SessionStore, type FenetreSession } from './session/SessionStore'
 import { Permissions, type DepsPermissions, type ReponsePermission } from './permissions/Permissions'
@@ -724,7 +725,7 @@ void app.whenReady().then(async () => {
   app.on('will-quit', () => clearInterval(releveStubs))
   const lireJson = (chemin: string): Record<string, unknown> | undefined => {
     try {
-      return JSON.parse(readFileSync(chemin, 'utf8')) as Record<string, unknown>
+      return lireJsonTolerant(readFileSync(chemin, 'utf8')) as Record<string, unknown>
     } catch {
       return undefined
     }
@@ -765,6 +766,7 @@ void app.whenReady().then(async () => {
       const m = lireJson(join(dossier, 'manifest.json'))
       if (m) appliquerStubs(dossier, m, shimsExtensions)
     },
+    sansExclusions: (e, dossier) => synchroSites.sansExclusions(e.id, dossier),
     apresChargement: (e, dossier) => {
       const manifest = lireJson(join(dossier, 'manifest.json'))
       if (!manifest) return

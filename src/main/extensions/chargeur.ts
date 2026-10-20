@@ -20,6 +20,8 @@ export interface OptionsChargeur {
   journal?: (message: string) => void
   /** Appelé juste avant `loadExtension` (stubs MV2 si le marqueur manque) ; une exception est journalisée, jamais propagée. */
   avantChargement?: (e: ExtensionInstallee, dossier: string) => void
+  /** Appelé si `loadExtension` échoue après `avantChargement` : retire les exclusions de règle par site avant un second essai. Une exception est journalisée. */
+  sansExclusions?: (e: ExtensionInstallee, dossier: string) => void
   /** Appelé après un chargement réussi (journal de compatibilité) ; une exception est journalisée, jamais propagée. */
   apresChargement?: (e: ExtensionInstallee, dossier: string) => void
   /** Ferme les pages ouvertes de l'extension (options…) juste avant son retrait de la session ; une exception est journalisée. */
@@ -72,7 +74,20 @@ export function creerChargeur(o: OptionsChargeur): Chargeur {
       } catch (err) {
         journal(`${e.id} (${e.nom}) : préparation impossible — ${message(err)}`)
       }
-      const chargee = await o.extensions.loadExtension(chemin, { allowFileAccess: false })
+      let chargee: { id: string; name?: string }
+      try {
+        chargee = await o.extensions.loadExtension(chemin, { allowFileAccess: false })
+      } catch (premiere) {
+        // Les exclusions écrites par Lyra sont peut-être en cause : un seul nouvel essai, sans elles.
+        if (!o.sansExclusions) throw premiere
+        journal(`${e.id} (${e.nom}) : chargement impossible (${message(premiere)}), nouvel essai sans les exclusions par site`)
+        try {
+          o.sansExclusions(e, chemin)
+        } catch (err) {
+          journal(`${e.id} (${e.nom}) : retrait des exclusions impossible — ${message(err)}`)
+        }
+        chargee = await o.extensions.loadExtension(chemin, { allowFileAccess: false })
+      }
       if (chargee.id !== e.id) journal(`${e.id} (${e.nom}) : Electron lui a attribué l'identifiant ${chargee.id}`)
       chargees.set(e.id, chargee.id)
       try {

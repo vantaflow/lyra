@@ -7,6 +7,7 @@
 import { existsSync, readFileSync, rmSync, statSync, writeFileSync, copyFileSync } from 'node:fs'
 import { join, posix, resolve, sep } from 'node:path'
 import type { RapportConversion } from '../../shared/types'
+import { lireJsonTolerant } from './jsonc'
 
 export type { RapportConversion }
 
@@ -59,7 +60,6 @@ const SOUS_CLES_RETIREES: Array<[string, string[]]> = [
 /** Moyens d'interaction que Chromium sait offrir sans barre latérale : si aucun n'existe, `sidebar_action` était le seul. */
 const INTERACTIONS = ['browser_action', 'action', 'page_action', 'content_scripts', 'devtools_page', 'chrome_url_overrides', 'omnibox']
 
-const sansCommentaires = (texte: string): string => texte.replace(/^﻿/, '').replace(/^\s*\/\/.*$/gm, '')
 
 /** Directive CSP acceptée par Chromium en MV3 : uniquement 'self', 'none' et 'wasm-unsafe-eval'. */
 function cspMv3Valide(csp: string): boolean {
@@ -84,7 +84,7 @@ export async function convertir(dossier: string, o: OptionsConversion): Promise<
 
   let m: Json
   try {
-    const brut = JSON.parse(sansCommentaires(readFileSync(join(dossier, 'manifest.json'), 'utf8'))) as unknown
+    const brut = lireJsonTolerant(readFileSync(join(dossier, 'manifest.json'), 'utf8')) as unknown
     const o2 = objet(brut)
     if (!o2) return refuser('manifest.json invalide')
     m = o2

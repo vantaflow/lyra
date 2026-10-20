@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'no
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { RegleSite } from '../../shared/types'
-import { appliquerExclusions, creerSynchroSites, motifsExclusion, SIDECAR_EXCLUSIONS } from './regleSite'
+import { appliquerExclusions, creerSynchroSites, exclusionsSites, motifsExclusion, SIDECAR_EXCLUSIONS } from './regleSite'
 
 const ID = 'a'.repeat(32)
 const AUTRE = 'b'.repeat(32)
@@ -18,7 +18,9 @@ describe('motifsExclusion', () => {
       'youtube.com': bloque(),
       '*.motif.fr': bloque()
     }
-    expect(motifsExclusion(sites, ID)).toEqual(['*://*.motif.fr/*', '*://youtube.com/*', 'file:///*', 'http://127.0.0.1:8080/*', 'https://exemple.fr/*'])
+    expect(motifsExclusion(sites, ID)).toEqual(['*://youtube.com/*', 'file:///*', 'http://127.0.0.1:8080/*', 'https://exemple.fr/*'])
+    // `*.d` ne doit pas exclure `d` : motif en `exclude_globs`, avec le point.
+    expect(exclusionsSites(sites, ID).globs).toEqual(['http://*.motif.fr/*', 'https://*.motif.fr/*'])
   })
   it('ignore les autorisations, les autres extensions, les clés invalides et les règles sans extensions', () => {
     const sites = { 'a.fr': { extensions: { [ID]: true } }, 'b.fr': bloque(AUTRE), 'c.fr': { boucliers: 'strict' }, 'pas une clé !': bloque() } as Record<string, RegleSite>
@@ -66,6 +68,18 @@ describe('appliquerExclusions', () => {
     expect(existsSync(join(d, SIDECAR_EXCLUSIONS))).toBe(false)
     writeFileSync(join(d, 'manifest.json'), JSON.stringify({ manifest_version: 3, name: 'x' }))
     expect(appliquerExclusions(d, ['*://x.fr/*'])).toEqual({ concerne: false, modifie: false })
+  })
+  it('un motif *.d passe par exclude_globs, avec retour au manifest d’origine', () => {
+    appliquerExclusions(d, [], ['https://*.d.fr/*'])
+    const m = manifest()
+    expect(m.content_scripts[0].exclude_globs).toEqual(['https://*.d.fr/*'])
+    expect(m.content_scripts[0].exclude_matches).toEqual(['*://deja.fr/*'])
+    appliquerExclusions(d, [], [])
+    expect(manifest().content_scripts[1]).not.toHaveProperty('exclude_globs')
+  })
+  it('tolère un manifest avec commentaires', () => {
+    writeFileSync(join(d, 'manifest.json'), '{\n // c\n "manifest_version": 3, /* x */ "name": "x", "content_scripts": [{ "matches": ["<all_urls>"], "js": ["a.js"] }]\n}')
+    expect(appliquerExclusions(d, ['*://x.fr/*'])).toEqual({ concerne: true, modifie: true })
   })
   it('ne plante pas sur un manifest illisible', () => {
     writeFileSync(join(d, 'manifest.json'), '{ pas du json')
