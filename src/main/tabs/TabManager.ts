@@ -93,6 +93,8 @@ export interface OptionsTabs {
 
 export class TabManager {
   tree = new TabTree()
+  /** Verrou de navigation partagé par `swipe` et le défilement horizontal (macOS avec le suivi par défilement). */
+  readonly verrouGeste = etatSwipe()
   private vues = new Map<string, WebContentsView>()
   private extras = new Map<string, Extras>()
   private categories = new Map<string, Categorie>()
@@ -116,9 +118,8 @@ export class TabManager {
       this.vues.clear()
     })
     // Balayage à trois doigts (macOS) : précédent / suivant de l'étoile affichée ; les autres plateformes passent par le relais `wheel` (gestes.ts).
-    const swipe = etatSwipe()
     fenetre.win.on('swipe', (_e, direction) => {
-      const geste = decisionSwipe(direction, this.options.gestes?.(), swipe, Date.now())
+      const geste = decisionSwipe(direction, this.options.gestes?.(), this.verrouGeste, Date.now())
       const id = this.idActif()
       // Pages web seulement : jamais sur une page de Lyra (lyra://).
       if (!geste || !id || this.categories.get(id) !== 'web') return

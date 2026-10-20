@@ -65,11 +65,28 @@ export function validerMolette(brut: unknown): Molette | null {
   return { dx: borne(o.dx), dy: borne(o.dy), ctrl: o.ctrl, meta: o.meta, shift: o.shift, alt: o.alt, bord: o.bord }
 }
 
+/** Verrou de navigation partagé par le relais `wheel` et l'évènement `swipe` d'une même fenêtre : un geste ne déclenche jamais les deux. */
+export interface EtatSwipe {
+  verrouJusqua: number
+}
+export const etatSwipe = (): EtatSwipe => ({ verrouJusqua: -Infinity })
+
+export interface OptionsMolette {
+  /**
+   * macOS : le réglage système « Balayer entre les pages » suit le défilement à deux doigts
+   * (`systemPreferences.isSwipeTrackingFromScrollEventsEnabled()`) : l'évènement `swipe` n'arrive alors pas, le défilement horizontal navigue.
+   */
+  suiviParDefilementMac?: boolean
+  /** Verrou partagé avec `swipe` (celui de la fenêtre). */
+  verrou?: EtatSwipe
+}
+
 /**
  * Décision pour un message de molette ; `etat` est mis à jour (un état par page). Sous macOS le balayage passe par
- * l'évènement `swipe` de la fenêtre : le défilement horizontal n'y navigue jamais.
+ * l'évènement `swipe` de la fenêtre : le défilement horizontal n'y navigue que si le réglage système suit le défilement
+ * (`options.suiviParDefilementMac`), avec le même verrou que `swipe`.
  */
-export function decisionMolette(etat: EtatMolette, m: Molette, maintenant: number, r: ReglagesGestes, plateforme: NodeJS.Platform): Geste | null {
+export function decisionMolette(etat: EtatMolette, m: Molette, maintenant: number, r: ReglagesGestes, plateforme: NodeJS.Platform, options: OptionsMolette = {}): Geste | null {
   if (m.ctrl || m.meta) {
     // Un modificateur de zoom : jamais de navigation, même défilement horizontal.
     etat.cumulX = 0
@@ -85,7 +102,7 @@ export function decisionMolette(etat: EtatMolette, m: Molette, maintenant: numbe
   }
   etat.cumulZoom = 0
   const horizontal = m.dx !== 0 && !m.shift && !m.alt && Math.abs(m.dx) > RATIO_HORIZONTAL * Math.abs(m.dy)
-  if (!horizontal || !r.defilementHorizontal || plateforme === 'darwin') {
+  if (!horizontal || !r.defilementHorizontal || (plateforme === 'darwin' && !options.suiviParDefilementMac)) {
     etat.cumulX = 0
     return null
   }
@@ -95,6 +112,11 @@ export function decisionMolette(etat: EtatMolette, m: Molette, maintenant: numbe
   if (!m.bord) etat.pageDefile = true
   if (etat.pageDefile) {
     // La page (carrousel, tableau large, carte…) défile encore, ou vient de défiler dans ce geste : aucune navigation avant le calme.
+    etat.cumulX = 0
+    return null
+  }
+  // Le verrou de `swipe` vaut aussi pour le défilement : un balayage déjà traité par l'évènement ne navigue pas deux fois.
+  if (options.verrou && maintenant < options.verrou.verrouJusqua) {
     etat.cumulX = 0
     return null
   }
@@ -109,13 +131,9 @@ export function decisionMolette(etat: EtatMolette, m: Molette, maintenant: numbe
   const geste: Geste = etat.cumulX < 0 ? 'precedent' : 'suivant'
   etat.cumulX = 0
   etat.verrouJusqua = maintenant + VERROU_MS
+  if (options.verrou) options.verrou.verrouJusqua = maintenant + VERROU_MS
   return geste
 }
-
-export interface EtatSwipe {
-  verrouJusqua: number
-}
-export const etatSwipe = (): EtatSwipe => ({ verrouJusqua: -Infinity })
 
 /**
  * Évènement `swipe` d'une fenêtre (macOS, balayage à trois doigts, réglage système « Balayer entre les pages »).
@@ -135,6 +153,8 @@ export interface CibleGestes {
   precedent(id: string): void
   suivant(id: string): void
   zoomer(id: string, o: { delta: 1 | -1 }): unknown
+  /** Verrou de navigation de la fenêtre, partagé avec son évènement `swipe` (macOS). */
+  verrouGeste?: EtatSwipe
 }
 
 export interface DepsGestes {
@@ -144,6 +164,8 @@ export interface DepsGestes {
   reglages(): ReglagesGestes
   maintenant?(): number
   plateforme?: NodeJS.Platform
+  /** macOS : le défilement à deux doigts navigue-t-il (réglage système) ? Relu à chaque message ; absent : non. */
+  suiviParDefilementMac?(): boolean
 }
 
 /** Branche le canal `gestes:molette` ; à appeler une fois au démarrage. */
@@ -162,7 +184,14 @@ export function installerGestesMolette(ipcMain: Pick<IpcMain, 'on'>, d: DepsGest
     if (!m) return
     let etat = etats.get(wc)
     if (!etat) etats.set(wc, (etat = etatMolette()))
-    const geste = decisionMolette(etat, m, d.maintenant?.() ?? Date.now(), d.reglages(), d.plateforme ?? process.platform)
+    const plateforme = d.plateforme ?? process.platform
+    let suivi = false
+    try {
+      suivi = plateforme === 'darwin' && d.suiviParDefilementMac?.() === true
+    } catch {
+      /* réglage système illisible : le défilement ne navigue pas */
+    }
+    const geste = decisionMolette(etat, m, d.maintenant?.() ?? Date.now(), d.reglages(), plateforme, { suiviParDefilementMac: suivi, verrou: tabs.verrouGeste })
     if (geste === 'precedent') tabs.precedent(id)
     else if (geste === 'suivant') tabs.suivant(id)
     else if (geste === 'zoom-plus') tabs.zoomer(id, { delta: 1 })

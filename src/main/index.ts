@@ -1,4 +1,4 @@
-import { app, BaseWindow, dialog, ipcMain, powerMonitor, Notification as NotificationSysteme, webContents, type WebContents, type WebFrameMain, protocol, session, type Session } from 'electron'
+import { app, BaseWindow, dialog, ipcMain, powerMonitor, systemPreferences, Notification as NotificationSysteme, webContents, type WebContents, type WebFrameMain, protocol, session, type Session } from 'electron'
 import { readFileSync } from 'node:fs'
 import { WindowManager } from './window/WindowManager'
 import type { ExtensionEnAttente, Settings, SkyState } from '../shared/types'
@@ -568,7 +568,11 @@ void app.whenReady().then(async () => {
     if (m && origine && typeof id === 'number' && dnd.retirerNotification(m.fenetreId, id, origine)) cadresNotifications.delete(id)
   })
   // Relais `wheel` des pages (précédent / suivant, zoom) : étoiles seulement, réglages `gestes.*` relus à chaque message.
-  installerGestesMolette(ipcMain, { possede: ongletsPossedant, reglages: () => reglages.getSettings().gestes })
+  installerGestesMolette(ipcMain, {
+    possede: ongletsPossedant,
+    reglages: () => reglages.getSettings().gestes,
+    suiviParDefilementMac: () => process.platform === 'darwin' && systemPreferences.isSwipeTrackingFromScrollEventsEnabled()
+  })
   handle('settings:get', () => reglages.getSettings())
   handle('settings:set', (patch, e) => reglages.setSettings(patchPage(patch, { privee: estPrivee(e.sender) })))
   installerReglagesIpc(reglages)

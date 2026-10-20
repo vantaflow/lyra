@@ -97,6 +97,24 @@ describe('défilement horizontal : précédent / suivant', () => {
   it('macOS : le balayage passe par l’évènement « swipe », jamais par la molette', () => {
     expect(decisionMolette(etatMolette(), m({ dx: 500 }), 1000, tout, 'darwin')).toBeNull()
   })
+  it('macOS avec le suivi par défilement du réglage système : le défilement horizontal navigue, avec le verrou partagé de « swipe »', () => {
+    const verrou = etatSwipe()
+    const o = { suiviParDefilementMac: true, verrou }
+    expect(decisionMolette(etatMolette(), m({ dx: 500 }), 1000, tout, 'darwin', o)).toBe('suivant')
+    // Le verrou posé par le défilement bloque un « swipe » arrivé juste après (jamais de double déclenchement).
+    expect(decisionSwipe('right', tout, verrou, 1100)).toBeNull()
+    expect(decisionSwipe('right', tout, verrou, 1000 + VERROU_MS + 1)).toBe('suivant')
+  })
+  it('macOS : un « swipe » déjà traité bloque le défilement qui l’accompagne', () => {
+    const verrou = etatSwipe()
+    expect(decisionSwipe('left', tout, verrou, 1000)).toBe('precedent')
+    expect(decisionMolette(etatMolette(), m({ dx: -500 }), 1100, tout, 'darwin', { suiviParDefilementMac: true, verrou })).toBeNull()
+    expect(decisionMolette(etatMolette(), m({ dx: -500 }), 1000 + VERROU_MS + 10, tout, 'darwin', { suiviParDefilementMac: true, verrou })).toBe('precedent')
+  })
+  it('macOS sans le suivi par défilement : toujours rien ; le suivi n’affecte pas les autres plateformes', () => {
+    expect(decisionMolette(etatMolette(), m({ dx: 500 }), 1000, tout, 'darwin', { suiviParDefilementMac: false })).toBeNull()
+    expect(decisionMolette(etatMolette(), m({ dx: 500 }), 1000, tout, 'win32', { suiviParDefilementMac: false })).toBe('suivant')
+  })
   it('l’interrupteur coupé pendant un geste ne laisse pas de cumul', () => {
     const e = etatMolette()
     decisionMolette(e, m({ dx: 100 }), 1000, tout, lin)
