@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import '../ui/theme.css'
 import { demarrerTheme } from '../ui/themeVivant'
 import './newtab.css'
-import { MOTEURS, moteurParId } from '../../main/palette/engines'
+import { MOTEURS, moteurParId, moteursDisponibles } from '../../main/palette/engines'
 import type { Constellation, HistoryEntry, Settings, Star } from '../../shared/types'
 import type { StatsBoucliers } from '../../shared/ipc'
 import { Ciel } from './Ciel'
@@ -60,7 +60,9 @@ function NouvelOnglet({ privee }: { privee: boolean }) {
   useEffect(() => champ.current?.focus(), [reglages?.moteurChoisi])
 
   const jour = heure < 18
-  const moteur = moteurParId(reglages?.moteurParDefaut ?? 'duckduckgo')
+  // Intégrés puis moteurs ajoutés dans Palette et recherche.
+  const moteurs = reglages ? moteursDisponibles(reglages) : MOTEURS
+  const moteur = moteurParId(reglages?.moteurParDefaut ?? 'duckduckgo', moteurs)
 
   const chercher = (e: Event): void => {
     e.preventDefault()
@@ -111,7 +113,7 @@ function NouvelOnglet({ privee }: { privee: boolean }) {
               </button>
               {menu && (
                 <div class="menu-moteurs" role="menu">
-                  {MOTEURS.map((m) => (
+                  {moteurs.map((m) => (
                     <button key={m.id} type="button" role="menuitemradio" aria-checked={m.id === moteur.id} class={m.id === moteur.id ? 'on' : undefined} onClick={() => choisirMoteur(m.id)}>
                       {m.nom}
                     </button>
