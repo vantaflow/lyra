@@ -5,6 +5,7 @@ import type { ExtensionEnAttente, Settings, SkyState } from '../shared/types'
 import { join } from 'node:path'
 import * as paths from './paths'
 import { definirFournisseurLangue } from '../shared/i18n'
+import { routeReglesSite } from '../shared/routeSite'
 import { handle, envoyer } from './ipc'
 import { creerReglages } from './settings/settings'
 import { installerProtocoleLyra } from './protocol/lyra'
@@ -199,8 +200,9 @@ function ongletsCourants(): TabManager | undefined {
 }
 
 function ongletsDe(wc: WebContents): TabManager {
-  const f = manager.deWebContents(wc) ?? manager.premiere()
-  const m = f && onglets.get(f.id)
+  // Chrome ou overlay d'une fenêtre, sinon page de Lyra (lyra://) d'une de ses étoiles : jamais la première fenêtre au hasard.
+  const f = manager.deWebContents(wc)
+  const m = (f && onglets.get(f.id)) ?? ongletsPossedant(wc) ?? (manager.premiere() && onglets.get(manager.premiere()!.id))
   if (!m) throw new Error('aucune fenêtre')
   return m
 }
@@ -894,13 +896,14 @@ void app.whenReady().then(async () => {
       // Fenêtre privée : pas de bascule (elle écrirait dans les réglages).
       basculable: pass.basculable(urlOriginale(url), privees.has(f.id)),
       contourne: pass.contourne(urlOriginale(url)),
+      regles: routeReglesSite(urlOriginale(url)) !== null,
       favori: favoris.existe(urlOriginale(url)),
       privee: privees.has(f.id),
       zoom: wc?.getZoomFactor() ?? 1
     }
     m.ancrerMenu(ancre)
   })
-  const ACTIONS: ActionMenu[] = ['nouvelle-etoile', 'nouvelle-fenetre', 'fenetre-privee', 'favori', 'recherche', 'imprimer', 'devtools', 'historique', 'extensions', 'reglages']
+  const ACTIONS: ActionMenu[] = ['nouvelle-etoile', 'nouvelle-fenetre', 'fenetre-privee', 'favori', 'recherche', 'imprimer', 'devtools', 'historique', 'extensions', 'reglages', 'regles-site', 'style-site']
   handle('menu:action', ({ action }, e) => {
     if (!ACTIONS.includes(action)) return
     const m = ongletsDe(e.sender)
@@ -914,7 +917,11 @@ void app.whenReady().then(async () => {
     else if (action === 'devtools') m.outilsDeveloppement()
     else if (action === 'historique') m.ouvrir('lyra://history')
     else if (action === 'extensions') m.ouvrir('lyra://extensions')
-    else m.ouvrir('lyra://settings')
+    // Lecture seule : en fenêtre privée l'entrée ouvre quand même les réglages, `sites:*` y refuse toute écriture.
+    else if (action === 'regles-site' || action === 'style-site') {
+      const route = routeReglesSite(urlOriginale(m.wcActif()?.getURL() ?? ''), action === 'style-site' ? 'style' : undefined)
+      if (route) m.ouvrir(route)
+    } else m.ouvrir('lyra://settings')
   })
   installerPalette({ ongletsDe, historique: hist, favoris, reglages: () => reglages.getSettings(), creerFenetre, privee: (m) => privees.has(m.fenetreId),
     dndActif: (m) => dnd.actif(m.fenetreId),

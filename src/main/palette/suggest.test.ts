@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { interpreterSaisie, suggerer } from './suggest'
+import { interpreterSaisie, suggerer, trouverCommande } from './suggest'
 import { urlDeRecherche, moteurParId } from './engines'
 import type { Star } from '../../shared/types'
 
@@ -75,6 +75,15 @@ describe('suggerer', () => {
     expect(actif.map((s) => s.id)).toEqual(['dnd-sortir'])
     expect(actif[0].titre).toBe('Quitter le mode Ne pas déranger')
     expect(suggerer('>quitter', ctx)).toEqual([])
+  })
+  it('« Règles de ce site » : proposée seulement sur un site http(s)', () => {
+    expect(suggerer('>règles', ctx)).toEqual([])
+    expect(suggerer('', ctx).some((s) => s.id === 'regles-site')).toBe(false)
+    const r = suggerer('>règles de ce site', { ...ctx, site: true })
+    expect(r).toHaveLength(1)
+    expect(r[0]).toMatchObject({ type: 'commande', id: 'regles-site', titre: 'Règles de ce site' })
+    expect(suggerer('>regles', { ...ctx, site: true })[0].id).toBe('regles-site')
+    expect(trouverCommande('règles de ce site')).toMatchObject({ id: 'regles-site' })
   })
   it('> déplacer : les quatre positions du ciel', () => {
     const r = suggerer('>déplacer le ciel', ctx)

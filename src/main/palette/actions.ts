@@ -7,6 +7,8 @@ import type { HistoryEntry, Settings, Suggestion } from '../../shared/types'
 import { moteurParId, moteursDisponibles, urlDeRecherche } from './engines'
 import type { History } from '../history/History'
 import type { Bookmarks } from '../bookmarks/Bookmarks'
+import { routeReglesSite } from '../../shared/routeSite'
+import { urlOriginale } from '../tabs/erreurs'
 import { sourcesDeSuggestions } from './prive'
 import { interpreterSaisie, suggerer, trouverCommande } from './suggest'
 
@@ -36,6 +38,9 @@ function historiquePalette(deps: DepsPalette, texte: string, sources: { historiq
   return [...favoris, ...histo]
 }
 
+/** Adresse de la page active (celle d'origine si c'est une page d'erreur Lyra). */
+const urlActive = (tabs: TabManager): string => urlOriginale(tabs.wcActif()?.getURL() ?? '')
+
 let derniereNavigation: string | null = null
 
 export function installerPalette(deps: DepsPalette): void {
@@ -44,6 +49,10 @@ export function installerPalette(deps: DepsPalette): void {
     else if (id === 'fenetre-privee') deps.creerFenetre({ privee: true })
     else if (id === 'reglages') tabs.ouvrir('lyra://settings')
     else if (id === 'extensions') tabs.ouvrir('lyra://extensions')
+    else if (id === 'regles-site') {
+      const route = routeReglesSite(urlActive(tabs))
+      if (route) tabs.ouvrir(route)
+    }
     else if (id === 'dnd-30') deps.dnd(tabs, 30)
     else if (id === 'dnd-60') deps.dnd(tabs, 60)
     else if (id === 'dnd-arret') deps.dnd(tabs, 'arret')
@@ -65,7 +74,8 @@ export function installerPalette(deps: DepsPalette): void {
       moteurs: moteursDisponibles(deps.reglages()),
       // Démasqué seulement : masqué, « à gauche » est une vraie commande (elle réaffiche le ciel).
       positionCiel: deps.reglages().ciel.masque ? undefined : deps.reglages().ciel.position,
-      dnd: deps.dndActif(tabs)
+      dnd: deps.dndActif(tabs),
+      site: routeReglesSite(urlActive(tabs)) !== null
     })
   })
   handle('palette:go', ({ suggestion, texte, nouvelleEtoile }, e) => {

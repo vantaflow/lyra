@@ -148,6 +148,9 @@ export type ActionMenu =
   | 'extensions'
   | 'historique'
   | 'reglages'
+  /** Règles du site de la page active (`lyra://settings#/sites/<origine>`), et leur éditeur de style (`…/style`). */
+  | 'regles-site'
+  | 'style-site'
 
 /** Contexte du menu ⋯ : ancre (coordonnées de la fenêtre) et état de la page active. */
 export interface AncreMenu {
@@ -158,6 +161,8 @@ export interface AncreMenu {
   basculable?: boolean
   /** L'hôte est déjà dans la liste des sites contournés. */
   contourne?: boolean
+  /** La page active est un site http(s) : « Règles pour … » et « Style perso pour ce site » sont actives. */
+  regles?: boolean
   favori: boolean
   /** Fenêtre privée : l'ajout aux favoris est indisponible (rien n'est écrit). */
   privee?: boolean
