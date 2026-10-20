@@ -226,6 +226,8 @@ describe('Boucliers par site : trois niveaux', () => {
   it('Strict : frame inconnue → autorisé', () => {
     const { f } = monter('strict')
     expect(envoyer(f, requete('https://tiers-inconnu.test/x.js', { webContents: { getURL: () => '' }, referrer: '' }))).toEqual({})
+    // Même cas sans référent ni webContents : la page est inconnue, la décision est « autorisé », pas l'URL du script.
+    expect(envoyer(f, requete('https://tiers-inconnu.test/x.js', { webContents: undefined, referrer: '' }))).toEqual({})
   })
   it('scriptlets : actifs en Standard et Strict, inactifs en Désactivés', () => {
     const t = (b: 'desactives' | 'standard' | 'strict') => monter(b).s.estActif('https://site.test')

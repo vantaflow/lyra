@@ -79,8 +79,8 @@ export function origineDe(url: string): string {
   }
 }
 
-/** URL de la page de premier niveau qui a émis la requête (le référent d'une iframe ne compte pas). */
-function urlPremierNiveau(d: OnBeforeRequestListenerDetails | OnHeadersReceivedListenerDetails): string {
+/** Page de premier niveau qui a émis la requête, ou '' si elle est inconnue (service worker, webContents détruit sans référent). */
+function hautConnu(d: OnBeforeRequestListenerDetails | OnHeadersReceivedListenerDetails): string {
   if (d.resourceType === 'mainFrame') return d.url
   let url = ''
   try {
@@ -88,8 +88,11 @@ function urlPremierNiveau(d: OnBeforeRequestListenerDetails | OnHeadersReceivedL
   } catch {
     // webContents détruit
   }
-  return url || d.referrer || d.url
+  return url || d.referrer || ''
 }
+
+/** URL de la page de premier niveau (le référent d'une iframe ne compte pas) ; à défaut, l'URL de la requête. */
+const urlPremierNiveau = (d: OnBeforeRequestListenerDetails | OnHeadersReceivedListenerDetails): string => hautConnu(d) || d.url
 
 const estExtension = estExempte
 
@@ -123,12 +126,17 @@ export function creerShields(opts: OptionsShields): Shields {
     cb(redirect ? { redirectURL: redirect.dataUrl } : { cancel: true })
   }
 
-  /** Niveau « Strict » : en plus du moteur, un script tiers hors liste est bloqué (écouteur D, après les Boucliers). */
+  /**
+   * Niveau « Strict » : en plus du moteur, un script tiers hors liste est bloqué (écouteur D, après les Boucliers).
+   * La règle et la 1re partie sont ceux de la page principale (spec) : une iframe tierce intégrée perd donc ses
+   * propres scripts tiers. Page inconnue (service worker) : décision explicite, on autorise.
+   */
   const strict = (d: OnBeforeRequestListenerDetails): ReponseAvant | void => {
     if (d.resourceType !== 'script') return
-    const haut = urlPremierNiveau(d)
+    const haut = hautConnu(d)
+    if (haut === '') return
     if (resoudre(opts.reglages().sites ?? {}, origineDe(haut)).boucliers !== 'strict') return
-    if (!bloqueScriptTiers(d.url, d.resourceType, WEB.test(haut) || haut.startsWith('file:') ? haut : '')) return
+    if (!bloqueScriptTiers(d.url, d.resourceType, haut)) return
     compteurs.ajouter(d.webContentsId, d.url)
     if (d.webContentsId !== undefined) opts.onCompteur?.(d.webContentsId)
     return { cancel: true }

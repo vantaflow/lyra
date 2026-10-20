@@ -38,4 +38,17 @@ describe('garde Strict : script tiers hors liste', () => {
     expect(bloqueScriptTiers('https://tiers-inconnu.test/x.js', 'script', 'file:///C:/a/index.html')).toBe(true)
     expect(bloqueScriptTiers('https://cdn.jsdelivr.net/x.js', 'script', 'file:///C:/a/index.html')).toBe(false)
   })
+  it('section privée de la PSL : a.github.io et b.github.io sont deux sites', () => {
+    expect(bloqueScriptTiers('https://b.github.io/x.js', 'script', 'https://a.github.io/')).toBe(true)
+    expect(bloqueScriptTiers('https://cdn.a.github.io/x.js', 'script', 'https://a.github.io/')).toBe(false)
+    expect(bloqueScriptTiers('https://x.pages.dev/x.js', 'script', 'https://y.pages.dev/')).toBe(true)
+  })
+  it('suffixe public à plusieurs niveaux : foo.co.uk', () => {
+    expect(bloqueScriptTiers('https://static.foo.co.uk/x.js', 'script', 'https://www.foo.co.uk/')).toBe(false)
+    expect(bloqueScriptTiers('https://bar.co.uk/x.js', 'script', 'https://foo.co.uk/')).toBe(true)
+  })
+  it('domaines d’actifs de grands sites autorisés', () => {
+    for (const u of ['https://github.githubassets.com/a.js', 'https://www.gstatic.com/a.js', 'https://i.ytimg.com/a.js', 'https://yt3.ggpht.com/a.js'])
+      expect(bloqueScriptTiers(u, 'script', haut)).toBe(false)
+  })
 })

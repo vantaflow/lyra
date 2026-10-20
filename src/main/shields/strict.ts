@@ -4,7 +4,11 @@
  */
 import { parse } from 'tldts-experimental'
 
-/** CDN de bibliothèques et de polices que beaucoup de sites chargent légitimement (sous-domaines compris). */
+/**
+ * Critère : domaines qui ne servent que des bibliothèques, polices ou actifs statiques (pas de pub ni de suivi)
+ * et que de grands sites chargent légitimement depuis un autre domaine que le leur (sous-domaines compris).
+ * Strict ne doit casser ni GitHub ni YouTube.
+ */
 export const CDN_CONNUS: readonly string[] = [
   'cdn.jsdelivr.net',
   'cdnjs.cloudflare.com',
@@ -14,15 +18,19 @@ export const CDN_CONNUS: readonly string[] = [
   'fonts.gstatic.com',
   'code.jquery.com',
   'stackpath.bootstrapcdn.com',
-  'maxcdn.bootstrapcdn.com'
+  'maxcdn.bootstrapcdn.com',
+  'githubassets.com',
+  'gstatic.com',
+  'ytimg.com',
+  'ggpht.com'
 ]
 
 const WEB = /^https?:/i
 
 const sousDomaineDe = (hote: string, parent: string): boolean => hote === parent || hote.endsWith(`.${parent}`)
 
-/** Domaine enregistrable, ou l'hôte lui-même (IP, localhost). */
-const racine = (hote: string, url: string): string => parse(url).domain ?? hote
+/** Domaine enregistrable (section privée de la PSL comprise : a.github.io ≠ b.github.io), ou l'hôte lui-même (IP, localhost). */
+const racine = (hote: string, url: string): string => parse(url, { allowPrivateDomains: true }).domain ?? hote
 
 /**
  * Vrai si la requête doit être bloquée en Strict : un `script` http(s), hors de la 1re partie (même domaine
