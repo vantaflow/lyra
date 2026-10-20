@@ -17,6 +17,7 @@ import { Bookmarks } from './bookmarks/Bookmarks'
 import { Downloads } from './downloads/Downloads'
 import { installerReglagesIpc } from './settings/ipc'
 import { patchPage } from './settings/import'
+import { installerAccueilImporte } from './settings/accueil-importe'
 import { installerImportIpc } from './import/ipc'
 import { installerExportIpc } from './export/ipc'
 import { enTest } from './modeTest'
@@ -368,6 +369,8 @@ void app.whenReady().then(async () => {
   const reglages = creerReglages(join(paths.userData(), 'settings.json'), app.getPath('downloads'), 60)
   reglagesCourants = () => reglages.getSettings()
   reglagesStore = reglages
+  // Page d'accueil importée d'un autre navigateur : copiée une seule fois dans Démarrage (avant la première fenêtre).
+  installerAccueilImporte(reglages)
   const depsPermissions: DepsPermissions = {
     lire: (origine, type) => resoudre(reglages.getSettings().sites, origine).permissions?.[type],
     memoriser: (origine, type, decision) => void reglages.setSettings({ sites: { [origine]: { permissions: { [type]: decision } } } }),

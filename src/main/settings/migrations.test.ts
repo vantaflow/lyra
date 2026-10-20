@@ -167,6 +167,33 @@ describe('export / import', () => {
   })
 })
 
+describe('moteurs perso, suggestions de la palette et page d\'accueil importée : aller-retour', () => {
+  const perso = [{ id: 'perso-mon-wiki', nom: 'Mon wiki', motCle: 'mw', url: 'https://wiki.exemple.fr/?q=%s' }]
+  it('l\'export garde moteursPerso et palette.* mais jamais la file d\'import (pageAccueil en attente comprise)', () => {
+    const s = {
+      ...defauts,
+      moteursPerso: perso,
+      palette: { suggestionsHistorique: false, suggestionsFavoris: true, suggestionsEnPrivee: true },
+      import: { extensionsEnAttente: [], reglagesEnAttente: { pageAccueil: 'https://a.fr' } }
+    }
+    const texte = serialiserReglages(s)
+    expect(texte).not.toContain('reglagesEnAttente')
+    const retour = migrer(patchImporte(JSON.parse(texte), AUCUN_REP), defauts).settings
+    expect(retour.moteursPerso).toEqual(perso)
+    expect(retour.palette).toEqual(s.palette)
+    expect(retour.import).toEqual(defauts.import)
+  })
+  it('un export sans moteursPerso (v1 ancien) s\'importe sans effacer ceux déjà présents', () => {
+    const dossier = mkdtempSync(join(tmpdir(), 'lyra-settings-'))
+    const reglages = creerReglages(join(dossier, 'settings.json'), '/dl')
+    reglages.setSettings({ moteursPerso: perso })
+    const { moteursPerso: _m, import: _i, ...ancien } = v1 as Record<string, unknown>
+    reglages.setSettings(patchImporte(ancien, AUCUN_REP))
+    expect(reglages.getSettings().moteursPerso).toEqual(perso)
+    expect(reglages.getSettings().theme).toBe('sombre')
+  })
+})
+
 describe('couleurs.depart, reference et corrigerContraste : migration et aller-retour', () => {
   it('d\'anciens réglages sans ces champs reçoivent les défauts', () => {
     const { settings, avertissements } = migrer({ ...v1, couleurs: { actif: 'foret' } }, defauts)
