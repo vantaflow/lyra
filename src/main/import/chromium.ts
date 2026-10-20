@@ -359,11 +359,11 @@ async function lireOnglets(c: Contexte): Promise<OngletsImportes> {
   const candidats = await fichiers(dossier)
   if (candidats.length === 0) {
     if ((await fichiers(join(c.profil.chemin, 'Sessions_Encrypted'))).length) {
-      throw new ErreurImport(`La session de ${navigateur(c)} est chiffrée par le système : onglets illisibles hors du navigateur.`)
+      throw new ErreurImport(`La session de ${navigateur(c)} est chiffrée par le système : onglets illisibles hors du navigateur.`, { code: 'chiffre' })
     }
     throw new ErreurImport('Aucune session enregistrée dans ce profil.')
   }
-  let derniere = 'Fichier de session illisible.'
+  let derniere: Indisponible = indisponible('Fichier de session illisible.')
   for (const f of candidats.slice(0, 3)) {
     let octets: Buffer
     try {
@@ -383,9 +383,9 @@ async function lireOnglets(c: Contexte): Promise<OngletsImportes> {
     // Session récente valide mais sans onglet : c'est la vérité, on ne retombe pas sur une session plus ancienne
     // (onglets périmés). On ne remonte dans le temps que si le fichier est illisible ou chiffré.
     if (resultat.code === 'vide') throw new ErreurImport(resultat.raison, { code: 'vide' })
-    derniere = resultat.raison
+    derniere = resultat
   }
-  throw new ErreurImport(derniere)
+  throw new ErreurImport(derniere.raison, { code: derniere.code })
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -398,6 +398,8 @@ const ID_EXTENSION = /^[a-p]{32}$/
  * du magasin ou non.
  */
 const EMPLACEMENTS_IGNORES = new Set([0, 5, 8, 10])
+/** `EXTERNAL_POLICY_DOWNLOAD` (7) et `EXTERNAL_POLICY` (9) : extensions imposées par une stratégie d'entreprise. */
+const EMPLACEMENTS_STRATEGIE = new Set([7, 9])
 const MISE_A_JOUR_CHROME = /clients2\.(google|googleusercontent)\.com\/service\/update2\/crx/i
 const MISE_A_JOUR_EDGE = /edge\.microsoft\.com\/extensionwebstorebase\//i
 
@@ -459,6 +461,7 @@ async function lireExtensions(c: Contexte): Promise<ExtensionImportee[]> {
     throw e instanceof ErreurImport ? e : new ErreurImport('Préférences du profil introuvables : extensions illisibles.')
   }
   // Sous Windows, Chrome range les extensions dans `Secure Preferences` ; ailleurs, dans `Preferences`.
+  const secureCorrompue = p2.e !== undefined
   const reglages = { ...objet(chemin(prefs, 'extensions', 'settings')) }
   for (const [id, valeur] of Object.entries(objet(chemin(securise, 'extensions', 'settings')) ?? {})) {
     reglages[id] = { ...objet(reglages[id]), ...objet(valeur) }
@@ -479,7 +482,7 @@ async function lireExtensions(c: Contexte): Promise<ExtensionImportee[]> {
     const dossier = await dossierExtension(c, id, entree)
     const raisons = entree.disable_reasons
     const desactivee = entree.state === 0 || (typeof raisons === 'number' && raisons > 0) || (Array.isArray(raisons) && raisons.length > 0)
-    extensions.push({ id, nom: await nomExtension(c, id, dossier, manifest), magasin, actif: !desactivee })
+    extensions.push({ id, nom: await nomExtension(c, id, dossier, manifest), magasin, actif: !desactivee, ...(EMPLACEMENTS_STRATEGIE.has(entree.location) ? { imposee: true } : {}) })
   }
 
   if (Object.keys(reglages).length === 0) {
@@ -490,7 +493,7 @@ async function lireExtensions(c: Contexte): Promise<ExtensionImportee[]> {
       const dossier = await dossierExtension(c, id, undefined)
       const manifest = dossier ? await lireJsonSimple(c, join(dossier, 'manifest.json')) : undefined
       if (manifest?.theme) continue
-      extensions.push({ id, nom: await nomExtension(c, id, dossier, manifest), magasin: 'chrome', actif: true })
+      extensions.push({ id, nom: await nomExtension(c, id, dossier, manifest), magasin: secureCorrompue ? 'inconnu' : 'chrome', actif: true })
     }
   }
   return extensions.sort((a, b) => a.nom.localeCompare(b.nom, 'fr', { sensitivity: 'base' }))

@@ -208,6 +208,7 @@ describe('onglets ouverts et groupes', () => {
     writeFileSync(join(p.chemin, 'Sessions_Encrypted', 'Session_13414896000000000'), 'x')
     const r = await lire(p, ['onglets'])
     expect(estIndisponible(r.donnees.onglets) && r.donnees.onglets.raison).toMatch(/chiffrée/)
+    expect(estIndisponible(r.donnees.onglets) && r.donnees.onglets.code).toBe('chiffre')
   })
 
   it('session récente valide mais sans onglet : « aucun onglet », pas de retour à une session plus ancienne', async () => {
@@ -251,7 +252,7 @@ describe('extensions', () => {
     ])
     const ids = (r.donnees.extensions as Array<{ id: string }>).map((e) => e.id)
     for (const ignoree of [IDS_EXTENSIONS.composant, IDS_EXTENSIONS.theme, IDS_EXTENSIONS.preinstallee]) expect(ids).not.toContain(ignoree)
-    expect(r.compteurs.extensions).toEqual({ total: 6, chrome: 4, edge: 0, inconnues: 2 })
+    expect(r.compteurs.extensions).toEqual({ total: 6, chrome: 4, edge: 0, firefox: 0, inconnues: 2 })
   })
 
   it('extensions installées par défaut ou par le fabricant (OEM) : ignorées', async () => {
@@ -281,10 +282,36 @@ describe('extensions', () => {
     expect(estIndisponible((await lire(p, ['extensions'])).donnees.extensions)).toBe(true)
   })
 
+  it('Secure Preferences corrompue + dossier Extensions/ : provenance non prouvée, magasin inconnu', async () => {
+    const p = profilJetable()
+    const id = 'f'.repeat(32)
+    mkdirSync(join(p.chemin, 'Extensions', id, '1.0_0'), { recursive: true })
+    writeFileSync(join(p.chemin, 'Extensions', id, '1.0_0', 'manifest.json'), JSON.stringify({ name: 'Orpheline', version: '1.0' }))
+    writeFileSync(join(p.chemin, 'Preferences'), JSON.stringify({}))
+    writeFileSync(join(p.chemin, 'Secure Preferences'), '{ corrompu')
+    expect((await lire(p, ['extensions'])).donnees.extensions).toEqual([{ id, nom: 'Orpheline', magasin: 'inconnu', actif: true }])
+  })
+
+  it('extensions imposées par une stratégie (location 7 et 9) : imposee, les autres non', async () => {
+    const p = profilJetable()
+    const ids = ['a', 'b', 'c'].map((l) => l.repeat(32))
+    const reglage = (location: number, nom: string): unknown => ({ from_webstore: true, location, state: 1, manifest: { name: nom, version: '1' } })
+    writeFileSync(
+      join(p.chemin, 'Preferences'),
+      JSON.stringify({ extensions: { settings: { [ids[0]]: reglage(7, 'Imposée A'), [ids[1]]: reglage(9, 'Imposée B'), [ids[2]]: reglage(1, 'Libre') } } })
+    )
+    const liste = (await lire(p, ['extensions'])).donnees.extensions as Array<{ nom: string; imposee?: boolean }>
+    expect(liste.map((e) => [e.nom, e.imposee])).toEqual([
+      ['Imposée A', true],
+      ['Imposée B', true],
+      ['Libre', undefined]
+    ])
+  })
+
   it('extension d’Edge Add-ons : magasin edge', async () => {
     const r = await lire(await profil('edge', 'Perso'), ['extensions'])
     expect(r.donnees.extensions).toEqual([{ id: IDS_EXTENSIONS.edge, nom: 'Extension Edge', magasin: 'edge', actif: true }])
-    expect(r.compteurs.extensions).toEqual({ total: 1, chrome: 0, edge: 1, inconnues: 0 })
+    expect(r.compteurs.extensions).toEqual({ total: 1, chrome: 0, edge: 1, firefox: 0, inconnues: 0 })
   })
 
   it('préférences sans réglages d’extension et sans dossier Extensions : liste vide, pas d’erreur', async () => {
@@ -355,7 +382,7 @@ describe('lireProfilChromium', () => {
       historique: { pages: 3, visites: 8 },
       onglets: { fenetres: 2, onglets: 5, groupes: 2 },
       moteurs: { moteurs: 2, motsCles: 2 },
-      extensions: { total: 6, chrome: 4, edge: 0, inconnues: 2 },
+      extensions: { total: 6, chrome: 4, edge: 0, firefox: 0, inconnues: 2 },
       reglages: { total: 6 }
     })
   })

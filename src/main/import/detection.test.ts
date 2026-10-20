@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { detecterProfils, nomDeProfilSur, racineImportDeTest, racinesParDefaut } from './detection'
 
 const FIXTURES = fileURLToPath(new URL('./fixtures/chromium', import.meta.url))
+const FIXTURES_AUTRES = fileURLToPath(new URL('./fixtures', import.meta.url))
 
 let tmp: string
 beforeEach(() => {
@@ -38,7 +39,10 @@ describe('racinesParDefaut', () => {
       chrome: join(support, 'Google', 'Chrome'),
       edge: join(support, 'Microsoft Edge'),
       brave: join(support, 'BraveSoftware', 'Brave-Browser'),
-      vivaldi: join(support, 'Vivaldi')
+      vivaldi: join(support, 'Vivaldi'),
+      firefox: join(support, 'Firefox'),
+      safari: join('/Users/t', 'Library', 'Safari'),
+      orion: join(support, 'Orion')
     })
   })
 
@@ -46,6 +50,16 @@ describe('racinesParDefaut', () => {
     const r = racinesParDefaut('linux', {}, '/home/t')
     expect(r.chrome).toBe(join('/home/t', '.config', 'google-chrome'))
     expect(r.edge).toBe(join('/home/t', '.config', 'microsoft-edge'))
+    expect(r.firefox).toBe(join('/home/t', '.mozilla', 'firefox'))
+  })
+
+  it('Safari et Orion : macOS seulement ; Firefox partout', () => {
+    for (const p of ['win32', 'linux'] as const) {
+      const r = racinesParDefaut(p, {}, '/Users/t')
+      expect(r.safari).toBeUndefined()
+      expect(r.orion).toBeUndefined()
+      expect(r.firefox).toBeDefined()
+    }
   })
 })
 
@@ -72,6 +86,43 @@ describe('LYRA_IMPORT_RACINE', () => {
     fichier(join(tmp, '.config', 'google-chrome', 'Default', 'Preferences'))
     const profils = await detecterProfils({ env: { LYRA_TEST: '1', LYRA_IMPORT_RACINE: join(tmp, 'vide') }, plateforme: 'linux', maison: tmp })
     expect(profils).toEqual([])
+  })
+})
+
+describe('Firefox, Safari, Orion', () => {
+  it('fixtures détectées via racines', async () => {
+    const racines = { firefox: join(FIXTURES_AUTRES, 'firefox'), safari: join(FIXTURES_AUTRES, 'safari'), orion: join(FIXTURES_AUTRES, 'orion') }
+    const profils = await detecterProfils({ racines, navigateurs: ['firefox', 'safari', 'orion'], env: {} })
+    const parNav = (n: string): string[] => profils.filter((p) => p.navigateur === n).map((p) => p.nom)
+    expect(parNav('firefox')).toEqual(expect.arrayContaining(['default-release']))
+    expect(parNav('safari').length).toBeGreaterThan(0)
+    expect(parNav('orion').length).toBeGreaterThan(0)
+  })
+
+  it('absents : aucune erreur, aucun profil', async () => {
+    const racines = { firefox: join(tmp, 'a'), safari: join(tmp, 'b'), orion: join(tmp, 'c') }
+    expect(await detecterProfils({ racines, navigateurs: ['firefox', 'safari', 'orion'], env: {} })).toEqual([])
+  })
+
+  it('hors macOS, Safari et Orion ne sont pas cherchés dans les dossiers par défaut', async () => {
+    fichier(join(tmp, 'Library', 'Safari', 'Bookmarks.plist'))
+    const profils = await detecterProfils({ env: {}, plateforme: 'linux', maison: tmp })
+    expect(profils).toEqual([])
+  })
+
+  it('LYRA_IMPORT_RACINE couvre les sept navigateurs ; Firefox ouvert si parent.lock', async () => {
+    const copie = join(tmp, 'racine')
+    cpSync(FIXTURES_AUTRES, copie, { recursive: true, filter: (s) => !/generer/.test(s) })
+    cpSync(FIXTURES, copie, { recursive: true }) // chrome/, edge/, brave/ à la racine, comme `LYRA_IMPORT_RACINE` l'attend
+    const env = { LYRA_TEST: '1', LYRA_IMPORT_RACINE: copie }
+    let profils = await detecterProfils({ env })
+    const navs = new Set(profils.map((p) => p.navigateur))
+    expect(navs).toEqual(new Set(['chrome', 'edge', 'brave', 'firefox', 'safari', 'orion'])) // vivaldi : non installé
+    expect(profils.find((p) => p.navigateur === 'firefox')?.ouvert).toBe(false)
+    const ff = profils.find((p) => p.navigateur === 'firefox')!
+    writeFileSync(join(ff.chemin, 'parent.lock'), '')
+    profils = await detecterProfils({ env, navigateurs: ['firefox'] })
+    expect(profils.find((p) => p.chemin === ff.chemin)?.ouvert).toBe(true)
   })
 })
 
@@ -153,9 +204,5 @@ describe('detecterProfils', () => {
     expect((await detecterProfils({ racines: { chrome: tmp }, navigateurs: ['chrome'] }))[0].ouvert).toBe(false)
     fichier(join(tmp, 'lockfile'), '')
     expect((await detecterProfils({ racines: { chrome: tmp }, navigateurs: ['chrome'] }))[0].ouvert).toBe(true)
-  })
-
-  it('Firefox, Safari, Orion : pas encore pris en charge (Task 2), jamais d’erreur', async () => {
-    expect(await detecterProfils({ racines: { firefox: tmp, safari: tmp, orion: tmp }, navigateurs: ['firefox', 'safari', 'orion'] })).toEqual([])
   })
 })

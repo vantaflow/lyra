@@ -8,13 +8,15 @@
  *   navigateur (`<racine>/chrome`, `<racine>/edge`…), chacun étant le dossier « User Data » du navigateur. Quand elle
  *   est active, les vrais dossiers de la machine ne sont jamais consultés.
  *
- * Extension prévue (Task 2) : Firefox (`profiles.ini`), Safari (`~/Library/Safari`), Orion — ajouter leur détecteur
- * dans `DETECTEURS` et leur dossier dans `racinesParDefaut`, rien d'autre ne change.
+ * Firefox (`profiles.ini`) est détecté partout ; Safari (`~/Library/Safari`) et Orion ne le sont que sous macOS.
  */
 import { existsSync, lstatSync, readFileSync } from 'node:fs'
 import { readdir } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
+import { detecterProfilsFirefox, racineFirefoxParDefaut } from './firefox'
+import { detecterProfilsOrion } from './orion'
+import { detecterProfilsSafari } from './safari'
 import { NAVIGATEURS_CHROMIUM, NOMS_NAVIGATEURS } from './types'
 import type { NavigateurSource, ProfilDetecte } from './types'
 
@@ -36,7 +38,7 @@ export function racineImportDeTest(env: NodeJS.ProcessEnv = process.env): string
   return env.LYRA_TEST === '1' && env.LYRA_IMPORT_RACINE ? env.LYRA_IMPORT_RACINE : undefined
 }
 
-/** Dossiers « User Data » des navigateurs Chromium (et, plus tard, des autres) selon la plateforme. */
+/** Dossiers « User Data » des navigateurs Chromium, racine de Firefox, et sous macOS Safari et Orion, selon la plateforme. */
 export function racinesParDefaut(plateforme: NodeJS.Platform, env: NodeJS.ProcessEnv, maison: string): Racines {
   if (plateforme === 'win32') {
     const local = env.LOCALAPPDATA ?? join(maison, 'AppData', 'Local')
@@ -44,7 +46,8 @@ export function racinesParDefaut(plateforme: NodeJS.Platform, env: NodeJS.Proces
       chrome: join(local, 'Google', 'Chrome', 'User Data'),
       edge: join(local, 'Microsoft', 'Edge', 'User Data'),
       brave: join(local, 'BraveSoftware', 'Brave-Browser', 'User Data'),
-      vivaldi: join(local, 'Vivaldi', 'User Data')
+      vivaldi: join(local, 'Vivaldi', 'User Data'),
+      firefox: racineFirefoxParDefaut(plateforme, env, maison)
     }
   }
   if (plateforme === 'darwin') {
@@ -53,7 +56,10 @@ export function racinesParDefaut(plateforme: NodeJS.Platform, env: NodeJS.Proces
       chrome: join(support, 'Google', 'Chrome'),
       edge: join(support, 'Microsoft Edge'),
       brave: join(support, 'BraveSoftware', 'Brave-Browser'),
-      vivaldi: join(support, 'Vivaldi')
+      vivaldi: join(support, 'Vivaldi'),
+      firefox: racineFirefoxParDefaut(plateforme, env, maison),
+      safari: join(maison, 'Library', 'Safari'),
+      orion: join(support, 'Orion')
     }
   }
   const config = env.XDG_CONFIG_HOME ?? join(maison, '.config')
@@ -61,7 +67,8 @@ export function racinesParDefaut(plateforme: NodeJS.Platform, env: NodeJS.Proces
     chrome: join(config, 'google-chrome'),
     edge: join(config, 'microsoft-edge'),
     brave: join(config, 'BraveSoftware', 'Brave-Browser'),
-    vivaldi: join(config, 'vivaldi')
+    vivaldi: join(config, 'vivaldi'),
+    firefox: racineFirefoxParDefaut(plateforme, env, maison)
   }
 }
 
@@ -142,8 +149,13 @@ async function profilsChromium(navigateur: NavigateurSource, racine: string): Pr
 
 type Detecteur = (navigateur: NavigateurSource, racine: string) => Promise<ProfilDetecte[]>
 
-/** Un détecteur par navigateur ; Firefox, Safari et Orion arrivent avec la Task 2. */
-const DETECTEURS: Partial<Record<NavigateurSource, Detecteur>> = Object.fromEntries(NAVIGATEURS_CHROMIUM.map((n) => [n, profilsChromium]))
+/** Un détecteur par navigateur. */
+const DETECTEURS: Partial<Record<NavigateurSource, Detecteur>> = {
+  ...Object.fromEntries(NAVIGATEURS_CHROMIUM.map((n) => [n, profilsChromium])),
+  firefox: (navigateur, racine) => detecterProfilsFirefox(racine, navigateur),
+  safari: (_, racine) => detecterProfilsSafari(racine),
+  orion: (_, racine) => detecterProfilsOrion(racine)
+}
 
 /** Profils installés (tous navigateurs pris en charge) ; liste vide si rien n'est installé. Ne lève jamais. */
 export async function detecterProfils(opts: OptionsDetection = {}): Promise<ProfilDetecte[]> {

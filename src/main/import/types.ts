@@ -198,6 +198,8 @@ export interface ExtensionImportee {
   magasin: 'chrome' | 'edge' | 'firefox' | 'inconnu'
   /** Activée dans le navigateur source. */
   actif: boolean
+  /** Imposée par une stratégie d'entreprise (Chromium `location` 7 ou 9) : décochée par défaut dans l'aperçu. */
+  imposee?: boolean
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -232,8 +234,8 @@ export interface Compteurs {
   onglets?: { fenetres: number; onglets: number; groupes: number }
   /** `moteurs` : moteurs proposés par le navigateur ; `motsCles` : raccourcis créés par l'utilisateur. */
   moteurs?: { moteurs: number; motsCles: number }
-  /** `chrome` : réinstallables depuis le Chrome Web Store (« 5 sur 6 ») ; `inconnues` : hors magasin (« 1 inconnue »). */
-  extensions?: { total: number; chrome: number; edge: number; inconnues: number }
+  /** `chrome` : réinstallables depuis le Chrome Web Store (« 5 sur 6 ») ; `edge`, `firefox` : autres magasins ; `inconnues` : hors magasin (« 1 inconnue »). */
+  extensions?: { total: number; chrome: number; edge: number; firefox: number; inconnues: number }
   reglages?: { total: number }
 }
 
@@ -275,7 +277,7 @@ export function compter(d: DonneesImportees): Compteurs {
   if (d.extensions && !estIndisponible(d.extensions)) {
     const liste = d.extensions
     const dans = (m: ExtensionImportee['magasin']): number => liste.filter((e) => e.magasin === m).length
-    c.extensions = { total: liste.length, chrome: dans('chrome'), edge: dans('edge'), inconnues: dans('inconnu') }
+    c.extensions = { total: liste.length, chrome: dans('chrome'), edge: dans('edge'), firefox: dans('firefox'), inconnues: dans('inconnu') }
   }
   if (d.reglages && !estIndisponible(d.reglages)) {
     const r = d.reglages
