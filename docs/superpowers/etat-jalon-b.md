@@ -64,8 +64,14 @@ Plan : `docs/superpowers/plans/2026-10-19-lyra-jalon-b.md` (6 tâches). Branche 
   - I6 : `extensions:consommerFile` ne reçoit plus d'entrées de la page : le main lit `settings.import?.extensionsEnAttente` (absent → file vide), garde les restantes intactes, réécrit la file (en relisant : une entrée ajoutée entre-temps reste), plafond 200 ; `confirmees` = clés `magasin:id` ; bouton « Installer quand même » sur une entrée « à confirmer ». Tant que le jalon E n'est pas fusionné, le validateur de réglages ignore `import` : la file réelle est donc toujours vide (les e2e passent par une file en mémoire, `LYRA_FILE_SIMULEE`, canal `test:fileImport`).
   - M1 `electron-chrome-web-store` retiré ; M2 marqueur « en cours » d'une autre version repris en entier ; M3 commentaires IPC replacés ; M4 limites (règle par site non appliquée aux scripts, permissions optionnelles refusées) dans la page, le README et le commentaire de `requestPermissions` ; M12 compteurs d'API sans prototype ; M15 formatage de `youtube.spec.ts`.
 
+- **Fusion de `origin/main` (jalon E) dans `jalon-b`** (2026-10-20) — détail dans `.superpowers/sdd/2026-10-19-lyra-jalon-b/merge-report.md`.
+  - Conflits additifs résolus (index, ipc, defaults, réglages, README, package.json) ; lockfile régénéré ; `EntreeImport` de B renommé `EntreeFileExtensions` (celui d'E est `import/appliquer`).
+  - R1 : `import` retiré de `patchPage` et `patchImporte` (seuls le main et l'importeur d'E écrivent la file). R4 : `settings:set` depuis une fenêtre privée ignore `sites` (règles par site, comme zoom et permissions).
+  - File branchée : `lireFile`/`ecrireFile` lisent et réécrivent `settings.import.extensionsEnAttente` (file simulée supprimée) ; `lyra://extensions` affiche la file avec « Tout réinstaller » et « Installer quand même » (imposées, clé `magasin:id` dans `confirmees`) ; la page d'import d'E renvoie vers elle. `test:fileImport` (sous `enTest()`) écrit la vraie file.
+  - R2 : tous les `LYRA_TEST` de B passent par `enTest()`. Paquet `.lyra` : `extensions.json` = `{ enAttente, installees }` ; restauration → catalogue (cws/amo) dans la file, locales en avertissement.
+
 ## Reste
-- Fusion de `jalon-b` dans `main` (puis, avec le jalon E, branchement de la file d'import : `extensions:consommerFile` lit déjà `settings.import.extensionsEnAttente` ; la page doit seulement l'appeler, avec `confirmees` pour les imposées).
+- Fusion de `jalon-b` dans `main`.
 - `ETAT.md` : mis à jour par la session principale.
 
 ## Points à connaître
