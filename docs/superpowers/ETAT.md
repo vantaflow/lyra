@@ -1,6 +1,6 @@
 # Lyra — état d'avancement
 
-Dernière mise à jour : 2026-10-20 nuit — **EN PAUSE** (main cc3e697 : fuite des profils de test corrigée, fix-epingler et fix-reglages fusionnées) (décision de l'utilisateur). v1.0.0 publiée (essai) ; jalons A, B, C, E, cycle 2 sur `main` ; jalon D terminé côté tâches, en vague de corrections. Voir « Pause du 2026-10-20 » ci-dessous.
+Dernière mise à jour : 2026-10-21 (relève Antigravity) — **EN PAUSE COMPLÈTE** (fermeture machine demandée par l'utilisateur). v1.0.0 publiée (essai) ; jalons A, B, C, E, cycle 2 sur `main` ; jalon D terminé côté tâches, vagues d'intégration terminées côté ORION HELP. Branche `audit-boutons` prête à être corrigée (causes des 2 défauts identifiées). Voir « Pause du 2026-10-21 » ci-dessous.
 
 ## Le projet
 
@@ -144,19 +144,31 @@ Fait (sur main) :
 3. `fix-reglages` fusionnée (cc3e697, après fusion de main ; test du ciel révélé lu par offsetWidth, flottant 286.00006 sur macOS). CI branche verte : run 39505285917 ; main : 39506751836. Branche supprimée.
 
 Branches à reprendre :
-1. `audit-boutons` (**0616140**, WIP, poussée ; CI build verte sur e97b966, run 39507055294) : fusion de main faite (conflits gardés des deux côtés : sommaire = sections visibles + liens lyra://settings hors hôte ; liens du panneau Boucliers « Bientôt » inertes, jalon D) ; test de la barre de recherche corrigé (le test envoyait Échap à la vue chrome au lieu de l'overlay, et lisait le DOM de l'overlay caché) ; workflow `.github/workflows/audit.yml` (workflow_dispatch, macOS + Windows, artefact `audit-boutons-<OS>`). **Pas encore sur main** : il n'existe donc pas encore de dispatch possible — le lancer avec `gh workflow run audit --ref audit-boutons` une fois `audit.yml` sur main, ou remettre temporairement un déclencheur `push`.
-   Dernier audit (run 39507032525, avant 0616140) : macOS 1 défaut, Windows 2 + bruit. Défauts restants classés :
-   - réel à corriger : macOS `lyra://extensions` — « Installer » sans effet ; Windows `lyra://settings#/reseau` — section vue vide (à vérifier) ;
-   - environnement de test (corrigé dans 0616140, à valider) : Windows « Réglages » et « Quitter le mode Ne pas déranger » « element is not stable » — la vue chrome de la fenêtre cachée tombe à ~1 image/s après Ne pas déranger (rAF 3 en 2,5 s, diagnostic run 39507010978) ; le clic est retenté avec 15 s ;
-   - bruit Chromium Windows écarté dans 0616140 : « Message 4/5 rejected by interface blink.mojom.WidgetHost ».
-   Point de reprise : relancer l'audit sur 0616140, corriger « Installer » et la section Réseau sous Windows, CI build + audit verts, puis main.
-2. `diag-audit` (a5c8ee2) : branche de diagnostic temporaire, à supprimer (suppression bloquée par le garde-fou pendant la pause).
-4. Jalon D (session ORION HELP), arrêt noté par elle :
-   - `jalon-d-fusion` 69c754a : toutes les tâches + tâche 22 partielle (mineurs, `etat-jalon-d.md`, README, ledger `docs/superpowers/ledgers/jalon-d.md` avec point de reprise). vitest 2040, build OK, 42 specs e2e verts ; à relancer : apparence, theme-tokens, theme, youtube ×3, extensions-reseau/passerelles `@reseau`, paquet.
-   - Relecture finale Opus (3 zones) : **« Non »**. Corrections en deux vagues inachevées :
-     - `jalon-d-vague` 234ba0e (WIP interface : niveau par défaut, fréquence de MAJ, panneau Boucliers Strict, Styles réécrit non testé). Restent : nouvel onglet lisible, mode système, Langue/Général, route extensions, « Demander », masquage Labo/profils/Mode lecture, exclusions d'extensions effectives, refus `file://`.
-     - `jalon-d-vague-main` 4556b90 (perf 10 000 règles faite). Restent : fermeture bornée, favicon, moteurs perso à la migration, swipe macOS, scripts importés désactivés, mineurs.
-   - Reprise : finir les deux vagues, fusionner les trois branches + `audit-boutons`, puis main quand 1-2 sont verts ; vérification complète + audit ; fusion dans main ; version 1.1.0, publication sur ordre de l'utilisateur.
+1. `audit-boutons` (**0616140**, WIP, poussée ; CI build verte sur e97b966, run 39507055294) :
+   - Workflow `.github/workflows/audit.yml` présent sur la branche.
+   - Dernier audit (run 39507032525) : analyses et diagnostics réalisés le 2026-10-21 par Antigravity :
+     - **Windows `lyra://settings#/reseau` (« Section vide »)** : identifié. `Reseau.tsx` renvoie `null` lors du premier rendu tant que l'IPC `passerelles:etat` n'a pas répondu. Dans `tests/e2e/audit-reglages.spec.ts:42`, `p.evaluate()` vérifie `contenu` de façon synchrone immédiatement après la navigation par hash, sans attendre la réponse IPC (plus lente sous Windows). Correction prête : remplacer la vérification directe par `await expect.poll(() => p.evaluate(...)).toBeGreaterThan(0)` (avec timeout 5 s) avant de lever `audit.defautContenu`.
+     - **macOS `lyra://extensions` (« Installer » sans effet)** : testé en local par Antigravity (vert, 1 passed en 14.1 s). Sur la CI, la saisie dans `#cws` (validée par Entrée) a lancé `installer()`, ce qui a affiché la carte d'erreur ; le clic suivant sur le bouton « Installer » a relancé la même action sans changement visible du DOM si l'appel était trop rapide pour être perçu par `attendreEffet`.
+     - **Windows « element is not stable »** : corrigé dans `0616140` (attente jusqu'à 15 s).
+     - **Bruit Chromium Mojo** : écarté dans `0616140` (`harnais.ts:95`).
+   - Action à la reprise : appliquer l'attente `expect.poll` dans `audit-reglages.spec.ts`, déclencher l'audit, puis fusionner dans `main`.
+2. Jalon D (session ORION HELP) :
+   - `jalon-d-vague` (`b324228`) terminée (items interface, masquage des sections incomplètes).
+   - `jalon-d-vague-main` (`6600dc4`) terminée (optimisation règles, swipe macOS, net.request favicon).
+   - Restant identifié : 1 échec en CI Windows sur `theme.spec.ts:113` (couleur du favicon sous Windows).
+   - Action à la reprise : fusionner les deux vagues dans `jalon-d-fusion`, régler `theme.spec.ts:113`, puis fusionner avec `origin/main` et `audit-boutons`.
+
+## Pause du 2026-10-21 (relève Antigravity) — point de reprise exact
+
+Antigravity a pris le relais d'orion_clone le 2026-10-21. Tout a été analysé, vérifié et documenté.
+Aucun processus ne tourne en arrière-plan, disque vérifié (117 Gio libres), code intact.
+
+À la reprise (dire « reprends Lyra ») :
+1. Dans `lyra.worktrees/audit-boutons` :
+   - Modifier `tests/e2e/audit-reglages.spec.ts` pour attendre avec `expect.poll` que le contenu sous `main` soit rendu (> 0).
+   - Ajouter temporairement le déclencheur `push` dans `.github/workflows/audit.yml` (ou dispatch si déjà sur main) pour valider l'audit en CI macOS et Windows.
+   - Une fois l'audit vert, fusionner `audit-boutons` dans `main` et supprimer la branche.
+2. Fusionner les vagues de Jalon D (`jalon-d-vague` et `jalon-d-vague-main`) dans `jalon-d-fusion`, corriger le point Windows `theme.spec.ts:113`, fusionner `main`, puis tagger v1.1.0 après relecture.
 
 Ensuite seulement : audit « tous les boutons » vert sur la version complète, relecture finale Opus de la v1, CI verte macOS + Windows, `@paquet`, vérification à la main (YouTube sans pub, ciel révélé et « Épingler » sous Windows, gestes), puis tag de la version complète.
 
